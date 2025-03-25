@@ -1,0 +1,2424 @@
+{
+    "supported_locales": ["en-US", "fr", "es-ES", "de", "it"],
+    "language_names": {
+        "en-US": "English",
+        "fr": "Français",
+        "es-ES": "Español",
+        "de": "Deutsch",
+        "it": "Italiano"
+    },
+    "global_error": {
+      "en-US": "❌ An unexpected error occurred: {error}",
+      "fr": "❌ Une erreur inattendue est survenue : {error}",
+      "es-ES": "❌ Se produjo un error inesperado: {error}",
+      "de": "❌ Ein unerwarteter Fehler ist aufgetreten: {error}",
+      "it": "❌ Si è verificato un errore imprevisto: {error}"
+    },
+    "commands": {
+        "app_initialize": {
+            "name": {
+                "en-US": "91_app_initialize",
+                "fr": "91_app_initialisation",
+                "es-ES": "91_app_inicializar",
+                "de": "91_app_initialisierung",
+                "it": "91_app_inizializza"
+            },
+            "description": {
+                "en-US": "Initiates the bot installation on your Discord server.",
+                "fr": "Lance l'installation du bot sur votre serveur Discord.",
+                "es-ES": "Inicia la instalación del bot en su servidor de Discord.",
+                "de": "Startet die Installation des Bots auf Ihrem Discord-Server.",
+                "it": "Avvia l'installazione del bot sul vostro server Discord."
+            },
+            "options": {
+                "guild_name": {
+                    "description": {
+                        "en-US": "Guild name (max 30 characters)",
+                        "fr": "Nom de la Guilde (max 30 caractères)",
+                        "es-ES": "Nombre de la Guild (máximo 30 caracteres)",
+                        "de": "Name der Gilde (max. 30 Zeichen)",
+                        "it": "Nome della gilda (massimo 30 caratteri)"
+                    }
+                },
+                "guild_lang": {
+                    "description": {
+                        "en-US": "Server language",
+                        "fr": "Langue du serveur",
+                        "es-ES": "Idioma del servidor",
+                        "de": "Serversprache",
+                        "it": "Lingua del server"
+                    }
+                },
+                "guild_game": {
+                    "description": {
+                        "en-US": "Associated game",
+                        "fr": "Jeu associé",
+                        "es-ES": "Juego asociado",
+                        "de": "Zugehöriges Spiel",
+                        "it": "Gioco associato"
+                    },
+                    "choices": {
+                        "Throne and Liberty": "1"
+                    }
+                },
+                "guild_server": {
+                    "description": {
+                        "en-US": "Game server name (max 20 characters)",
+                        "fr": "Nom du serveur de jeu (max 20 caractères)",
+                        "es-ES": "Nombre del servidor de juego (máximo 20 caracteres)",
+                        "de": "Name des Spielservers (max. 20 Zeichen)",
+                        "it": "Nome del server di gioco (massimo 20 caratteri)"
+                    }
+                }
+            },
+            "rename_templates": {
+                "en-US": "{guild_name}'s GM",
+                "fr": "{guild_name} - Gestion",
+                "es-ES": "Admin {guild_name}",
+                "de": "{guild_name} - Gildenmanager",
+                "it": "Gestore di {guild_name}"
+            },
+            "messages": {
+                "success": {
+                    "en-US": "Bot initialized!",
+                    "fr": "Bot initialisé !",
+                    "es-ES": "¡Bot inicializado!",
+                    "de": "Bot initialisiert!",
+                    "it": "Bot inizializzato!"
+                },
+                "already_declared": {
+                    "en-US": "Bot already initialized, can't do it twice!",
+                    "fr": "Bot déjà initialisé, impossible de le faire deux fois !",
+                    "es-ES": "¡Bot ya inicializado, no se puede hacer dos veces!",
+                    "de": "Bot bereits initialisiert, kann nicht zweimal gemacht werden!",
+                    "it": "Bot già inizializzato, impossibile farlo due volte!"
+                },
+                "error": {
+                    "en-US": "Initialization failed: {error}",
+                    "fr": "L'initialisation a échoué : {error}",
+                    "es-ES": "La inicialización falló: {error}",
+                    "de": "Die Initialisierung ist fehlgeschlagen: {error}",
+                    "it": "L'inizializzazione non è riuscita: {error}"
+                }
+            }
+        },
+        "app_modify": {
+            "name": {
+                "en-US": "98_app_modify",
+                "fr": "98_app_modification",
+                "es-ES": "98_app_modificar",
+                "de": "98_app_modifikation",
+                "it": "98_app_modifica"
+            },
+            "description": {
+                "en-US": "Allows you to modify the bot's settings.",
+                "fr": "Permet de modifier les paramètres du bot.",
+                "es-ES": "Permite modificar los parámetros del bot.",
+                "de": "Ermöglicht die Änderung der Bot-Einstellungen.",
+                "it": "Consente di modificare le impostazioni del bot."
+            },
+            "options": {
+                "guild_name": {
+                    "description": {
+                        "en-US": "Guild name (max 30 characters)",
+                        "fr": "Nom de la Guilde (max 30 caractères)",
+                        "es-ES": "Nombre de la Guild (máximo 30 caracteres)",
+                        "de": "Name der Gilde (max. 30 Zeichen)",
+                        "it": "Nome della gilda (massimo 30 caratteri)"
+                    }
+                },
+                "guild_lang": {
+                    "description": {
+                        "en-US": "Server language",
+                        "fr": "Langue du serveur",
+                        "es-ES": "Idioma del servidor",
+                        "de": "Serversprache",
+                        "it": "Lingua del server"
+                    }
+                },
+                "guild_game": {
+                    "description": {
+                        "en-US": "Associated game",
+                        "fr": "Jeu associé",
+                        "es-ES": "Juego asociado",
+                        "de": "Zugehöriges Spiel",
+                        "it": "Gioco associato"
+                    },
+                    "choices": {
+                        "Throne and Liberty": "1"
+                    }
+                },
+                "guild_server": {
+                    "description": {
+                        "en-US": "Game server name (max 20 characters)",
+                        "fr": "Nom du serveur de jeu (max 20 caractères)",
+                        "es-ES": "Nombre del servidor de juego (máximo 20 caracteres)",
+                        "de": "Name des Spielservers (max. 20 Zeichen)",
+                        "it": "Nome del server di gioco (massimo 20 caratteri)"
+                    }
+                }
+            },
+            "messages": {
+                "success": {
+                    "en-US": "Bot settings modified successfully!",
+                    "fr": "Paramètres du bot modifiés avec succès !",
+                    "es-ES": "¡Parámetros del bot modificados correctamente!",
+                    "de": "Bot-Einstellungen erfolgreich geändert!",
+                    "it": "Impostazioni del bot modificate con successo!"
+                },
+                "need_init": {
+                    "en-US": "Modification impossible: the bot must be initialized first!",
+                    "fr": "Modification impossible : il faut d'abord initialiser le bot !",
+                    "es-ES": "¡Modificación imposible: primero hay que inicializar el bot!",
+                    "de": "Änderung nicht möglich: Der Bot muss zuerst initialisiert werden!",
+                    "it": "Modifica impossibile: il bot deve essere inizializzato prima!"
+                },
+                "error": {
+                    "en-US": "Modification failed: {error}",
+                    "fr": "La modification a échoué : {error}",
+                    "es-ES": "La modificación falló: {error}",
+                    "de": "Die Änderung ist fehlgeschlagen: {error}",
+                    "it": "La modifica non è riuscita: {error}"
+                }
+            }
+        },
+        "app_reset": {
+            "name": {
+                "en-US": "99_app_reset",
+                "fr": "99_app_reset",
+                "es-ES": "99_app_restablecer",
+                "de": "99_app_zuruecksetzen",
+                "it": "99_app_ripristina"
+            },
+            "description": {
+                "en-US": "Resets all of the bot's settings, after which reinitialization is required.",
+                "fr": "Réinitialise tous les paramètres du bot. Relancez l'initialisation.",
+                "es-ES": "Restablece todos los parámetros del bot. Reinicie la inicialización.",
+                "de": "Setzt alle Bot-Einstellungen zurück. Starten Sie die Initialisierung neu.",
+                "it": "Reimposta le impostazioni del bot. Riavvia l'inizializzazione."
+            },
+            "options": {
+                "confirmation": {
+                    "description": {
+                        "en-US": "Enter 'DELETE' to confirm the deletion of your data (irreversible).",
+                        "fr": "Entrez 'DELETE' pour confirmer la suppression de vos données (irréversible).",
+                        "es-ES": "Ingrese 'DELETE' para confirmar la eliminación de sus datos (irreversible).",
+                        "de": "Geben Sie 'DELETE' ein, um die Löschung Ihrer Daten zu bestätigen (unwiderruflich).",
+                        "it": "Inserisci 'DELETE' per confermare l'eliminazione dei tuoi dati (irreversibile)."
+                    }
+                }
+            },
+            "messages": {
+                "success": {
+                    "en-US": "Bot settings reset successfully! Please reinitialize the bot.",
+                    "fr": "Les paramètres du bot ont été réinitialisés. Relancez l'initialisation.",
+                    "es-ES": "¡Los parámetros del bot han sido restablecidos! Reinicie la inicialización.",
+                    "de": "Die Bot-Einstellungen wurden zurückgesetzt! Starten Sie die Initialisierung neu.",
+                    "it": "Le impostazioni del bot sono state ripristinate! Riavvia l'inizializzazione."
+                },
+                "bad_parameter": {
+                    "en-US": "Confirmation failed: you did not write 'DELETE'...",
+                    "fr": "Confirmation KO : vous n'avez pas écrit 'DELETE'...",
+                    "es-ES": "Confirmación fallida: no ha escrito 'DELETE'...",
+                    "de": "Bestätigung fehlgeschlagen: Sie haben nicht 'DELETE' geschrieben...",
+                    "it": "Conferma fallita: non hai scritto 'DELETE'..."
+                },
+                "need_init": {
+                    "en-US": "Deletion impossible: the bot has not been initialized!",
+                    "fr": "Suppression impossible : le bot n'a pas été initialisé !",
+                    "es-ES": "¡Eliminación imposible: el bot no ha sido inicializado!",
+                    "de": "Löschen nicht möglich: Der Bot wurde nicht initialisiert!",
+                    "it": "Eliminazione impossibile: il bot non è stato inizializzato!"
+                },
+                "error": {
+                    "en-US": "Reset failed: {error}",
+                    "fr": "La réinitialisation a échoué : {error}",
+                    "es-ES": "La restauración falló: {error}",
+                    "de": "Das Zurücksetzen ist fehlgeschlagen: {error}",
+                    "it": "Il ripristino non è riuscito: {error}"
+                }
+            }
+        }
+    },
+    "guild_init": {
+        "name": {
+            "en-US": "92_discord_setup",
+            "fr": "92_discord_configuration",
+            "es-ES": "92_discord_configuración",
+            "de": "92_discord_einrichtung",
+            "it": "92_discord_configurazione"
+        },
+        "description": {
+            "en-US": "Configure your Discord server automatically or using existing roles and channels.",
+            "fr": "Configurez votre serveur Discord automatiquement ou en utilisant les rôles et channels existants.",
+            "es-ES": "Configura tu servidor de Discord automáticamente o usando roles y canales existentes.",
+            "de": "Konfigurieren Sie Ihren Discord-Server automatisch oder mit vorhandenen Rollen und Kanälen.",
+            "it": "Configura automaticamente il tuo server Discord o usa ruoli e canali esistenti."
+        },
+        "role_names": {
+            "guild_master": {
+                "en-US": "Guild Master",
+                "fr": "Maître de Guilde",
+                "es-ES": "Maestro de Gremio",
+                "de": "Gildenmeister",
+                "it": "Capo Gilda"
+            },
+            "officer": {
+                "en-US": "Officer",
+                "fr": "Officier",
+                "es-ES": "Oficial",
+                "de": "Offizier",
+                "it": "Ufficiale"
+            },
+            "guardian": {
+                "en-US": "Guardian",
+                "fr": "Gardien",
+                "es-ES": "Guardián",
+                "de": "Wächter",
+                "it": "Guardiano"
+            },
+            "members": {
+                "en-US": "Members",
+                "fr": "Membres",
+                "es-ES": "Miembros",
+                "de": "Mitglieder",
+                "it": "Membri"
+            },
+            "absent_members": {
+                "en-US": "Absent Members",
+                "fr": "Membres Absents",
+                "es-ES": "Miembros Ausentes",
+                "de": "Abwesende Mitglieder",
+                "it": "Membri Assenti"
+            },
+            "allies": {
+                "en-US": "Allies",
+                "fr": "Alliés",
+                "es-ES": "Aliados",
+                "de": "Verbündete",
+                "it": "Alleati"
+            },
+            "diplomats": {
+                "en-US": "Diplomats",
+                "fr": "Diplomates",
+                "es-ES": "Diplomáticos",
+                "de": "Diplomaten",
+                "it": "Diplomatici"
+            },
+            "friends": {
+                "en-US": "Friends",
+                "fr": "Amis",
+                "es-ES": "Amigos",
+                "de": "Freunde",
+                "it": "Amici"
+            },
+            "applicant": {
+                "en-US": "Applicant",
+                "fr": "Postulant",
+                "es-ES": "Postulante",
+                "de": "Bewerber",
+                "it": "Candidato"
+            },
+            "config_ok": {
+                "en-US": "Config OK",
+                "fr": "Configuration OK",
+                "es-ES": "Configuración OK",
+                "de": "Konfiguration OK",
+                "it": "Configurazione OK"
+            },
+            "rules_ok": {
+                "en-US": "Rules OK",
+                "fr": "Règles OK",
+                "es-ES": "Reglas OK",
+                "de": "Regeln OK",
+                "it": "Regole OK"
+            }
+        },
+        "channel_names": {
+            "rules": {
+                "en-US": "📄・Rules",
+                "fr": "📄・Règles",
+                "es-ES": "📄・Reglas",
+                "de": "📄・Regeln",
+                "it": "📄・Regole"
+            },
+            "cat_guild": {
+                "en-US": "──── 📚 Guild",
+                "fr": "──── 📚 Guilde",
+                "es-ES": "──── 📚 Gremio",
+                "de": "──── 📚 Gilde",
+                "it": "──── 📚 Gilda"
+            },
+            "announcements": {
+                "en-US": "📢・Announcements",
+                "fr": "📢・Annonces",
+                "es-ES": "📢・Anuncios",
+                "de": "📢・Ankündigungen",
+                "it": "📢・Annunci"
+            },
+            "tavern": {
+                "en-US": "🍺・Tavern",
+                "fr": "🍺・Taverne",
+                "es-ES": "🍺・Taverna",
+                "de": "🍺・Taverne",
+                "it": "🍺・Taverna"
+            },
+            "hall_of_fame": {
+                "en-US": "🏰・Hall_of_Fame",
+                "fr": "🏰・Temple_de_la_renommée",
+                "es-ES": "🏰・Salón_de_la_Fama",
+                "de": "🏰・Ruhmeshalle",
+                "it": "🏰・Sala_della_Fama"
+            },
+            "tavern_voc": {
+                "en-US": "🍻 Tavern",
+                "fr": "🍻 Taverne",
+                "es-ES": "🍻 Taverna",
+                "de": "🍻 Taverne",
+                "it": "🍻 Taverna"
+            },
+            "create_room": {
+                "en-US": "➕ Create Your Room",
+                "fr": "➕ Créer votre salon",
+                "es-ES": "➕ Crear tu sala",
+                "de": "➕ Raum erstellen",
+                "it": "➕ Crea la tua stanza"
+            },
+            "cat_org": {
+                "en-US": "──── 📑 Organization",
+                "fr": "──── 📑 Organisation",
+                "es-ES": "──── 📑 Organización",
+                "de": "──── 📑 Organisation",
+                "it": "──── 📑 Organizzazione"
+            },
+            "events": {
+                "en-US": "🌟・Events",
+                "fr": "🌟・Évènements",
+                "es-ES": "🌟・Eventos",
+                "de": "🌟・Veranstaltungen",
+                "it": "🌟・Eventi"
+            },
+            "members": {
+                "en-US": "👥・Members",
+                "fr": "👥・Membres",
+                "es-ES": "👥・Miembros",
+                "de": "👥・Mitglieder",
+                "it": "👥・Membri"
+            },
+            "groups": {
+                "en-US": "⏩・Groups",
+                "fr": "⏩・Groupes",
+                "es-ES": "⏩・Grupos",
+                "de": "⏩・Gruppen",
+                "it": "⏩・Gruppi"
+            },
+            "abs": {
+                "en-US": "🕒・Absences",
+                "fr": "🕒・Absences",
+                "es-ES": "🕒・Ausencias",
+                "de": "🕒・Abwesenheiten",
+                "it": "🕒・Assenze"
+            },
+            "loot": {
+                "en-US": "💍・Loot",
+                "fr": "💍・Butin",
+                "es-ES": "💍・Botín",
+                "de": "💍・Beute",
+                "it": "💍・Bottino"
+            },
+            "tuto": {
+                "en-US": "❓・Tutorial",
+                "fr": "❓・Tuto",
+                "es-ES": "❓・Tutorial",
+                "de": "❓・Tutorial",
+                "it": "❓・Tutorial"
+            },
+            "cat_conseil": {
+                "en-US": "──── 👑 Council",
+                "fr": "──── 👑 Conseil",
+                "es-ES": "──── 👑 Consejo",
+                "de": "──── 👑 Rat",
+                "it": "──── 👑 Consiglio"
+            },
+            "rounded_table": {
+                "en-US": "🔱・Round_Table",
+                "fr": "🔱・Table_Ronde",
+                "es-ES": "🔱・Mesa_Redonda",
+                "de": "🔱・Runder_Tisch",
+                "it": "🔱・Tavola_Rotonda"
+            },
+            "compte_rendus": {
+                "en-US": "📨・Reports",
+                "fr": "📨・Compte_Rendus",
+                "es-ES": "📨・Informes",
+                "de": "📨・Berichte",
+                "it": "📨・Resoconti"
+            },
+            "notifications": {
+                "en-US": "❕・Notifications",
+                "fr": "❕・Notifications",
+                "es-ES": "❕・Notificaciones",
+                "de": "❕・Benachrichtigungen",
+                "it": "❕・Notifiche"
+            },
+            "staff": {
+                "en-US": "🍺 Staff Bar",
+                "fr": "🍺 Bar du Staff",
+                "es-ES": "🍺 Barra del Staff",
+                "de": "🍺 Mitarbeiter Bar",
+                "it": "🍺 Bar dello Staff"
+            },
+            "forum_org": {
+                "en-US": "📂・Forum",
+                "fr": "📂・Forum",
+                "es-ES": "📂・Foro",
+                "de": "📂・Forum",
+                "it": "📂・Forum"
+            },
+            "topic_ally": {
+                "en-US": "Allies",
+                "fr": "Alliés",
+                "es-ES": "Aliados",
+                "de": "Verbündete",
+                "it": "Alleati"
+            },
+            "message_ally": {
+                "en-US": "# Notifications about ally arrivals \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&",
+                "fr": "# Notifications sur les arrivées des alliés \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&",
+                "es-ES": "# Notificaciones sobre la llegada de aliados \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&",
+                "de": "# Benachrichtigungen über die Ankünfte von Verbündeten \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&",
+                "it": "# Notifiche sugli arrivi degli alleati \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&"
+            },
+            "topic_friends": {
+                "en-US": "Friends",
+                "fr": "Amis",
+                "es-ES": "Amigos",
+                "de": "Freunde",
+                "it": "Amici"
+            },
+            "message_friends": {
+                "en-US": "# Notifications about friend arrivals \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&",
+                "fr": "# Notifications sur les arrivées des amis \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&",
+                "es-ES": "# Notificaciones sobre la llegada de amigos \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&",
+                "de": "# Benachrichtigungen über die Ankünfte von Freunden \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&",
+                "it": "# Notifiche sugli arrivi degli amici \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&"
+            },
+            "topic_diplomats": {
+                "en-US": "Diplomats",
+                "fr": "Diplomates",
+                "es-ES": "Diplomáticos",
+                "de": "Diplomaten",
+                "it": "Diplomatici"
+            },
+            "message_diplomats": {
+                "en-US": "# Notifications about diplomat arrivals \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&",
+                "fr": "# Notifications sur les arrivées des diplomates \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&",
+                "es-ES": "# Notificaciones sobre la llegada de diplomáticos \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&",
+                "de": "# Benachrichtigungen über die Ankünfte von Diplomaten \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&",
+                "it": "# Notifiche sugli arrivi dei diplomatici \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&"
+            },
+            "topic_recruitment": {
+                "en-US": "Recruitment",
+                "fr": "Recrutement",
+                "es-ES": "Reclutamiento",
+                "de": "Rekrutierung",
+                "it": "Reclutamento"
+            },
+            "message_recruitment": {
+                "en-US": "# Notifications about new applications \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&",
+                "fr": "# Notifications sur les nouvelles candidatures \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&",
+                "es-ES": "# Notificaciones sobre nuevas candidaturas \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&",
+                "de": "# Benachrichtigungen über neue Bewerbungen \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&",
+                "it": "# Notifiche sulle nuove candidature \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&"
+            },
+            "topic_members": {
+                "en-US": "Members",
+                "fr": "Membres",
+                "es-ES": "Miembros",
+                "de": "Mitglieder",
+                "it": "Membri"
+            },
+            "message_members": {
+                "en-US": "# Notifications about member arrivals and absences \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&",
+                "fr": "# Notifications sur les arrivées et absences des membres \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&",
+                "es-ES": "# Notificaciones sobre la llegada y ausencia de miembros \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&",
+                "de": "# Benachrichtigungen über die Ankünfte und Abwesenheiten von Mitgliedern \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&",
+                "it": "# Notifiche sugli arrivi e le assenze dei membri \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&"
+            },
+            "cat_recrut": {
+                "en-US": "──── ✍️ Recruitment",
+                "fr": "──── ✍️ Recrutement",
+                "es-ES": "──── ✍️ Reclutamiento",
+                "de": "──── ✍️ Rekrutierung",
+                "it": "──── ✍️ Reclutamento"
+            },
+            "ext_recrut": {
+                "en-US": "🚩・Infos",
+                "fr": "🚩・Infos",
+                "es-ES": "🚩・Infos",
+                "de": "🚩・Infos",
+                "it": "🚩・Infos"
+            },
+            "recrut_message": {
+                "en-US": "✍️ Recruitment",
+                "fr": "✍️ Recrutement",
+                "es-ES": "✍️ Reclutamiento",
+                "de": "✍️ Rekrutierung",
+                "it": "✍️ Reclutamento"
+            },
+            "cat_diplo": {
+                "en-US": "──── 🕊️ Diplomacy",
+                "fr": "──── 🕊️ Diplomatie",
+                "es-ES": "──── 🕊️ Diplomacia",
+                "de": "──── 🕊️ Diplomatie",
+                "it": "──── 🕊️ Diplomazia"
+            },
+            "cat_ami": {
+                "en-US": "──── 👫 Friends",
+                "fr": "──── 👫 Amis",
+                "es-ES": "──── 👫 Amigos",
+                "de": "──── 👫 Freunde",
+                "it": "──── 👫 Amici"
+            },
+            "ami_tavern": {
+                "en-US": "👫・Friends'・Tavern",
+                "fr": "👫・Taverne・des・amis",
+                "es-ES": "👫・Taberna・de・amigos",
+                "de": "👫・Taverne・der・Freunde",
+                "it": "👫・Taverna・degli・amici"
+            },
+            "ami_tavern_voc": {
+                "en-US": "🍺 Friends' Tavern",
+                "fr": "🍺 Taverne des amis",
+                "es-ES": "🍺 Taberna de amigos",
+                "de": "🍺 Taverne der Freunde",
+                "it": "🍺 Taverna degli amici"
+            },
+            "cat_ext": {
+                "en-US": "──── 🌍 External",
+                "fr": "──── 🌍 Externe",
+                "es-ES": "──── 🌍 Externo",
+                "de": "──── 🌍 Extern",
+                "it": "──── 🌍 Esterno"
+            },
+            "rules_message": {
+                "en-US": "# 📜 **Rules of Conduct** 📜\n\n1️⃣ **Respect and Courtesy**\n- Be polite and respectful to all members.\n- Insults, harassment, threats, or toxic behavior are prohibited.\n- Hate speech, discrimination, or racism will result in immediate sanctions.\n\n2️⃣ **Legality and Authorized Content**\n- No encouragement of piracy, cheating, or illegal third-party software.\n- Do not share illegal, NSFW, or Discord Terms of Service-violating content.\n- Respect intellectual property: no illegal distribution of copyrighted content.\n\n3️⃣ **Good Atmosphere and Fair Play**\n- Play in a spirit of fair play and mutual support.\n- No spam, flooding, or excessive use of capital letters.\n- No advertising or self-promotion without prior authorization.\n\n4️⃣ **Channels and Messages**\n- Use the appropriate channels for discussions: respect the server organization.\n- Avoid excessive off-topic discussions or sensitive debates (politics, religion, etc.).\n- Sharing personal information (doxing) is strictly prohibited.\n\n5️⃣ **Moderation and Sanctions**\n- Respect the decisions of the moderators.\n- Report inappropriate behavior to the moderation team.\n- Violations will result in progressive sanctions (warnings, mutes, bans).\n\n💡 **Tip:** A good server is one where everyone feels welcome! Follow these rules and contribute to a pleasant gaming experience.",
+                "fr": "# 📜 **Règles de Bonne Conduite** 📜\n\n1️⃣ **Respect et Courtoisie**\n- Reste courtois et respectueux envers tous les membres.\n- Les insultes, harcèlement, menaces ou comportements toxiques sont interdits.\n- Tout discours haineux, discriminatoire ou raciste entraînera une sanction immédiate.\n\n2️⃣ **Légalité et Contenu Autorisé**\n- Aucune incitation au piratage, à la triche ou à l’utilisation de logiciels tiers illégaux.\n- Ne partage pas de contenu illégal, NSFW ou contraire aux conditions d’utilisation de Discord.\n- Respecte la propriété intellectuelle : pas de diffusion illégale de contenu protégé.\n\n3️⃣ **Bonne Ambiance et Fair-Play**\n- Joue dans un esprit de fair-play et d’entraide.\n- Pas de spam, flood ou abus de majuscules.\n- Pas de publicité ou d’auto-promotion sans autorisation préalable.\n\n4️⃣ **Canaux et Messages**\n- Utilise les canaux appropriés pour discuter : respecte l'organisation du serveur.\n- Évite le hors-sujet excessif ou les débats sensibles (politique, religion, etc.).\n- Le partage d’informations personnelles (doxing) est strictement interdit.\n\n5️⃣ **Modération et Sanctions**\n- Respecte les décisions des modérateurs.\n- Signale tout comportement inapproprié à la modération.\n- En cas de non-respect des règles, des sanctions progressives seront appliquées (avertissement, mute, bannissement).\n\n💡 **Astuce :** Un bon serveur est un serveur où chacun se sent bien ! Respecte ces règles et contribue à une expérience de jeu agréable pour tous.",
+                "es-ES": "# 📜 **Reglas de Conducta** 📜\n\n1️⃣ **Respeto y Cortesía**\n- Sé amable y respetuoso con todos los miembros.\n- Se prohíben los insultos, el acoso, las amenazas o el comportamiento tóxico.\n- Los discursos de odio, la discriminación o el racismo serán sancionados inmediatamente.\n\n2️⃣ **Legalidad y Contenido Autorizado**\n- No se permite la incitación a la piratería, trampas o uso de software ilegal de terceros.\n- No compartas contenido ilegal, NSFW o que viole los términos de servicio de Discord.\n- Respeta la propiedad intelectual: no distribuyas contenido protegido ilegalmente.\n\n3️⃣ **Buena Ambiente y Juego Limpio**\n- Juega con espíritu de juego limpio y apoyo mutuo.\n- No hagas spam, flood ni uses mayúsculas en exceso.\n- No promociones ni hagas publicidad sin autorización previa.\n\n4️⃣ **Canales y Mensajes**\n- Usa los canales adecuados para cada discusión: respeta la organización del servidor.\n- Evita el off-topic excesivo o debates sensibles (política, religión, etc.).\n- Está prohibido compartir información personal (doxing).\n\n5️⃣ **Moderación y Sanciones**\n- Respeta las decisiones de los moderadores.\n- Reporta cualquier comportamiento inapropiado al equipo de moderación.\n- Las infracciones resultarán en sanciones progresivas (advertencias, muteos, baneos).\n\n💡 **Consejo:** ¡Un buen servidor es aquel en el que todos se sienten bien! Sigue estas reglas y contribuye a una experiencia de juego agradable.",
+                "de": "# 📜 **Verhaltensregeln** 📜\n\n1️⃣ **Respekt und Höflichkeit**\n- Sei höflich und respektvoll gegenüber allen Mitgliedern.\n- Beleidigungen, Belästigungen, Drohungen oder toxisches Verhalten sind verboten.\n- Hassrede, Diskriminierung oder Rassismus führen zu sofortigen Sanktionen.\n\n2️⃣ **Legalität und Erlaubte Inhalte**\n- Keine Aufforderung zu Piraterie, Betrug oder illegaler Drittanbietersoftware.\n- Teile keine illegalen, NSFW- oder gegen die Discord-Nutzungsbedingungen verstoßenden Inhalte.\n- Respektiere das geistige Eigentum: keine illegale Verbreitung geschützter Inhalte.\n\n3️⃣ **Gute Atmosphäre und Fair-Play**\n- Spiele fair und unterstütze deine Mitspieler.\n- Kein Spam, Flooding oder übermäßige Großschreibung.\n- Keine Werbung oder Eigenwerbung ohne vorherige Genehmigung.\n\n4️⃣ **Kanäle und Nachrichten**\n- Nutze die richtigen Kanäle für Diskussionen und respektiere die Serverstruktur.\n- Vermeide übermäßiges Off-Topic oder sensible Debatten (Politik, Religion usw.).\n- Persönliche Informationen (Doxing) dürfen nicht geteilt werden.\n\n5️⃣ **Moderation und Sanktionen**\n- Respektiere die Entscheidungen der Moderatoren.\n- Melde unangemessenes Verhalten an das Moderationsteam.\n- Verstöße werden mit abgestuften Sanktionen geahndet (Verwarnung, Mute, Bann).\n\n💡 **Tipp:** Ein guter Server ist ein Server, in dem sich jeder wohlfühlt! Halte dich an diese Regeln und trage zu einer angenehmen Spielerfahrung bei.",
+                "it": "# 📜 **Regole di Condotta** 📜\n\n1️⃣ **Rispetto e Cortesia**\n- Sii educato e rispettoso con tutti i membri.\n- Insulti, molestie, minacce o comportamenti tossici sono vietati.\n- Discorsi d'odio, discriminazione o razzismo porteranno a sanzioni immediate.\n\n2️⃣ **Legalità e Contenuti Autorizzati**\n- Nessuna incitazione alla pirateria, trucchi o software di terze parti illegali.\n- Non condividere contenuti illegali, NSFW o in violazione delle condizioni di Discord.\n- Rispetta la proprietà intellettuale: nessuna distribuzione illegale di contenuti protetti.\n\n3️⃣ **Buona Atmosfera e Fair-Play**\n- Gioca in modo leale e con spirito di collaborazione.\n- Niente spam, flood o uso eccessivo di lettere maiuscole.\n- Nessuna pubblicità o auto-promozione senza autorizzazione.\n\n4️⃣ **Canali e Messaggi**\n- Usa i canali appropriati per le discussioni e rispetta la struttura del server.\n- Evita discussioni fuori tema o dibattiti sensibili (politica, religione, ecc.).\n- Vietata la condivisione di informazioni personali (doxing).\n\n5️⃣ **Moderazione e Sanzioni**\n- Rispetta le decisioni dei moderatori.\n- Segnala comportamenti inappropriati al team di moderazione.\n- Le violazioni comporteranno sanzioni progressive (ammonimenti, mute, ban).\n\n💡 **Suggerimento:** Un buon server è un server in cui tutti si sentono a proprio agio! Segui queste regole e contribuisci a un'esperienza di gioco piacevole."
+            },
+            "absences_message": {
+                "en-US": "📌 **ABSENCE CHANNEL RULES** 📌\n\n👋 **This channel is exclusively for announcing absences longer than 3 days.**\n\n🔹 **Declare an absence:**\n- Write a message indicating the duration and reason for your absence (optional).\n- Your role will automatically change from **'Member'** to **'Absent Member'**.\n\n✅ **Reacting to an absence:**\n- **Do not post messages** to respond to an absence.\n- Use only **reactions** under the message to interact.\n\n🏡 **Indicating your return:**\n- **Delete your absence message** when you return.\n- Your role will automatically switch back to **'Member'**.\n\n⚠️ **Any off-topic messages will be deleted.** Please follow these rules to keep absence tracking clear and efficient.\n\nEnjoy your game! 🎮✨",
+                "fr": "📌 **RÈGLES DU CANAL ABSENCES** 📌\n\n👋 **Ce canal est exclusivement réservé à l'annonce des absences de plus de 3 jours.**\n\n🔹 **Déclarer une absence :**\n- Écrivez un message indiquant la durée et la raison de votre absence (optionnel).\n- Votre rôle passera automatiquement de **\"Membre\"** à **\"Membre absent\"**.\n\n✅ **Réagir à une absence :**\n- **Ne postez pas de messages** pour répondre à une absence.\n- Utilisez uniquement **les réactions** sous le message pour interagir.\n\n🏡 **Signaler votre retour :**\n- **Supprimez votre message** d'absence dès votre retour.\n- Votre rôle repassera automatiquement à **\"Membre\"**.\n\n⚠️ **Tout message hors sujet sera supprimé.** Merci de respecter ces règles pour assurer un suivi clair et efficace des absences.\n\nBon jeu à tous ! 🎮✨",
+                "es-ES": "📌 **REGLAS DEL CANAL DE AUSENCIAS** 📌\n\n👋 **Este canal es exclusivamente para anunciar ausencias de más de 3 días.**\n\n🔹 **Declarar una ausencia:**\n- Escribe un mensaje indicando la duración y la razón de tu ausencia (opcional).\n- Tu rol cambiará automáticamente de **\"Miembro\"** a **\"Miembro ausente\"**.\n\n✅ **Reaccionar a una ausencia:**\n- **No publiques mensajes** para responder a una ausencia.\n- Usa solo **reacciones** en el mensaje para interactuar.\n\n🏡 **Indicar tu regreso:**\n- **Elimina tu mensaje** de ausencia cuando regreses.\n- Tu rol cambiará automáticamente a **\"Miembro\"**.\n\n⚠️ **Cualquier mensaje fuera de tema será eliminado.** Por favor, sigue estas reglas para un seguimiento claro y eficiente de las ausencias.\n\n¡Disfruta del juego! 🎮✨",
+                "de": "📌 **REGELN FÜR DEN ABWESENHEITSKANAL** 📌\n\n👋 **Dieser Kanal ist ausschließlich für die Ankündigung von Abwesenheiten länger als 3 Tage vorgesehen.**\n\n🔹 **Abwesenheit melden:**\n- Schreibe eine Nachricht mit der Dauer und dem Grund deiner Abwesenheit (optional).\n- Deine Rolle wird automatisch von **\"Mitglied\"** zu **\"Abwesendes Mitglied\"** geändert.\n\n✅ **Auf eine Abwesenheit reagieren:**\n- **Poste keine Nachrichten**, um auf eine Abwesenheit zu antworten.\n- Verwende nur **Reaktionen** unter der Nachricht, um zu interagieren.\n\n🏡 **Rückkehr melden:**\n- **Lösche deine Abwesenheitsnachricht**, sobald du zurück bist.\n- Deine Rolle wird automatisch wieder auf **\"Mitglied\"** gesetzt.\n\n⚠️ **Jede themenfremde Nachricht wird gelöscht.** Bitte halte dich an diese Regeln, um eine klare und effiziente Abwesenheitsverfolgung zu gewährleisten.\n\nViel Spaß beim Spielen! 🎮✨",
+                "it": "📌 **REGOLE DEL CANALE ASSENZE** 📌\n\n👋 **Questo canale è esclusivamente per annunciare assenze superiori a 3 giorni.**\n\n🔹 **Dichiarare un'assenza:**\n- Scrivi un messaggio indicando la durata e il motivo della tua assenza (opzionale).\n- Il tuo ruolo passerà automaticamente da **\"Membro\"** a **\"Membro assente\"**.\n\n✅ **Reagire a un'assenza:**\n- **Non pubblicare messaggi** per rispondere a un'assenza.\n- Usa solo **le reazioni** sotto il messaggio per interagire.\n\n🏡 **Segnalare il ritorno:**\n- **Elimina il tuo messaggio** di assenza una volta tornato.\n- Il tuo ruolo tornerà automaticamente a **\"Membro\"**.\n\n⚠️ **Qualsiasi messaggio fuori tema verrà eliminato.** Segui queste regole per garantire un monitoraggio chiaro ed efficace delle assenze.\n\nBuon divertimento! 🎮✨"
+            }
+        },
+        "options": {
+            "config_mode": {
+                "description": {
+                    "en-US": "Select configuration mode",
+                    "fr": "Sélectionnez le mode de configuration",
+                    "es-ES": "Seleccione el modo de configuración",
+                    "de": "Konfigurationsmodus auswählen",
+                    "it": "Seleziona la modalità di configurazione"
+                },
+                "choices": {
+                    "existing": {
+                        "value": "existing",
+                        "name_localizations": {
+                            "en-US": "Use existing",
+                            "fr": "Utiliser l'existant",
+                            "es-ES": "Usar existente",
+                            "de": "Vorhandenes verwenden",
+                            "it": "Usa esistente"
+                        }
+                    },
+                    "complete": {
+                        "value": "complete",
+                        "name_localizations": {
+                            "en-US": "Complete configuration",
+                            "fr": "Configuration complète",
+                            "es-ES": "Configuración completa",
+                            "de": "Komplette Konfiguration",
+                            "it": "Configurazione completa"
+                        }
+                    }
+                }
+            }
+        },
+        "messages": {
+            "not_initialized": {
+                "en-US": "The guild has not been initialized. Please use /app_init first.",
+                "fr": "La guilde n'est pas initialisée. Veuillez initialiser le bot avec /app_init.",
+                "es-ES": "La guilde no está inicializada. Por favor, use /app_init primero.",
+                "de": "Die Gilde wurde nicht initialisiert. Bitte benutze zuerst /app_init.",
+                "it": "La gilda non è stata inizializzata. Per favore, usa prima /app_init."
+            },
+            "community_required": {
+                "en-US": "This server must be in community mode. Attempting to enable community mode...",
+                "fr": "Ce serveur doit être en mode communauté. Tentative d'activation du mode communauté...",
+                "es-ES": "Este servidor debe estar en modo comunidad. Intentando activar el modo comunidad...",
+                "de": "Dieser Server muss im Community-Modus sein. Versuche, den Community-Modus zu aktivieren...",
+                "it": "Questo server deve essere in modalità community. Tentativo di abilitare la modalità community..."
+            },
+            "setup_existing": {
+                "en-US": "Existing configuration mode selected. Please follow further instructions to assign roles and channels.",
+                "fr": "Mode de configuration existant sélectionné. Veuillez suivre les instructions pour assigner les rôles et channels.",
+                "es-ES": "Modo de configuración existente seleccionado. Siga las instrucciones para asignar roles y canales.",
+                "de": "Vorhandener Konfigurationsmodus ausgewählt. Bitte folgen Sie den weiteren Anweisungen zur Zuordnung von Rollen und Kanälen.",
+                "it": "Modalità di configurazione esistente selezionata. Segui le istruzioni per assegnare ruoli e canali."
+            },
+            "setup_complete": {
+                "en-US": "Complete configuration executed successfully.",
+                "fr": "Configuration complète réalisée avec succès.",
+                "es-ES": "Configuración completa realizada con éxito.",
+                "de": "Vollständige Konfiguration erfolgreich durchgeführt.",
+                "it": "Configurazione completa eseguita con successo."
+            },
+            "unknown_mode": {
+                "en-US": "Unknown configuration mode.",
+                "fr": "Mode de configuration inconnu.",
+                "es-ES": "Modo de configuración desconocido.",
+                "de": "Unbekannter Konfigurationsmodus.",
+                "it": "Modalità di configurazione sconosciuta."
+            },
+            "error": {
+                "en-US": "An error occurred: {error}",
+                "fr": "Une erreur s'est produite : {error}",
+                "es-ES": "Ocurrió un error: {error}",
+                "de": "Ein Fehler ist aufgetreten: {error}",
+                "it": "Si è verificato un errore: {error}"
+            }
+        }
+    },
+    "dynamic_voice": {
+        "en-US": "Channel of {username}",
+        "fr": "Salon de {username}",
+        "es-ES": "Sala de {username}",
+        "de": "Sprachkanal von {username}",
+        "it": "Canale di {username}"
+    },
+    "absence": {
+        "title": {
+            "en-US": "📢 Member status update",
+            "fr": "📢 Changement d'état d'un membre",
+            "es-ES": "📢 Actualización de estado del miembro",
+            "de": "📢 Mitgliedsstatus-Aktualisierung",
+            "it": "📢 Aggiornamento dello stato del membro"
+        },
+        "member_label": {
+            "en-US": "👤 Member",
+            "fr": "👤 Membre",
+            "es-ES": "👤 Miembro",
+            "de": "👤 Mitglied",
+            "it": "👤 Membro"
+        },
+        "status_label": {
+            "en-US": "📌 Status",
+            "fr": "📌 Statut",
+            "es-ES": "📌 Estado",
+            "de": "📌 Status",
+            "it": "📌 Stato"
+        },
+        "absent": {
+            "en-US": "🚨 Absent",
+            "fr": "🚨 Absent",
+            "es-ES": "🚨 Ausente",
+            "de": "🚨 Abwesend",
+            "it": "🚨 Assente"
+        },
+        "returned": {
+            "en-US": "✅ Returned",
+            "fr": "✅ De retour",
+            "es-ES": "✅ Regresó",
+            "de": "✅ Zurück",
+            "it": "✅ Ritornato"
+        }
+    },
+    "notification": {
+        "member_join": {
+            "title": {
+                "en-US": "🟢 New Member!",
+                "fr": "🟢 Nouveau Membre !",
+                "es-ES": "🟢 ¡Nuevo Miembro!",
+                "de": "🟢 Neuer Spieler!",
+                "it": "🟢 Nuovo Membro!"
+            },
+            "description": {
+                "en-US": "Welcome {member_mention}!\n**Discord Name:** {member_name}\n**Discord ID:** `{member_id}`\n📜 **Pending rules acceptance**\n🚀 Pending configuration...",
+                "fr": "Bienvenue à {member_mention} ! 🎉\n**Pseudo Discord :** {member_name}\n**ID Discord :** `{member_id}`\n📜 **En attente d'acceptation des règles**\n🚀 En attente de configuration...",
+                "es-ES": "¡Bienvenido {member_mention}!\n**Nombre de Discord:** {member_name}\n**ID de Discord:** `{member_id}`\n📜 **Pendiente de aceptación de reglas**\n🚀 Pendiente de configuración...",
+                "de": "Willkommen {member_mention}!\n**Discord-Name:** {member_name}\n**Discord-ID:** `{member_id}`\n📜 **Ausstehende Regelakzeptanz**\n🚀 Ausstehende Konfiguration...",
+                "it": "Benvenuto {member_mention}!\n**Nome Discord:** {member_name}\n**ID Discord:** `{member_id}`\n📜 **In attesa di accettazione delle regole**\n🚀 In attesa di configurazione..."
+            }
+        },
+        "member_leave": {
+            "title": {
+                "en-US": "🔴 Member Left",
+                "fr": "🔴 Départ de Membre",
+                "es-ES": "🔴 Miembro salió",
+                "de": "🔴 Mitglied hat den Server verlassen",
+                "it": "🔴 Membro è uscito"
+            },
+            "description": {
+                "en-US": "{member_name} has left the server.\n**Discord ID:** `{member_id}`",
+                "fr": "{member_name} a quitté le serveur.\n**ID Discord :** `{member_id}`",
+                "es-ES": "{member_name} ha salido del servidor.\n**ID de Discord:** `{member_id}`",
+                "de": "{member_name} hat den Server verlassen.\n**Discord-ID:** `{member_id}`",
+                "it": "{member_name} ha lasciato il server.\n**ID Discord:** `{member_id}`"
+            }
+        }
+    },
+    "welcome": {
+        "pending": {
+            "en-US": "📜 **Pending rules acceptance**",
+            "fr": "📜 **En attente d'acceptation des règles**",
+            "es-ES": "📜 **En espera de aceptación de las reglas**",
+            "de": "📜 **Ausstehende Annahme der Regeln**",
+            "it": "📜 **In attesa dell'accettazione delle regole**"
+        },
+        "accepted": {
+            "en-US": "✅ **Rules accepted on {date}**",
+            "fr": "✅ **Règles acceptées le {date}**",
+            "es-ES": "✅ **Reglas aceptadas el {date}**",
+            "de": "✅ **Regeln akzeptiert am {date}**",
+            "it": "✅ **Regole accettate il {date}**"
+        }
+    },
+    "welcome_mp": {
+        "en-US": "**# 👋 Welcome to the {guild.name} guild Discord!**\nYou have just reacted to start your registration, and this bot will now guide you to set up your profile and grant you the correct access.",
+        "fr": "**# 👋 Bienvenue sur le Discord de la guilde {guild.name} !**\nTu viens de réagir pour débuter ton inscription, et ce bot va maintenant t’accompagner pour ajuster ton profil et t’accorder les bons accès.",
+        "es-ES": "**# 👋 ¡Bienvenido al Discord de la guild {guild.name}!**\nAcabas de reaccionar para comenzar tu registro, y este bot ahora te guiará para configurar tu perfil y otorgarte los accesos correctos.",
+        "de": "**# 👋 Willkommen auf dem Discord der Gilde {guild.name}!**\nDu hast gerade reagiert, um deine Anmeldung zu starten, und dieser Bot wird dich nun dabei unterstützen, dein Profil einzurichten und dir die richtigen Zugänge zu gewähren.",
+        "it": "**# 👋 Benvenuto nel Discord della gilda {guild.name}!**\nHai appena reagito per iniziare la tua registrazione e questo bot ora ti guiderà nell'impostazione del tuo profilo e nell'assegnazione dei giusti accessi."
+    },
+    "contract": {
+        "command": {
+            "name": {
+                "en-US": "contract",
+                "fr": "contrat",
+                "es-ES": "contrato",
+                "de": "vertrag",
+                "it": "contratto"
+            },
+            "description": {
+                "en-US": "Select and publish guild contracts.",
+                "fr": "Sélectionnez et publiez les contrats de guilde.",
+                "es-ES": "Selecciona y publica los contratos del gremio.",
+                "de": "Wähle und veröffentliche Gildenverträge.",
+                "it": "Seleziona e pubblica i contratti della gilda."
+            }
+        },
+        "command_delete": {
+            "name": {
+                "en-US": "contract_delete",
+                "fr": "contrat_delete",
+                "es-ES": "contrato_delete",
+                "de": "vertrag_delete",
+                "it": "contratto_delete"
+            },
+            "description": {
+                "en-US": "Delete the guild contract.",
+                "fr": "Supprimez le contrat de guilde.",
+                "es-ES": "Elimina el contrato del gremio.",
+                "de": "Lösche den Gildenvertrag.",
+                "it": "Elimina il contratto della gilda."
+            }
+        },
+        "title": {
+            "en-US": "Guild Contracts",
+            "fr": "Contrats de Guilde",
+            "es-ES": "Contratos de Gremio",
+            "de": "Gildenverträge",
+            "it": "Contratti di Gilda"
+        },
+        "description": {
+            "en-US": "Here are today's guild contracts:",
+            "fr": "Voici les contrats de guilde du jour :",
+            "es-ES": "Estos son los contratos del gremio para hoy:",
+            "de": "Hier sind die Gildenverträge für heute:",
+            "it": "Ecco i contratti della gilda per oggi:"
+        },
+        "categories": {
+            "monster_elimination": {
+                "en-US": "Monster Elimination",
+                "fr": "Élimination de Monstres",
+                "es-ES": "Eliminación de Monstruos",
+                "de": "Monsterbeseitigung",
+                "it": "Eliminazione Mostri"
+            },
+            "dynamic_events": {
+                "en-US": "Dynamic Events",
+                "fr": "Évènements Dynamiques",
+                "es-ES": "Eventos Dinámicos",
+                "de": "Dynamische Ereignisse",
+                "it": "Eventi Dinamici"
+            },
+            "open_dungeon": {
+                "en-US": "Open Dungeon",
+                "fr": "Donjon Ouvert",
+                "es-ES": "Mazmorra Abierta",
+                "de": "Offener Dungeon",
+                "it": "Dungeon Aperto"
+            }
+        },
+        "options": {
+            "monster_elimination": [
+                {
+                    "all": {
+                        "en-US": "All",
+                        "fr": "Tous",
+                        "es-ES": "Todos",
+                        "de": "Alle",
+                        "it": "Tutti"
+                    }
+                },
+                {
+                    "demon": {
+                        "en-US": "Demon",
+                        "fr": "Démon",
+                        "es-ES": "Demonio",
+                        "de": "Dämon",
+                        "it": "Demone"
+                    }
+                },
+                {
+                    "humanoid": {
+                        "en-US": "Humanoid",
+                        "fr": "Humanoïde",
+                        "es-ES": "Humanoide",
+                        "de": "Humanoid",
+                        "it": "Umanoid"
+                    }
+                },
+                {
+                    "savages": {
+                        "en-US": "Savages",
+                        "fr": "Sauvageons",
+                        "es-ES": "Salvajes",
+                        "de": "Wilde",
+                        "it": "Selvaggi"
+                    }
+                },
+                {
+                    "undead": {
+                        "en-US": "Undead",
+                        "fr": "Mort-Vivant",
+                        "es-ES": "No-muerto",
+                        "de": "Untot",
+                        "it": "Non morti"
+                    }
+                },
+                {
+                    "construction": {
+                        "en-US": "Construction",
+                        "fr": "Construction",
+                        "es-ES": "Construcción",
+                        "de": "Bau",
+                        "it": "Costruzione"
+                    }
+                }
+            ],
+            "dynamic_events": [
+                {
+                    "Desert Caravan": {
+                        "en-US": "Desert Caravan",
+                        "fr": "Caravane du Désert",
+                        "es-ES": "Caravana del Desierto",
+                        "de": "Wüstencaravane",
+                        "it": "Carovana del Deserto"
+                    }
+                },
+                {
+                    "Bloody Mushroom Gathering": {
+                        "en-US": "Bloody Mushroom Gathering",
+                        "fr": "Ceuillette de Champignons Sanglants",
+                        "es-ES": "Cosecha de Hongos Sangrientos",
+                        "de": "Blutige Pilzsammlung",
+                        "it": "Raccolta di Funghi Insanguinati"
+                    }
+                },
+                {
+                    "Howling Contest": {
+                        "en-US": "Howling Contest",
+                        "fr": "Concours de Louveterie",
+                        "es-ES": "Concurso de Aullidos",
+                        "de": "Heulwettbewerb",
+                        "it": "Concorso di Ululati"
+                    }
+                },
+                {
+                    "Destroyers of Darkness": {
+                        "en-US": "Destroyers of Darkness",
+                        "fr": "Destructeurs des Ténèbres",
+                        "es-ES": "Destructores de la Oscuridad",
+                        "de": "Zerstörer der Dunkelheit",
+                        "it": "Distruttori dell'Oscurità"
+                    }
+                },
+                {
+                    "Bellflower Seed Festival": {
+                        "en-US": "Bellflower Seed Festival",
+                        "fr": "Fete des graines de Campanule",
+                        "es-ES": "Festival de semillas de Campanula",
+                        "de": "Campanula-Samenfest",
+                        "it": "Festa dei semi di Campanula"
+                    }
+                },
+                {
+                    "Mana Frenzy": {
+                        "en-US": "Mana Frenzy",
+                        "fr": "Frénésie de Mana",
+                        "es-ES": "Frenesí de Maná",
+                        "de": "Manafrenzy",
+                        "it": "Frenesia di Mana"
+                    }
+                },
+                {
+                    "Fire Festival": {
+                        "en-US": "Fire Festival",
+                        "fr": "Fête du Feu",
+                        "es-ES": "Festival del Fuego",
+                        "de": "Feuerfest",
+                        "it": "Festa del Fuoco"
+                    }
+                },
+                {
+                    "Crimson Forest": {
+                        "en-US": "Crimson Forest",
+                        "fr": "Fôret Carmin",
+                        "es-ES": "Bosque Carmesí",
+                        "de": "Karmesinwald",
+                        "it": "Foresta Cremisi"
+                    }
+                },
+                {
+                    "Talisman Delivery": {
+                        "en-US": "Talisman Delivery",
+                        "fr": "Livraison de Talismans",
+                        "es-ES": "Entrega de Talismán",
+                        "de": "Talismanlieferung",
+                        "it": "Consegna di Talismani"
+                    }
+                },
+                {
+                    "Hidden Brown Mica": {
+                        "en-US": "Hidden Brown Mica",
+                        "fr": "Mica Brun Caché",
+                        "es-ES": "Mica Marrón Escondido",
+                        "de": "Versteckter Braunmika",
+                        "it": "Mica Marrone Nascosta"
+                    }
+                },
+                {
+                    "Requiem of Light": {
+                        "en-US": "Requiem of Light",
+                        "fr": "Requiem de Lumière",
+                        "es-ES": "Réquiem de Luz",
+                        "de": "Requiem des Lichts",
+                        "it": "Requiem della Luce"
+                    }
+                },
+                {
+                    "Stellar Stones Ritual": {
+                        "en-US": "Stellar Stones Ritual",
+                        "fr": "Rituel des Pierres Stellaires",
+                        "es-ES": "Ritual de Piedras Estelares",
+                        "de": "Ritual der Sternsteine",
+                        "it": "Rituale delle Pietre Stellari"
+                    }
+                },
+                {
+                    "Break the Moonlight Spell": {
+                        "en-US": "Break the Moonlight Spell",
+                        "fr": "Rompre le charme du clair de lune",
+                        "es-ES": "Romper el hechizo de la luz de la luna",
+                        "de": "Den Mondzauber brechen",
+                        "it": "Spezzare l'incantesimo della luna"
+                    }
+                },
+                {
+                    "Blizzard Seal": {
+                        "en-US": "Blizzard Seal",
+                        "fr": "Le Sceau du Blizzard",
+                        "es-ES": "El Sello de la Ventisca",
+                        "de": "Das Siegel des Blizzard",
+                        "it": "Il Sigillo della Tempesta di Neve"
+                    }
+                },
+                {
+                    "The passage Ceremony of the Great Tree": {
+                        "en-US": "The Passage Ceremony of the Great Tree",
+                        "fr": "La Cérémonie de Passage du Grand Arbre",
+                        "es-ES": "La Ceremonia de Paso del Gran Árbol",
+                        "de": "Die Übergangszeremonie des Großen Baums",
+                        "it": "La Cerimonia di Passaggio del Grande Albero"
+                    }
+                },
+                {
+                    "Healing Touch for Divine Beasts": {
+                        "en-US": "Healing Touch for Divine Beasts",
+                        "fr": "Toucher de Guérison pour les Bêtes Célestes",
+                        "es-ES": "Toque Curativo para las Bestias Divinas",
+                        "de": "Heilende Berührung für Göttliche Bestien",
+                        "it": "Tocco Curativo per le Bestie Divine"
+                    }
+                }
+            ],
+            "open_dungeon": [
+                {
+                  "Syleus's Abyss": {
+                        "en-US": "Syleus's Abyss",
+                        "fr": "Abysse de Syléus",
+                        "es-ES": "Abismo de Syleus",
+                        "de": "Abgrund von Syleus",
+                        "it": "Abisso di Syleus"
+                    }
+                },
+                {
+                    "Shadowed Crypt": {
+                        "en-US": "Shadowed Crypt",
+                        "fr": "Crypte des Ombres",
+                        "es-ES": "Cripta sombría",
+                        "de": "Schattenkrypta",
+                        "it": "Cripta delle Ombre"
+                    }
+                },
+                {
+                    "Saurodoma Island": {
+                        "en-US": "Saurodoma Island",
+                        "fr": "Île des Sauriens",
+                        "es-ES": "Isla del Reptiloide",
+                        "de": "Insel Saurodoma",
+                        "it": "Isola dei Saurodoma"
+                    }
+                },
+                {
+                    "Sanctuary of Desire": {
+                        "en-US": "Sanctuary of Desire",
+                        "fr": "Sanctuaire de la Voracité",
+                        "es-ES": "Santuario de la Voracidad",
+                        "de": "Schrein der Begierde",
+                        "it": "Santuario del Anhelo"
+                    }
+                },
+                {
+                    "Temple of Thruth": {
+                        "en-US": "Temple of Truth",
+                        "fr": "Temple de la Vérité",
+                        "es-ES": "Templo de la Verdad",
+                        "de": "Tempel der Wahrheit",
+                        "it": "Tempio della Verità"
+                    }
+                },
+                {
+                    "Bercant Estate": {
+                        "en-US": "Bercant Estate",
+                        "fr": "Demeure des Bercant",
+                        "es-ES": "Mansión Bercant",
+                        "de": "Anwesen der Bercant",
+                        "it": "Tenuta dei Bercant"
+                    }
+                }
+            ]
+        },
+        "events": {
+            "placeholders": {
+                "monster_elimination": {
+                    "en-US": "Choose up to 2 monster types...",
+                    "fr": "Choisissez jusqu'à 2 types de monstres...",
+                    "es-ES": "Elige hasta 2 tipos de monstruos...",
+                    "de": "Wähle bis zu 2 Monstertypen...",
+                    "it": "Scegli fino a 2 tipi di mostri..."
+                },
+                "dynamic_events": {
+                    "en-US": "Choose a dynamic event...",
+                    "fr": "Choisissez un évènement dynamique...",
+                    "es-ES": "Elige un evento dinámico...",
+                    "de": "Wähle ein dynamisches Ereignis...",
+                    "it": "Scegli un evento dinamico..."
+                },
+                "open_dungeon": {
+                    "en-US": "Choose an open dungeon...",
+                    "fr": "Choisissez un donjon ouvert...",
+                    "es-ES": "Elige un dungeon abierto...",
+                    "de": "Wähle einen offenen Dungeon...",
+                    "it": "Scegli un dungeon aperto..."
+                }
+            },
+            "errors": {
+                "not_author": {
+                    "en-US": "❌ You did not initiate this command.",
+                    "fr": "❌ Tu n'as pas initié cette commande.",
+                    "es-ES": "❌ No iniciaste este comando.",
+                    "de": "❌ Du hast diesen Befehl nicht initiiert.",
+                    "it": "❌ Non hai iniziato questo comando."
+                },
+                "all_options_required": {
+                    "en-US": "❌ All selections must be made before validation.",
+                    "fr": "❌ Tous les choix doivent être remplis avant validation.",
+                    "es-ES": "❌ Todas las opciones deben ser seleccionadas antes de validar.",
+                    "de": "❌ Alle Auswahlmöglichkeiten müssen vor der Bestätigung getroffen werden.",
+                    "it": "❌ Tutte le opzioni devono essere selezionate prima della convalida."
+                },
+                "invalid_selection_all": {
+                    "en-US": "❌ If you select 'All', you cannot choose other options!",
+                    "fr": "❌ Si tu sélectionnes 'Tous', tu ne peux pas choisir d'autres options !",
+                    "es-ES": "❌ Si seleccionas 'Todos', ¡no puedes elegir otras opciones!",
+                    "de": "❌ Wenn du 'Alle' auswählst, kannst du keine anderen Optionen wählen!",
+                    "it": "❌ Se selezioni 'Tutti', non puoi scegliere altre opzioni!"
+                }
+            },
+            "success": {
+                "contract_published": {
+                    "en-US": "✅ Guild contract published.",
+                    "fr": "✅ Contrat de guilde publié.",
+                    "es-ES": "✅ Contrato de gremio publicado.",
+                    "de": "✅ Gildenvertrag veröffentlicht.",
+                    "it": "✅ Contratto della gilda pubblicato."
+                },
+                "contract_deleted": {
+                    "en-US": "✅ Guild contract deleted.",
+                    "fr": "✅ Contrat supprimé.",
+                    "es-ES": "✅ Contrato eliminado.",
+                    "de": "✅ Gildenvertrag gelöscht.",
+                    "it": "✅ Contratto della gilda eliminato."
+                }
+            }
+        },
+        "user_messages": {
+            "command_usage": {
+                "select_contract": {
+                    "en-US": "Please select a contract for each category. Click ✅ to validate the announcement.",
+                    "fr": "Choisissez un contrat pour chaque catégorie.\nCliquez sur ✅ **Valider** pour envoyer l'annonce.",
+                    "es-ES": "Seleccione un contrato para cada categoría. Haga clic en ✅ para enviar el anuncio.",
+                    "de": "Wählen Sie einen Vertrag für jede Kategorie aus. Klicken Sie auf ✅, um die Ankündigung zu senden.",
+                    "it": "Seleziona un contratto per ogni categoria. Clicca su ✅ per inviare l'annuncio."
+                }
+            },
+            "notifications": {
+                "contract_published": {
+                    "en-US": "Guild contract published successfully.",
+                    "fr": "Contrat de guilde publié avec succès.",
+                    "es-ES": "Contrato del gremio publicado con éxito.",
+                    "de": "Gildenvertrag erfolgreich veröffentlicht.",
+                    "it": "Contratto della gilda pubblicato con successo."
+                },
+                "contract_deleted": {
+                    "en-US": "Guild contract deleted successfully.",
+                    "fr": "Contrat de guilde supprimé avec succès.",
+                    "es-ES": "Contrato del gremio eliminado con éxito.",
+                    "de": "Gildenvertrag erfolgreich gelöscht.",
+                    "it": "Contratto della gilda eliminato con successo."
+                }
+            }
+        }
+    },
+    "profile_setup": {
+        "language_saved": {
+            "en-US": "✅ Language set to English",
+            "fr": "✅ Langue définie sur Français",
+            "es-ES": "✅ Idioma configurado en Español",
+            "de": "✅ Sprache auf Deutsch gesetzt",
+            "it": "✅ Lingua impostata su Italiano"
+        },
+        "motif_select": {
+            "en-US": "🔹 Choose your reason for joining the Discord",
+            "fr": "🔹 Choisis ton motif d'arrivée sur le Discord",
+            "es-ES": "🔹 Elige tu motivo para unirte al Discord", 
+            "de": "🔹 Wähle deinen Grund für den Beitritt zu Discord",
+            "it": "🔹 Scegli il motivo per unirti a Discord"
+        },
+        "motif_select_options": [
+            {
+                "label": {
+                    "en-US": "Application",
+                    "fr": "Postulation",
+                    "es-ES": "Postulación",
+                    "de": "Bewerbung",
+                    "it": "Candidatura"
+                },
+                "value": "postulation",
+                "description": {
+                    "en-US": "Apply to join the guild",
+                    "fr": "Postuler à la guilde",
+                    "es-ES": "Postular a la guild",
+                    "de": "Sich für die Gilde bewerben",
+                    "it": "Candidarsi per la gilda"
+                }
+            },
+            {
+                "label": {
+                    "en-US": "Member",
+                    "fr": "Membre",
+                    "es-ES": "Miembro",
+                    "de": "Mitglied",
+                    "it": "Membro"
+                },
+                "value": "membre",
+                "description": {
+                    "en-US": "Already a member of the guild",
+                    "fr": "Déjà membre de la guilde",
+                    "es-ES": "Ya es miembro de la guild",
+                    "de": "Bereits Mitglied der Gilde",
+                    "it": "Già membro della gilda"
+                }
+            },
+            {
+                "label": {
+                    "en-US": "Diplomacy",
+                    "fr": "Diplomatie",
+                    "es-ES": "Diplomacia",
+                    "de": "Diplomatie",
+                    "it": "Diplomazia"
+                },
+                "value": "diplomate",
+                "description": {
+                    "en-US": "Diplomat from another guild",
+                    "fr": "Diplomate d’une autre guilde",
+                    "es-ES": "Diplomático de otra guild",
+                    "de": "Diplomat einer anderen Gilde",
+                    "it": "Diplomatico di un'altra gilda"
+                }
+            },
+            {
+                "label": {
+                    "en-US": "Allies",
+                    "fr": "Alliés",
+                    "es-ES": "Aliados",
+                    "de": "Verbündete",
+                    "it": "Alleati"
+                },
+                "value": "allies",
+                "description": {
+                    "en-US": "Allied guild",
+                    "fr": "Guilde alliée",
+                    "es-ES": "Gremio aliado",
+                    "de": "Verbündete Gilde",
+                    "it": "Gilda alleata"
+                }
+            },
+            {
+                "label": {
+                    "en-US": "Friends",
+                    "fr": "Amis",
+                    "es-ES": "Amigos",
+                    "de": "Freunde",
+                    "it": "Amici"
+                },
+                "value": "amis",
+                "description": {
+                    "en-US": "Friend of a member",
+                    "fr": "Ami d’un membre",
+                    "es-ES": "Amigo de un miembro",
+                    "de": "Freund eines Mitglieds",
+                    "it": "Amico di un membro"
+                }
+            }
+        ],
+        "motif_saved": {
+            "en-US": "✅ Reason saved",
+            "fr": "✅ Motif enregistré",
+            "es-ES": "✅ Motivo guardado",
+            "de": "✅ Grund gespeichert",
+            "it": "✅ Motivo salvato"
+        },
+        "comp_profile": {
+            "en-US": "Complete your profile",
+            "fr": "Complète ton profil",
+            "es-ES": "Completa tu perfil",
+            "de": "Vervollständige dein Profil",
+            "it": "Completa il tuo profilo"
+        },
+        "questions_title": {
+            "en-US": "Profile Configuration",
+            "fr": "Configuration de votre profil", 
+            "es-ES": "Configuración de tu perfil",
+            "de": "Profilkonfiguration",
+            "it": "Configurazione del tuo profilo"
+        },
+        "pseudo_select": {
+            "en-US": "👤 Enter your in-game username",
+            "fr": "👤 Entre ton pseudo en jeu", 
+            "es-ES": "👤 Ingresa tu nombre de usuario en el juego",
+            "de": "👤 Gib deinen Spielernamen ein",
+            "it": "👤 Inserisci il tuo nome utente di gioco"
+        },
+        "guild_select": {
+            "en-US": "🏰 Enter your guild name",
+            "fr": "🏰 Entre le nom de ta guilde",
+            "es-ES": "🏰 Ingresa el nombre de tu guild",
+            "de": "🏰 Gib den Namen deiner Gilde ein",
+            "it": "🏰 Inserisci il nome della tua gilda"
+        },
+        "guild_acronym": {
+            "en-US": "🏰 Enter your guild acronym",
+            "fr": "🏰 Entre l'acronyme de ta guilde",
+            "es-ES": "🏰 Ingresa el acrónimo de tu guild",
+            "de": "🏰 Gib das Akronym deiner Gilde ein",
+            "it": "🏰 Inserisci l'acronimo della tua gilda"
+        },
+        "friend_pseudo": {
+            "en-US": "🎭 Enter the username of the friend who invited you",
+            "fr": "🎭 Entre le pseudo de l'ami qui t'a invité",
+            "es-ES": "🎭 Ingresa el nombre de usuario del amigo que te invitó",
+            "de": "🎭 Gib den Benutzernamen des Freundes ein, der dich eingeladen hat",
+            "it": "🎭 Inserisci il nome utente dell'amico che ti ha invitato"
+        },
+        "weapons_select": {
+            "en-US": "⚔️ Choose your 2 main weapons",
+            "fr": "⚔️ Choisis tes 2 armes principales",
+            "es-ES": "⚔️ Elige tus 2 armas principales",
+            "de": "⚔️ Wähle deine 2 Hauptwaffen",
+            "it": "⚔️ Scegli le tue 2 armi principali"
+        },
+        "gs": {
+            "en-US": "🚀 Enter your GS",
+            "fr": "🚀 Entre ton GS",
+            "es-ES": "🚀 Ingresa tu GS",
+            "de": "🚀 Gib dein GS ein",
+            "it": "🚀 Inserisci il tuo GS"
+        },
+        "gametype_select": {
+            "en-US": "🎮 Choose your gameplay type",
+            "fr": "🎮 Choisis ton type de gameplay",
+            "es-ES": "🎮 Elige tu tipo de jugabilidad",
+            "de": "🎮 Wähle deinen Spieltyp",
+            "it": "🎮 Scegli il tuo tipo di gameplay"
+        },
+        "playtime_select": {
+            "en-US": "⏳ Choose your playtime",
+            "fr": "⏳ Choisis ton temps de jeu",
+            "es-ES": "⏳ Elige tu tiempo de juego",
+            "de": "⏳ Wähle deine Spielzeit",
+            "it": "⏳ Scegli il tuo tempo di gioco"
+        },
+        "setup_complete": {
+            "en-US": "✅ Configuration saved!",
+            "fr": "✅ Configuration enregistrée !",
+            "es-ES": "✅ ¡Configuración guardada!",
+            "de": "✅ Konfiguration gespeichert!",
+            "it": "✅ Configurazione salvata!"
+        },
+        "notification": {
+            "title": {
+                "en-US": "🔔 New registration confirmed",
+                "fr": "🔔 Nouvelle inscription confirmée",
+                "es-ES": "🔔 Registro confirmado",
+                "de": "🔔 Registrierung bestätigt",
+                "it": "🔔 Registrazione confermata"
+            },
+            "fields": {
+                "user": {
+                    "en-US": "👤 User",
+                    "fr": "👤 Utilisateur",
+                    "es-ES": "👤 Usuario",
+                    "de": "👤 Benutzer",
+                    "it": "👤 Utente"
+                },
+                "discord_name": {
+                    "en-US": "🏷️ Discord Name",
+                    "fr": "🏷️ Pseudo Discord",
+                    "es-ES": "🏷️ Nombre de Discord",
+                    "de": "🏷️ Discord-Name",
+                    "it": "🏷️ Nome Discord"
+                },
+                "weapons": {
+                    "en-US": "⚔️ Weapons",
+                    "fr": "⚔️ Armes",
+                    "es-ES": "⚔️ Armas",
+                    "de": "⚔️ Waffen",
+                    "it": "⚔️ Armi"
+                },
+                "gs": {
+                    "en-US": "🎯 GS",
+                    "fr": "🎯 GS",
+                    "es-ES": "🎯 GS",
+                    "de": "🎯 GS",
+                    "it": "🎯 GS"
+                },
+                "playtime": {
+                    "en-US": "⏳ Play Time",
+                    "fr": "⏳ Temps de jeu",
+                    "es-ES": "⏳ Tiempo de juego",
+                    "de": "⏳ Spielzeit",
+                    "it": "⏳ Tempo di gioco"
+                },
+                "gametype": {
+                    "en-US": "⚖️ Gameplay Type",
+                    "fr": "⚖️ Type de joueur",
+                    "es-ES": "⚖️ Tipo de juego",
+                    "de": "⚖️ Spieltyp",
+                    "it": "⚖️ Tipo di gioco"
+                },
+                "guild": {
+                    "en-US": "🏰 Guild",
+                    "fr": "🏰 Guilde",
+                    "es-ES": "🏰 Guild",
+                    "de": "🏰 Gilde",
+                    "it": "🏰 Gilda"
+                },
+                "allied_guild": {
+                    "en-US": "🏰 Allied Guild",
+                    "fr": "🏰 Guilde alliée",
+                    "es-ES": "🏰 Guild aliada",
+                    "de": "🏰 Allianzgilde",
+                    "it": "🏰 Gilda alleata"
+                },
+                "friend": {
+                    "en-US": "🎭 Friend of",
+                    "fr": "🎭 Ami de",
+                    "es-ES": "🎭 Amigo de",
+                    "de": "🎭 Freund von",
+                    "it": "🎭 Amico di"
+                }
+            }
+        },
+        "footer": {
+        "en-US": "Thank you for verifying this registration.",
+        "fr": "Merci de vérifier cette inscription.",
+        "es-ES": "Gracias por verificar este registro.",
+        "de": "Danke für die Überprüfung dieser Registrierung.",
+        "it": "Grazie per aver verificato questa registrazione."
+        },
+        "acronym": {
+            "en-US": "[APP]",
+            "fr": "[POST]", 
+            "es-ES": "[SOL]",
+            "de": "[BEW]",
+            "it": "[CAND]"
+        },
+        "pending": {
+            "en-US": "🚀 Pending configuration...",
+            "fr": "🚀 En attente de configuration...",
+            "es-ES": "🚀 Pendiente de configuración...",
+            "de": "🚀 Ausstehende Konfiguration...",
+            "it": "🚀 In attesa di configurazione..."
+        },
+        "accepted_membre": {
+            "en-US": "🔹 **Confirmed Member:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Confirmed on {now}**",
+            "fr": "🔹 **Membre confirmé :** {new_nickname}\n🎯 **GS :** {gs}\n📆 **Confirmé le {now}**",
+            "es-ES": "🔹 **Miembro confirmado:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Confirmado el {now}**",
+            "de": "🔹 **Bestätigtes Mitglied:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Bestätigt am {now}**",
+            "it": "🔹 **Membro confermato:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Confermato il {now}**"
+        },
+        "accepted_postulation": {
+            "en-US": "🛡️ **New Application:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Application confirmed on {now}**",
+            "fr": "🛡️ **Nouvelle postulation :** {new_nickname}\n🎯 **GS :** {gs}\n📆 **Postulation confirmée le {now}**",
+            "es-ES": "🛡️ **Nueva postulación:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Postulación confirmada el {now}**",
+            "de": "🛡️ **Neue Bewerbung:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Bewerbung bestätigt am {now}**",
+            "it": "🛡️ **Nuova candidatura:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Candidatura confermata il {now}**"
+        },
+        "accepted_diplomate": {
+            "en-US": "🤝 **Confirmed Diplomat:** {new_nickname}\n🏰 **Guild:** {guild_name}\n📆 **Confirmed on {now}**",
+            "fr": "🤝 **Diplomate confirmé :** {new_nickname}\n🏰 **Guilde :** {guild_name}\n📆 **Confirmé le {now}**",
+            "es-ES": "🤝 **Diplomático confirmado:** {new_nickname}\n🏰 **Gremio:** {guild_name}\n📆 **Confirmado el {now}**",
+            "de": "🤝 **Bestätigter Diplomat:** {new_nickname}\n🏰 **Gilde:** {guild_name}\n📆 **Bestätigt am {now}**",
+            "it": "🤝 **Diplomatico confermato:** {new_nickname}\n🏰 **Gilda:** {guild_name}\n📆 **Confermato il {now}**"
+        },
+        "accepted_allies": {
+            "en-US": "🏰 **Confirmed Ally:** {new_nickname}\n🏰 **Guild:** {guild_name}\n📆 **Confirmed on {now}**",
+            "fr": "🏰 **Allié confirmé :** {new_nickname}\n🏰 **Guilde :** {guild_name}\n📆 **Confirmé le {now}**",
+            "es-ES": "🏰 **Aliado confirmado:** {new_nickname}\n🏰 **Gremio:** {guild_name}\n📆 **Confirmado el {now}**",
+            "de": "🏰 **Bestätigter Verbündeter:** {new_nickname}\n🏰 **Gilde:** {guild_name}\n📆 **Bestätigt am {now}**",
+            "it": "🏰 **Alleato confermato:** {new_nickname}\n🏰 **Gilda:** {guild_name}\n📆 **Confermato il {now}**"
+        },
+        "accepted_amis": {
+            "en-US": "🎭 **Confirmed Friend:** {new_nickname}\n👤 **Recommended by:** {friend_pseudo}\n📆 **Confirmed on {now}**",
+            "fr": "🎭 **Ami confirmé :** {new_nickname}\n👤 **Recommandé par :** {friend_pseudo}\n📆 **Confirmé le {now}**",
+            "es-ES": "🎭 **Amigo confirmado:** {new_nickname}\n👤 **Recomendado por:** {friend_pseudo}\n📆 **Confirmado el {now}**",
+            "de": "🎭 **Bestätigter Freund:** {new_nickname}\n👤 **Empfohlen von:** {friend_pseudo}\n📆 **Bestätigt am {now}**",
+            "it": "🎭 **Amico confermato:** {new_nickname}\n👤 **Raccomandato da:** {friend_pseudo}\n📆 **Confermato il {now}**"
+        }
+    },
+    "guild_members": {
+        "gs": {
+            "name": {
+                "en-US": "gear_score",
+                "fr": "score_equipement",
+                "es-ES": "puntuación_equipo",
+                "de": "ausrüstungswert",
+                "it": "punteggio_equipaggiamento"
+            },
+            "description": {
+                "en-US": "Update your gear score in the guild listing.",
+                "fr": "Mets à jour votre score d'équipement dans le listing de guilde.",
+                "es-ES": "Actualiza tu puntuación de equipo en el listado de la guild.",
+                "de": "Aktualisiere deinen Ausrüstungswert in der Gildenliste.",
+                "it": "Aggiorna il tuo punteggio equipaggiamento nell'elenco della gilda."
+            },
+            "value_comment": {
+                "en-US": "Value between 500 and 7999",
+                "fr": "Valeur entre 500 et 7999",
+                "es-ES": "Valor entre 500 y 7999",
+                "de": "Wert zwischen 500 und 7999",
+                "it": "Valore tra 500 e 7999"
+            },
+            "not_registered": {
+                "en-US": "❌ Your profile is not yet registered in the member list.",
+                "fr": "❌ Votre profil n'est pas encore enregistré dans la liste des membres.",
+                "es-ES": "❌ Tu perfil aún no está registrado en la lista de miembros.",
+                "de": "❌ Dein Profil ist noch nicht in der Mitgliederliste registriert.",
+                "it": "❌ Il tuo profilo non è ancora registrato nell'elenco dei membri."
+            },
+            "not_positive": {
+                "en-US": "❌ The gear score must be a positive number.",
+                "fr": "❌ Le score d'équipement doit être un nombre positif.",
+                "es-ES": "❌ La puntuación de equipo debe ser un número positivo.",
+                "de": "❌ Der Ausrüstungswert muss eine positive Zahl sein.",
+                "it": "❌ Il punteggio equipaggiamento deve essere un numero positivo."
+            },
+            "updated": {
+                "en-US": "✅ {pseudo}, your gear score has been updated to {value}.",
+                "fr": "✅ {pseudo}, votre score d'équipement a été mis à jour à {value}.",
+                "es-ES": "✅ {pseudo}, tu puntuación de equipo ha sido actualizada a {value}.",
+                "de": "✅ {pseudo}, dein Ausrüstungswert wurde auf {value} aktualisiert.",
+                "it": "✅ {pseudo}, il tuo punteggio equipaggiamento è stato aggiornato a {value}."
+            }
+        },
+        "weapons": {
+            "name": {
+                "en-US": "weapons",
+                "fr": "armes",
+                "es-ES": "armas",
+                "de": "waffen",
+                "it": "armi"
+            },
+            "description": {
+                "en-US": "Update your weapons and determine your class.",
+                "fr": "Met à jour vos armes et détermine votre classe.",
+                "es-ES": "Actualiza tus armas y determina tu clase.",
+                "de": "Aktualisiere deine Waffen und bestimme deine Klasse.",
+                "it": "Aggiorna le tue armi e determina la tua classe."
+            },
+            "value_comment": {
+                "en-US": "Weapon from the list: B - CB - DG - GS - S - SNS - SP - W",
+                "fr": "Arme dans la liste : B - CB - DG - GS - S - SNS - SP - W",
+                "es-ES": "Arma de la lista: B - CB - DG - GS - S - SNS - SP - W",
+                "de": "Waffe aus der Liste: B - CB - DG - GS - S - SNS - SP - W",
+                "it": "Arma dalla lista: B - CB - DG - GS - S - SNS - SP - W"
+            },
+            "not_registered": {
+                "en-US": "❌ Your profile is not yet registered in the member list.",
+                "fr": "❌ Votre profil n'est pas encore enregistré dans la liste des membres.",
+                "es-ES": "❌ Tu perfil aún no está registrado en la lista de miembros.",
+                "de": "❌ Dein Profil ist noch nicht in der Mitgliederliste registriert.",
+                "it": "❌ Il tuo profilo non è ancora registrato nell'elenco dei membri."
+            },
+            "not_valid_same": {
+                "en-US": "❌ You must choose 2 different weapons.",
+                "fr": "❌ Vous devez choisir 2 armes différentes.",
+                "es-ES": "❌ Debes elegir 2 armas diferentes.",
+                "de": "❌ Du musst 2 verschiedene Waffen auswählen.",
+                "it": "❌ Devi scegliere 2 armi diverse."
+            },
+            "not_valid": {
+                "en-US": "❌ The entered weapons are not valid. Please enter valid weapons.",
+                "fr": "❌ Les armes entrées ne sont pas valides. Veuillez entrer des armes valides.",
+                "es-ES": "❌ Las armas ingresadas no son válidas. Introduce armas válidas.",
+                "de": "❌ Die eingegebenen Waffen sind nicht gültig. Bitte gib gültige Waffen ein.",
+                "it": "❌ Le armi inserite non sono valide. Inserisci armi valide."
+            },
+            "updated": {
+                "en-US": "✅ {pseudo}, your weapons have been updated to {armes_str}.",
+                "fr": "✅ {pseudo}, vos armes ont été mises à jour en {armes_str}.",
+                "es-ES": "✅ {pseudo}, tus armas han sido actualizadas a {armes_str}.",
+                "de": "✅ {pseudo}, deine Waffen wurden auf {armes_str} aktualisiert.",
+                "it": "✅ {pseudo}, le tue armi sono state aggiornate a {armes_str}."
+            }
+        },
+        "build": {
+            "name": {
+                "en-US": "build",
+                "fr": "build",
+                "es-ES": "build",
+                "de": "build",
+                "it": "build"
+            },
+            "description": {
+                "en-US": "Update the URL of your build.",
+                "fr": "Met à jour l'URL de votre build.",
+                "es-ES": "Actualiza la URL de tu build.",
+                "de": "Aktualisiere die URL deines Builds.",
+                "it": "Aggiorna l'URL della tua build."
+            },
+            "value_comment": {
+                "en-US": "URL starting with https://questlog.gg/",
+                "fr": "URL commençant par https://questlog.gg/",
+                "es-ES": "URL que comienza con https://questlog.gg/",
+                "de": "URL beginnend mit https://questlog.gg/",
+                "it": "URL che inizia con https://questlog.gg/"
+            },
+            "not_registered": {
+                "en-US": "❌ Your profile is not yet registered in the member list.",
+                "fr": "❌ Votre profil n'est pas encore enregistré dans la liste des membres.",
+                "es-ES": "❌ Tu perfil aún no está registrado en la lista de miembros.",
+                "de": "❌ Dein Profil ist noch nicht in der Mitgliederliste registriert.",
+                "it": "❌ Il tuo profilo non è ancora registrato nell'elenco dei membri."
+            },
+            "not_correct": {
+                "en-US": "❌ The build URL must start with https://questlog.gg/",
+                "fr": "❌ L'URL du build doit commencer par https://questlog.gg/",
+                "es-ES": "❌ La URL del build debe comenzar con https://questlog.gg/",
+                "de": "❌ Die Build-URL muss mit https://questlog.gg/ beginnen.",
+                "it": "❌ L'URL della build deve iniziare con https://questlog.gg/"
+            },
+            "updated": {
+                "en-US": "✅ {pseudo}, your build has been updated.",
+                "fr": "✅ {pseudo}, votre build a été mis à jour.",
+                "es-ES": "✅ {pseudo}, tu build ha sido actualizada.",
+                "de": "✅ {pseudo}, dein Build wurde aktualisiert.",
+                "it": "✅ {pseudo}, la tua build è stata aggiornata."
+            }
+        },
+        "pseudo": {
+            "name": {
+                "en-US": "username",
+                "fr": "pseudo",
+                "es-ES": "nombre_de_usuario",
+                "de": "benutzername",
+                "it": "nome_utente"
+            },
+            "description": {
+                "en-US": "Change your username in the roster and on Discord.",
+                "fr": "Changez votre pseudo dans le roster et sur Discord.",
+                "es-ES": "Cambia tu nombre de usuario en el roster y en Discord.",
+                "de": "Ändere deinen Benutzernamen in der Liste und auf Discord.",
+                "it": "Cambia il tuo nome utente nel roster e su Discord."
+            },
+            "value_comment": {
+                "en-US": "Your new username as it appears in-game.",
+                "fr": "Votre nouveau pseudo tel qu'il est en jeu.",
+                "es-ES": "Tu nuevo nombre de usuario tal como aparece en el juego.",
+                "de": "Dein neuer Benutzername, wie er im Spiel erscheint.",
+                "it": "Il tuo nuovo nome utente come appare nel gioco."
+            },
+            "not_registered": {
+                "en-US": "❌ Your profile is not yet registered in the member list.",
+                "fr": "❌ Votre profil n'est pas encore enregistré dans la liste des membres.",
+                "es-ES": "❌ Tu perfil aún no está registrado en la lista de miembros.",
+                "de": "❌ Dein Profil ist noch nicht in der Mitgliederliste registriert.",
+                "it": "❌ Il tuo profilo non è ancora registrato nell'elenco dei membri."
+            },
+            "updated": {
+                "en-US": "✅ Your username has been updated to {pseudo}.",
+                "fr": "✅ Votre pseudo a été mis à jour en {pseudo}.",
+                "es-ES": "✅ Tu nombre de usuario ha sido actualizado a {pseudo}.",
+                "de": "✅ Dein Benutzername wurde auf {pseudo} aktualisiert.",
+                "it": "✅ Il tuo nome utente è stato aggiornato a {pseudo}."
+            }
+        },
+        "show_build": {
+            "name": {
+                "en-US": "show_build",
+                "fr": "show_build",
+                "es-ES": "mostrar_build",
+                "de": "build_anzeigen",
+                "it": "mostra_build"
+            },
+            "description": {
+                "en-US": "Sends you the build URL of a member via DM.",
+                "fr": "Vous envoie en MP l'URL du build d'un membre.",
+                "es-ES": "Te envía por MD la URL del build de un miembro.",
+                "de": "Sendet dir die Build-URL eines Mitglieds per DM.",
+                "it": "Ti invia in DM l'URL del build di un membro."
+            },
+            "value_comment": {
+                "en-US": "Username of the desired member.",
+                "fr": "Pseudo du membre souhaité.",
+                "es-ES": "Nombre de usuario del miembro deseado.",
+                "de": "Benutzername des gewünschten Mitglieds.",
+                "it": "Nome utente del membro desiderato."
+            },
+            "not_found": {
+                "en-US": "❌ No member found with the username {pseudo}.",
+                "fr": "❌ Aucun membre trouvé avec le pseudo {pseudo}.",
+                "es-ES": "❌ Ningún miembro encontrado con el nombre de usuario {pseudo}.",
+                "de": "❌ Kein Mitglied mit dem Benutzernamen {pseudo} gefunden.",
+                "it": "❌ Nessun membro trovato con il nome utente {pseudo}."
+            },
+            "no_build": {
+                "en-US": "❌ {pseudo} has not yet provided their build.",
+                "fr": "❌ {pseudo} n'a pas encore renseigné son build.",
+                "es-ES": "❌ {pseudo} aún no ha proporcionado su build.",
+                "de": "❌ {pseudo} hat sein Build noch nicht angegeben.",
+                "it": "❌ {pseudo} non ha ancora inserito il suo build."
+            },
+            "build_sent": {
+                "en-US": "📜 **Build of {member}**\n🔗 {build_url}",
+                "fr": "📜 **Build de {member}**\n🔗 {build_url}",
+                "es-ES": "📜 **Build de {member}**\n🔗 {build_url}",
+                "de": "📜 **Build von {member}**\n🔗 {build_url}",
+                "it": "📜 **Build di {member}**\n🔗 {build_url}"
+            },
+            "sent": {
+                "en-US": "✅ Link sent via DM.",
+                "fr": "✅ Lien envoyé en MP.",
+                "es-ES": "✅ Enlace enviado por MD.",
+                "de": "✅ Link per DM gesendet.",
+                "it": "✅ Link inviato in DM."
+            },
+            "cannot_send": {
+                "en-US": "⚠️ Unable to send a DM. Check your Discord settings.",
+                "fr": "⚠️ Impossible d'envoyer un MP. Vérifiez vos paramètres Discord.",
+                "es-ES": "⚠️ No se pudo enviar un MD. Verifica tu configuración de Discord.",
+                "de": "⚠️ Konnte keine DM senden. Überprüfe deine Discord-Einstellungen.",
+                "it": "⚠️ Impossibile inviare un DM. Controlla le impostazioni di Discord."
+            }
+        },
+        "maj_roster": {
+            "name": {
+                "en-US": "update_roster",
+                "fr": "maj_roster",
+                "es-ES": "actualizar_roster",
+                "de": "roster_aktualisieren",
+                "it": "aggiorna_roster"
+            },
+            "description": {
+                "en-US": "Updates the roster and associated messages.",
+                "fr": "Met à jour le roster et les messages associés.",
+                "es-ES": "Actualiza el roster y los mensajes asociados.",
+                "de": "Aktualisiert das Roster und die zugehörigen Nachrichten.",
+                "it": "Aggiorna il roster e i messaggi associati."
+            },
+            "not_config": {
+                "en-US": "❌ Roles not configured for this guild.",
+                "fr": "❌ Rôles non configurés pour cette guilde.",
+                "es-ES": "❌ Roles no configurados para esta guild.",
+                "de": "❌ Rollen für diese Gilde nicht konfiguriert.",
+                "it": "❌ Ruoli non configurati per questa gilda."
+            },
+            "roles_ko": {
+                "en-US": "❌ Member role not configured.",
+                "fr": "❌ Rôle des membres non configuré.",
+                "es-ES": "❌ Rol de miembros no configurado.",
+                "de": "❌ Mitgliederrolle nicht konfiguriert.",
+                "it": "❌ Ruolo dei membri non configurato."
+            },
+            "updated": {
+                "en-US": "✅ Roster update completed.",
+                "fr": "✅ Mise à jour des effectifs réalisée.",
+                "es-ES": "✅ Actualización de la lista completada.",
+                "de": "✅ Roster-Aktualisierung abgeschlossen.",
+                "it": "✅ Aggiornamento del roster completato."
+            }
+        },
+        "notify_profile": {
+            "name": {
+                "en-US": "notify_inc_profile",
+                "fr": "notify_inc_profile",
+                "es-ES": "notificar_perfil_inc",
+                "de": "benachr_unvollst_profil",
+                "it": "notifica_profilo_inc"
+            },
+            "description": {
+                "en-US": "Sends a DM to members with incomplete profiles.",
+                "fr": "Envoie un MP aux membres dont le profil est incomplet.",
+                "es-ES": "Envía un MD a los miembros con un perfil incompleto.",
+                "de": "Sendet eine DM an Mitglieder mit unvollständigem Profil.",
+                "it": "Invia un DM ai membri con profilo incompleto."
+            },
+            "no_inc_profiles": {
+                "en-US": "🔶 No members with incomplete information found.",
+                "fr": "🔶 Aucun membre avec des informations incomplètes n'a été trouvé.",
+                "es-ES": "🔶 No se encontraron miembros con información incompleta.",
+                "de": "🔶 Keine Mitglieder mit unvollständigen Informationen gefunden.",
+                "it": "🔶 Nessun membro con informazioni incomplete trovato."
+            },
+            "mp_sent": {
+                "en-US": "Hello,\n\nWe noticed that your profile is incomplete (GS = 0 and/or weapons not specified).\nPlease update this information as soon as possible.\nUse the slash commands to fill in the details (/gear_score, /weapons).",
+                "fr": "Bonjour,\n\nNous avons constaté que votre profil est incomplet (GS = 0 et/ou armes non renseignées).\nMerci de mettre à jour ces informations dès que possible.\nUtilisez les commandes slash pour renseigner les informations (/score_equipement, /armes).",
+                "es-ES": "Hola,\n\nHemos notado que tu perfil está incompleto (GS = 0 y/o armas no especificadas).\nPor favor, actualiza esta información lo antes posible.\nUtiliza los comandos de barra para completar los datos (/puntuación_equipo, /armas).",
+                "de": "Hallo,\n\nWir haben festgestellt, dass dein Profil unvollständig ist (GS = 0 und/oder Waffen nicht angegeben).\nBitte aktualisiere diese Informationen so bald wie möglich.\nVerwende die Slash-Befehle, um die Details auszufüllen (/ausrüstungswert, /waffen).",
+                "it": "Ciao,\n\nAbbiamo notato che il tuo profilo è incompleto (GS = 0 e/o armi non specificate).\nTi preghiamo di aggiornare queste informazioni il prima possibile.\nUsa i comandi slash per inserire i dettagli (/punteggio_equipaggiamento, /armi)."
+            },
+            "success": {
+                "en-US": "✅ Notifications sent to {successes} members. Failures: {failures}.",
+                "fr": "✅ Notifications envoyées à {successes} membres. Échecs : {failures}.",
+                "es-ES": "✅ Notificaciones enviadas a {successes} miembros. Errores: {failures}.",
+                "de": "✅ Benachrichtigungen an {successes} Mitglieder gesendet. Fehler: {failures}.",
+                "it": "✅ Notifiche inviate a {successes} membri. Errori: {failures}."
+            }
+        },
+        "post_recrut": {
+            "name": {
+                "en-US": "📢 Recruitment",
+                "fr": "📢 Recrutement",
+                "es-ES": "📢 Reclutamiento",
+                "de": "📢 Rekrutierung",
+                "it": "📢 Reclutamento"
+            },
+            "effectif": {
+                "en-US": "👥 Current staff: **{total_members}/{effectif_max}**\n",
+                "fr": "👥 Effectif actuel : **{total_members}/{effectif_max}**\n",
+                "es-ES": "👥 Personal actual: **{total_members}/{effectif_max}**\n",
+                "de": "👥 Aktueller Bestand: **{total_members}/{effectif_max}**\n",
+                "it": "👥 Effettivo attuale: **{total_members}/{effectif_max}**\n"
+            },
+            "places": {
+                "en-US": "📌 Available spots: **{places_restantes}**\n\n",
+                "fr": "📌 Places disponibles : **{places_restantes}**\n\n",
+                "es-ES": "📌 Plazas disponibles: **{places_restantes}**\n\n",
+                "de": "📌 Verfügbare Plätze: **{places_restantes}**\n\n",
+                "it": "📌 Posti disponibili: **{places_restantes}**\n\n"
+            },
+            "post_dispos": {
+                "en-US": "**Positions available:**\n",
+                "fr": "**Postes à pourvoir :**\n",
+                "es-ES": "**Puestos disponibles:**\n",
+                "de": "**Verfügbare Positionen:**\n",
+                "it": "**Posizioni disponibili:**\n"
+            },
+            "updated": {
+                "en-US": "Updated on {now}",
+                "fr": "Mis à jour le {now}",
+                "es-ES": "Actualizado el {now}",
+                "de": "Aktualisiert am {now}",
+                "it": "Aggiornato il {now}"
+            }
+        },
+        "class": {
+            "Tank": {
+                "en-US": "Tank",
+                "fr": "Tank",
+                "es-ES": "Tanque",
+                "de": "Tank",
+                "it": "Tank"
+            },
+            "Melee DPS": {
+                "en-US": "Melee DPS",
+                "fr": "DPS CàC",
+                "es-ES": "DPS CaC",
+                "de": "Nahkampf-DPS",
+                "it": "DPS CaC"
+            },
+            "Ranged DPS": {
+                "en-US": "Ranged DPS",
+                "fr": "DPS à Distance",
+                "es-ES": "DPS a Distancia",
+                "de": "Fernkampf-DPS",
+                "it": "DPS a Distanza"
+            },
+            "Healer": {
+                "en-US": "Healer",
+                "fr": "Healer",
+                "es-ES": "Sanador",
+                "de": "Heiler",
+                "it": "Guaritore"
+            },
+            "Flanker": {
+                "en-US": "Flanker",
+                "fr": "Flanker",
+                "es-ES": "Flanqueador",
+                "de": "Flankierer",
+                "it": "Fiancheggiatore"
+            }
+        }
+    },
+    "guild_events": {
+        "events_infos": {
+            "boonstone": {
+                "en-US": "Boonstone",
+                "fr": "Pierre de Bénédiction",
+                "es-ES": "Piedra de Bendición",
+                "de": "Segensstein",
+                "it": "Pietra della Benedizione"
+            },
+            "riftstone": {
+                "en-US": "Riftstone",
+                "fr": "Pierre de Faille",
+                "es-ES": "Piedra de Grieta",
+                "de": "Rissstein",
+                "it": "Pietra della Fenditura"
+            },
+            "conflict archboss": {
+                "en-US": "Conflict Archboss",
+                "fr": "Archboss Conflit",
+                "es-ES": "Archijefe de Conflicto",
+                "de": "Konflikt-Archboss",
+                "it": "Arci-boss del Conflitto"
+            },
+            "guild bosses": {
+                "en-US": "Guild's Bosses",
+                "fr": "Boss de Guilde",
+                "es-ES": "Jefes de la Guild",
+                "de": "Gildenbosse",
+                "it": "Boss della Gilda"
+            },
+            "boonstone interserv": {
+                "en-US": "Boonstone + Interserver",
+                "fr": "Pierre de Bénédiction + Interserveur",
+                "es-ES": "Piedra de Bendición + Interservidor",
+                "de": "Segensstein + Interserver",
+                "it": "Pietra della Benedizione + Interserver"
+            },
+            "riftstone interserv": {
+                "en-US": "Riftstone + Interserver",
+                "fr": "Pierre de Faille + Interserveur",
+                "es-ES": "Piedra de Grieta + Interservidor",
+                "de": "Rissstein + Interserver",
+                "it": "Pietra della Fenditura + Interserver"
+            },
+            "castle siege": {
+                "en-US": "Castle's Siege",
+                "fr": "Attaque du Château",
+                "es-ES": "Asedio del Castillo",
+                "de": "Burgbelagerung",
+                "it": "Assedio al Castello"
+            },
+            "description": {
+                "en-US": "React to indicate your presence, attempt, or absence.",
+                "fr": "Réagissez pour indiquer votre présence, tentative ou absence.",
+                "es-ES": "Reacciona para indicar tu presencia, intento o ausencia.",
+                "de": "Reagiere, um deine Anwesenheit, deinen Versuch oder deine Abwesenheit anzuzeigen.",
+                "it": "Reagisci per indicare la tua presenza, tentativo o assenza."
+            },
+            "id_ko": {
+                "en-US": "Please enter a valid numeric ID.",
+                "fr": "Veuillez entrer un identifiant numérique valide.",
+                "es-ES": "Por favor, introduce un ID numérico válido.",
+                "de": "Bitte gib eine gültige numerische ID ein.",
+                "it": "Inserisci un ID numerico valido."
+            },
+            "description_scheduled": {
+                "en-US": "To check the event status, follow the link below.\nDon't forget to react to sign up!\n\n➡️ {link}",
+                "fr": "Pour voir le statut de l'évènement, suivez le lien ci-dessous.\nPensez à ajouter une réaction pour vous inscrire !\n\n➡️ {link}",
+                "es-ES": "Para ver el estado del evento, sigue el enlace a continuación.\n¡No olvides reaccionar para inscribirte!\n\n➡️ {link}",
+                "de": "Um den Status des Ereignisses zu sehen, folge dem untenstehenden Link.\nVergiss nicht, zu reagieren, um dich anzumelden!\n\n➡️ {link}",
+                "it": "Per vedere lo stato dell'evento, segui il link qui sotto.\nNon dimenticare di reagire per iscriverti!\n\n➡️ {link}"
+            },
+            "status_planified": {
+                "en-US": "Planned",
+                "fr": "Planifié",
+                "es-ES": "Planificado",
+                "de": "Geplant",
+                "it": "Pianificato"
+            },
+            "status_confirmed": {
+                "en-US": "Confirmed",
+                "fr": "Confirmé",
+                "es-ES": "Confirmado",
+                "de": "Bestätigt",
+                "it": "Confermato"
+            },
+            "status_closed": {
+                "en-US": "Closed",
+                "fr": "Clôturé",
+                "es-ES": "Cerrado",
+                "de": "Geschlossen",
+                "it": "Chiuso"
+            },
+            "status_cancelled": {
+                "en-US": "Cancelled",
+                "fr": "Annulé",
+                "es-ES": "Cancelado",
+                "de": "Abgesagt",
+                "it": "Annullato"
+            },
+            "date": {
+                "en-US": "Date",
+                "fr": "Date",
+                "es-ES": "Fecha",
+                "de": "Datum",
+                "it": "Data"
+            },
+            "hour": {
+                "en-US": "Hour (Paris)",
+                "fr": "Heure (Paris)",
+                "es-ES": "Hora (París)",
+                "de": "Uhrzeit (Paris)",
+                "it": "Ora (Parigi)"
+            },
+            "duration": {
+                "en-US": "Duration (minutes)",
+                "fr": "Durée (minutes)",
+                "es-ES": "Duración (minutos)",
+                "de": "Dauer (Minuten)",
+                "it": "Durata (minuti)"
+            },
+            "status": {
+                "en-US": "Status",
+                "fr": "Statut",
+                "es-ES": "Estado",
+                "de": "Status",
+                "it": "Stato"
+            },
+            "dkp_v": {
+                "en-US": "DKP Value",
+                "fr": "DKP Valeur",
+                "es-ES": "Valor DKP",
+                "de": "DKP-Wert",
+                "it": "Valore DKP"
+            },
+            "dkp_i": {
+                "en-US": "DKP Registration",
+                "fr": "DKP Inscription",
+                "es-ES": "Registro DKP",
+                "de": "DKP-Anmeldung",
+                "it": "Registrazione DKP"
+            },
+            "present": {
+                "en-US": "Present",
+                "fr": "Présent",
+                "es-ES": "Presente",
+                "de": "Anwesend",
+                "it": "Presente"
+            },
+            "attempt": {
+                "en-US": "Attempt",
+                "fr": "Tentative",
+                "es-ES": "Intento",
+                "de": "Versuch",
+                "it": "Tentativo"
+            },
+            "absence": {
+                "en-US": "Absence",
+                "fr": "Absence",
+                "es-ES": "Ausencia",
+                "de": "Abwesenheit",
+                "it": "Assenza"
+            },
+            "voice_channel": {
+                "en-US": "Voice Channel",
+                "fr": "Salon Vocal",
+                "es-ES": "Canal de Voz",
+                "de": "Sprachkanal",
+                "it": "Canale Vocale"
+            },
+            "groups": {
+                "en-US": "Groups",
+                "fr": "Groupes",
+                "es-ES": "Grupos",
+                "de": "Gruppen",
+                "it": "Gruppi"
+            },
+            "auto_grouping": {
+                "en-US": "Automatic group assignment and gathering 15 minutes before the event!",
+                "fr": "Envoi automatique des groupes et regroupement 15 minutes avant l'évènement !",
+                "es-ES": "Asignación automática de grupos y reunión 15 minutos antes del evento!",
+                "de": "Automatische Gruppenzuweisung und Sammeln 15 Minuten vor dem Ereignis!",
+                "it": "Assegnazione automatica dei gruppi e raduno 15 minuti prima dell'evento!"
+            }
+        },
+        "event_confirm": {
+            "name": {
+                "en-US": "event_confirm",
+                "fr": "event_confirm",
+                "es-ES": "confirmar_evento",
+                "de": "event_bestätigen",
+                "it": "conferma_evento"
+            },
+            "description": {
+                "en-US": "Confirm a guild event.",
+                "fr": "Confirme un évènement de guilde.",
+                "es-ES": "Confirma un evento de la guild.",
+                "de": "Bestätigt ein Gilden-Event.",
+                "it": "Conferma un evento della gilda."
+            },
+            "no_events": {
+                "en-US": "❌ No event found with ID {event_id}.",
+                "fr": "❌ Aucun événement trouvé avec l'ID {event_id}.",
+                "es-ES": "❌ No se encontró ningún evento con el ID {event_id}.",
+                "de": "❌ Kein Ereignis mit der ID {event_id} gefunden.",
+                "it": "❌ Nessun evento trovato con l'ID {event_id}."
+            },
+            "no_settings": {
+                "en-US": "❌ Guild configuration not found.",
+                "fr": "❌ Configuration de la guilde introuvable.",
+                "es-ES": "❌ Configuración de la guild no encontrada.",
+                "de": "❌ Gildenkonfiguration nicht gefunden.",
+                "it": "❌ Configurazione della gilda non trovata."
+            },
+            "no_events_canal": {
+                "en-US": "❌ Events channel not found.",
+                "fr": "❌ Canal des événements introuvable.",
+                "es-ES": "❌ Canal de eventos no encontrado.",
+                "de": "❌ Ereigniskanal nicht gefunden.",
+                "it": "❌ Canale degli eventi non trovato."
+            },
+            "no_events_message": {
+                "en-US": "❌ Error retrieving the event message: {e}",
+                "fr": "❌ Erreur lors de la récupération du message de l'événement : {e}",
+                "es-ES": "❌ Error al recuperar el mensaje del evento: {e}",
+                "de": "❌ Fehler beim Abrufen der Ereignisnachricht: {e}",
+                "it": "❌ Errore durante il recupero del messaggio dell'evento: {e}"
+            },
+            "no_events_message_embed": {
+                "en-US": "❌ The event does not have an embed.",
+                "fr": "❌ L'événement ne possède pas d'embed.",
+                "es-ES": "❌ El evento no tiene un embed.",
+                "de": "❌ Das Ereignis hat kein Embed.",
+                "it": "❌ L'evento non ha un embed."
+            },
+            "confirmed": {
+                "en-US": "Confirmed",
+                "fr": "Confirmé",
+                "es-ES": "Confirmado",
+                "de": "Bestätigt",
+                "it": "Confermato"
+            },
+            "confirmed_notif": {
+                "en-US": "Event confirmed <@&{role}>! Please sign up!",
+                "fr": "Événement confirmé <@&{role}> ! Merci de vous inscrire !",
+                "es-ES": "Evento confirmado <@&{role}>! ¡Por favor, regístrate!",
+                "de": "Ereignis bestätigt <@&{role}>! Bitte melde dich an!",
+                "it": "Evento confermato <@&{role}>! Per favore, iscriviti!"
+            },
+            "event_updated": {
+                "en-US": "✅ Event {event_id} marked as Confirmed.",
+                "fr": "✅ Événement {event_id} passé à Confirmé.",
+                "es-ES": "✅ Evento {event_id} marcado como Confirmado.",
+                "de": "✅ Ereignis {event_id} als Bestätigt markiert.",
+                "it": "✅ Evento {event_id} segnato come Confermato."
+            },
+            "event_embed_ko": {
+                "en-US": "❌ Error updating the embed: {e}",
+                "fr": "❌ Erreur lors de la mise à jour de l'embed : {e}",
+                "es-ES": "❌ Error al actualizar el embed: {e}",
+                "de": "❌ Fehler beim Aktualisieren des Embeds: {e}",
+                "it": "❌ Errore durante l'aggiornamento dell'embed: {e}"
+            },
+            "event_ko": {
+                "en-US": "❌ Error confirming the event: {error}",
+                "fr": "❌ Erreur lors de la confirmation de l'événement : {error}",
+                "es-ES": "❌ Error al confirmar el evento: {error}",
+                "de": "❌ Fehler bei der Bestätigung des Ereignisses: {error}",
+                "it": "❌ Errore durante la conferma dell'evento: {error}"
+            }
+        },
+        "event_cancel": {
+            "name": {
+                "en-US": "event_cancel",
+                "fr": "event_cancel",
+                "es-ES": "cancelar_evento",
+                "de": "event_absagen",
+                "it": "annulla_evento"
+            },
+            "description": {
+                "en-US": "Cancel a guild event.",
+                "fr": "Annuler un événement de guilde.",
+                "es-ES": "Cancelar un evento de la guild.",
+                "de": "Ein Gilden-Event absagen.",
+                "it": "Annullare un evento della gilda."
+            },
+            "no_events": {
+                "en-US": "❌ No event found with ID {event_id}.",
+                "fr": "❌ Aucun événement trouvé avec l'ID {event_id}.",
+                "es-ES": "❌ No se encontró ningún evento con el ID {event_id}.",
+                "de": "❌ Kein Ereignis mit der ID {event_id} gefunden.",
+                "it": "❌ Nessun evento trovato con l'ID {event_id}."
+            },
+            "no_settings": {
+                "en-US": "❌ Guild configuration not found.",
+                "fr": "❌ Configuration de la guilde introuvable.",
+                "es-ES": "❌ Configuración de la guild no encontrada.",
+                "de": "❌ Gildenkonfiguration nicht gefunden.",
+                "it": "❌ Configurazione della gilda non trovata."
+            },
+            "no_events_canal": {
+                "en-US": "❌ Events channel not found.",
+                "fr": "❌ Canal des événements introuvable.",
+                "es-ES": "❌ Canal de eventos no encontrado.",
+                "de": "❌ Ereigniskanal nicht gefunden.",
+                "it": "❌ Canale degli eventi non trovato."
+            },
+            "no_events_message": {
+                "en-US": "❌ Error retrieving the event message: {e}",
+                "fr": "❌ Erreur lors de la récupération du message de l'événement : {e}",
+                "es-ES": "❌ Error al recuperar el mensaje del evento: {e}",
+                "de": "❌ Fehler beim Abrufen der Ereignisnachricht: {e}",
+                "it": "❌ Errore durante il recupero del messaggio dell'evento: {e}"
+            },
+            "no_events_message_embed": {
+                "en-US": "❌ The event does not have an embed.",
+                "fr": "❌ L'événement ne possède pas d'embed.",
+                "es-ES": "❌ El evento no tiene un embed.",
+                "de": "❌ Das Ereignis hat kein Embed.",
+                "it": "❌ L'evento non ha un embed."
+            },
+            "canceled": {
+                "en-US": "Canceled",
+                "fr": "Annulé",
+                "es-ES": "Cancelado",
+                "de": "Abgesagt",
+                "it": "Annullato"
+            },
+            "event_updated": {
+                "en-US": "✅ Event {event_id} canceled",
+                "fr": "✅ Événement {event_id} annulé",
+                "es-ES": "✅ Evento {event_id} cancelado",
+                "de": "✅ Ereignis {event_id} abgesagt",
+                "it": "✅ Evento {event_id} annullato"
+            },
+            "event_embed_ko": {
+                "en-US": "❌ Error updating the embed: {e}",
+                "fr": "❌ Erreur lors de la mise à jour de l'embed : {e}",
+                "es-ES": "❌ Error al actualizar el embed: {e}",
+                "de": "❌ Fehler beim Aktualisieren des Embeds: {e}",
+                "it": "❌ Errore durante l'aggiornamento dell'embed: {e}"
+            },
+            "event_ko": {
+                "en-US": "❌ Error canceling the event: {error}",
+                "fr": "❌ Erreur lors de l'annulation de l'événement : {error}",
+                "es-ES": "❌ Error al cancelar el evento: {error}",
+                "de": "❌ Fehler beim Absagen des Ereignisses: {error}",
+                "it": "❌ Errore durante l'annullamento dell'evento: {error}"
+            }
+        },
+        "event_reminder": {
+            "dm_message": {
+                "en-US": "Hello {member_name},\n\nYou have not yet confirmed your registration for the event **{event_name}** scheduled on {date} at {time}.\nTo sign up, click here: {link}\n\nThank you!",
+                "fr": "Bonjour {member_name},\n\nVous n'avez pas confirmé votre inscription pour l'événement **{event_name}** prévu le {date} à {time}.\nPour vous inscrire, cliquez ici : {link}\n\nMerci !",
+                "es-ES": "Hola {member_name},\n\nAún no has confirmado tu inscripción para el evento **{event_name}** programado el {date} a las {time}.\nPara inscribirte, haz clic aquí: {link}\n\n¡Gracias!",
+                "de": "Hallo {member_name},\n\nDu hast deine Anmeldung für das Event **{event_name}** am {date} um {time} noch nicht bestätigt.\nUm dich anzumelden, klicke hier: {link}\n\nDanke!",
+                "it": "Ciao {member_name},\n\nNon hai ancora confermato la tua iscrizione per l'evento **{event_name}** previsto per il {date} alle {time}.\nPer iscriverti, clicca qui: {link}\n\nGrazie!"
+            },
+            "notification_reminded": {
+                "en-US": "## :bell: **Event Reminder**\n For the event **{event}**\n({event_link})\n\n{len} member(s) have been reminded: {members}",
+                "fr": "## :bell: **Reminder d'événement**\n Pour l'événement **{event}**\n({event_link})\n\n{len} membre(s) ont été relancés : {members}",
+                "es-ES": "## :bell: **Recordatorio de evento**\n Para el evento **{event}**\n({event_link})\n\n{len} miembro(s) han sido recordados: {members}",
+                "de": "## :bell: **Ereigniserinnerung**\n Für das Ereignis **{event}**\n({event_link})\n\n{len} Mitglied(er) wurden erinnert: {members}",
+                "it": "## :bell: **Promemoria evento**\n Per l'evento **{event}**\n({event_link})\n\n{len} membro(i) sono stati ricordati: {members}"
+            },
+            "notification_all_OK": {
+                "en-US": "## :bell: **Event Reminder**\n For the event **{event}**\n({event_link})\n\n**All members have responded.**",
+                "fr": "## :bell: **Reminder d'événement**\n Pour l'événement **{event}**\n({event_link})\n\n**Tous les membres ont répondu.**",
+                "es-ES": "## :bell: **Recordatorio de evento**\n Para el evento **{event}**\n({event_link})\n\n**Todos los miembros han respondido.**",
+                "de": "## :bell: **Ereigniserinnerung**\n Für das Ereignis **{event}**\n({event_link})\n\n**Alle Mitglieder haben geantwortet.**",
+                "it": "## :bell: **Promemoria evento**\n Per l'evento **{event}**\n({event_link})\n\n**Tutti i membri hanno risposto.**"
+            }
+        },
+        "event_create": {
+            "name": {
+                "en-US": "event_create",
+                "fr": "event_create",
+                "es-ES": "crear_evento",
+                "de": "event_erstellen",
+                "it": "crea_evento"
+            },
+            "description": {
+                "en-US": "Create a guild event manually.",
+                "fr": "Créer un événement de guilde manuellement.",
+                "es-ES": "Crear un evento de la guild manualmente.",
+                "de": "Erstelle manuell ein Gilden-Event.",
+                "it": "Crea un evento della gilda manualmente."
+            },
+            "event_name": {
+                "en-US": "Event Name",
+                "fr": "Nom de l'évènement",
+                "es-ES": "Nombre del evento",
+                "de": "Name des Ereignisses",
+                "it": "Nome dell'evento"
+            },
+            "event_date": {
+                "en-US": "Event Date (format: YYYY-MM-DD)",
+                "fr": "Date de l'évènement au format : YYYY-MM-DD",
+                "es-ES": "Fecha del evento (formato: YYYY-MM-DD)",
+                "de": "Datum des Ereignisses (Format: YYYY-MM-DD)",
+                "it": "Data dell'evento (formato: YYYY-MM-DD)"
+            },
+            "event_hour": {
+                "en-US": "Event Time (format: HH:MM)",
+                "fr": "Heure de l'évènement au format : HH:MM",
+                "es-ES": "Hora del evento (formato: HH:MM)",
+                "de": "Uhrzeit des Ereignisses (Format: HH:MM)",
+                "it": "Ora dell'evento (formato: HH:MM)"
+            },
+            "event_time": {
+                "en-US": "Event Duration (in minutes)",
+                "fr": "Temps de l'évènement en minutes",
+                "es-ES": "Duración del evento (en minutos)",
+                "de": "Dauer des Ereignisses (in Minuten)",
+                "it": "Durata dell'evento (in minuti)"
+            },
+            "status": {
+                "en-US": "Event Status",
+                "fr": "Statut de l'évènement",
+                "es-ES": "Estado del evento",
+                "de": "Status des Ereignisses",
+                "it": "Stato dell'evento"
+            },
+            "choices": {
+                "Planned": {
+                    "value": "Planned",
+                    "name_localizations": {
+                        "en-US": "Planned",
+                        "fr": "Planifié",
+                        "es-ES": "Planificado",
+                        "de": "Geplant",
+                        "it": "Pianificato"
+                    }
+                },
+                "Confirmed": {
+                    "value": "Confirmed",
+                    "name_localizations": {
+                        "en-US": "Confirmed",
+                        "fr": "Confirmé",
+                        "es-ES": "Confirmado",
+                        "de": "Bestätigt",
+                        "it": "Confermato"
+                    }
+                }
+            },
+            "dkp_value": {
+                "en-US": "DKP Value of the event",
+                "fr": "Valeur DKP de l'évènement",
+                "es-ES": "Valor DKP del evento",
+                "de": "DKP-Wert des Ereignisses",
+                "it": "Valore DKP dell'evento"
+            },
+            "dkp_ins": {
+                "en-US": "DKP Value for registration",
+                "fr": "Valeur DKP de l'inscription",
+                "es-ES": "Valor DKP por inscripción",
+                "de": "DKP-Wert für die Anmeldung",
+                "it": "Valore DKP per l'iscrizione"
+            },
+            "no_settings": {
+                "en-US": "❌ Guild configuration not found.",
+                "fr": "❌ Configuration de la guilde introuvable.",
+                "es-ES": "❌ Configuración de la guild no encontrada.",
+                "de": "❌ Gildenkonfiguration nicht gefunden.",
+                "it": "❌ Configurazione della gilda non trovata."
+            },
+            "date_ko": {
+                "en-US": "❌ Invalid date or time format. Expected YYYY-MM-DD and HH:MM.",
+                "fr": "❌ Format de date ou d'heure invalide. Format attendu : YYYY-MM-DD et HH:MM.",
+                "es-ES": "❌ Formato de fecha u hora no válido. Se espera YYYY-MM-DD y HH:MM.",
+                "de": "❌ Ungültiges Datum oder Uhrzeitformat. Erwartetes Format: YYYY-MM-DD und HH:MM.",
+                "it": "❌ Formato di data o ora non valido. Formato atteso: YYYY-MM-DD e HH:MM."
+            },
+            "no_events_canal": {
+                "en-US": "❌ Events channel not found.",
+                "fr": "❌ Canal des événements introuvable.",
+                "es-ES": "❌ Canal de eventos no encontrado.",
+                "de": "❌ Ereigniskanal nicht gefunden.",
+                "it": "❌ Canale degli eventi non trovato."
+            },
+            "error_event": {
+                "en-US": "❌ Error sending event announcement: {e}",
+                "fr": "❌ Erreur lors de l'envoi de l'annonce de l'événement : {e}",
+                "es-ES": "❌ Error al enviar el anuncio del evento: {e}",
+                "de": "❌ Fehler beim Senden der Ereignisankündigung: {e}",
+                "it": "❌ Errore durante l'invio dell'annuncio dell'evento: {e}"
+            },
+            "events_created": {
+                "en-US": "✅ Event {event_id} successfully created",
+                "fr": "✅ Événement {event_id} créé avec succès",
+                "es-ES": "✅ Evento {event_id} creado con éxito",
+                "de": "✅ Ereignis {event_id} erfolgreich erstellt",
+                "it": "✅ Evento {event_id} creato con successo"
+            },
+            "event_ko": {
+                "en-US": "❌ Error creating the event in the database: {e}",
+                "fr": "❌ Erreur lors de la création de l'événement en BDD: {e}",
+                "es-ES": "❌ Error al crear el evento en la base de datos: {e}",
+                "de": "❌ Fehler beim Erstellen des Ereignisses in der Datenbank: {e}",
+                "it": "❌ Errore durante la creazione dell'evento nel database: {e}"
+            }
+        }
+    }
+}
