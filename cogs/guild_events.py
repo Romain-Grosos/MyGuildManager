@@ -912,6 +912,15 @@ class GuildEvents(commands.Cog):
                         regs_obj = {"presence": [], "tentative": [], "absence": []}
                 
                 regs = set(regs_obj.get("presence", [])) | set(regs_obj.get("tentative", [])) | set(regs_obj.get("absence", []))
+
+                initial_members = event.get("initial_members", [])
+                if isinstance(initial_members, str):
+                    try:
+                        initial_members = json.loads(initial_members)
+                    except Exception as e:
+                        logging.error(f"Erreur lors du parsing de 'initial_members' pour l'événement {event['event_id']} : {e}", exc_info=True)
+                        initial_members = []
+                initial = set(initial_members)
                 
                 members_role_id = settings.get("members_role")
                 if members_role_id:
