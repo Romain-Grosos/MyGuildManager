@@ -9,28 +9,45 @@ CONTRACT_DATA = translations.get("contract", {})
 
 async def get_guild_event_channel(bot, guild_id):
     query = "SELECT events_channel FROM guild_channels WHERE guild_id = ?"
-    result = await bot.run_db_query(query, (guild_id,), fetch_one=True)
+    try:
+        result = await bot.run_db_query(query, (guild_id,), fetch_one=True)
+    except Exception as e:
+        logging.error(f"[ContractManager] Error retrieving event channel for guild {guild_id}: {e}", exc_info=True)
+        return None
     return result[0] if result else None
 
 async def get_guild_language(bot, guild_id):
     query = "SELECT guild_lang FROM guild_settings WHERE guild_id = ?"
-    result = await bot.run_db_query(query, (guild_id,), fetch_one=True)
+    try:
+        result = await bot.run_db_query(query, (guild_id,), fetch_one=True)
+    except Exception as e:
+        logging.error(f"[ContractManager] Error retrieving guild language for guild {guild_id}: {e}", exc_info=True)
+        return "en-US"
     return result[0] if result else "en-US"
 
 async def save_contract_message(bot, guild_id, message_id):
     query = "INSERT INTO contracts (guild_id, message_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE message_id = ?"
-    await bot.run_db_query(query, (guild_id, message_id, message_id), commit=True)
+    try:
+        await bot.run_db_query(query, (guild_id, message_id, message_id), commit=True)
+    except Exception as e:
+        logging.error(f"[ContractManager] Error saving contract message for guild {guild_id}: {e}", exc_info=True)
 
 async def load_contract_message(bot, guild_id):
     query = "SELECT message_id FROM contracts WHERE guild_id = ?"
-    result = await bot.run_db_query(query, (guild_id,), fetch_one=True)
+    try:
+        result = await bot.run_db_query(query, (guild_id,), fetch_one=True)
+    except Exception as e:
+        logging.error(f"[ContractManager] Error loading contract message for guild {guild_id}: {e}", exc_info=True)
+        return None
     return result[0] if result else None
 
 async def delete_contract_message(bot, guild_id):
     query = "DELETE FROM contracts WHERE guild_id = ?"
-    await bot.run_db_query(query, (guild_id,), commit=True)
+    try:
+        await bot.run_db_query(query, (guild_id,), commit=True)
+    except Exception as e:
+        logging.error(f"[ContractManager] Error deleting contract message for guild {guild_id}: {e}", exc_info=True)
 
-# Vue interactive pour la sélection des contrats
 class ContractSelect(discord.ui.View):
     def __init__(self, bot, author, guild_lang):
         super().__init__(timeout=600)
@@ -42,10 +59,8 @@ class ContractSelect(discord.ui.View):
             "dynamic_events": None,
             "open_dungeon": None
         }
-        # Récupérer les options depuis CONTRACT_DATA
         contracts_data = CONTRACT_DATA.get("options", {})
 
-        # --- Élimination de Monstres ---
         options_monster = []
         for option in contracts_data.get("monster_elimination", []):
             for key, value in option.items():
@@ -84,9 +99,8 @@ class ContractSelect(discord.ui.View):
             select_monster.callback = monster_callback
             self.add_item(select_monster)
         else:
-            logging.error("[ContractManager] ❌ No options found for 'monster_elimination' in translations.json.")
+            logging.error("[ContractManager] ❌ No options found for 'monster_elimination' in translations.")
 
-        # --- Évènements Dynamiques ---
         options_dynamic = []
         for option in contracts_data.get("dynamic_events", []):
             for key, value in option.items():
@@ -117,9 +131,8 @@ class ContractSelect(discord.ui.View):
             select_dynamic.callback = dynamic_callback
             self.add_item(select_dynamic)
         else:
-            logging.error("[ContractManager] ❌ No options found for 'dynamic_events' in translations.json.")
+            logging.error("[ContractManager] ❌ No options found for 'dynamic_events' in translations.")
 
-        # --- Donjon Ouvert ---
         options_dungeon = []
         for option in contracts_data.get("open_dungeon", []):
             for key, value in option.items():
@@ -150,9 +163,8 @@ class ContractSelect(discord.ui.View):
             select_dungeon.callback = dungeon_callback
             self.add_item(select_dungeon)
         else:
-            logging.error("[ContractManager] ❌ No options found for 'open_dungeon' in translations.json.")
+            logging.error("[ContractManager] ❌ No options found for 'open_dungeon' in translations.")
 
-        # --- Bouton de validation ---
         self.validate_button = discord.ui.Button(label="✅ OK", style=discord.ButtonStyle.success)
         async def validate_callback(interaction: discord.Interaction):
             if interaction.user != self.author:
@@ -171,7 +183,6 @@ class ContractSelect(discord.ui.View):
                     .get(self.guild_lang, "All selections must be made before validation.")
                 await interaction.response.send_message(error_required, ephemeral=True)
                 return
-            # Différer la réponse pour gagner du temps
             await interaction.response.defer(ephemeral=True)
             await self.post_event_message(interaction)
             success_msg = CONTRACT_DATA.get("user_messages", {})\
@@ -179,12 +190,10 @@ class ContractSelect(discord.ui.View):
                 .get("contract_published", {})\
                 .get(self.guild_lang, "Guild contract published successfully.")
             await interaction.followup.send(success_msg, ephemeral=True)
-            # Supprimer le message interactif
             try:
                 await interaction.message.delete()
             except Exception as e:
-                logging.error(f"[ContractManager] Erreur lors de la suppression du message interactif : {e}")
-                
+                logging.error(f"[ContractManager] Error deleting interactive message: {e}", exc_info=True)
         self.validate_button.callback = validate_callback
         self.add_item(self.validate_button)
 
@@ -197,9 +206,14 @@ class ContractSelect(discord.ui.View):
                 .get("errors", {})\
                 .get("no_channel", {})\
                 .get(self.guild_lang, "No event channel configured for this guild.")
-            await interaction.response.send_message(error_channel, ephemeral=True)
+            await interaction.followup.send(error_channel, ephemeral=True)
             return
-        channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+        try:
+            channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+        except Exception as e:
+            logging.error(f"[ContractManager] Error fetching channel {channel_id} for guild {guild_id}: {e}", exc_info=True)
+            await interaction.followup.send("Error fetching event channel.", ephemeral=True)
+            return
 
         contracts_data = CONTRACT_DATA.get("options", {})
         today_date = datetime.now().strftime("%d/%m/%Y")
@@ -224,16 +238,16 @@ class ContractSelect(discord.ui.View):
                         localized_label = option[selection].get(self.guild_lang, option[selection].get("en-US", selection))
                         break
                 description += f"### **{category_name}**\n{localized_label}\n\n"
-        description += f"\n*Publié par {self.author.display_name}*"
+        description += f"\n*Published by {self.author.display_name}*"
         title = CONTRACT_DATA.get("title", {}).get(self.guild_lang, "Guild Contracts")
         embed = discord.Embed(title=title, description=description, color=discord.Color.green())
-        event_message = await channel.send(embed=embed)
-
         try:
+            event_message = await channel.send(embed=embed)
             await save_contract_message(self.bot, guild_id, event_message.id)
             logging.debug(f"Contract message saved for guild {guild_id} with message ID {event_message.id}.")
         except Exception as e:
-            logging.debug(f"Failed to save contract message for guild {guild_id}: {e}")
+            logging.error(f"[ContractManager] Failed to post or save contract message for guild {guild_id}: {e}", exc_info=True)
+            return
 
         success_msg = CONTRACT_DATA.get("user_messages", {})\
             .get("notifications", {})\
@@ -241,13 +255,12 @@ class ContractSelect(discord.ui.View):
             .get(self.guild_lang, "Guild contract published successfully.")
         logging.info(success_msg)
 
-# Cog Contract avec commandes slash localisées
 class Contract(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @discord.slash_command(
-        name=CONTRACT_DATA.get("command", {}).get("name", {}).get("en-US", "contrat"),
+        name=CONTRACT_DATA.get("command", {}).get("name", {}).get("en-US", "contract"),
         description=CONTRACT_DATA.get("command", {}).get("description", {}).get("en-US", "Select and publish guild contracts."),
         name_localizations=CONTRACT_DATA.get("command", {}).get("name", {}),
         description_localizations=CONTRACT_DATA.get("command", {}).get("description", {})
@@ -264,7 +277,7 @@ class Contract(commands.Cog):
             return
         command_name = CONTRACT_DATA.get("command", {})\
             .get("name", {})\
-            .get(guild_lang, "Contrat")
+            .get(guild_lang, "Contract")
         command_name = command_name[0].upper() + command_name[1:]
         usage_msg = CONTRACT_DATA.get("user_messages", {})\
             .get("command_usage", {})\
@@ -288,7 +301,7 @@ class Contract(commands.Cog):
         try:
             await ctx.defer(ephemeral=True)
             if not ctx.guild:
-                await ctx.followup.send("Cette commande ne peut être utilisée que dans une guilde.", ephemeral=True)
+                await ctx.followup.send("This command can only be used in a guild.", ephemeral=True)
                 return
             guild_id = ctx.guild.id
             guild_lang = await get_guild_language(self.bot, guild_id)
@@ -300,7 +313,12 @@ class Contract(commands.Cog):
                     .get(guild_lang, "No event channel configured for this guild.")
                 await ctx.followup.send(error_channel, ephemeral=True)
                 return
-            channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+            try:
+                channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+            except Exception as e:
+                logging.error(f"[ContractManager] Error fetching channel {channel_id} for guild {guild_id}: {e}", exc_info=True)
+                await ctx.followup.send("Error fetching event channel.", ephemeral=True)
+                return
             message_id = await load_contract_message(self.bot, guild_id)
             if message_id:
                 try:
@@ -314,20 +332,24 @@ class Contract(commands.Cog):
                     logging.info(success_deleted)
                     await ctx.followup.send(success_deleted)
                 except discord.NotFound:
-                    logging.warning("⚠️ Contract already deleted.")
+                    logging.warning("[ContractManager] ⚠️ Contract already deleted.")
                     await ctx.followup.send("⚠️ Contract already deleted.", ephemeral=True)
             else:
                 await ctx.followup.send("❌ No contract to delete.", ephemeral=True)
         except Exception as e:
-            logging.error(f"[ContractManager] Erreur dans la commande /contrat_delete : {e}")
-            await ctx.followup.send("Une erreur est survenue lors de la suppression du contrat.", ephemeral=True)
+            logging.error(f"[ContractManager] Error in /contract_delete command: {e}", exc_info=True)
+            await ctx.followup.send("An error occurred while deleting the contract.", ephemeral=True)
 
     async def contrat_delete_cron(self):
         for guild in self.bot.guilds:
             guild_id = guild.id
             channel_id = await get_guild_event_channel(self.bot, guild_id)
             if channel_id:
-                channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+                try:
+                    channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+                except Exception as e:
+                    logging.error(f"[ContractManager] Error fetching channel {channel_id} for guild {guild_id}: {e}", exc_info=True)
+                    continue
                 message_id = await load_contract_message(self.bot, guild_id)
                 if message_id:
                     try:

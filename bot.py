@@ -1,7 +1,6 @@
 import discord
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from discord.ext import commands
 import config
 from translation import translations
 from db import run_db_query
@@ -25,7 +24,7 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
-logging.debug("[Bot] ✅ Logs initialisés avec rotation journalière.")
+logging.debug("[Bot] ✅ Log initialization with daily rotation.")
 
 # #################################################################################### #
 #                            Discord Bot Initialization
@@ -60,13 +59,13 @@ def load_extensions():
     for ext in extensions:
         try:
             bot.load_extension(ext)
-            logging.debug(f"[Bot] ✅ Extension chargée : {ext}")
+            logging.debug(f"[Bot] ✅ Extension loaded : {ext}")
         except Exception as e:
-            logging.error(f"[Bot] ❌ Échec de chargement de l'extension {ext}: {e}")
+            logging.exception(f"[Bot] ❌ Failed to load extension {ext}")
 
 if __name__ == "__main__":
     load_extensions()
     try:
         bot.run(config.TOKEN)
     except KeyboardInterrupt:
-        logging.info("[Bot] 🛑 Arrêt du bot demandée par l'utilisateur.")
+        logging.info("[Bot] 🛑 Bot shutdown requested by the user.")

@@ -20,11 +20,6 @@ except mariadb.Error as e:
     sys.exit(1)
 
 def get_connection():
-    """
-    Récupère une connexion depuis le pool. 
-    Notez que si une connexion existe déjà dans le pool, 
-    mariadb.connect() avec le même pool_name renverra une connexion du pool.
-    """
     return mariadb.connect(
         user=config.DB_USER,
         password=config.DB_PASS,
@@ -35,23 +30,31 @@ def get_connection():
     )
 
 async def run_db_query(query: str, params: tuple = (), commit: bool = False, fetch_one: bool = False, fetch_all: bool = False):
-    """
-    Exécute une requête de manière asynchrone en déléguant l'appel bloquant à un thread séparé.
-    Pour chaque requête, on obtient une connexion du pool et on la ferme après usage (renvoyée au pool).
-    """
     def _execute():
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(query, params)
-        result = None
-        if commit:
-            conn.commit()
-        elif fetch_one:
-            result = cursor.fetchone()
-        elif fetch_all:
-            result = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return result
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            result = None
+            if commit:
+                conn.commit()
+            elif fetch_one:
+                result = cursor.fetchone()
+            elif fetch_all:
+                result = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return result
+        except Exception as error:
+            logging.error(f"[DBManager] ❌ Query execution error: {error}")
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            try:
+                conn.close()
+            except Exception:
+                pass
+            raise
 
     return await asyncio.to_thread(_execute)
