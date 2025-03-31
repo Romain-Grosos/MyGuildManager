@@ -128,7 +128,7 @@ class GuildMembers(commands.Cog):
         query = """
             SELECT guild_id, user_id, pseudo, locale, gs, weapons
             FROM user_setup
-            WHERE motif = 'membre'
+            WHERE motif IN ('membre', 'postulation')
         """
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)

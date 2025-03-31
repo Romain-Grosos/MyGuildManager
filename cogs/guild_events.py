@@ -58,7 +58,6 @@ class GuildEvents(commands.Cog):
             rows = await self.bot.run_db_query(query, fetch_all=True)
             self.events_calendar = {}
             for row in rows:
-                # On suppose que la structure est exactement : game_id, day, time, duree, dkp_value, dkp_ins, week, name
                 game_id, day, time_str, duree, dkp_value, dkp_ins, week, name = row
                 game_id = int(game_id)
                 event = {
@@ -912,20 +911,21 @@ class GuildEvents(commands.Cog):
                         logging.error(f"Erreur lors du parsing de 'registrations' pour l'événement {event['event_id']} : {e}", exc_info=True)
                         regs_obj = {"presence": [], "tentative": [], "absence": []}
                 
-                regs = set(regs_obj.get("presence", [])) | \
-                    set(regs_obj.get("tentative", [])) | \
-                    set(regs_obj.get("absence", []))
+                regs = set(regs_obj.get("presence", [])) | set(regs_obj.get("tentative", [])) | set(regs_obj.get("absence", []))
                 
-                initial_members = event.get("initial_members", [])
-                if isinstance(initial_members, str):
-                    try:
-                        initial_members = json.loads(initial_members)
-                    except Exception as e:
-                        logging.error(f"Erreur lors du parsing de 'initial_members' pour l'événement {event['event_id']} : {e}", exc_info=True)
-                        initial_members = []
-                initial = set(initial_members)
+                members_role_id = settings.get("members_role")
+                if members_role_id:
+                    role = guild.get_role(int(members_role_id))
+                    if role:
+                        current_members = {member.id for member in guild.members if role in member.roles}
+                    else:
+                        current_members = set()
+                else:
+                    current_members = set()
                 
-                to_remind = list(initial - regs)
+                updated_initial = current_members
+
+                to_remind = list(updated_initial - regs)
 
                 reminded = []
                 event_link = f"https://discord.com/channels/{guild.id}/{events_channel.id}/{event['event_id']}"
