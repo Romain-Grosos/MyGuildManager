@@ -45,9 +45,9 @@ class GuildEvents(commands.Cog):
                     "premium": premium,
                     "war_channel": voice_war_channel
                 }
-            logging.debug(f"[GuildEvents] Chargement réussi : {self.guild_settings}")
+            logging.debug(f"[GuildEvents] Successfully loaded guild settings: {self.guild_settings}")
         except Exception as e:
-            logging.error(f"[GuildEvents] Erreur lors du chargement : {e}", exc_info=True)
+            logging.error(f"[GuildEvents] Error loading guild settings: {e}", exc_info=True)
 
     async def load_events_calendar(self) -> None:
         query = """
@@ -72,9 +72,9 @@ class GuildEvents(commands.Cog):
                 if game_id not in self.events_calendar:
                     self.events_calendar[game_id] = []
                 self.events_calendar[game_id].append(event)
-            logging.debug(f"[GuildEvents] Calendrier des événements chargé : {self.events_calendar}")
+            logging.debug(f"[GuildEvents] Events calendar loaded: {self.events_calendar}")
         except Exception as e:
-            logging.error(f"[GuildEvents] Erreur lors du chargement du calendrier des événements : {e}", exc_info=True)
+            logging.error(f"[GuildEvents] Error loading events calendar: {e}", exc_info=True)
 
     async def load_events_data(self) -> None:
         query = """
@@ -107,7 +107,7 @@ class GuildEvents(commands.Cog):
                 }
             logging.debug(f"[GuildEvents] Events data loaded: {self.events_data}")
         except Exception as e:
-            logging.error(f"[GuildEvents] Error loading events_data: {e}", exc_info=True)
+            logging.error(f"[GuildEvents] Error loading events data: {e}", exc_info=True)
 
     async def load_guild_members(self) -> None:
         query = "SELECT guild_id, member_id, classe FROM guild_members"
@@ -121,9 +121,9 @@ class GuildEvents(commands.Cog):
                 if guild_id not in self.guild_members_cache:
                     self.guild_members_cache[guild_id] = {}
                 self.guild_members_cache[guild_id][member_id] = member_class
-            logging.debug(f"Guild members cache loaded: {self.guild_members_cache}")
+            logging.debug(f"[GuildEvents] Guild members cache loaded: {self.guild_members_cache}")
         except Exception as e:
-            logging.error("Erreur lors du chargement du cache des membres de guilde", exc_info=True)
+            logging.error("Error loading guild members cache", exc_info=True)
 
     def get_next_date_for_day(self, day_name: str, event_time_value, tz, tomorrow_only: bool = False) -> Optional[datetime]:
         if isinstance(event_time_value, timedelta):
@@ -140,7 +140,7 @@ class GuildEvents(commands.Cog):
         else:
             event_time_str = "21:00"
 
-        jours = {
+        days = {
             "monday": 0,
             "tuesday": 1,
             "wednesday": 2,
@@ -150,27 +150,30 @@ class GuildEvents(commands.Cog):
             "sunday": 6
         }
         day_key = day_name.lower()
-        if day_key not in jours:
-            logging.error(f"Jour invalide: {day_name}")
+        if day_key not in days:
+            logging.debug(f"Invalid day: {day_name}")
             return None
-        target_weekday = jours[day_key]
+        target_weekday = days[day_key]
 
         now = datetime.now(tz)
-        current_weekday = now.weekday()
-        days_ahead = target_weekday - current_weekday
-        if days_ahead < 0 or (days_ahead == 0 and now.strftime("%H:%M") >= event_time_str):
-            days_ahead += 7
-        event_date = now.date() + timedelta(days=days_ahead)
 
         if tomorrow_only:
             tomorrow = now.date() + timedelta(days=1)
-            if event_date != tomorrow:
+            if tomorrow.weekday() != target_weekday:
+                logging.debug(f"Event day '{day_name}' is not scheduled for tomorrow ({tomorrow}). Skipping.")
                 return None
+            event_date = tomorrow
+        else:
+            current_weekday = now.weekday()
+            days_ahead = target_weekday - current_weekday
+            if days_ahead < 0 or (days_ahead == 0 and now.strftime("%H:%M") >= event_time_str):
+                days_ahead += 7
+            event_date = now.date() + timedelta(days=days_ahead)
 
         try:
             hour, minute = map(int, event_time_str.split(":"))
         except Exception as e:
-            logging.error(f"Erreur de parsing de l'heure '{event_time_str}': {e}")
+            logging.error(f"Error parsing time '{event_time_str}': {e}")
             hour, minute = 0, 0
 
         naive_dt = datetime.combine(event_date, dt_time(hour, minute))
@@ -183,211 +186,219 @@ class GuildEvents(commands.Cog):
                 if guild:
                     try:
                         await self.create_events_for_guild(guild)
-                        logging.info(f"[GuildEvents] Événements créés pour la guilde premium {guild_id}.")
+                        logging.info(f"[GuildEvents] Events created for premium guild {guild_id}.")
                     except Exception as e:
-                        logging.exception(f"[GuildEvents] Erreur lors de la création d'événements pour la guilde {guild_id} : {e}")
+                        logging.exception(f"[GuildEvents] Error creating events for guild {guild_id}: {e}")
                 else:
-                    logging.error(f"❌ [GuildEvents] Guilde {guild_id} introuvable.")
+                    logging.error(f"❌ [GuildEvents] Guild {guild_id} not found.")
         await self.load_events_data()
 
     async def create_events_for_guild(self, guild: discord.Guild) -> None:
         guild_id = guild.id
-
         settings = self.guild_settings.get(guild_id)
         if not settings:
-            logging.error(f"[GuildEvents] Aucune configuration pour la guilde {guild_id}.")
+            logging.error(f"[GuildEvents] No configuration for guild {guild_id}.")
             return
 
         guild_lang = settings.get("guild_lang")
         events_channel = guild.get_channel(settings.get("events_channel"))
         conference_channel = guild.get_channel(settings.get("war_channel"))
         if not events_channel:
-            logging.error(f"[GuildEvents] Canal des événements introuvable pour la guilde {guild_id}.")
+            logging.error(f"[GuildEvents] Events channel not found for guild {guild_id}.")
             return
         if not conference_channel:
-            logging.error(f"[GuildEvents] Canal de conférence introuvable pour la guilde {guild_id}.")
+            logging.error(f"[GuildEvents] Conference channel not found for guild {guild_id}.")
             return
 
         try:
             game_id = int(settings.get("guild_game"))
         except Exception as e:
-            logging.error(f"[GuildEvents] Erreur lors de la conversion du guild_game pour la guilde {guild_id}: {e}")
+            logging.error(f"[GuildEvents] Error converting guild_game for guild {guild_id}: {e}")
             return
 
         calendar = self.events_calendar.get(game_id, [])
         if not calendar:
-            logging.info(f"[GuildEvents] Aucun événement défini dans le calendrier pour le game_id {game_id}.")
+            logging.info(f"[GuildEvents] No events defined in calendar for game_id {game_id}.")
             return
 
         tz = pytz.timezone("Europe/Paris")
         for cal_event in calendar:
-            day = cal_event.get("day")
-            event_time_str = cal_event.get("time", "21:00")
-            start_time = self.get_next_date_for_day(day, event_time_str, tz, tomorrow_only=True)
-            if not start_time:
-                logging.error(f"[GuildEvents] Jour invalide: {day} pour la guilde {guild_id}.")
-                continue
-
             try:
-                duration_minutes = int(cal_event.get("duree", 60))
-            except:
-                duration_minutes = 60
-            end_time = start_time + timedelta(minutes=duration_minutes)
-
-            week_setting = cal_event.get("week", "all")
-            if week_setting != "all":
-                week_number = start_time.isocalendar()[1]
-                if week_setting == "odd" and week_number % 2 == 0:
-                    logging.info(f"[GuildEvents] L'événement {cal_event.get('name')} n'est pas prévu cette semaine (pair).")
-                    continue
-                elif week_setting == "even" and week_number % 2 != 0:
-                    logging.info(f"[GuildEvents] L'événement {cal_event.get('name')} n'est pas prévu cette semaine (impair).")
+                day = cal_event.get("day")
+                event_time_str = cal_event.get("time", "21:00")
+                start_time = self.get_next_date_for_day(day, event_time_str, tz, tomorrow_only=True)
+                if not start_time:
+                    logging.debug(f"[GuildEvents] Skipping event for day '{day}' in guild {guild_id} (not scheduled for tomorrow).")
                     continue
 
-            event_key = cal_event.get("name")
-            event_info = GUILD_EVENTS["events_infos"].get(event_key)
-            if event_info:
-                event_name = event_info.get(guild_lang, event_info.get("en-US"))
-            else:
-                event_name = event_key
+                try:
+                    duration_minutes = int(cal_event.get("duree", 60))
+                except:
+                    duration_minutes = 60
+                end_time = start_time + timedelta(minutes=duration_minutes)
 
-            event_date = GUILD_EVENTS["events_infos"]["date"].get(guild_lang,GUILD_EVENTS["events_infos"]["date"].get("en-US"))
-            event_hour = GUILD_EVENTS["events_infos"]["hour"].get(guild_lang,GUILD_EVENTS["events_infos"]["hour"].get("en-US"))
-            event_duration = GUILD_EVENTS["events_infos"]["duration"].get(guild_lang,GUILD_EVENTS["events_infos"]["duration"].get("en-US"))
-            event_status = GUILD_EVENTS["events_infos"]["status"].get(guild_lang,GUILD_EVENTS["events_infos"]["status"].get("en-US"))
-            event_dkp_v = GUILD_EVENTS["events_infos"]["dkp_v"].get(guild_lang,GUILD_EVENTS["events_infos"]["dkp_v"].get("en-US"))
-            event_dkp_i = GUILD_EVENTS["events_infos"]["dkp_i"].get(guild_lang,GUILD_EVENTS["events_infos"]["dkp_i"].get("en-US"))
-            event_present = GUILD_EVENTS["events_infos"]["present"].get(guild_lang,GUILD_EVENTS["events_infos"]["present"].get("en-US"))
-            event_attempt = GUILD_EVENTS["events_infos"]["attempt"].get(guild_lang,GUILD_EVENTS["events_infos"]["attempt"].get("en-US"))
-            event_absence = GUILD_EVENTS["events_infos"]["absence"].get(guild_lang,GUILD_EVENTS["events_infos"]["absence"].get("en-US"))
-            event_voice_channel = GUILD_EVENTS["events_infos"]["voice_channel"].get(guild_lang,GUILD_EVENTS["events_infos"]["voice_channel"].get("en-US"))
-            event_groups = GUILD_EVENTS["events_infos"]["groups"].get(guild_lang,GUILD_EVENTS["events_infos"]["groups"].get("en-US"))
-            event_auto_grouping = GUILD_EVENTS["events_infos"]["auto_grouping"].get(guild_lang,GUILD_EVENTS["events_infos"]["auto_grouping"].get("en-US"))
+                week_setting = cal_event.get("week", "all")
+                if week_setting != "all":
+                    week_number = start_time.isocalendar()[1]
+                    if week_setting == "odd" and week_number % 2 == 0:
+                        logging.info(f"[GuildEvents] Event {cal_event.get('name')} not scheduled this week (even).")
+                        continue
+                    elif week_setting == "even" and week_number % 2 != 0:
+                        logging.info(f"[GuildEvents] Event {cal_event.get('name')} not scheduled this week (odd).")
+                        continue
 
-            statut = GUILD_EVENTS["events_infos"]["status_planified"].get(guild_lang,GUILD_EVENTS["events_infos"]["status_planified"].get("en-US"))
-            statut_db = GUILD_EVENTS["events_infos"]["status_planified"].get("en-US")
-            description = GUILD_EVENTS["events_infos"]["description"].get(guild_lang,GUILD_EVENTS["events_infos"]["description"].get("en-US"))
+                event_key = cal_event.get("name")
+                event_info = GUILD_EVENTS["events_infos"].get(event_key)
+                event_name = event_info.get(guild_lang, event_info.get("en-US")) if event_info else event_key
+                event_date = GUILD_EVENTS["events_infos"]["date"].get(guild_lang,GUILD_EVENTS["events_infos"]["date"].get("en-US"))
+                event_hour = GUILD_EVENTS["events_infos"]["hour"].get(guild_lang,GUILD_EVENTS["events_infos"]["hour"].get("en-US"))
+                event_duration = GUILD_EVENTS["events_infos"]["duration"].get(guild_lang,GUILD_EVENTS["events_infos"]["duration"].get("en-US"))
+                event_status = GUILD_EVENTS["events_infos"]["status"].get(guild_lang,GUILD_EVENTS["events_infos"]["status"].get("en-US"))
+                event_dkp_v = GUILD_EVENTS["events_infos"]["dkp_v"].get(guild_lang,GUILD_EVENTS["events_infos"]["dkp_v"].get("en-US"))
+                event_dkp_i = GUILD_EVENTS["events_infos"]["dkp_i"].get(guild_lang,GUILD_EVENTS["events_infos"]["dkp_i"].get("en-US"))
+                event_present = GUILD_EVENTS["events_infos"]["present"].get(guild_lang,GUILD_EVENTS["events_infos"]["present"].get("en-US"))
+                event_attempt = GUILD_EVENTS["events_infos"]["attempt"].get(guild_lang,GUILD_EVENTS["events_infos"]["attempt"].get("en-US"))
+                event_absence = GUILD_EVENTS["events_infos"]["absence"].get(guild_lang,GUILD_EVENTS["events_infos"]["absence"].get("en-US"))
+                event_voice_channel = GUILD_EVENTS["events_infos"]["voice_channel"].get(guild_lang,GUILD_EVENTS["events_infos"]["voice_channel"].get("en-US"))
+                event_groups = GUILD_EVENTS["events_infos"]["groups"].get(guild_lang,GUILD_EVENTS["events_infos"]["groups"].get("en-US"))
+                event_auto_grouping = GUILD_EVENTS["events_infos"]["auto_grouping"].get(guild_lang,GUILD_EVENTS["events_infos"]["auto_grouping"].get("en-US"))
 
-            try:
-                embed = discord.Embed(
-                    title=event_name,
-                    description=description,
-                    color=discord.Color.blue()
-                )
-                embed.add_field(name=event_date, value=start_time.strftime("%d-%m-%Y"), inline=True)
-                embed.add_field(name=event_hour, value=start_time.strftime("%H:%M"), inline=True)
-                embed.add_field(name=event_duration, value=f"{duration_minutes}", inline=True)
-                embed.add_field(name=event_status, value=statut, inline=True)
-                embed.add_field(name=event_dkp_v, value=str(cal_event.get("dkp_value", 0)), inline=True)
-                embed.add_field(name=event_dkp_i, value=str(cal_event.get("dkp_ins", 0)), inline=True)
-                embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value="Aucun", inline=False)
-                embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value="Aucun", inline=False)
-                embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value="Aucun", inline=False)
-                conference_link = f"https://discord.com/channels/{guild.id}/{conference_channel.id}"
-                embed.add_field(name=event_voice_channel, value=f"[🏹 WAR]({conference_link})", inline=False)
-                embed.add_field(name=event_groups, value=event_auto_grouping, inline=False)
-                announcement = await events_channel.send(embed=embed)
-                message_link = f"https://discord.com/channels/{guild.id}/{announcement.channel.id}/{announcement.id}"
-                embed.set_footer(text=f"Event ID = {announcement.id}")
-                await announcement.edit(embed=embed)
-                await announcement.add_reaction("<:_yes_:1340109996666388570>")
-                await announcement.add_reaction("<:_attempt_:1340110058692018248>")
-                await announcement.add_reaction("<:_no_:1340110124521357313>")
-            except Exception as e:
-                logging.error(f"[GuildEvents] Erreur lors de l'envoi du message d'annonce: {e}")
-                continue
+                status = GUILD_EVENTS["events_infos"]["status_planified"].get(guild_lang,GUILD_EVENTS["events_infos"]["status_planified"].get("en-US"))
+                status_db = GUILD_EVENTS["events_infos"]["status_planified"].get("en-US")
+                description = GUILD_EVENTS["events_infos"]["description"].get(guild_lang,GUILD_EVENTS["events_infos"]["description"].get("en-US"))
 
-            try:
-                description_scheduled = GUILD_EVENTS["events_infos"]["description_scheduled"].get(guild_lang,GUILD_EVENTS["events_infos"]["description_scheduled"].get("en-US")).format(link=message_link)
-                scheduled_event = await guild.create_scheduled_event(
-                    name=event_name,
-                    description=description_scheduled,
-                    start_time=start_time,
-                    end_time=end_time,
-                    location=conference_channel
-                )
-            except discord.Forbidden:
-                logging.error(f"[GuildEvents] Permissions insuffisantes pour créer l'événement dans la guilde {guild_id}.")
-                continue
-            except discord.HTTPException as e:
-                logging.error(f"[GuildEvents] Erreur HTTP lors de la création de l'événement dans la guilde {guild_id}: {e}")
-                continue
+                try:
+                    embed = discord.Embed(
+                        title=event_name,
+                        description=description,
+                        color=discord.Color.blue()
+                    )
+                    embed.add_field(name=event_date, value=start_time.strftime("%d-%m-%Y"), inline=True)
+                    embed.add_field(name=event_hour, value=start_time.strftime("%H:%M"), inline=True)
+                    embed.add_field(name=event_duration, value=f"{duration_minutes}", inline=True)
+                    embed.add_field(name=event_status, value=status, inline=True)
+                    embed.add_field(name=event_dkp_v, value=str(cal_event.get("dkp_value", 0)), inline=True)
+                    embed.add_field(name=event_dkp_i, value=str(cal_event.get("dkp_ins", 0)), inline=True)
+                    embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value="Aucun", inline=False)
+                    embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value="Aucun", inline=False)
+                    embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value="Aucun", inline=False)
+                    conference_link = f"https://discord.com/channels/{guild.id}/{conference_channel.id}"
+                    embed.add_field(name=event_voice_channel, value=f"[🏹 WAR]({conference_link})", inline=False)
+                    embed.add_field(name=event_groups, value=event_auto_grouping, inline=False)
+                except Exception as e:
+                    logging.error(f"[GuildEvents] Error building embed for event '{event_name}': {e}", exc_info=True)
+                    continue
 
-            members_role_id = settings.get("members_role")
-            if members_role_id:
-                role = guild.get_role(int(members_role_id))
-                if role:
-                    # Filtrer les membres possédant le rôle
-                    initial_members = [member.id for member in guild.members if role in member.roles]
-                else:
+                try:
+                    announcement = await events_channel.send(embed=embed)
+                    logging.debug(f"[GuildEvents - event_create] Announcement sent: id={announcement.id} in channel {announcement.channel.id}")
+                    message_link = f"https://discord.com/channels/{guild.id}/{announcement.channel.id}/{announcement.id}"
+                    embed.set_footer(text=f"Event ID = {announcement.id}")
+                    await announcement.edit(embed=embed)
+                    await announcement.add_reaction("<:_yes_:1340109996666388570>")
+                    await announcement.add_reaction("<:_attempt_:1340110058692018248>")
+                    await announcement.add_reaction("<:_no_:1340110124521357313>")
+                except Exception as e:
+                    logging.error(f"[GuildEvents - event_create] Error sending announcement message: {e}", exc_info=True)
+                    continue
+
+                try:
+                    description_scheduled = GUILD_EVENTS["events_infos"]["description_scheduled"].get(guild_lang,GUILD_EVENTS["events_infos"]["description_scheduled"].get("en-US")).format(link=message_link)
+                    scheduled_event = await guild.create_scheduled_event(
+                        name=event_name,
+                        description=description_scheduled,
+                        start_time=start_time,
+                        end_time=end_time,
+                        location=conference_channel
+                    )
+                    logging.debug(f"[GuildEvents - event_create] Scheduled event created: {scheduled_event.id if scheduled_event else 'None'}")
+                except discord.Forbidden:
+                    logging.error(f"[GuildEvents] Insufficient permissions to create scheduled event in guild {guild_id}.")
+                    continue
+                except discord.HTTPException as e:
+                    logging.error(f"[GuildEvents] HTTP error creating scheduled event in guild {guild_id}: {e}")
+                    continue
+
+                try:
+                    members_role_id = settings.get("members_role")
+                    if members_role_id:
+                        role = guild.get_role(int(members_role_id))
+                        if role:
+                            initial_members = [member.id for member in guild.members if role in member.roles]
+                        else:
+                            initial_members = []
+                    else:
+                        initial_members = []
+                except Exception as e:
+                    logging.error(f"[GuildEvents] Error determining initial members for guild {guild_id}: {e}", exc_info=True)
                     initial_members = []
-            else:
-                initial_members = []
 
-            record = {
-                "guild_id": guild_id,
-                "event_id": announcement.id,
-                "game_id": settings.get("guild_game"),
-                "name": event_name,
-                "event_date": start_time.strftime("%Y-%m-%d"),
-                "event_time": start_time.strftime("%H:%M:%S"),
-                "duration": duration_minutes,
-                "dkp_value": cal_event.get("dkp_value", 0),
-                "dkp_ins": cal_event.get("dkp_ins", 0),
-                "status": statut_db,
-                "initial_members": json.dumps(initial_members),
-                "registrations": json.dumps({"presence": [], "tentative": [], "absence": []}),
-                "actual_presence": json.dumps([])
-            }
+                record = {
+                    "guild_id": guild_id,
+                    "event_id": announcement.id,
+                    "game_id": settings.get("guild_game"),
+                    "name": event_name,
+                    "event_date": start_time.strftime("%Y-%m-%d"),
+                    "event_time": start_time.strftime("%H:%M:%S"),
+                    "duration": duration_minutes,
+                    "dkp_value": cal_event.get("dkp_value", 0),
+                    "dkp_ins": cal_event.get("dkp_ins", 0),
+                    "status": status_db,
+                    "initial_members": json.dumps(initial_members),
+                    "registrations": json.dumps({"presence": [], "tentative": [], "absence": []}),
+                    "actual_presence": json.dumps([])
+                }
 
-            query = """
-            INSERT INTO events_data (
-                guild_id,
-                event_id,
-                game_id,
-                name,
-                event_date,
-                event_time,
-                duration,
-                dkp_value,
-                dkp_ins,
-                status,
-                initial_members,
-                registrations,
-                actual_presence
-            ) VALUES (
-                %(guild_id)s,
-                %(event_id)s,
-                %(game_id)s,
-                %(name)s,
-                %(event_date)s,
-                %(event_time)s,
-                %(duration)s,
-                %(dkp_value)s,
-                %(dkp_ins)s,
-                %(status)s,
-                %(initial_members)s,
-                %(registrations)s,
-                %(actual_presence)s
-            )
-            ON DUPLICATE KEY UPDATE
-                game_id = VALUES(game_id),
-                name = VALUES(name),
-                event_date = VALUES(event_date),
-                event_time = VALUES(event_time),
-                duration = VALUES(duration),
-                dkp_value = VALUES(dkp_value),
-                dkp_ins = VALUES(dkp_ins),
-                status = VALUES(status),
-                initial_members = VALUES(initial_members),
-                registrations = VALUES(registrations),
-                actual_presence = VALUES(actual_presence)
-            """
-            try:
-                await self.bot.run_db_query(query, record)
-                logging.info(f"[GuildEvents] Enregistrement de l'événement en BDD réussi : {announcement.id}")
-            except Exception as e:
-                logging.error(f"[GuildEvents] Erreur lors de l'enregistrement en BDD pour la guilde {guild_id} : {e}")
+                query = """
+                INSERT INTO events_data (
+                    guild_id,
+                    event_id,
+                    game_id,
+                    name,
+                    event_date,
+                    event_time,
+                    duration,
+                    dkp_value,
+                    dkp_ins,
+                    status,
+                    initial_members,
+                    registrations,
+                    actual_presence
+                ) VALUES (
+                    %(guild_id)s,
+                    %(event_id)s,
+                    %(game_id)s,
+                    %(name)s,
+                    %(event_date)s,
+                    %(event_time)s,
+                    %(duration)s,
+                    %(dkp_value)s,
+                    %(dkp_ins)s,
+                    %(status)s,
+                    %(initial_members)s,
+                    %(registrations)s,
+                    %(actual_presence)s
+                )
+                ON DUPLICATE KEY UPDATE
+                    game_id = VALUES(game_id),
+                    name = VALUES(name),
+                    event_date = VALUES(event_date),
+                    event_time = VALUES(event_time),
+                    duration = VALUES(duration),
+                    dkp_value = VALUES(dkp_value),
+                    dkp_ins = VALUES(dkp_ins),
+                    status = VALUES(status),
+                    initial_members = VALUES(initial_members),
+                    registrations = VALUES(registrations),
+                    actual_presence = VALUES(actual_presence)
+                """
+                try:
+                    await self.bot.run_db_query(query, record)
+                    logging.info(f"[GuildEvents - create_events] Event saved in DB successfully: {announcement.id}")
+                except Exception as e:
+                    logging.error(f"[GuildEvents - create_events] Error saving event in DB for guild {guild_id}: {e}")
+            except Exception as outer_e:
+                logging.error(f"[GuildEvents] Unexpected error in create_events_for_guild for guild {guild_id}: {outer_e}", exc_info=True)
 
     @discord.slash_command(
         name=GUILD_EVENTS.get("event_confirm", {}).get("name", {}).get("en-US", "event_confirm"),
@@ -430,9 +441,9 @@ class GuildEvents(commands.Cog):
         try:
             await self.bot.run_db_query(query, ("Confirmed", guild.id, event_id), commit=True)
             target_event["status"] = "Confirmed"
-            logging.info(f"[GuildEvents] Statut de l'événement {event_id} mis à jour à 'Confirmed' pour la guilde {guild.id}.")
+            logging.info(f"[GuildEvents] Event {event_id} status updated to 'Confirmed' for guild {guild.id}.")
         except Exception as e:
-            logging.error(f"[GuildEvents] Erreur lors de la mise à jour du statut de l'événement {event_id} pour la guilde {guild.id} : {e}", exc_info=True)
+            logging.error(f"[GuildEvents] Error updating event {event_id} status for guild {guild.id}: {e}", exc_info=True)
 
         events_channel = guild.get_channel(settings.get("events_channel"))
         if not events_channel:
@@ -457,18 +468,18 @@ class GuildEvents(commands.Cog):
 
         status_key   = GUILD_EVENTS["events_infos"]["status"].get(guild_locale, GUILD_EVENTS["events_infos"]["status"].get("en-US")).lower()
         status_name  = GUILD_EVENTS["events_infos"]["status"].get(guild_locale, GUILD_EVENTS["events_infos"]["status"].get("en-US"))
-        statut_localized = GUILD_EVENTS["event_confirm"]["confirmed"].get(guild_locale,GUILD_EVENTS["event_confirm"]["confirmed"].get("en-US"))
+        status_localized = GUILD_EVENTS["event_confirm"]["confirmed"].get(guild_locale,GUILD_EVENTS["event_confirm"]["confirmed"].get("en-US"))
 
         new_fields = []
-        statut_found = False
+        status_found = False
         for field in new_embed.fields:
             if field.name.lower() == status_key:
-                new_fields.append({"name": status_name, "value": statut_localized, "inline": field.inline})
-                statut_found = True
+                new_fields.append({"name": status_name, "value": status_localized, "inline": field.inline})
+                status_found = True
             else:
                 new_fields.append({"name": field.name, "value": field.value, "inline": field.inline})
-        if not statut_found:
-            new_fields.append({"name": status_name, "value": statut_localized, "inline": False})
+        if not status_found:
+            new_fields.append({"name": status_name, "value": status_localized, "inline": False})
         new_embed.clear_fields()
         for field in new_fields:
             new_embed.add_field(name=field["name"], value=field["value"], inline=field["inline"])
@@ -476,10 +487,7 @@ class GuildEvents(commands.Cog):
         try:
             members_role = settings.get("members_role")
             update_message = GUILD_EVENTS["event_confirm"]["confirmed_notif"].get(user_locale,GUILD_EVENTS["event_confirm"]["confirmed_notif"].get("en-US")).format(role=members_role)
-            await message.edit(
-                content=update_message,
-                embed=new_embed
-            )
+            await message.edit(content=update_message,embed=new_embed)
             follow_message = GUILD_EVENTS["event_confirm"]["event_updated"].get(user_locale,GUILD_EVENTS["event_confirm"]["event_updated"].get("en-US")).format(event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
@@ -489,7 +497,7 @@ class GuildEvents(commands.Cog):
 
     @event_confirm.error
     async def event_confirm_error(self, ctx, error):
-        logging.error(f"❌ [GuildEvents] event_confirm: {error}")
+        logging.error(f"❌ [GuildEvents] event_confirm error: {error}")
         follow_message = GUILD_EVENTS["event_confirm"]["event_ko"].get(ctx.locale,GUILD_EVENTS["event_confirm"]["event_ko"].get("en-US")).format(error=error)
         await ctx.send(follow_message, delete_after=10)
 
@@ -534,9 +542,9 @@ class GuildEvents(commands.Cog):
         try:
             await self.bot.run_db_query(query, ("Canceled", guild.id, event_id_int), commit=True)
             target_event["status"] = "Canceled"
-            logging.info(f"[GuildEvents] Statut de l'événement {event_id_int} mis à jour à 'Canceled' pour la guilde {guild.id}.")
+            logging.info(f"[GuildEvents] Event {event_id_int} status updated to 'Canceled' for guild {guild.id}.")
         except Exception as e:
-            logging.error(f"[GuildEvents] Erreur lors de la mise à jour du statut de l'événement {event_id_int} pour la guilde {guild.id} : {e}", exc_info=True)
+            logging.error(f"[GuildEvents] Error updating status for event {event_id_int} in guild {guild.id}: {e}", exc_info=True)
 
         events_channel = guild.get_channel(settings.get("events_channel"))
         if not events_channel:
@@ -554,7 +562,7 @@ class GuildEvents(commands.Cog):
         try:
             await message.clear_reactions()
         except Exception as e:
-            logging.error(f"❌ [ERROR] event_cancel (clear_reactions): {e}")
+            logging.error(f"❌ [GuildEvents] Error clearing reactions in event_cancel: {e}", exc_info=True)
 
         if not message.embeds:
             follow_message = GUILD_EVENTS["event_cancel"]["no_events_message_embed"].get(user_locale,GUILD_EVENTS["event_cancel"]["no_events_message_embed"].get("en-US"))
@@ -566,7 +574,7 @@ class GuildEvents(commands.Cog):
 
         status_key   = GUILD_EVENTS["events_infos"]["status"].get(guild_locale, GUILD_EVENTS["events_infos"]["status"].get("en-US")).lower()
         status_name  = GUILD_EVENTS["events_infos"]["status"].get(guild_locale, GUILD_EVENTS["events_infos"]["status"].get("en-US"))
-        statut_localized = GUILD_EVENTS["event_cancel"]["canceled"].get(guild_locale,GUILD_EVENTS["event_cancel"]["canceled"].get("en-US"))
+        status_localized = GUILD_EVENTS["event_cancel"]["canceled"].get(guild_locale,GUILD_EVENTS["event_cancel"]["canceled"].get("en-US"))
         present_key   = GUILD_EVENTS["events_infos"]["present"].get(guild_locale, GUILD_EVENTS["events_infos"]["present"].get("en-US")).lower()
         tentative_key = GUILD_EVENTS["events_infos"]["attempt"].get(guild_locale, GUILD_EVENTS["events_infos"]["attempt"].get("en-US")).lower()
         absence_key   = GUILD_EVENTS["events_infos"]["absence"].get(guild_locale, GUILD_EVENTS["events_infos"]["absence"].get("en-US")).lower()
@@ -584,7 +592,7 @@ class GuildEvents(commands.Cog):
                 field_name in [dkp_v_key, dkp_i_key, groups_key, chan_key]):
                 continue
             elif field_name == status_key:
-                new_fields.append({"name": status_name, "value": statut_localized, "inline": False})
+                new_fields.append({"name": status_name, "value": status_localized, "inline": False})
             else:
                 new_fields.append({"name": field.name, "value": field.value, "inline": field.inline})
         embed.clear_fields()
@@ -602,26 +610,26 @@ class GuildEvents(commands.Cog):
 
     @event_cancel.error
     async def event_cancel_error(self, ctx, error):
-        logging.error(f"❌ [GuildEvents] event_cancel: {error}")
+        logging.error(f"❌ [GuildEvents] event_cancel error: {error}")
         error_msg = GUILD_EVENTS["event_cancel"]["event_embed_ko"].get(ctx.locale,GUILD_EVENTS["event_cancel"]["event_embed_ko"].get("en-US")).format(error=error)
         await ctx.send(error_msg, delete_after=10)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
-        logging.debug(f"[GuildEvents - on_raw_reaction_add] Début avec payload: {payload}")
+        logging.debug(f"[GuildEvents - on_raw_reaction_add] Starting with payload: {payload}")
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
-            logging.debug("[GuildEvents - on_raw_reaction_add] Guilde non trouvée.")
+            logging.debug("[GuildEvents - on_raw_reaction_add] Guild not found.")
             return
 
         settings = self.guild_settings.get(guild.id)
         if not settings:
-            logging.debug("[GuildEvents - on_raw_reaction_add] Settings non trouvées pour cette guilde.")
+            logging.debug("[GuildEvents - on_raw_reaction_add] Settings not found for this guild.")
             return
 
         events_channel_id = settings.get("events_channel")
         if payload.channel_id != events_channel_id:
-            logging.debug("[GuildEvents - on_raw_reaction_add] Le channel ID ne correspond pas.")
+            logging.debug("[GuildEvents - on_raw_reaction_add] Channel ID does not match events channel.")
             return
 
         valid_emojis = [
@@ -630,19 +638,19 @@ class GuildEvents(commands.Cog):
             "<:_no_:1340110124521357313>"
         ]
         if str(payload.emoji) not in valid_emojis:
-            logging.debug(f"[GuildEvents - on_raw_reaction_add] Emoji non valide: {payload.emoji}")
+            logging.debug(f"[GuildEvents - on_raw_reaction_add] Invalid emoji: {payload.emoji}")
             return
 
         channel = guild.get_channel(payload.channel_id)
         try:
             message = await channel.fetch_message(payload.message_id)
         except Exception as e:
-            logging.error(f"❌ [GuildEvents - on_raw_reaction_add] Erreur lors de la récupération du message : {e}")
+            logging.error(f"[GuildEvents - on_raw_reaction_add] Error fetching message: {e}")
             return
 
         member = guild.get_member(payload.user_id)
         if not member or member.bot:
-            logging.debug("[GuildEvents - on_raw_reaction_add] Membre non trouvé ou est un bot.")
+            logging.debug("[GuildEvents - on_raw_reaction_add] Member not found or is a bot.")
             return
 
         for emoji in valid_emojis:
@@ -652,7 +660,7 @@ class GuildEvents(commands.Cog):
                     self.ignore_removals[key] = time.time()
                     await message.remove_reaction(emoji, member)
                 except Exception as e:
-                    logging.error(f"❌ [GuildEvents - on_raw_reaction_add] Erreur lors de la suppression de la réaction {emoji} pour {member}: {e}")
+                    logging.error(f"[GuildEvents - on_raw_reaction_add] Error removing reaction {emoji} for {member}: {e}")
 
         async with self.json_lock:
             target_event = None
@@ -661,20 +669,20 @@ class GuildEvents(commands.Cog):
                     target_event = ev
                     break
             if not target_event:
-                logging.debug("[GuildEvents - on_raw_reaction_add] Aucun événement trouvé pour ce message.")
+                logging.debug("[GuildEvents - on_raw_reaction_add] No event found for this message.")
                 return
-            
-            logging.debug(f"[GuildEvents - on_raw_reaction_add] Événement trouvé: {target_event}")
+
+            logging.debug(f"[GuildEvents - on_raw_reaction_add] Event found: {target_event}")
 
             if isinstance(target_event.get("registrations"), str):
                 try:
                     target_event["registrations"] = json.loads(target_event["registrations"])
-                    logging.debug("[GuildEvents - on_raw_reaction_add] Registrations décodées depuis JSON.")
+                    logging.debug("[GuildEvents - on_raw_reaction_add] Registrations decoded from JSON.")
                 except Exception as e:
                     logging.error(f"[GuildEvents - on_raw_reaction_add] Erreur lors du décodage de registrations: {e}")
                     target_event["registrations"] = {"presence": [], "tentative": [], "absence": []}
 
-            logging.debug(f"[GuildEvents - on_raw_reaction_add] Registrations AVANT update: {target_event['registrations']}")
+            logging.debug(f"[GuildEvents - on_raw_reaction_add] Registrations BEFORE update: {target_event['registrations']}")
 
             for key in ["presence", "tentative", "absence"]:
                 if payload.user_id in target_event["registrations"].get(key, []):
@@ -686,17 +694,17 @@ class GuildEvents(commands.Cog):
             elif str(payload.emoji) == "<:_no_:1340110124521357313>":
                 target_event["registrations"]["absence"].append(payload.user_id)
 
-            logging.debug(f"[on_raw_reaGuildEvents - on_raw_reaction_addction_add] Registrations APRÈS update: {target_event['registrations']}")
-
-        await self.update_event_embed(message, target_event)
+            logging.debug(f"[GuildEvents - on_raw_reaction_add] Registrations AFTER update: {target_event['registrations']}")
 
         try:
             new_registrations = json.dumps(target_event["registrations"])
             update_query = "UPDATE events_data SET registrations = ? WHERE guild_id = ? AND event_id = ?"
             await self.bot.run_db_query(update_query, (new_registrations, target_event["guild_id"], target_event["event_id"]), commit=True)
-            logging.debug("[GuildEvents - on_raw_reaction_addction_add] MàJ BDD réussie pour registrations.")
+            logging.debug("[GuildEvents - on_raw_reaction_add] DB update successful for registrations.")
         except Exception as e:
-            logging.error(f"[GuildEvents - on_raw_reaction_addction_add] Erreur lors de la mise à jour en BDD de registrations : {e}")
+            logging.error(f"[GuildEvents - on_raw_reaction_add] Error updating DB for registrations: {e}")
+
+        await self.update_event_embed(message, target_event)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
@@ -704,7 +712,7 @@ class GuildEvents(commands.Cog):
         if key in self.ignore_removals:
             ts = self.ignore_removals.pop(key)
             if time.time() - ts < 3:
-                logging.debug(f"[GuildEvent - on_raw_reaction_remove] Ignorer retrait automatique pour key {key}")
+                logging.debug(f"[GuildEvents - on_raw_reaction_remove] Ignoring automatic removal for key {key}")
                 return
 
         guild = self.bot.get_guild(payload.guild_id)
@@ -722,7 +730,7 @@ class GuildEvents(commands.Cog):
             channel = guild.get_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
         except Exception as e:
-            logging.error(f"❌ [GuildEvent - on_raw_reaction_remove] Erreur lors de la récupération du message : {e}")
+            logging.error(f"[GuildEvents - on_raw_reaction_remove] Error fetching message: {e}")
             return
 
         async with self.json_lock:
@@ -734,7 +742,7 @@ class GuildEvents(commands.Cog):
             if not target_event:
                 return
             if target_event.get("status", "").strip().lower() == "closed":
-                logging.debug(f"[GuildEvents - on_raw_reaction_remove] Ignorer le retrait car l'événement {target_event['event_id']} est Closed.")
+                logging.debug(f"[GuildEvents - on_raw_reaction_remove] Ignoring removal since event {target_event['event_id']} is Closed.")
                 return
 
             for key in ["presence", "tentative", "absence"]:
@@ -747,12 +755,12 @@ class GuildEvents(commands.Cog):
             new_registrations = json.dumps(target_event["registrations"])
             update_query = "UPDATE events_data SET registrations = ? WHERE guild_id = ? AND event_id = ?"
             await self.bot.run_db_query(update_query, (new_registrations, target_event["guild_id"], target_event["event_id"]), commit=True)
-            logging.debug("[GuildEvents - on_raw_reaction_addction_add] MàJ BDD réussie pour registrations.")
+            logging.debug("[GuildEvents - on_raw_reaction_remove] DB update successful for registrations.")
         except Exception as e:
-            logging.error(f"[GuildEvents - on_raw_reaction_addction_add] Erreur lors de la mise à jour en BDD de registrations : {e}")
+            logging.error(f"[GuildEvents - on_raw_reaction_remove] Error updating DB for registrations: {e}")
 
     async def update_event_embed(self, message, event_record):
-        logging.debug("✅ [GuildEvent] Début de MAJ de l'embed !")
+        logging.debug("✅ [GuildEvents] Starting embed update for event.")
         guild = self.bot.get_guild(message.guild.id)
         def format_list(id_list):
             membres = [guild.get_member(uid) for uid in id_list if guild.get_member(uid)]
@@ -767,7 +775,7 @@ class GuildEvents(commands.Cog):
         absence_str = format_list(absence_ids)
 
         if not message.embeds:
-            logging.error("❌ [GuildEvent] Aucun embed trouvé dans le message.")
+            logging.error("[GuildEvents] No embed found in the message.")
             return
         embed = message.embeds[0]
 
@@ -792,9 +800,9 @@ class GuildEvents(commands.Cog):
 
         try:
             await message.edit(embed=embed)
-            logging.debug("✅ [GuildEvent] Mise à jour de l'embed réussie !")
+            logging.debug("[GuildEvents] Embed update successful.")
         except Exception as e:
-            logging.error(f"❌ [GuildEvent] Erreur lors de la mise à jour de l'embed : {e}")
+            logging.error(f"[GuildEvents] Error updating embed: {e}")
 
     async def event_delete_cron(self, ctx=None) -> None:
         tz = pytz.timezone("Europe/Paris")
@@ -804,12 +812,12 @@ class GuildEvents(commands.Cog):
         for guild_id, settings in self.guild_settings.items():
             guild = self.bot.get_guild(guild_id)
             if not guild:
-                logging.error(f"❌ [GuildEvents] CRON - Guilde {guild_id} introuvable.")
+                logging.error(f"[GuildEvents CRON] Guild {guild_id} not found.")
                 continue
 
             events_channel = guild.get_channel(settings.get("events_channel"))
             if not events_channel:
-                logging.error(f"❌ [GuildEvents] CRON -  Canal des événements introuvable pour la guilde {guild_id}.")
+                logging.error(f"[GuildEvents CRON] Events channel not found for guild {guild_id}.")
                 continue
 
             guild_events_keys = [key for key, ev in self.events_data.items() if ev["guild_id"] == guild_id]
@@ -834,13 +842,13 @@ class GuildEvents(commands.Cog):
                     elif isinstance(ev["event_time"], datetime):
                         event_time = ev["event_time"].time()
                     else:
-                        logging.warning(f"[GuildEvents] Type d'heure inconnu pour l'événement {ev['event_id']}. Utilisation de '21:00'.")
+                        logging.warning(f"[GuildEvents CRON] Unknown time type for event {ev['event_id']}. Defaulting to '21:00'.")
                         event_time = datetime.strptime("21:00", "%H:%M").time()
 
                     start_dt = tz.localize(datetime.combine(event_date, event_time))
                     end_dt = start_dt + timedelta(minutes=int(ev["duration"]))
                 except Exception as e:
-                    logging.error(f"❌ [GuildEvents] CRON - Erreur lors du parsing de l'événement {ev['event_id']} : {e}", exc_info=True)
+                    logging.error(f"[GuildEvents CRON] Error parsing event {ev['event_id']}: {e}", exc_info=True)
                     continue
 
                 if end_dt < now:
@@ -850,32 +858,32 @@ class GuildEvents(commands.Cog):
                         total_deleted += 1
                         del self.events_data[key]
                     except Exception as e:
-                        logging.error(f"❌ [GuildEvents] CRON - Erreur lors de la suppression du message {ev['event_id']} : {e}", exc_info=True)
+                        logging.error(f"[GuildEvents CRON] Error deleting message for event {ev['event_id']}: {e}", exc_info=True)
                         continue
 
                     if str(ev.get("status", "")).lower() == "canceled":
                         try:
                             delete_query = "DELETE FROM events_data WHERE guild_id = ? AND event_id = ?"
                             await self.bot.run_db_query(delete_query, (ev["guild_id"], ev["event_id"]), commit=True)
-                            logging.debug(f"[GuildEvents] CRON - Enregistrement supprimé en BDD pour l'événement {ev['event_id']}")
+                            logging.debug(f"[GuildEvents CRON] Record deleted in DB for event {ev['event_id']}")
                         except Exception as e:
-                            logging.error(f"❌ [GuildEvents] CRON - Erreur lors de la suppression en BDD de l'événement {ev['event_id']} : {e}", exc_info=True)
+                            logging.error(f"[GuildEvents CRON] Error deleting event {ev['event_id']} in DB: {e}", exc_info=True)
                     else:
-                        logging.debug(f"[GuildEvents] L'événement {ev['event_id']} est terminé mais son statut n'est pas 'Canceled' => enregistrement conservé.")
+                        logging.debug(f"[GuildEvents CRON] Event {ev['event_id']} ended but status is not 'Canceled' => record kept.")
 
-            logging.info(f"[GuildEvents] Pour la guilde {guild_id}, messages supprimés: {total_deleted}")
+            logging.info(f"[GuildEvents CRON] For guild {guild_id}, messages deleted: {total_deleted}")
 
     async def event_reminder_cron(self) -> None:
         tz = pytz.timezone("Europe/Paris")
         today_str = datetime.now(tz).strftime("%Y-%m-%d")
         overall_results = []
 
-        logging.info(f"[GuildEvents - event_reminder_cron] Début du rappel automatique des inscriptions. Date d'aujourd'hui: {today_str}")
+        logging.info(f"[GuildEvents - event_reminder_cron] Starting automatic reminder for {today_str}.")
 
         for guild_id, settings in self.guild_settings.items():
             guild = self.bot.get_guild(guild_id)
             if not guild:
-                logging.error(f"❌ [GuildEvents] Guilde {guild_id} introuvable.")
+                logging.error(f"[GuildEvents] Guild {guild_id} not found.")
                 continue
 
             guild_locale = settings.get("guild_lang") or "en-US"
@@ -883,23 +891,22 @@ class GuildEvents(commands.Cog):
             notifications_channel = guild.get_channel(settings.get("notifications_channel"))
             events_channel = guild.get_channel(settings.get("events_channel"))
             if not events_channel or not notifications_channel:
-                logging.error(f"❌ [GuildEvents] Canal des événements introuvable pour la guilde {guild.name}.")
+                logging.error(f"[GuildEvents] Events or notifications channel not found for guild {guild.name}.")
                 continue
 
             guild_events = [ev for ev in self.events_data.values() if ev["guild_id"] == guild_id]
             for ev in guild_events:
-                logging.debug(f"Comparaison pour l'événement {ev['event_id']}: event_date={repr(ev.get('event_date'))} (type {type(ev.get('event_date'))}), "
+                logging.debug(f"[GuildEvents - event_reminder_cron] Comparing event {ev['event_id']}: event_date={repr(ev.get('event_date'))} (type {type(ev.get('event_date'))}), "
                             f"today_str={repr(today_str)}, status={repr(ev.get('status', ''))} (lowercased: {repr(ev.get('status', '').strip().lower())})")
 
             confirmed_events = [
                 ev for ev in guild_events
                 if str(ev.get("event_date")).strip() == today_str and str(ev.get("status", "")).strip().lower() == "confirmed"
             ]
-
-            logging.info(f"[GuildEvents - event_reminder_cron] Pour la guilde {guild.name}, {len(confirmed_events)} événement(s) confirmé(s) trouvé(s) pour aujourd'hui.")
+            logging.info(f"[GuildEvents - event_reminder_cron] For guild {guild.name}, {len(confirmed_events)} confirmed event(s) found for today.")
 
             if not confirmed_events:
-                overall_results.append(f"{guild.name} : Aucun événement confirmé aujourd'hui.")
+                overall_results.append(f"{guild.name}: No confirmed events today.")
                 continue
 
             for event in confirmed_events:
@@ -908,38 +915,38 @@ class GuildEvents(commands.Cog):
                     try:
                         regs_obj = json.loads(regs_obj)
                     except Exception as e:
-                        logging.error(f"Erreur lors du parsing de 'registrations' pour l'événement {event['event_id']} : {e}", exc_info=True)
+                        logging.error(f"[GuildEvents - event_reminder_cron] Error parsing 'registrations' for event {event['event_id']}: {e}", exc_info=True)
                         regs_obj = {"presence": [], "tentative": [], "absence": []}
-                
                 regs = set(regs_obj.get("presence", [])) | set(regs_obj.get("tentative", [])) | set(regs_obj.get("absence", []))
-
                 initial_members = event.get("initial_members", [])
                 if isinstance(initial_members, str):
                     try:
                         initial_members = json.loads(initial_members)
                     except Exception as e:
-                        logging.error(f"Erreur lors du parsing de 'initial_members' pour l'événement {event['event_id']} : {e}", exc_info=True)
+                        logging.error(f"[GuildEvents - event_reminder_cron] Error parsing 'initial_members' for event {event['event_id']}: {e}", exc_info=True)
                         initial_members = []
                 initial = set(initial_members)
                 
-                members_role_id = settings.get("members_role")
-                if members_role_id:
-                    role = guild.get_role(int(members_role_id))
-                    if role:
-                        current_members = {member.id for member in guild.members if role in member.roles}
+                try:
+                    members_role_id = settings.get("members_role")
+                    if members_role_id:
+                        role = guild.get_role(int(members_role_id))
+                        if role:
+                            current_members = {member.id for member in guild.members if role in member.roles}
+                        else:
+                            current_members = set()
                     else:
                         current_members = set()
-                else:
+                except Exception as e:
+                    logging.error(f"[GuildEvents - event_reminder_cron] Error retrieving current members for guild {guild.id}: {e}", exc_info=True)
                     current_members = set()
                 
                 updated_initial = current_members
-
                 to_remind = list(updated_initial - regs)
-
                 reminded = []
                 event_link = f"https://discord.com/channels/{guild.id}/{events_channel.id}/{event['event_id']}"
                 dm_template = GUILD_EVENTS.get("event_reminder", {}).get("dm_message", {}).get(guild_locale,GUILD_EVENTS.get("event_reminder", {}).get("dm_message", {}).get("en-US"))
-                logging.debug(f"[GuildEvents - event_reminder_cron] Pour l'événement {event['event_id']}, membres initiaux: {initial}, inscrits: {regs}, à rappeler: {to_remind}")
+                logging.debug(f"[GuildEvents - event_reminder_cron] For event {event['event_id']}, initial members: {initial}, registered: {regs}, to remind: {to_remind}")
                 for member_id in to_remind:
                     member = guild.get_member(member_id)
                     if member:
@@ -953,52 +960,45 @@ class GuildEvents(commands.Cog):
                             )
                             await member.send(dm_message)
                             reminded.append(member.mention)
-                            logging.debug(f"[GuildEvents - event_reminder_cron] DM envoyé à {member.name} pour l'événement {event['name']}")
+                            logging.debug(f"[GuildEvents - event_reminder_cron] DM sent to {member.name} for event {event['name']}")
                         except Exception as e:
-                            logging.error(f"Erreur lors de l'envoi du MP à {member_id} dans {guild.name} : {e}")
+                            logging.error(f"[GuildEvents - event_reminder_cron] Error sending DM to {member_id} in guild {guild.name}: {e}")
                     else:
-                        logging.warning(f"Membre {member_id} introuvable dans la guilde {guild.name}.")
+                        logging.warning(f"[GuildEvents - event_reminder_cron] Member {member_id} not found in guild {guild.name}.")
 
-                if reminded:
-                    reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_reminded", {}).get(guild_locale)
-                    if reminder_template is None:
-                        reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_reminded", {}).get("en-US", 
-                            "## :bell: **Reminder d'événement**\n Pour l'événement **{event}**\n({event_link})\n\n{len} membre(s) ont été relancés : {members}"
-                        )
-                    try:
-                        reminder_msg = reminder_template.format(event=event["name"], event_link=event_link, len=len(reminded), members=", ".join(reminded))
-                    except Exception as e:
-                        logging.error(f"Erreur lors du formatage du template de reminder: {e}", exc_info=True)
-                        reminder_msg = f"Reminder: {event['name']} - {event_link}"
-                    result = f"Pour l'événement **{event['name']}** dans {guild.name} : {len(reminded)} membre(s) rappelé(s) : " + ", ".join(reminded)
-                    try:
+                try:
+                    if reminded:
+                        reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_reminded", {}).get(guild_locale)
+                        if reminder_template is None:
+                            reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_reminded", {}).get("en-US", 
+                                "## :bell: Event Reminder\nFor event **{event}**\n({event_link})\n\n{len} member(s) were reminded: {members}"
+                            )
+                        try:
+                            reminder_msg = reminder_template.format(event=event["name"], event_link=event_link, len=len(reminded), members=", ".join(reminded))
+                        except Exception as e:
+                            logging.error(f"[GuildEvents - event_reminder_cron] Error formatting reminder template: {e}", exc_info=True)
+                            reminder_msg = f"Reminder: {event['name']} - {event_link}"
+                        result = f"For event **{event['name']}** in guild {guild.name}: {len(reminded)} member(s) reminded: " + ", ".join(reminded)
                         await notifications_channel.send(reminder_msg)
                         overall_results.append(result)
-                    except Exception as e:
-                        logging.error(f"Erreur lors de l'envoi du message de reminder dans le canal notifications de {guild.name} : {e}", exc_info=True)
-                        overall_results.append(f"{guild.name} : Erreur lors de l'envoi du reminder.")
-
-                else:
-                    reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_all_OK", {}).get(guild_locale)
-                    if reminder_template is None:
-                        reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_all_OK", {}).get("en-US", 
-                            "## :bell: **Reminder d'événement**\n Pour l'événement **{event}**\n({event_link})\n\n**Tous les membres ont répondu.**"
-                        )
-                    try:
-                        reminder_msg = reminder_template.format(event=event["name"], event_link=event_link)
-                    except Exception as e:
-                        logging.error(f"Erreur lors du formatage du template de reminder (all OK): {e}", exc_info=True)
-                        reminder_msg = f"Reminder: {event['name']} - {event_link}"
-                    result = f"Pour l'événement **{event['name']}** dans {guild.name}, tous les membres ont répondu."
-                    try:
+                    else:
+                        reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_all_OK", {}).get(guild_locale)
+                        if reminder_template is None:
+                            reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_all_OK", {}).get("en-US", 
+                                "## :bell: Event Reminder\nFor event **{event}**\n({event_link})\n\nAll members have responded."
+                            )
+                        try:
+                            reminder_msg = reminder_template.format(event=event["name"], event_link=event_link)
+                        except Exception as e:
+                            logging.error(f"[GuildEvents - event_reminder_cron] Error formatting 'all OK' reminder template: {e}", exc_info=True)
+                            reminder_msg = f"Reminder: {event['name']} - {event_link}"
+                        result = f"For event **{event['name']}** in guild {guild.name}, all members have responded."
                         await notifications_channel.send(reminder_msg)
                         overall_results.append(result)
-                    except Exception as e:
-                        logging.error(f"Erreur lors de l'envoi du message de reminder dans le canal notifications de {guild.name} : {e}", exc_info=True)
-                        overall_results.append(f"{guild.name} : Erreur lors de l'envoi du reminder.")
-
-        response = "\n".join(overall_results)
-        logging.info(response)
+                except Exception as e:
+                    logging.error(f"[GuildEvents - event_reminder_cron] Error sending reminder message in guild {guild.name}: {e}", exc_info=True)
+                    overall_results.append(f"{guild.name}: Error sending reminder.")
+        logging.info("Reminder results:\n" + "\n".join(overall_results))
 
     async def event_close_cron(self) -> None:
         tz = pytz.timezone("Europe/Paris")
@@ -1007,12 +1007,12 @@ class GuildEvents(commands.Cog):
         for guild_id, settings in self.guild_settings.items():
             guild = self.bot.get_guild(guild_id)
             if not guild:
-                logging.error(f"❌ [GuildEvents] CRON - Guilde {guild_id} introuvable.")
+                logging.error(f"[GuildEvents CRON] Guild {guild_id} not found.")
                 continue
 
             events_channel = guild.get_channel(settings.get("events_channel"))
             if not events_channel:
-                logging.error(f"❌ [GuildEvents] CRON - Canal des événements introuvable pour la guilde {guild_id}.")
+                logging.error(f"[GuildEvents CRON] Events channel not found for guild {guild_id}.")
                 continue
 
             guild_lang = settings.get("guild_lang") or "en-US"
@@ -1038,22 +1038,25 @@ class GuildEvents(commands.Cog):
                     elif isinstance(ev["event_time"], datetime):
                         event_time = ev["event_time"].time()
                     else:
-                        logging.warning(f"[GuildEvents] Type d'heure inconnu pour l'événement {ev['event_id']}. Utilisation de '21:00'.")
+                        logging.warning(f"[GuildEvents CRON] Unknown time type for event {ev['event_id']}. Defaulting to '21:00'.")
                         event_time = datetime.strptime("21:00", "%H:%M").time()
 
                     start_dt = tz.localize(datetime.combine(event_date, event_time))
                 except Exception as e:
-                    logging.error(f"❌ [GuildEvents] CRON - Erreur lors du parsing de l'événement {ev['event_id']} : {e}", exc_info=True)
+                    logging.error(f"[GuildEvents CRON] Error parsing event {ev['event_id']}: {e}", exc_info=True)
                     continue
 
                 if timedelta(0) <= (start_dt - now) <= timedelta(minutes=15) and ev.get("status", "").strip().lower() in ["confirmed", "planned"]:
-                    await self.load_guild_members()
+                    try:
+                        await self.load_guild_members()
+                    except Exception as e:
+                        logging.error(f"[GuildEvents CRON] Error loading guild members for guild {guild_id}: {e}", exc_info=True)
                     closed_localized = GUILD_EVENTS["events_infos"]["status_closed"].get(guild_lang, GUILD_EVENTS["events_infos"]["status_closed"].get("en-US"))
                     closed_db = GUILD_EVENTS["events_infos"]["status_closed"].get("en-US")
                     try:
                         msg = await events_channel.fetch_message(ev["event_id"])
                     except Exception as e:
-                        logging.error(f"❌ [GuildEvents] CRON - Erreur lors de la récupération du message {ev['event_id']} : {e}", exc_info=True)
+                        logging.error(f"[GuildEvents CRON] Error fetching message for event {ev['event_id']}: {e}", exc_info=True)
                         continue
 
                     if msg.embeds:
@@ -1073,21 +1076,16 @@ class GuildEvents(commands.Cog):
                             update_query = "UPDATE events_data SET status = ? WHERE guild_id = ? AND event_id = ?"
                             await self.bot.run_db_query(update_query, (closed_db, guild_id, ev["event_id"]), commit=True)
                             ev["status"] = closed_db
-                            logging.info(f"[GuildEvents] CRON - Événement {ev['event_id']} passé au statut Closed.")
+                            logging.info(f"[GuildEvents CRON] Event {ev['event_id']} marked as Closed.")
                             await msg.clear_reactions()
-                            logging.info(f"[GuildEvents] CRON - Retrait des réactions de l'événement {ev['event_id']}.")
-                            await self.create_groups(guild_id,ev["event_id"])
+                            logging.info(f"[GuildEvents CRON] Reactions cleared for event {ev['event_id']}.")
+                            await self.create_groups(guild_id, ev["event_id"])
                         except Exception as e:
-                            logging.error(f"❌ [GuildEvents] CRON - Erreur lors de la mise à jour de l'événement {ev['event_id']} : {e}", exc_info=True)
-
-        logging.info(f"[GuildEvents] CRON - Fin de l'opération event_close_cron.")
+                            logging.error(f"[GuildEvents CRON] Error updating event {ev['event_id']}: {e}", exc_info=True)
+        logging.info("[GuildEvents CRON] Finished event_close_cron.")
 
     @staticmethod
     def group_members_by_class(member_ids, roster_data):
-        """
-        Regroupe les membres (identifiés par leur ID) par classe à partir du roster.
-        Retourne un dictionnaire et une liste des IDs pour lesquels les informations sont manquantes.
-        """
         classes = {
             "Tank": [],
             "Melee DPS": [],
@@ -1119,34 +1117,36 @@ class GuildEvents(commands.Cog):
     )
     @commands.has_permissions(manage_guild=True)
     async def create_groups(self, guild_id: int, event_id: str) -> None:
+        # Function still in creation, WIP
+        # For testing purposes, guild_id is forced to a specific value.
         guild_id : int = 1345893638798049321
         event_id : int = event_id
-        logging.info(f"Création des groupes pour guild_id: {guild_id}, event_id: {event_id}")
+        logging.info(f"[GuildEvent - Cron Create_Groups] Creating groups for guild {guild_id}, event {event_id}")
 
         guild = self.bot.get_guild(guild_id)
         if not guild:
-            logging.error(f"Guilde introuvée pour guild_id: {guild_id}")
+            logging.error(f"[GuildEvent - Cron Create_Groups] Guild not found for guild_id: {guild_id}")
             return
 
         settings = self.guild_settings.get(guild_id)
         if not settings:
-            logging.error(f"Aucune configuration trouvée pour la guilde {guild_id}")
+            logging.error(f"[GuildEvent - Cron Create_Groups] No configuration found for guild {guild_id}")
             return
 
         groups_channel_id = settings.get("groups_channel")
         if not groups_channel_id:
-            logging.error(f"ID du canal des groupes introuvable dans la configuration pour la guilde {guild_id}")
+            logging.error(f"[GuildEvent - Cron Create_Groups] Groups channel ID not found in configuration for guild {guild_id}")
             return
 
         groups_channel = guild.get_channel(int(groups_channel_id))
         if not groups_channel:
-            logging.error(f"Canal des groupes non trouvé pour l'ID {groups_channel_id}")
+            logging.error(f"[GuildEvent - Cron Create_Groups] Groups channel not found for ID {groups_channel_id}")
             return
 
         key = f"{guild_id}_{event_id}"
         event = self.events_data.get(key)
         if not event:
-            logging.error(f"Événement non trouvé pour guild_id: {guild_id} et event_id: {event_id}")
+            logging.error(f"[GuildEvent - Cron Create_Groups] Event not found for guild {guild_id} and event {event_id}")
             return
 
         registrations = event.get("registrations")
@@ -1154,10 +1154,10 @@ class GuildEvents(commands.Cog):
             try:
                 registrations = json.loads(registrations)
             except Exception as e:
-                logging.error(f"Erreur lors du décodage des registrations pour event_id {event_id} : {e}")
+                logging.error(f"[GuildEvent - Cron Create_Groups] Error decoding registrations for event {event_id}: {e}")
                 return
         if not isinstance(registrations, dict):
-            logging.error(f"Les registrations pour event_id {event_id} ne sont pas au format attendu (dictionnaire).")
+            logging.error(f"[GuildEvent - Cron Create_Groups] Registrations for event {event_id} are not in expected dictionary format.")
             return
 
         presence_ids = registrations.get("presence", [])
@@ -1167,15 +1167,15 @@ class GuildEvents(commands.Cog):
         for member in guild.members:
             member_id_str = str(member.id)
             pseudo = member.display_name
-            member_class = self.guild_members_cache.get(guild_id, {}).get(member.id, "Inconnue")
+            member_class = self.guild_members_cache.get(guild_id, {}).get(member.id, "Unknown")
             roster_data["membres"][member_id_str] = {"pseudo": pseudo, "GS": "N/A", "classe": member_class}
 
         presence_groups, presence_missing = self.group_members_by_class(presence_ids, roster_data)
         tentative_groups, tentative_missing = self.group_members_by_class(tentative_ids, roster_data)
 
-        event_name = event.get("name", "Nom non défini")
-        event_date = event.get("event_date", "Date non définie")
-        event_time = event.get("event_time", "Heure non définie")
+        event_name = event.get("name", "Undefined")
+        event_date = event.get("event_date", "Undefined")
+        event_time = event.get("event_time", "Undefined")
 
         embed = discord.Embed(
             title=f"Groupes pour l'événement : {event_name}",
@@ -1210,9 +1210,9 @@ class GuildEvents(commands.Cog):
 
         try:
             await groups_channel.send(embed=embed)
-            logging.info(f"Groupes créés et publiés dans le canal {groups_channel.id} pour event_id {event_id}")
+            logging.info(f"Groups created and published in channel {groups_channel.id} for event {event_id}")
         except Exception as e:
-            logging.error(f"Erreur lors de l'envoi de l'embed des groupes : {e}")
+            logging.error(f"Error sending groups embed: {e}")
 
     @discord.slash_command(
         name=GUILD_EVENTS.get("event_create", {}).get("name", {}).get("en-US", "event_create"),
@@ -1276,16 +1276,16 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-        logging.debug(f"[GuildEvents - event_create] Paramètres reçus: event_name={event_name}, event_date={event_date}, event_time={event_time}, duration={duration}, status={status}, dkp_value={dkp_value}, dkp_ins={dkp_ins}")
+        logging.debug(f"[GuildEvents - event_create] Received parameters: event_name={event_name}, event_date={event_date}, event_time={event_time}, duration={duration}, status={status}, dkp_value={dkp_value}, dkp_ins={dkp_ins}")
         
         tz = pytz.timezone("Europe/Paris")
         try:
             event_date = event_date.replace("/", "-")
             start_date = datetime.strptime(event_date, "%Y-%m-%d").date()
             start_time_obj = datetime.strptime(event_time, "%H:%M").time()
-            logging.debug(f"[GuildEvents - event_create] Dates parsées: start_date={start_date}, start_time_obj={start_time_obj}")
+            logging.debug(f"[GuildEvents - event_create] Parsed dates: start_date={start_date}, start_time={start_time_obj}")
         except Exception as e:
-            logging.error("[GuildEvents - event_create] Erreur lors du parsing de la date ou de l'heure.", exc_info=True)
+            logging.error("[GuildEvents - event_create] Error parsing date or time.", exc_info=True)
             follow_message = GUILD_EVENTS["event_create"]["date_ko"].get(user_locale,GUILD_EVENTS["event_create"]["date_ko"].get("en-US"))
             await ctx.followup.send(follow_message, ephemeral=True)
             return
@@ -1294,10 +1294,11 @@ class GuildEvents(commands.Cog):
             duration = int(duration)
             start_dt = tz.localize(datetime.combine(start_date, start_time_obj))
             end_dt = start_dt + timedelta(minutes=duration)
-            logging.debug(f"[GuildEvents - event_create] start_dt calculé: {start_dt}, end_dt: {end_dt}")
+            logging.debug(f"[GuildEvents - event_create] Calculated start_dt: {start_dt}, end_dt: {end_dt}")
         except Exception as e:
-            logging.error("[GuildEvents - event_create] Erreur lors de la localisation ou du calcul de la date de fin.", exc_info=True)
-            await ctx.followup.send("Une erreur est survenue lors du traitement des dates.", ephemeral=True)
+            logging.error("[GuildEvents - event_create] Error localizing or calculating end date.", exc_info=True)
+            follow_message = GUILD_EVENTS["event_create"]["date_ko_2"].get(user_locale,GUILD_EVENTS["event_create"]["date_ko_2"].get("en-US"))
+            await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         description = GUILD_EVENTS["events_infos"]["description"].get(guild_lang, GUILD_EVENTS["events_infos"]["description"].get("en-US"))
@@ -1314,15 +1315,12 @@ class GuildEvents(commands.Cog):
         conference_channel = guild.get_channel(settings.get("war_channel"))
         events_channel = guild.get_channel(settings.get("events_channel"))
         if not events_channel or not conference_channel:
-            logging.error(f"[GuildEvents - event_create] Salons introuvables: events_channel={events_channel}, conference_channel={conference_channel}")
+            logging.error(f"[GuildEvents - event_create] Channels not found: events_channel={events_channel}, conference_channel={conference_channel}")
             follow_message = GUILD_EVENTS["event_create"]["no_events_canal"].get(user_locale,GUILD_EVENTS["event_create"]["no_events_canal"].get("en-US"))
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-        if status.lower() == "confirmed":
-            embed_color = discord.Color.green()
-        else:
-            embed_color = discord.Color.blue()
+        embed_color = discord.Color.green() if status.lower() == "confirmed" else discord.Color.blue()
         embed = discord.Embed(title=event_name, description=description, color=embed_color)
         embed.add_field(name=GUILD_EVENTS["events_infos"]["date"].get(guild_lang, GUILD_EVENTS["events_infos"]["date"].get("en-US")), value=event_date, inline=True)
         embed.add_field(name=GUILD_EVENTS["events_infos"]["hour"].get(guild_lang, GUILD_EVENTS["events_infos"]["hour"].get("en-US")), value=event_time, inline=True)
@@ -1355,7 +1353,7 @@ class GuildEvents(commands.Cog):
             await announcement.add_reaction("<:_attempt_:1340110058692018248>")
             await announcement.add_reaction("<:_no_:1340110124521357313>")
         except Exception as e:
-            logging.error(f"[GuildEvents - event_create] Erreur lors de l'envoi de l'annonce: {e}", exc_info=True)
+            logging.error(f"[GuildEvents - event_create] Error sending announcement: {e}", exc_info=True)
             follow_message = GUILD_EVENTS["event_create"]["error_event"].get(user_locale,GUILD_EVENTS["event_create"]["error_event"].get("en-US")).format(e=e)
             await ctx.followup.send(follow_message, ephemeral=True)
             return
@@ -1369,18 +1367,22 @@ class GuildEvents(commands.Cog):
                 end_time=end_dt,
                 location=conference_channel
             )
-            logging.debug(f"[GuildEvents - event_create] Événement programmé créé: {scheduled_event.id if scheduled_event else 'None'}")
+            logging.debug(f"[GuildEvents - event_create] Scheduled event created: {scheduled_event.id if scheduled_event else 'None'}")
         except Exception as e:
-            logging.error(f"[GuildEvents - create_events] Error creating scheduled event: {e}")
+            logging.error(f"[GuildEvents - event_create] Error creating scheduled event: {e}", exc_info=True)
 
-        members_role_id = settings.get("members_role")
-        if members_role_id:
-            role = guild.get_role(int(members_role_id))
-            if role:
-                initial_members = [member.id for member in guild.members if role in member.roles]
+        try:
+            members_role_id = settings.get("members_role")
+            if members_role_id:
+                role = guild.get_role(int(members_role_id))
+                if role:
+                    initial_members = [member.id for member in guild.members if role in member.roles]
+                else:
+                    initial_members = []
             else:
                 initial_members = []
-        else:
+        except Exception as e:
+            logging.error(f"[GuildEvents - event_create] Error determining initial members: {e}", exc_info=True)
             initial_members = []
 
         record = {
@@ -1444,11 +1446,11 @@ class GuildEvents(commands.Cog):
         try:
             await self.bot.run_db_query(query, record)
             self.events_data[f"{guild.id}_{announcement.id}"] = record
-            logging.info(f"[GuildEvents - create_events] Enregistrement de l'événement en BDD réussi : {announcement.id}")
+            logging.info(f"[GuildEvents - event_create] Event saved in DB successfully: {announcement.id}")
             follow_message = GUILD_EVENTS["event_create"]["events_created"].get(user_locale,GUILD_EVENTS["event_create"]["events_created"].get("en-US")).format(event_id=announcement.id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
-            logging.error(f"[GuildEvents - create_events] Erreur lors de l'enregistrement en BDD pour la guilde {guild.id} : {e}")
+            logging.error(f"[GuildEvents - event_create] Error saving event in DB for guild {guild.id}: {e}", exc_info=True)
             follow_message = GUILD_EVENTS["event_create"]["event_ko"].get(user_locale,GUILD_EVENTS["event_create"]["event_ko"].get("en-US")).format(e=e)
             await ctx.followup.send(follow_message, ephemeral=True)
 
@@ -1458,7 +1460,7 @@ class GuildEvents(commands.Cog):
         asyncio.create_task(self.load_events_calendar())
         asyncio.create_task(self.load_events_data())
         asyncio.create_task(self.load_guild_members())
-        logging.debug("[GuildEvents] Tâche de récupérations des infos dans le cache lancée depuis on_ready")
+        logging.debug("[GuildEvents] Cache loading tasks started in on_ready.")
 
 def setup(bot: discord.Bot):
     bot.add_cog(GuildEvents(bot))

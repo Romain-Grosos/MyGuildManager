@@ -2427,6 +2427,13 @@
                 "de": "❌ Ungültiges Datum oder Uhrzeitformat. Erwartetes Format: YYYY-MM-DD und HH:MM.",
                 "it": "❌ Formato di data o ora non valido. Formato atteso: YYYY-MM-DD e HH:MM."
             },
+            "date_ko_2": {
+                "en-US": "❌ An error occurred while processing the dates.",
+                "fr": "❌ Une erreur est survenue lors du traitement des dates.",
+                "es-ES": "❌ Se produjo un error al procesar las fechas.",
+                "de": "❌ Beim Verarbeiten der Daten ist ein Fehler aufgetreten.",
+                "it": "❌ Si è verificato un errore durante l'elaborazione delle date."
+            },
             "no_events_canal": {
                 "en-US": "❌ Events channel not found.",
                 "fr": "❌ Canal des événements introuvable.",
