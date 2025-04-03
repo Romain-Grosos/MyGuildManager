@@ -197,28 +197,28 @@ class GuildEvents(commands.Cog):
         guild_id = guild.id
         settings = self.guild_settings.get(guild_id)
         if not settings:
-            logging.error(f"[GuildEvents] No configuration for guild {guild_id}.")
+            logging.error(f"[GuildEvents - create_events_for_guild] No configuration for guild {guild_id}.")
             return
 
         guild_lang = settings.get("guild_lang")
         events_channel = guild.get_channel(settings.get("events_channel"))
         conference_channel = guild.get_channel(settings.get("war_channel"))
         if not events_channel:
-            logging.error(f"[GuildEvents] Events channel not found for guild {guild_id}.")
+            logging.error(f"[GuildEvents - create_events_for_guild] Events channel not found for guild {guild_id}.")
             return
         if not conference_channel:
-            logging.error(f"[GuildEvents] Conference channel not found for guild {guild_id}.")
+            logging.error(f"[GuildEvents - create_events_for_guild] Conference channel not found for guild {guild_id}.")
             return
 
         try:
             game_id = int(settings.get("guild_game"))
         except Exception as e:
-            logging.error(f"[GuildEvents] Error converting guild_game for guild {guild_id}: {e}")
+            logging.error(f"[GuildEvents - create_events_for_guild] Error converting guild_game for guild {guild_id}: {e}")
             return
 
         calendar = self.events_calendar.get(game_id, [])
         if not calendar:
-            logging.info(f"[GuildEvents] No events defined in calendar for game_id {game_id}.")
+            logging.info(f"[GuildEvents - create_events_for_guild] No events defined in calendar for game_id {game_id}.")
             return
 
         tz = pytz.timezone("Europe/Paris")
@@ -227,9 +227,6 @@ class GuildEvents(commands.Cog):
                 day = cal_event.get("day")
                 event_time_str = cal_event.get("time", "21:00")
                 start_time = self.get_next_date_for_day(day, event_time_str, tz, tomorrow_only=True)
-                if not start_time:
-                    logging.debug(f"[GuildEvents] Skipping event for day '{day}' in guild {guild_id} (not scheduled for tomorrow).")
-                    continue
 
                 try:
                     duration_minutes = int(cal_event.get("duree", 60))
@@ -241,10 +238,10 @@ class GuildEvents(commands.Cog):
                 if week_setting != "all":
                     week_number = start_time.isocalendar()[1]
                     if week_setting == "odd" and week_number % 2 == 0:
-                        logging.info(f"[GuildEvents] Event {cal_event.get('name')} not scheduled this week (even).")
+                        logging.info(f"[GuildEvents - create_events_for_guild] Event {cal_event.get('name')} not scheduled this week (even).")
                         continue
                     elif week_setting == "even" and week_number % 2 != 0:
-                        logging.info(f"[GuildEvents] Event {cal_event.get('name')} not scheduled this week (odd).")
+                        logging.info(f"[GuildEvents - create_events_for_guild] Event {cal_event.get('name')} not scheduled this week (odd).")
                         continue
 
                 event_key = cal_event.get("name")
@@ -286,12 +283,12 @@ class GuildEvents(commands.Cog):
                     embed.add_field(name=event_voice_channel, value=f"[🏹 WAR]({conference_link})", inline=False)
                     embed.add_field(name=event_groups, value=event_auto_grouping, inline=False)
                 except Exception as e:
-                    logging.error(f"[GuildEvents] Error building embed for event '{event_name}': {e}", exc_info=True)
+                    logging.error(f"[GuildEvents - create_events_for_guild] Error building embed for event '{event_name}': {e}", exc_info=True)
                     continue
 
                 try:
                     announcement = await events_channel.send(embed=embed)
-                    logging.debug(f"[GuildEvents - event_create] Announcement sent: id={announcement.id} in channel {announcement.channel.id}")
+                    logging.debug(f"[GuildEvents - create_events_for_guild] Announcement sent: id={announcement.id} in channel {announcement.channel.id}")
                     message_link = f"https://discord.com/channels/{guild.id}/{announcement.channel.id}/{announcement.id}"
                     embed.set_footer(text=f"Event ID = {announcement.id}")
                     await announcement.edit(embed=embed)
@@ -299,7 +296,7 @@ class GuildEvents(commands.Cog):
                     await announcement.add_reaction("<:_attempt_:1340110058692018248>")
                     await announcement.add_reaction("<:_no_:1340110124521357313>")
                 except Exception as e:
-                    logging.error(f"[GuildEvents - event_create] Error sending announcement message: {e}", exc_info=True)
+                    logging.error(f"[GuildEvents - create_events_for_guild] Error sending announcement message: {e}", exc_info=True)
                     continue
 
                 try:
@@ -311,12 +308,12 @@ class GuildEvents(commands.Cog):
                         end_time=end_time,
                         location=conference_channel
                     )
-                    logging.debug(f"[GuildEvents - event_create] Scheduled event created: {scheduled_event.id if scheduled_event else 'None'}")
+                    logging.debug(f"[GuildEvents - create_events_for_guild] Scheduled event created: {scheduled_event.id if scheduled_event else 'None'}")
                 except discord.Forbidden:
-                    logging.error(f"[GuildEvents] Insufficient permissions to create scheduled event in guild {guild_id}.")
+                    logging.error(f"[GuildEvents - create_events_for_guild] Insufficient permissions to create scheduled event in guild {guild_id}.")
                     continue
                 except discord.HTTPException as e:
-                    logging.error(f"[GuildEvents] HTTP error creating scheduled event in guild {guild_id}: {e}")
+                    logging.error(f"[GuildEvents - create_events_for_guild] HTTP error creating scheduled event in guild {guild_id}: {e}")
                     continue
 
                 try:
@@ -330,7 +327,7 @@ class GuildEvents(commands.Cog):
                     else:
                         initial_members = []
                 except Exception as e:
-                    logging.error(f"[GuildEvents] Error determining initial members for guild {guild_id}: {e}", exc_info=True)
+                    logging.error(f"[GuildEvents - create_events_for_guild] Error determining initial members for guild {guild_id}: {e}", exc_info=True)
                     initial_members = []
 
                 record = {
@@ -393,12 +390,12 @@ class GuildEvents(commands.Cog):
                     actual_presence = VALUES(actual_presence)
                 """
                 try:
-                    await self.bot.run_db_query(query, record)
-                    logging.info(f"[GuildEvents - create_events] Event saved in DB successfully: {announcement.id}")
+                    await self.bot.run_db_query(query, record, commit=True)
+                    logging.info(f"[GuildEvents - create_events - create_events_for_guild] Event saved in DB successfully: {announcement.id}")
                 except Exception as e:
-                    logging.error(f"[GuildEvents - create_events] Error saving event in DB for guild {guild_id}: {e}")
+                    logging.error(f"[GuildEvents - create_events - create_events_for_guild] Error saving event in DB for guild {guild_id}: {e}")
             except Exception as outer_e:
-                logging.error(f"[GuildEvents] Unexpected error in create_events_for_guild for guild {guild_id}: {outer_e}", exc_info=True)
+                logging.error(f"[GuildEvents - create_events_for_guild] Unexpected error in create_events_for_guild for guild {guild_id}: {outer_e}", exc_info=True)
 
     @discord.slash_command(
         name=GUILD_EVENTS.get("event_confirm", {}).get("name", {}).get("en-US", "event_confirm"),
@@ -1444,7 +1441,7 @@ class GuildEvents(commands.Cog):
             actual_presence = VALUES(actual_presence)
         """
         try:
-            await self.bot.run_db_query(query, record)
+            await self.bot.run_db_query(query, record, commit=True)
             self.events_data[f"{guild.id}_{announcement.id}"] = record
             logging.info(f"[GuildEvents - event_create] Event saved in DB successfully: {announcement.id}")
             follow_message = GUILD_EVENTS["event_create"]["events_created"].get(user_locale,GUILD_EVENTS["event_create"]["events_created"].get("en-US")).format(event_id=announcement.id)
