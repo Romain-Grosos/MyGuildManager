@@ -2463,5 +2463,28 @@
                 "it": "❌ Errore durante la creazione dell'evento nel database: {e}"
             }
         }
+    },
+    "llm": {
+        "error_check_premium": {
+            "en-US": "An error occurred while checking premium status: {error}",
+            "fr": "Une erreur est survenue lors de la vérification du statut premium : {error}",
+            "es-ES": "Se produjo un error al comprobar el estado premium: {error}",
+            "de": "Beim Überprüfen des Premium-Status ist ein Fehler aufgetreten: {error}",
+            "it": "Si è verificato un errore durante il controllo dello stato premium: {error}"
+        },
+        "not_premium": {
+            "en-US": "This feature is reserved for premium guilds.",
+            "fr": "Cette fonctionnalité est réservée aux guildes premium.",
+            "es-ES": "Esta función está reservada para las guilds premium.",
+            "de": "Diese Funktion ist nur für Premium-Gilden verfügbar.",
+            "it": "Questa funzione è riservata alle gilde premium."
+        },
+        "error_generation": {
+            "en-US": "An error occurred during response generation: {error}",
+            "fr": "Une erreur est survenue lors de la génération de la réponse : {error}",
+            "es-ES": "Se produjo un error durante la generación de la respuesta: {error}",
+            "de": "Bei der Generierung der Antwort ist ein Fehler aufgetreten: {error}",
+            "it": "Si è verificato un errore durante la generazione della risposta: {error}"
+        }
     }
 }

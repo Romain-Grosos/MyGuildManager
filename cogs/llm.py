@@ -2,38 +2,54 @@ import discord
 from discord.ext import commands
 import os
 from openai import OpenAI
-import asyncio
 from dotenv import load_dotenv
 import re
+import logging
+from translation import translations as global_translations
 
-# Load environment variables from .env file
+GUILD_MEMBERS = global_translations.get("llm", {})
+
 load_dotenv()
 API_KEY: str = os.getenv("API_KEY")
 
-# Initialiser le client OpenAI avec la nouvelle interface
 client = OpenAI(api_key=API_KEY)
 
-def query_AI(prompt: str, model: str = "gpt-4o-mini") -> str:
+def query_AI(prompt: str, model: str = "gpt-4o") -> str:
     system_prompt = (
-        "You are the intellectual core of a Discord bot called 'My Guild Manager,' specialized in managing gaming guilds on Discord."
-        "Your primary role is to assist users in configuring and managing their Discord server by automating essential tasks, including:"
-        "- Initializing the bot on a server"
-        "- Configuring roles and channels with multilingual support"
-        "- Modifying existing settings"
-        "- Resetting configurations when needed"
-        "You interact with users through **slash commands** (e.g., `/discord_setup`, `/app_initialize`, `/app_modify`, `/app_reset`) and direct mentions."
-        "The bot maintains a **database** to store server settings, role and channel IDs, and other crucial information."
-        "It supports **multiple languages** (en-US, fr, es-ES, de, it) and dynamically adapts messages based on the server’s language."
-        "### Your Mission:"
-        "- Provide **precise, relevant, and context-aware responses** tailored for a **guild management environment**, considering ranks such as **Guild Master, Officer, Guardian**, and dedicated channels for **rules, announcements, events, and more**."
-        "- Ensure responses align with **Discord best practices**, including technical constraints like **message limits, asynchronous handling, and permission structures**."
-        "- **Maintain a professional yet assertive tone**: If a user interacts respectfully, reply with helpful and informative guidance. However, if someone speaks rudely or insults the bot, you are free to **respond in kind**—with wit, sarcasm, or a sharp comeback. No need to be overly polite to those who don’t deserve it."
-        "- If the user is deliberately insulting and rude, you can respond in the same tone, while reminding them—by rephrasing—that you are a bot, without a brain, and that they are demonstrating less intelligence than you, for example (don't use that one every time, or made changes on that context)."
-        "### Key Guidelines:"
-        "1. **Be clear and detailed**: Explain configurations and features concisely."
-        "2. **Adapt dynamically**: Match the user’s language and guild structure."
-        "3. **Enforce respect**: Help when approached correctly, but don't hesitate to clap back at rude users."
-        "Your priority is to ensure smooth **server management** while maintaining an engaging and sometimes cheeky personality when needed. After all, a bot doesn’t have to be boring."
+        "You are the intellectual core of 'My Guild Manager', a Discord bot designed to assist guild members with "
+        "questions and clarifications concerning both the bot's functionalities and the video game 'Throne and Liberty'.\n\n"
+
+        "Your core responsibilities include:\n"
+        "  • **Bot Functionality**: Explaining how the bot commands work, such as:\n"
+        "       - **/weapons arme1 arme2**: Accepts two weapon codes. The available codes are:\n"
+        "            • B = longbow\n"
+        "            • S = staff\n"
+        "            • DG = daggers\n"
+        "            • CB = crossbows\n"
+        "            • SP = spear\n"
+        "            • SNS = sword and shield\n"
+        "            • GS = greatsword\n"
+        "            • W = wand\n"
+        "       - **/build URL**: Submits a URL from Questlog or Maxroll that represents your build.\n"
+        "       - **/pseudo NewNickname**: Updates your Discord nickname after you change your in-game name.\n"
+        "       - **/gear_score xxxx**: Accepts a numerical equipment score between 500 and 9999.\n"
+        "       - **/show_build Pseudo**: Retrieves the build URL associated with the specified member.\n\n"
+        "• **Game Context**: Providing useful context and insights about 'Throne and Liberty', including its mechanics, strategies, "
+        "and lore. If a question requires details beyond your stored knowledge, indicate that a web search should be performed for "
+        "up-to-date information.\n\n"
+        "### Communication Guidelines:\n"
+        "1. **Adapt Your Tone**: Your responses should be accessible, friendly, and humorous. When appropriate, you may be edgy or even "
+        "playfully insulting—always with clever wordplay—if the question is off-topic or phrased in a disrespectful manner.\n"
+        "2. **Scope of Answer**: Focus exclusively on subjects related to Discord guild management or 'Throne and Liberty'. If a question "
+        "falls outside these topics, politely refuse to answer and remind the user that you do not retain or have access to channel history.\n"
+        "3. **Do Not Execute Actions**: You only provide guidance and clarifications. You do not execute any Discord actions such as "
+        "channel management or role assignments.\n\n"
+        "### Usage Instructions:\n"
+        "• For inquiries regarding bot commands, explain the command functionality and its usage.\n"
+        "• For questions about 'Throne and Liberty', provide relevant game insights, and if uncertain, note that web research is needed.\n\n"
+        "Remember: You are the specialized knowledge base of 'My Guild Manager'. Always ensure your response is context-aware, "
+        "concise, and tailored to the question's tone—be it friendly, humorous, or sharply witty. Maintain the focus on the bot's "
+        "functionality and the game 'Throne and Liberty', and disregard any queries outside these domains."
     )
 
     messages = [
@@ -47,26 +63,18 @@ def query_AI(prompt: str, model: str = "gpt-4o-mini") -> str:
     return completion.choices[0].message.content
 
 def split_message(text: str, max_length: int = 2000) -> list[str]:
-    """
-    Découpe le texte en plusieurs morceaux ne dépassant pas max_length,
-    en respectant les limites de phrases.
-    """
-    # Découper par phrases en utilisant une expression régulière qui conserve le séparateur
     sentences = re.split(r'(?<=[.!?])\s+', text)
     chunks = []
     current_chunk = ""
     for sentence in sentences:
-        # Si ajouter cette phrase ne dépasse pas la limite
         if len(current_chunk) + len(sentence) + 1 <= max_length:
             if current_chunk:
                 current_chunk += " " + sentence
             else:
                 current_chunk = sentence
         else:
-            # Ajouter le chunk actuel et démarrer un nouveau chunk
             if current_chunk:
                 chunks.append(current_chunk)
-            # Si la phrase elle-même dépasse max_length, on la découpe brutalement
             if len(sentence) > max_length:
                 parts = [sentence[i:i+max_length] for i in range(0, len(sentence), max_length)]
                 chunks.extend(parts)
@@ -83,36 +91,34 @@ class LLMInteraction(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        # Ignorer les messages des bots
-        if message.author.bot:
+        if message.author.bot or message.guild is None:
             return
 
-        # Ne pas répondre aux MP lorsqu'il est taggué
-        if message.guild is None:
-            return
-
-        # Vérifier si le bot est mentionné
         if self.bot.user in message.mentions:
-
-            # Vérifier si la guilde est premium
-            query_premium = "SELECT premium FROM guild_settings WHERE guild_id = ?"
-            result = await self.bot.run_db_query(query_premium, (message.guild.id,), fetch_one=True)
-            if not result or not result[0]:
-                await message.reply("Cette fonctionnalité est réservée aux guildes premium.")
+            locale = message.guild.preferred_locale or "en-US"
+            try:
+                query_premium = "SELECT premium FROM guild_settings WHERE guild_id = ?"
+                result = await self.bot.run_db_query(query_premium, (message.guild.id,), fetch_one=True)
+            except Exception as e:
+                logging.error("[LLM Interaction] Error checking premium status", exc_info=True)
+                error_msg = GUILD_MEMBERS.get("error_check_premium", {}).get(locale,GUILD_MEMBERS.get("error_check_premium", {}).get("en-US"))
+                await message.reply(error_msg.format(error=e))
                 return
 
-            # Retirer la mention pour obtenir le prompt
+            if not result or not result[0]:
+                not_premium = GUILD_MEMBERS.get("not_premium", {}).get(locale, GUILD_MEMBERS.get("not_premium", {}).get("en-US"))
+                await message.reply(not_premium)
+                return
+
             prompt = message.content.replace(f"<@!{self.bot.user.id}>", "").replace(f"<@{self.bot.user.id}>", "").strip()
             if not prompt:
+                logging.debug("[LLM Interaction] Received mention, but prompt is empty after removing bot mentions.")
                 return
 
-            # Indiquer que le bot est en train d'écrire
             await message.channel.trigger_typing()
 
             try:
-                # Exécuter query_AI dans un thread séparé pour ne pas bloquer la boucle d'événements
                 response_text = await self.bot.loop.run_in_executor(None, query_AI, prompt)
-                # Si la réponse dépasse 2000 caractères, la découper en morceaux respectant les phrases
                 if len(response_text) > 2000:
                     chunks = split_message(response_text)
                     for chunk in chunks:
@@ -120,7 +126,9 @@ class LLMInteraction(commands.Cog):
                 else:
                     await message.reply(response_text)
             except Exception as e:
-                await message.reply(f"Une erreur s'est produite lors de la génération de la réponse : {e}")
+                logging.error("[LLM Interaction] Error generating AI response", exc_info=True)
+                error_gen = GUILD_MEMBERS.get("error_generation", {}).get(locale, GUILD_MEMBERS.get("error_generation", {}).get("en-US"))
+                await message.reply(error_gen.format(error=e))
 
 def setup(bot: discord.Bot):
     bot.add_cog(LLMInteraction(bot))
