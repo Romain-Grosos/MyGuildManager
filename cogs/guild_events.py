@@ -9,6 +9,7 @@ from translation import translations as global_translations
 from typing import Optional
 import json
 import random
+import math
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
 
@@ -110,20 +111,24 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error loading events data: {e}", exc_info=True)
 
     async def load_guild_members(self) -> None:
-        query = "SELECT guild_id, member_id, classe FROM guild_members"
+        query = "SELECT guild_id, member_id, classe, GS, armes FROM guild_members"
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             self.guild_members_cache = {}
             for row in rows:
-                guild_id, member_id, member_class = row
+                guild_id, member_id, member_class, gs, armes = row
                 guild_id = int(guild_id)
                 member_id = int(member_id)
                 if guild_id not in self.guild_members_cache:
                     self.guild_members_cache[guild_id] = {}
-                self.guild_members_cache[guild_id][member_id] = member_class
+                self.guild_members_cache[guild_id][member_id] = {
+                    "classe": member_class,
+                    "GS": gs if gs is not None else "N/A",
+                    "armes": armes if armes is not None else "N/A"
+                }
             logging.debug(f"[GuildEvents] Guild members cache loaded: {self.guild_members_cache}")
         except Exception as e:
-            logging.error("Error loading guild members cache", exc_info=True)
+            logging.error(f"[GuildEvents] Error loading guild members cache: {e}", exc_info=True)
 
     def get_next_date_for_day(self, day_name: str, event_time_value, tz, tomorrow_only: bool = False) -> Optional[datetime]:
         if isinstance(event_time_value, timedelta):
@@ -222,11 +227,16 @@ class GuildEvents(commands.Cog):
             return
 
         tz = pytz.timezone("Europe/Paris")
+
         for cal_event in calendar:
             try:
                 day = cal_event.get("day")
                 event_time_str = cal_event.get("time", "21:00")
                 start_time = self.get_next_date_for_day(day, event_time_str, tz, tomorrow_only=True)
+
+                if start_time is None:
+                    logging.debug(f"[GuildEvents - create_events_for_guild] Event day '{day}' is not scheduled for tomorrow. Skipping.")
+                    continue
 
                 try:
                     duration_minutes = int(cal_event.get("duree", 60))
@@ -1097,13 +1107,15 @@ class GuildEvents(commands.Cog):
             if member_info:
                 pseudo = member_info.get("pseudo", "Pseudo inconnu")
                 gs = member_info.get("GS", "N/A")
+                armes = member_info.get("armes", "N/A")
                 member_class = member_info.get("classe", "Inconnue")
+                formatted_member = f"{pseudo} ({armes}) - GS: {gs}"
                 if member_class in classes:
-                    classes[member_class].append((pseudo, gs))
+                    classes[member_class].append(formatted_member)
                 else:
                     if "Inconnue" not in classes:
                         classes["Inconnue"] = []
-                    classes["Inconnue"].append((pseudo, gs))
+                    classes["Inconnue"].append(formatted_member)
             else:
                 missing.append(member_id)
         return classes, missing
@@ -1124,6 +1136,7 @@ class GuildEvents(commands.Cog):
         if not guild:
             logging.error(f"[GuildEvent - Cron Create_Groups] Guild not found for guild_id: {guild_id}")
             return
+
 
         settings = self.guild_settings.get(guild_id)
         if not settings:
@@ -1157,15 +1170,47 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvent - Cron Create_Groups] Registrations for event {event_id} are not in expected dictionary format.")
             return
 
+        def get_optimal_grouping(n: int, min_size: int = 4, max_size: int = 6) -> list[int]:
+            possible_groupings = []
+            for k in range(math.ceil(n/max_size), n // min_size + 1):
+                base = n // k
+                extra = n % k
+                if base < min_size or (base + 1) > max_size:
+                    continue
+                grouping = [base + 1] * extra + [base] * (k - extra)
+                possible_groupings.append((k, grouping))
+            if not possible_groupings:
+                k = math.ceil(n / max_size)
+                base = n // k
+                extra = n % k
+                grouping = [base + 1] * extra + [base] * (k - extra)
+                return grouping
+            def score(grouping):
+                return sum(1 for size in grouping if size == max_size)
+            possible_groupings.sort(key=lambda t: (score(t[1]), -t[0]), reverse=True)
+            return possible_groupings[0][1]
+
         presence_ids = registrations.get("presence", [])
         tentative_ids = registrations.get("tentative", [])
+        total_presence = len(presence_ids)
+        optimal_presence = get_optimal_grouping(total_presence) if total_presence > 0 else []
+        # Vous pouvez convertir cette liste en une chaîne, par exemple
+        optimal_text = ", ".join(str(size) for size in optimal_presence)
 
         roster_data = {"membres": {}}
         for member in guild.members:
             member_id_str = str(member.id)
             pseudo = member.display_name
-            member_class = self.guild_members_cache.get(guild_id, {}).get(member.id, "Unknown")
-            roster_data["membres"][member_id_str] = {"pseudo": pseudo, "GS": "N/A", "classe": member_class}
+            member_data = self.guild_members_cache.get(guild_id, {}).get(member.id)
+            if member_data:
+                member_class = member_data.get("classe", "Unknown")
+                gs = member_data.get("GS", "N/A")
+                armes = member_data.get("armes", "N/A")
+            else:
+                member_class = "Unknown"
+                gs = "N/A"
+                armes = "N/A"
+            roster_data["membres"][member_id_str] = {"pseudo": pseudo, "GS": gs, "armes": armes, "classe": member_class}
 
         presence_groups, presence_missing = self.group_members_by_class(presence_ids, roster_data)
         tentative_groups, tentative_missing = self.group_members_by_class(tentative_ids, roster_data)
@@ -1182,10 +1227,12 @@ class GuildEvents(commands.Cog):
 
         expected_classes = ["Tank", "Melee DPS", "Ranged DPS", "Healer", "Flanker"]
 
+        embed.add_field(name="Présents", value=f"Nombre total de présents : **{total_presence}**\nRépartition optimale : **{len(optimal_presence)} groupes** (tailles: {optimal_text})", inline=False)
+
         for cls in expected_classes:
             group = presence_groups.get(cls, [])
             count = len(group)
-            details = "\n".join([f"• {pseudo}" for pseudo, gs in group]) if count > 0 else "Aucun"
+            details = "\n".join([f"• {member_str}" for member_str in group]) if count > 0 else "Aucun"
             embed.add_field(name=f"**{count}** - **{cls} (Présents)**", value=f"{details}\n\u200b", inline=False)
 
         if presence_missing:
