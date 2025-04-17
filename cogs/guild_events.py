@@ -1,4 +1,5 @@
 import discord
+from discord import NotFound, HTTPException
 import logging
 import asyncio
 import pytz
@@ -12,6 +13,25 @@ import random
 import math
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
+
+WEAPON_EMOJIS = {
+    "B":  "<:TL_B:1362340360470270075>",
+    "CB": "<:TL_CB:1362340413142335619>",
+    "DG": "<:TL_DG:1362340445148938251>",
+    "GS": "<:TL_GS:1362340479819059211>",
+    "S":  "<:TL_S:1362340495447167048>",
+    "SNS":"<:TL_SNS:1362340514002763946>",
+    "SP": "<:TL_SP:1362340530062888980>",
+    "W":  "<:TL_W:1362340545376030760>"
+}
+
+CLASS_EMOJIS = {
+    "Tank":    "🛡️",
+    "Healer":  "💉",
+    "Melee DPS":   "⚔️",
+    "Ranged DPS":  "⚔️",
+    "Flanker": "💢",
+}
 
 class GuildEvents(commands.Cog):
     def __init__(self, bot):
@@ -814,9 +834,9 @@ class GuildEvents(commands.Cog):
     async def event_delete_cron(self, ctx=None) -> None:
         tz = pytz.timezone("Europe/Paris")
         now = datetime.now(tz)
-        total_deleted = 0
 
         for guild_id, settings in self.guild_settings.items():
+            total_deleted = 0
             guild = self.bot.get_guild(guild_id)
             if not guild:
                 logging.error(f"[GuildEvents CRON] Guild {guild_id} not found.")
@@ -827,25 +847,24 @@ class GuildEvents(commands.Cog):
                 logging.error(f"[GuildEvents CRON] Events channel not found for guild {guild_id}.")
                 continue
 
-            guild_events_keys = [key for key, ev in self.events_data.items() if ev["guild_id"] == guild_id]
+            guild_events_keys = [key for key, ev in list(self.events_data.items())if ev["guild_id"] == guild_id]
+
             for key in guild_events_keys:
-                ev = self.events_data[key]
+                ev = self.events_data.get(key)
                 try:
                     if isinstance(ev["event_date"], str):
                         event_date = datetime.strptime(ev["event_date"], "%Y-%m-%d").date()
                     else:
                         event_date = ev["event_date"]
 
-                    if isinstance(ev["event_time"], str):
-                        time_str = ev["event_time"][:5]
-                        event_time = datetime.strptime(time_str, "%H:%M").time()
-                    elif isinstance(ev["event_time"], timedelta):
-                        total_seconds = int(ev["event_time"].total_seconds())
-                        hours = total_seconds // 3600
-                        minutes = (total_seconds % 3600) // 60
-                        event_time = dt_time(hours, minutes)
+                    raw_time = ev["event_time"]
+                    if isinstance(raw_time, str):
+                        event_time = datetime.strptime(raw_time[:5], "%H:%M").time()
                     elif isinstance(ev["event_time"], dt_time):
-                        event_time = ev["event_time"]
+                        event_time = raw_time
+                    elif isinstance(raw_time, timedelta):
+                        seconds = int(raw_time.total_seconds())
+                        event_time = dt_time(seconds // 3600, (seconds % 3600) // 60)
                     elif isinstance(ev["event_time"], datetime):
                         event_time = ev["event_time"].time()
                     else:
@@ -853,7 +872,7 @@ class GuildEvents(commands.Cog):
                         event_time = datetime.strptime("21:00", "%H:%M").time()
 
                     start_dt = tz.localize(datetime.combine(event_date, event_time))
-                    end_dt = start_dt + timedelta(minutes=int(ev["duration"]))
+                    end_dt = start_dt + timedelta(minutes=int(ev.get("duration", 0)))
                 except Exception as e:
                     logging.error(f"[GuildEvents CRON] Error parsing event {ev['event_id']}: {e}", exc_info=True)
                     continue
@@ -862,11 +881,17 @@ class GuildEvents(commands.Cog):
                     try:
                         msg = await events_channel.fetch_message(ev["event_id"])
                         await msg.delete()
-                        total_deleted += 1
-                        del self.events_data[key]
+                        logging.debug(f"[GuildEvents CRON] Message {ev['event_id']} deleted in channel {events_channel.id}")
+                    except HTTPException as http_e:
+                        logging.error(f"[GuildEvents CRON] HTTP error deleting message {ev['event_id']}: {http_e}", exc_info=True)
+                    except NotFound:
+                        logging.debug(f"[GuildEvents CRON] Message {ev['event_id']} already gone (404), removing record.")
                     except Exception as e:
                         logging.error(f"[GuildEvents CRON] Error deleting message for event {ev['event_id']}: {e}", exc_info=True)
                         continue
+
+                    total_deleted += 1
+                    del self.events_data[key]
 
                     if str(ev.get("status", "")).lower() == "canceled":
                         try:
@@ -1101,23 +1126,36 @@ class GuildEvents(commands.Cog):
             "Flanker": []
         }
         missing = []
+
         for member_id in member_ids:
             member_key = str(member_id)
             member_info = roster_data.get("membres", {}).get(member_key)
-            if member_info:
-                pseudo = member_info.get("pseudo", "Pseudo inconnu")
-                gs = member_info.get("GS", "N/A")
-                armes = member_info.get("armes", "N/A")
-                member_class = member_info.get("classe", "Inconnue")
-                formatted_member = f"{pseudo} ({armes}) - GS: {gs}"
-                if member_class in classes:
-                    classes[member_class].append(formatted_member)
-                else:
-                    if "Inconnue" not in classes:
-                        classes["Inconnue"] = []
-                    classes["Inconnue"].append(formatted_member)
-            else:
+            if not member_info:
                 missing.append(member_id)
+                continue
+
+            pseudo = member_info.get("pseudo", "Pseudo inconnu")
+            gs    = member_info.get("GS", "N/A")
+            armes = member_info.get("armes", "")
+            member_class = member_info.get("classe", "Inconnue")
+
+            if armes:
+                emoji_list = [
+                    WEAPON_EMOJIS.get(code.strip(), code.strip())
+                    for code in armes.split("/")
+                    if code.strip()
+                ]
+                armes_display = " ".join(emoji_list)
+            else:
+                armes_display = "N/A"
+
+            formatted_member = f"{pseudo} {armes_display} - GS: {gs}"
+
+            if member_class in classes:
+                classes[member_class].append(formatted_member)
+            else:
+                classes.setdefault("Inconnue", []).append(formatted_member)
+
         return classes, missing
 
     @discord.slash_command(
