@@ -1158,16 +1158,138 @@ class GuildEvents(commands.Cog):
 
         return classes, missing
 
-    @discord.slash_command(
-        name="groups_test",
-        description="création des groupes (commande en attente de suppression)"
-    )
-    @commands.has_permissions(manage_guild=True)
-    async def create_groups(self, guild_id: int, event_id: str) -> None:
-        # Function still in creation, WIP
-        # For testing purposes, guild_id is forced to a specific value.
-        guild_id : int = 1345893638798049321
-        event_id : int = event_id
+    @staticmethod
+    def _get_optimal_grouping(n: int, min_size: int = 4, max_size: int = 6) -> list[int]:
+        possible = []
+        for k in range(math.ceil(n/max_size), n // min_size + 1):
+            base = n // k
+            extra = n % k
+            if base < min_size or base + 1 > max_size:
+                continue
+            grouping = [base+1]*extra + [base]*(k-extra)
+            possible.append((k, grouping))
+        if not possible:
+            k = math.ceil(n/max_size)
+            base = n // k; extra = n % k
+            return [base+1]*extra + [base]*(k-extra)
+        possible.sort(key=lambda t: (sum(1 for s in t[1] if s==max_size), -t[0]), reverse=True)
+        return possible[0][1]
+
+    def _assign_groups(
+        self,
+        presence_ids: list[int],
+        tentative_ids: list[int],
+        roster_data: dict
+    ) -> list[list[dict]]:
+        """
+        Retourne une liste de groupes (liste de dicts).
+        Chaque dict = infos joueur + bool 'tentative'.
+        """
+
+        buckets = {c: [] for c in ("Tank", "Healer",
+                                   "Melee DPS", "Ranged DPS", "Flanker")}
+
+        def _push(uid: int, tentative: bool):
+            info = roster_data["membres"].get(str(uid))
+            if info:
+                buckets[info["classe"]].append({**info, "tentative": tentative})
+
+        for uid in presence_ids:
+            _push(uid, tentative=False)
+        for uid in tentative_ids:
+            _push(uid, tentative=True)
+
+        groups: list[list[dict]] = []
+
+        titular_flankers = [m for m in buckets["Flanker"] if not m["tentative"]]
+        if len(titular_flankers) >= 4:
+            grp = titular_flankers[:6]
+            if len(grp) < 6:
+                extra = [m for m in buckets["Flanker"] if m["tentative"]][: 6 - len(grp)]
+                grp.extend(extra)
+            groups.append(grp)
+            used_ids = {id(m) for m in grp}
+            buckets["Flanker"] = [m for m in buckets["Flanker"] if id(m) not in used_ids]
+
+        buckets["Ranged DPS"].extend(buckets.pop("Flanker"))
+
+        n_presence = len(presence_ids)
+        sizes = self._get_optimal_grouping(n_presence, 4, 6)
+
+        def _pop(pool_name: str, prefer_titular=True):
+            pool = buckets[pool_name]
+            for i, m in enumerate(pool):
+                if (prefer_titular and not m["tentative"]) or (not prefer_titular):
+                    return pool.pop(i)
+            return None
+
+        for size in sizes:
+            grp: list[dict] = []
+
+            for role in ("Tank", "Healer"):
+                member = _pop(role, True) or _pop(role, False)
+                if member:
+                    grp.append(member)
+
+            for role in ("Melee DPS", "Ranged DPS"):
+                while len(grp) < size and buckets[role]:
+                    member = _pop(role, True)
+                    if not member:
+                        break
+                    grp.append(member)
+
+            role_cycle = ("Melee DPS", "Ranged DPS")
+            idx = 0
+            while len(grp) < size and any(buckets[r] for r in role_cycle):
+                role = role_cycle[idx % 2]
+                member = _pop(role, True)
+                if member:
+                    grp.append(member)
+                idx += 1
+
+            groups.append(grp)
+
+        def _need_role(g):
+            classes = [m["classe"] for m in g]
+            if "Healer" not in classes and buckets["Healer"]:
+                return "Healer"
+            if "Tank" not in classes and buckets["Tank"]:
+                return "Tank"
+            melee = sum(1 for c in classes if c == "Melee DPS")
+            ranged = sum(1 for c in classes if c == "Ranged DPS")
+            if melee > ranged and buckets["Melee DPS"]:
+                return "Melee DPS"
+            if ranged >= melee and buckets["Ranged DPS"]:
+                return "Ranged DPS"
+            return None
+
+        fill_order = ("Healer", "Tank", "Melee DPS", "Ranged DPS")
+
+        for grp in groups:
+            while len(grp) < 6 and any(buckets[r] for r in fill_order):
+                role = _need_role(grp) or next(r for r in fill_order if buckets[r])
+                grp.append(buckets[role].pop(0))
+
+        remaining = []
+        for role in buckets:
+            remaining.extend(buckets[role])
+
+        if remaining:
+            comp_sizes = self._get_optimal_grouping(
+                len(remaining), 4, 6
+            )
+            start = 0
+            for cs in comp_sizes:
+                grp = remaining[start:start + cs]
+                start += cs
+                if grp:
+                    groups.append(grp)
+            if start < len(remaining):
+                groups.append(remaining[start:])
+
+        return groups
+
+    async def create_groups(self, guild_id: int, event_id: int) -> None:
         logging.info(f"[GuildEvent - Cron Create_Groups] Creating groups for guild {guild_id}, event {event_id}")
 
         guild = self.bot.get_guild(guild_id)
@@ -1175,20 +1297,17 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvent - Cron Create_Groups] Guild not found for guild_id: {guild_id}")
             return
 
-
         settings = self.guild_settings.get(guild_id)
         if not settings:
             logging.error(f"[GuildEvent - Cron Create_Groups] No configuration found for guild {guild_id}")
             return
 
-        groups_channel_id = settings.get("groups_channel")
-        if not groups_channel_id:
-            logging.error(f"[GuildEvent - Cron Create_Groups] Groups channel ID not found in configuration for guild {guild_id}")
-            return
-
-        groups_channel = guild.get_channel(int(groups_channel_id))
-        if not groups_channel:
-            logging.error(f"[GuildEvent - Cron Create_Groups] Groups channel not found for ID {groups_channel_id}")
+        groups_channel = guild.get_channel(int(settings.get("groups_channel")))
+        events_channel = guild.get_channel(int(settings.get("events_channel")))
+        members_role_id = settings.get("members_role")
+        mention_role = f"<@&{members_role_id}>" if members_role_id else ""
+        if not groups_channel or not events_channel:
+            logging.error(f"[GuildEvent - Cron Create_Groups] Channels not found (groups/events) for guild {guild_id}")
             return
 
         key = f"{guild_id}_{event_id}"
@@ -1197,104 +1316,65 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvent - Cron Create_Groups] Event not found for guild {guild_id} and event {event_id}")
             return
 
-        registrations = event.get("registrations")
-        if isinstance(registrations, str):
+        regs = event.get("registrations", {})
+        if isinstance(regs, str):
             try:
-                registrations = json.loads(registrations)
-            except Exception as e:
-                logging.error(f"[GuildEvent - Cron Create_Groups] Error decoding registrations for event {event_id}: {e}")
-                return
-        if not isinstance(registrations, dict):
-            logging.error(f"[GuildEvent - Cron Create_Groups] Registrations for event {event_id} are not in expected dictionary format.")
-            return
+                regs = json.loads(regs)
+            except:
+                regs = {"presence": [], "tentative": [], "absence": []}
+        presence_ids  = regs.get("presence", [])
+        tentative_ids = regs.get("tentative", [])
 
-        def get_optimal_grouping(n: int, min_size: int = 4, max_size: int = 6) -> list[int]:
-            possible_groupings = []
-            for k in range(math.ceil(n/max_size), n // min_size + 1):
-                base = n // k
-                extra = n % k
-                if base < min_size or (base + 1) > max_size:
-                    continue
-                grouping = [base + 1] * extra + [base] * (k - extra)
-                possible_groupings.append((k, grouping))
-            if not possible_groupings:
-                k = math.ceil(n / max_size)
-                base = n // k
-                extra = n % k
-                grouping = [base + 1] * extra + [base] * (k - extra)
-                return grouping
-            def score(grouping):
-                return sum(1 for size in grouping if size == max_size)
-            possible_groupings.sort(key=lambda t: (score(t[1]), -t[0]), reverse=True)
-            return possible_groupings[0][1]
-
-        presence_ids = registrations.get("presence", [])
-        tentative_ids = registrations.get("tentative", [])
-        total_presence = len(presence_ids)
-        optimal_presence = get_optimal_grouping(total_presence) if total_presence > 0 else []
-        # Vous pouvez convertir cette liste en une chaîne, par exemple
-        optimal_text = ", ".join(str(size) for size in optimal_presence)
+        presence_count  = len(presence_ids)
+        tentative_count = len(tentative_ids)
+        event_link = f"https://discord.com/channels/{guild.id}/{events_channel.id}/{event_id}"
+        header = (
+            f"{mention_role}\n\n"
+            f"**__Évènement :__ {event['name']}**\n"
+            f"{event['event_date']} à {event['event_time']}\n"
+            f"Présents : {presence_count}\nTentatives : {tentative_count}\n\n"
+            f"[Voir l'Évènement et les inscriptions]({event_link})\n\n"
+            f"Groupes ci-dessous\n"
+        )
 
         roster_data = {"membres": {}}
         for member in guild.members:
-            member_id_str = str(member.id)
-            pseudo = member.display_name
-            member_data = self.guild_members_cache.get(guild_id, {}).get(member.id)
-            if member_data:
-                member_class = member_data.get("classe", "Unknown")
-                gs = member_data.get("GS", "N/A")
-                armes = member_data.get("armes", "N/A")
-            else:
-                member_class = "Unknown"
-                gs = "N/A"
-                armes = "N/A"
-            roster_data["membres"][member_id_str] = {"pseudo": pseudo, "GS": gs, "armes": armes, "classe": member_class}
+            md = self.guild_members_cache.get(guild_id, {}).get(member.id, {})
+            roster_data["membres"][str(member.id)] = {
+                "pseudo": member.display_name,
+                "GS":    md.get("GS", "N/A"),
+                "armes": md.get("armes", "N/A"),
+                "classe":md.get("classe", "Unknown")
+            }
 
-        presence_groups, presence_missing = self.group_members_by_class(presence_ids, roster_data)
-        tentative_groups, tentative_missing = self.group_members_by_class(tentative_ids, roster_data)
+        all_groups = self._assign_groups(presence_ids, tentative_ids, roster_data)
 
-        event_name = event.get("name", "Undefined")
-        event_date = event.get("event_date", "Undefined")
-        event_time = event.get("event_time", "Undefined")
-
-        embed = discord.Embed(
-            title=f"Groupes pour l'événement : {event_name}",
-            description=f"Date : {event_date} - Heure : {event_time}",
-            color=discord.Color.blue()
-        )
-
-        expected_classes = ["Tank", "Melee DPS", "Ranged DPS", "Healer", "Flanker"]
-
-        embed.add_field(name="Présents", value=f"Nombre total de présents : **{total_presence}**\nRépartition optimale : **{len(optimal_presence)} groupes** (tailles: {optimal_text})", inline=False)
-
-        for cls in expected_classes:
-            group = presence_groups.get(cls, [])
-            count = len(group)
-            details = "\n".join([f"• {member_str}" for member_str in group]) if count > 0 else "Aucun"
-            embed.add_field(name=f"**{count}** - **{cls} (Présents)**", value=f"{details}\n\u200b", inline=False)
-
-        if presence_missing:
-            missing_str = ", ".join(str(mid) for mid in presence_missing)
-            embed.add_field(name="Informations manquantes (Présents)", value=missing_str, inline=False)
-
-        tentative_summary = ""
-        for cls in expected_classes:
-            group = tentative_groups.get(cls, [])
-            count = len(group)
-            tentative_summary += f"**{count}** - **{cls}**\n"
-        if tentative_summary:
-            embed.add_field(name="Tentatives (par catégorie)", value=tentative_summary + "\n\u200b", inline=False)
-        if tentative_missing:
-            missing_str = ", ".join(str(mid) for mid in tentative_missing)
-            embed.add_field(name="Informations manquantes (Tentatives)", value=missing_str, inline=False)
-
-        embed.set_footer(text=f"Message généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}")
+        embeds = []
+        total = len(all_groups)
+        for idx, grp in enumerate(all_groups, start=1):
+            e = discord.Embed(
+                title=f"Groupe {idx} / {total}",
+                color=discord.Color.blue()
+            )
+            lines = []
+            for m in grp:
+                cls_emoji   = CLASS_EMOJIS.get(m["classe"], "")
+                armes_emoji = " ".join(
+                    WEAPON_EMOJIS.get(code.strip(), code.strip())
+                    for code in m["armes"].split("/") if code.strip()
+                )
+                if m.get("tentative", False):
+                    lines.append(f"{cls_emoji} {armes_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
+                else:
+                    lines.append(f"{cls_emoji} {armes_emoji} {m['pseudo']} ({m['GS']})")
+            e.description = "\n".join(lines) or "Aucun membre"
+            embeds.append(e)
 
         try:
-            await groups_channel.send(embed=embed)
-            logging.info(f"Groups created and published in channel {groups_channel.id} for event {event_id}")
+            await groups_channel.send(content=header, embeds=embeds)
+            logging.info(f"[GuildEvents - Create_Groups] Groups embed envoyé dans le salon {groups_channel.id}")
         except Exception as e:
-            logging.error(f"Error sending groups embed: {e}")
+            logging.error(f"[GuildEvents - Create_Groups] Erreur envoi groups embed : {e}")
 
     @discord.slash_command(
         name=GUILD_EVENTS.get("event_create", {}).get("name", {}).get("en-US", "event_create"),
