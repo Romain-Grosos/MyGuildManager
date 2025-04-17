@@ -9,7 +9,6 @@ import time
 from translation import translations as global_translations
 from typing import Optional
 import json
-import random
 import math
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
@@ -1118,176 +1117,169 @@ class GuildEvents(commands.Cog):
 
     @staticmethod
     def group_members_by_class(member_ids, roster_data):
-        classes = {
-            "Tank": [],
-            "Melee DPS": [],
-            "Ranged DPS": [],
-            "Healer": [],
-            "Flanker": []
-        }
+        logging.debug("[Guild_Events - GroupsMembersByClass] Building class buckets…")
+        classes = {c: [] for c in ("Tank", "Melee DPS", "Ranged DPS",
+                                "Healer", "Flanker")}
         missing = []
 
-        for member_id in member_ids:
-            member_key = str(member_id)
-            member_info = roster_data.get("membres", {}).get(member_key)
-            if not member_info:
-                missing.append(member_id)
+        for mid in member_ids:
+            try:
+                info = roster_data["membres"][str(mid)]
+            except KeyError:
+                logging.warning(f"[Guild_Events - GroupsMembersByClass] Member ID {mid} not found in roster.")
+                missing.append(mid)
                 continue
 
-            pseudo = member_info.get("pseudo", "Pseudo inconnu")
-            gs    = member_info.get("GS", "N/A")
-            armes = member_info.get("armes", "")
-            member_class = member_info.get("classe", "Inconnue")
+            pseudo = info.get("pseudo", "Unknown")
+            gs     = info.get("GS", "N/A")
+            armes  = info.get("armes", "")
+            mclass = info.get("classe", "Unknown")
 
-            if armes:
-                emoji_list = [
-                    WEAPON_EMOJIS.get(code.strip(), code.strip())
-                    for code in armes.split("/")
-                    if code.strip()
-                ]
-                armes_display = " ".join(emoji_list)
-            else:
-                armes_display = "N/A"
+            emojis = " ".join(
+                WEAPON_EMOJIS.get(c.strip(), c.strip())
+                for c in armes.split("/") if c.strip()
+            ) or "N/A"
 
-            formatted_member = f"{pseudo} {armes_display} - GS: {gs}"
+            classes.setdefault(mclass, []).append(f"{pseudo} {emojis} - GS: {gs}")
 
-            if member_class in classes:
-                classes[member_class].append(formatted_member)
-            else:
-                classes.setdefault("Inconnue", []).append(formatted_member)
-
+        logging.info(f"[Guild_Events - GroupsMembersByClass] Buckets built – {sum(len(v) for v in classes.values())} "
+                    f"entries, {len(missing)} missing.")
         return classes, missing
 
     @staticmethod
     def _get_optimal_grouping(n: int, min_size: int = 4, max_size: int = 6) -> list[int]:
+        logging.debug(f"[Guild_Events - GetOptimalGrouping] Start – n={n}, min={min_size}, max={max_size}")
         possible = []
-        for k in range(math.ceil(n/max_size), n // min_size + 1):
-            base = n // k
-            extra = n % k
-            if base < min_size or base + 1 > max_size:
-                continue
-            grouping = [base+1]*extra + [base]*(k-extra)
-            possible.append((k, grouping))
-        if not possible:
-            k = math.ceil(n/max_size)
-            base = n // k; extra = n % k
-            return [base+1]*extra + [base]*(k-extra)
-        possible.sort(key=lambda t: (sum(1 for s in t[1] if s==max_size), -t[0]), reverse=True)
-        return possible[0][1]
+        try:
+            for k in range(math.ceil(n/max_size), n // min_size + 1):
+                base  = n // k
+                extra = n % k
+                if base < min_size or base + 1 > max_size:
+                    continue
+                grouping = [base+1]*extra + [base]*(k-extra)
+                possible.append((k, grouping))
 
-    def _assign_groups(
-        self,
-        presence_ids: list[int],
-        tentative_ids: list[int],
-        roster_data: dict
-    ) -> list[list[dict]]:
-        """
-        Retourne une liste de groupes (liste de dicts).
-        Chaque dict = infos joueur + bool 'tentative'.
-        """
+            if not possible:
+                k = math.ceil(n/max_size)
+                base  = n // k
+                extra = n % k
+                result = [base+1]*extra + [base]*(k-extra)
+                logging.debug(f"[Guild_Events - GetOptimalGrouping] Fallback result → {result}")
+                return result
+
+            possible.sort(key=lambda t: (sum(1 for s in t[1] if s == max_size), -t[0]),
+                        reverse=True)
+            result = possible[0][1]
+            logging.debug(f"[Guild_Events - GetOptimalGrouping] Best result → {result}")
+            return result
+        except Exception as exc:
+            logging.exception("[Guild_Events - GetOptimalGrouping] Unexpected error.", exc_info=exc)
+            return [min_size] * math.ceil(n / min_size)
+
+    def _assign_groups(self, presence_ids: list[int], tentative_ids: list[int], roster_data: dict) -> list[list[dict]]:
+        logging.debug("[Guild_Events - AssignGroups] Starting group assignment…")
 
         buckets = {c: [] for c in ("Tank", "Healer",
                                    "Melee DPS", "Ranged DPS", "Flanker")}
 
         def _push(uid: int, tentative: bool):
             info = roster_data["membres"].get(str(uid))
-            if info:
+            if not info:
+                logging.warning(f"[Guild_Events - AssignGroups] UID {uid} missing from roster, skipped.")
+                return
+            try:
                 buckets[info["classe"]].append({**info, "tentative": tentative})
+            except KeyError:
+                logging.error(f"[Guild_Events - AssignGroups] Unknown class '{info.get('classe')}' for UID {uid}.")
 
         for uid in presence_ids:
-            _push(uid, tentative=False)
+            _push(uid, False)
         for uid in tentative_ids:
-            _push(uid, tentative=True)
+            _push(uid, True)
 
-        groups: list[list[dict]] = []
+        try:
+            groups = []
 
-        titular_flankers = [m for m in buckets["Flanker"] if not m["tentative"]]
-        if len(titular_flankers) >= 4:
-            grp = titular_flankers[:6]
-            if len(grp) < 6:
-                extra = [m for m in buckets["Flanker"] if m["tentative"]][: 6 - len(grp)]
-                grp.extend(extra)
-            groups.append(grp)
-            used_ids = {id(m) for m in grp}
-            buckets["Flanker"] = [m for m in buckets["Flanker"] if id(m) not in used_ids]
+            titular_flankers = [m for m in buckets["Flanker"] if not m["tentative"]]
+            if len(titular_flankers) >= 4:
+                grp = titular_flankers[:6]
+                if len(grp) < 6:
+                    extra = [m for m in buckets["Flanker"] if m["tentative"]][:6-len(grp)]
+                    grp.extend(extra)
+                groups.append(grp)
+                used = {id(m) for m in grp}
+                buckets["Flanker"] = [m for m in buckets["Flanker"] if id(m) not in used]
 
-        buckets["Ranged DPS"].extend(buckets.pop("Flanker"))
+            buckets["Ranged DPS"].extend(buckets.pop("Flanker"))
 
-        n_presence = len(presence_ids)
-        sizes = self._get_optimal_grouping(n_presence, 4, 6)
+            sizes = self._get_optimal_grouping(len(presence_ids), 4, 6)
 
-        def _pop(pool_name: str, prefer_titular=True):
-            pool = buckets[pool_name]
-            for i, m in enumerate(pool):
-                if (prefer_titular and not m["tentative"]) or (not prefer_titular):
-                    return pool.pop(i)
-            return None
+            def _pop(role, titular_first=True):
+                pool = buckets[role]
+                for i, m in enumerate(pool):
+                    if (titular_first and not m["tentative"]) or not titular_first:
+                        return pool.pop(i)
+                return None
 
-        for size in sizes:
-            grp: list[dict] = []
+            for size in sizes:
+                grp = []
+                for role in ("Tank", "Healer"):
+                    member = _pop(role) or _pop(role, False)
+                    if member:
+                        grp.append(member)
 
-            for role in ("Tank", "Healer"):
-                member = _pop(role, True) or _pop(role, False)
-                if member:
-                    grp.append(member)
+                for role in ("Melee DPS", "Ranged DPS"):
+                    while len(grp) < size and buckets[role]:
+                        member = _pop(role)
+                        if not member:
+                            break
+                        grp.append(member)
 
-            for role in ("Melee DPS", "Ranged DPS"):
-                while len(grp) < size and buckets[role]:
-                    member = _pop(role, True)
-                    if not member:
-                        break
-                    grp.append(member)
+                role_cycle, idx = ("Melee DPS", "Ranged DPS"), 0
+                while len(grp) < size and any(buckets[r] for r in role_cycle):
+                    role = role_cycle[idx % 2]
+                    member = _pop(role) or _pop(role, False)
+                    if member:
+                        grp.append(member)
+                    idx += 1
 
-            role_cycle = ("Melee DPS", "Ranged DPS")
-            idx = 0
-            while len(grp) < size and any(buckets[r] for r in role_cycle):
-                role = role_cycle[idx % 2]
-                member = _pop(role, True)
-                if member:
-                    grp.append(member)
-                idx += 1
+                groups.append(grp)
 
-            groups.append(grp)
+            fill_order = ("Healer", "Tank", "Melee DPS", "Ranged DPS")
 
-        def _need_role(g):
-            classes = [m["classe"] for m in g]
-            if "Healer" not in classes and buckets["Healer"]:
-                return "Healer"
-            if "Tank" not in classes and buckets["Tank"]:
-                return "Tank"
-            melee = sum(1 for c in classes if c == "Melee DPS")
-            ranged = sum(1 for c in classes if c == "Ranged DPS")
-            if melee > ranged and buckets["Melee DPS"]:
-                return "Melee DPS"
-            if ranged >= melee and buckets["Ranged DPS"]:
-                return "Ranged DPS"
-            return None
+            def _need_role(g):
+                classes = [m["classe"] for m in g]
+                if "Healer" not in classes and buckets["Healer"]:
+                    return "Healer"
+                if "Tank" not in classes and buckets["Tank"]:
+                    return "Tank"
+                melee  = sum(c == "Melee DPS"   for c in classes)
+                ranged = sum(c == "Ranged DPS"  for c in classes)
+                if melee > ranged and buckets["Melee DPS"]:
+                    return "Melee DPS"
+                if buckets["Ranged DPS"]:
+                    return "Ranged DPS"
+                return None
 
-        fill_order = ("Healer", "Tank", "Melee DPS", "Ranged DPS")
+            for grp in groups:
+                while len(grp) < 6 and any(buckets[r] for r in fill_order):
+                    role = _need_role(grp) or next(r for r in fill_order if buckets[r])
+                    grp.append(buckets[role].pop(0))
 
-        for grp in groups:
-            while len(grp) < 6 and any(buckets[r] for r in fill_order):
-                role = _need_role(grp) or next(r for r in fill_order if buckets[r])
-                grp.append(buckets[role].pop(0))
+            remaining = [m for pool in buckets.values() for m in pool]
+            if remaining:
+                comp_sizes = self._get_optimal_grouping(len(remaining), 4, 6)
+                start = 0
+                for cs in comp_sizes:
+                    groups.append(remaining[start:start+cs])
+                    start += cs
 
-        remaining = []
-        for role in buckets:
-            remaining.extend(buckets[role])
+            logging.info(f"[Guild_Events - AssignGroups] Finished – {len(groups)} group(s) built.")
+            return groups
 
-        if remaining:
-            comp_sizes = self._get_optimal_grouping(
-                len(remaining), 4, 6
-            )
-            start = 0
-            for cs in comp_sizes:
-                grp = remaining[start:start + cs]
-                start += cs
-                if grp:
-                    groups.append(grp)
-            if start < len(remaining):
-                groups.append(remaining[start:])
-
-        return groups
+        except Exception as exc:
+            logging.exception("[Guild_Events - AssignGroups] Unexpected error during grouping.", exc_info=exc)
+            return []
 
     async def create_groups(self, guild_id: int, event_id: int) -> None:
         logging.info(f"[GuildEvent - Cron Create_Groups] Creating groups for guild {guild_id}, event {event_id}")
@@ -1337,44 +1329,50 @@ class GuildEvents(commands.Cog):
             f"Groupes ci-dessous\n"
         )
 
-        roster_data = {"membres": {}}
-        for member in guild.members:
-            md = self.guild_members_cache.get(guild_id, {}).get(member.id, {})
-            roster_data["membres"][str(member.id)] = {
-                "pseudo": member.display_name,
-                "GS":    md.get("GS", "N/A"),
-                "armes": md.get("armes", "N/A"),
-                "classe":md.get("classe", "Unknown")
-            }
-
-        all_groups = self._assign_groups(presence_ids, tentative_ids, roster_data)
-
-        embeds = []
-        total = len(all_groups)
-        for idx, grp in enumerate(all_groups, start=1):
-            e = discord.Embed(
-                title=f"Groupe {idx} / {total}",
-                color=discord.Color.blue()
-            )
-            lines = []
-            for m in grp:
-                cls_emoji   = CLASS_EMOJIS.get(m["classe"], "")
-                armes_emoji = " ".join(
-                    WEAPON_EMOJIS.get(code.strip(), code.strip())
-                    for code in m["armes"].split("/") if code.strip()
-                )
-                if m.get("tentative", False):
-                    lines.append(f"{cls_emoji} {armes_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
-                else:
-                    lines.append(f"{cls_emoji} {armes_emoji} {m['pseudo']} ({m['GS']})")
-            e.description = "\n".join(lines) or "Aucun membre"
-            embeds.append(e)
+        try:
+            roster_data = {"membres": {}}
+            for member in guild.members:
+                md = self.guild_members_cache.get(guild_id, {}).get(member.id, {})
+                roster_data["membres"][str(member.id)] = {
+                    "pseudo": member.display_name,
+                    "GS": md.get("GS", "N/A"),
+                    "armes": md.get("armes", "N/A"),
+                    "classe": md.get("classe", "Unknown"),
+                }
+        except Exception as exc:
+            logging.exception("[Guild_Events - CreateGroups] Failed to build roster.", exc_info=exc)
+            return
 
         try:
+            all_groups = self._assign_groups(presence_ids, tentative_ids, roster_data)
+        except Exception as exc:
+            logging.exception("[Guild_Events - CreateGroups] _assign_groups crashed.", exc_info=exc)
+            return
+
+        try:
+            embeds = []
+            total = len(all_groups)
+            for idx, grp in enumerate(all_groups, 1):
+                e = discord.Embed(title=f"Groupe {idx} / {total}",
+                                color=discord.Color.blue())
+                lines = []
+                for m in grp:
+                    cls_emoji = CLASS_EMOJIS.get(m["classe"], "")
+                    armes_emoji = " ".join(
+                        WEAPON_EMOJIS.get(c.strip(), c.strip())
+                        for c in m["armes"].split("/") if c.strip()
+                    )
+                    if m.get("tentative"):
+                        lines.append(f"{cls_emoji} {armes_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
+                    else:
+                        lines.append(f"{cls_emoji} {armes_emoji} {m['pseudo']} ({m['GS']})")
+                e.description = "\n".join(lines) or "Aucun membre"
+                embeds.append(e)
+
             await groups_channel.send(content=header, embeds=embeds)
-            logging.info(f"[GuildEvents - Create_Groups] Groups embed envoyé dans le salon {groups_channel.id}")
-        except Exception as e:
-            logging.error(f"[GuildEvents - Create_Groups] Erreur envoi groups embed : {e}")
+            logging.info(f"[GuildEvents - Create_Groups] Groups sent to channel {groups_channel.id}.")
+        except Exception as exc:
+            logging.exception("[GuildEvents - Create_Groups] Failed to send embeds.", exc_info=exc)
 
     @discord.slash_command(
         name=GUILD_EVENTS.get("event_create", {}).get("name", {}).get("en-US", "event_create"),
