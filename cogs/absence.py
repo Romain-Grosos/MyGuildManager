@@ -6,7 +6,8 @@ import asyncio
 class AbsenceManager(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self.abs_channels = {}
+        self.abs_channels: dict[int, dict[str, int]] = {}
+        self.role_ids: dict[int, dict[str, int]] = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -16,20 +17,23 @@ class AbsenceManager(commands.Cog):
     async def load_absence_channels(self) -> None:
         logging.debug("[AbsenceManager] Loading absence channels from the database.")
         query = """
-            SELECT gc.guild_id, gc.abs_channel, gc.forum_members_channel, gs.guild_lang
+            SELECT gc.guild_id, gc.abs_channel, gc.forum_members_channel,
+                gs.guild_lang, gr.members, gr.absent_members
             FROM guild_channels gc
-            JOIN guild_settings gs ON gc.guild_id = gs.guild_id;
+            JOIN guild_settings gs ON gc.guild_id = gs.guild_id
+            JOIN guild_roles    gr ON gc.guild_id = gr.guild_id;
         """
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             if rows:
                 for row in rows:
-                    guild_id, abs_channel_id, forum_members_channel_id, guild_lang = row
+                    guild_id, abs_channel_id, forum_members_channel_id, guild_lang, role_member_id, role_absent_id = row
                     self.abs_channels[guild_id] = {
                         "abs_channel": abs_channel_id,
                         "forum_members_channel": forum_members_channel_id,
                         "guild_lang": guild_lang
                     }
+                    self.role_ids[guild_id] = {"member": role_member_id, "absent": role_absent_id}
                 logging.debug(f"[AbsenceManager] Absence channels loaded: {self.abs_channels}")
             else:
                 logging.warning("[AbsenceManager] No absence channels found in the database.")
@@ -50,15 +54,13 @@ class AbsenceManager(commands.Cog):
         if not member:
             return
 
-        query = "SELECT members, absent_members FROM guild_roles WHERE guild_id = ?"
-        result = await self.bot.run_db_query(query, (guild.id,), fetch_one=True)
         role_member = role_absent = None
-        if result:
-            role_member_id, role_absent_id = result
-            role_member = guild.get_role(role_member_id)
-            role_absent = guild.get_role(role_absent_id)
-        else:
-            logging.warning(f"[AbsenceManager] No roles found for guild {guild.id}.")
+        roles = self.role_ids.get(guild.id, {})
+        role_member = guild.get_role(roles.get("member"))
+        role_absent = guild.get_role(roles.get("absent"))
+        if role_member is None or role_absent is None: 
+            logging.warning("[AbsenceManager] Roles missing in guild %s", guild.id)
+            return
 
         if role_absent and role_member:
             if role_member in member.roles:
@@ -70,47 +72,89 @@ class AbsenceManager(commands.Cog):
                 try:
                     await member.add_roles(role_absent)
                     logging.debug(f"[AbsenceManager] ✅ 'Absent Members' role assigned to {member.name} in guild {guild.id}.")
+
+                    try:
+                        insert = """
+                            INSERT INTO absence_messages (guild_id, message_id, member_id)
+                            VALUES (%s, %s, %s)
+                            ON DUPLICATE KEY UPDATE created_at = NOW()
+                        """
+                        await self.bot.run_db_query(
+                            insert, (guild.id, message.id, member.id), commit=True
+                        )
+                    except Exception as e:
+                        logging.error("[AbsenceManager] Error saving absence message: %s", e)
+
                     await self.notify_absence(member, "addition", channels.get("forum_members_channel"), channels.get("guild_lang"))
                 except Exception as e:
                     logging.error(f"[AbsenceManager] Error adding absent role to {member.name}: {e}")
 
     @commands.Cog.listener()
-    async def on_message_delete(self, message: discord.Message) -> None:
-        if message.author.bot or message.webhook_id is not None:
+    async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
+        cfg = self.abs_channels.get(payload.guild_id)
+        if not cfg or payload.channel_id != cfg.get("abs_channel"):
             return
 
-        guild = message.guild
-        channels = self.abs_channels.get(guild.id)
-        if not channels or message.channel.id != channels.get("abs_channel"):
+        try:
+            row = await self.bot.run_db_query(
+                "SELECT member_id FROM absence_messages "
+                "WHERE guild_id = %s AND message_id = %s",
+                (payload.guild_id, payload.message_id),
+                fetch_one=True
+            )
+        except Exception as e:
+            logging.error("[AbsenceManager] DB error fetching absence message: %s", e)
             return
 
-        member = guild.get_member(message.author.id)
+        if not row:
+            logging.debug("[AbsenceManager] Absence message not found in DB.")
+            return
+
+        member_id = row[0]
+        guild     = self.bot.get_guild(payload.guild_id)
+        member    = guild.get_member(member_id)
         if not member:
             return
 
-        query = "SELECT members, absent_members FROM guild_roles WHERE guild_id = ?"
-        result = await self.bot.run_db_query(query, (guild.id,), fetch_one=True)
-        role_member = role_absent = None
-        if result:
-            role_member_id, role_absent_id = result
-            role_member = guild.get_role(role_member_id)
-            role_absent = guild.get_role(role_absent_id)
-        else:
-            logging.warning(f"[AbsenceManager] No roles found for guild {guild.id}.")
+        roles = self.role_ids.get(guild.id, {})
+        role_member = guild.get_role(roles.get("member"))
+        role_absent = guild.get_role(roles.get("absent"))
+        if role_member is None or role_absent is None:
+            logging.warning("[AbsenceManager] Roles missing in guild %s", guild.id)
+            return
 
-        if role_absent and role_member:
-            if role_absent in member.roles:
-                try:
-                    await member.remove_roles(role_absent)
-                except Exception as e:
-                    logging.error(f"[AbsenceManager] Error removing absent role from {member.name}: {e}")
-            if role_member not in member.roles:
-                try:
-                    await member.add_roles(role_member)
-                    logging.debug(f"[AbsenceManager] ✅ 'Members' role restored for {member.name} in guild {guild.id}.")
-                    await self.notify_absence(member, "removal", channels.get("forum_members_channel"), channels.get("guild_lang"))
-                except Exception as e:
-                    logging.error(f"[AbsenceManager] Error adding member role to {member.name}: {e}")
+        try:
+            await self.bot.run_db_query(
+                "DELETE FROM absence_messages WHERE guild_id = %s AND message_id = %s",
+                (payload.guild_id, payload.message_id), commit=True
+            )
+        except Exception as e:
+            logging.error("[AbsenceManager] Error deleting absence record: %s", e)
+            return
+
+        row = await self.bot.run_db_query(
+            "SELECT COUNT(*) FROM absence_messages "
+            "WHERE guild_id = %s AND member_id = %s",
+            (payload.guild_id, member_id), fetch_one=True
+        )
+        if row and row[0] > 0:
+            logging.debug("[AbsenceManager] Other absence messages remain for %s, keeping 'absent' role.", member.name)
+            return
+
+        if role_absent in member.roles:
+            try:
+                await member.remove_roles(role_absent)
+            except Exception as e:
+                logging.error("[AbsenceManager] Error removing absent role: %s", e)
+        if role_member and role_member not in member.roles:
+            try:
+                await member.add_roles(role_member)
+                await self.notify_absence(
+                    member, "removal",
+                    cfg["forum_members_channel"], cfg["guild_lang"]
+                )
+            except Exception as e:
+                logging.error("[AbsenceManager] Error adding member role: %s", e)
 
     async def notify_absence(self, member: discord.Member, action: str, channel_id: int, guild_lang: str) -> None:
         try:
