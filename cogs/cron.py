@@ -69,7 +69,7 @@ class Cron(commands.Cog):
             else:
                 logging.error("❌ [CRON] GuildEvents cog not found.")
 
-        if now == "23:30":
+        if now in ["23:30", '04:30']:
             logging.info("⏰ [CRON] Automatic deletion of finished events.")
             events_cog = self.bot.get_cog("GuildEvents")
             if not events_cog:

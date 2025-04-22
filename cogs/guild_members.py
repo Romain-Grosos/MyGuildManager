@@ -1,12 +1,11 @@
 import discord
 from discord.ext import commands
 import asyncio
-import pytz
 import logging
 from typing import Dict, List, Tuple, Any
 from discord.ext import commands, tasks
 from functions import get_user_message
-from datetime import datetime, timedelta
+from datetime import datetime
 from translation import translations as global_translations
 
 GUILD_MEMBERS = global_translations.get("guild_members", {})

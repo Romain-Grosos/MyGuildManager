@@ -1,6 +1,5 @@
 import discord
 import logging
-import asyncio
 from datetime import datetime
 from discord.ext import commands
 from translation import translations
