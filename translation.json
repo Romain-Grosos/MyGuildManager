@@ -736,6 +736,50 @@
             "es-ES": "✅ Regresó",
             "de": "✅ Zurück",
             "it": "✅ Ritornato"
+        },
+        "command": {
+            "name": {
+                "en-US": "absence_add",
+                "fr": "absence_add",
+                "es-ES": "agregar_ausencia",
+                "de": "abwesenheit_hinzufügen",
+                "it": "aggiungi_assenza"
+            },
+            "description": {
+                "en-US": "Mark a member as absent.",
+                "fr": "Marquer un membre comme absent.",
+                "es-ES": "Marcar a un miembro como ausente.",
+                "de": "Ein Mitglied als abwesend markieren.",
+                "it": "Segnare un membro come assente."
+            }
+        },
+        "error_chan": {
+            "en-US": "⚠️ Absence channel not configured or found.",
+            "fr": "⚠️ Salon d'absence non configuré ou introuvable.",
+            "es-ES": "⚠️ Canal de ausencias no configurado o no encontrado.",
+            "de": "⚠️ Abwesenheitskanal nicht konfiguriert oder nicht gefunden.",
+            "it": "⚠️ Canale assenze non configurato o non trovato."
+        },
+        "away_ok": {
+            "en-US": "**{member}** is now marked as away.",
+            "fr": "**{member}** passe en absence.",
+            "es-ES": "**{member}** está marcado como ausente.",
+            "de": "**{member}** ist jetzt als abwesend markiert.",
+            "it": "**{member}** è stato segnato come assente."
+        },
+        "back_time": {
+            "en-US": "_Expected return: {return_date}_",
+            "fr": "_Retour prévu : {return_date}_",
+            "es-ES": "_Regreso previsto: {return_date}_",
+            "de": "_Voraussichtliche Rückkehr: {return_date}_",
+            "it": "_Rientro previsto: {return_date}_"
+        },
+        "absence_ok": {
+            "en-US": "✅ {member.mention} has been marked as absent.",
+            "fr": "✅ {member.mention} a été marqué absent.",
+            "es-ES": "✅ {member.mention} ha sido marcado como ausente.",
+            "de": "✅ {member.mention} wurde als abwesend markiert.",
+            "it": "✅ {member.mention} è stato segnato come assente."
         }
     },
     "notification": {

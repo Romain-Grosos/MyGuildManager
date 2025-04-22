@@ -2,7 +2,9 @@ import discord
 import logging
 from discord.ext import commands
 import asyncio
+from translation import translations as global_translations
 
+ABSENCE_TRANSLATIONS = global_translations.get("absence", {})
 class AbsenceManager(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -54,7 +56,6 @@ class AbsenceManager(commands.Cog):
         if not member:
             return
 
-        role_member = role_absent = None
         roles = self.role_ids.get(guild.id, {})
         role_member = guild.get_role(roles.get("member"))
         role_absent = guild.get_role(roles.get("absent"))
@@ -149,12 +150,90 @@ class AbsenceManager(commands.Cog):
         if role_member and role_member not in member.roles:
             try:
                 await member.add_roles(role_member)
-                await self.notify_absence(
-                    member, "removal",
-                    cfg["forum_members_channel"], cfg["guild_lang"]
-                )
+                await self.notify_absence( member, "removal", cfg["forum_members_channel"], cfg["guild_lang"])
             except Exception as e:
                 logging.error("[AbsenceManager] Error adding member role: %s", e)
+
+    async def _set_absent(self,
+                        guild: discord.Guild,
+                        member: discord.Member,
+                        channel: discord.TextChannel,
+                        reason_message: str) -> None:
+        roles = self.role_ids.get(guild.id, {})
+        role_member = guild.get_role(roles.get("member"))
+        role_absent = guild.get_role(roles.get("absent"))
+        if role_member is None or role_absent is None:
+            logging.warning("[AbsenceManager] Roles missing in guild %s", guild.id)
+            return
+
+        try:
+            if role_member in member.roles:
+                await member.remove_roles(role_member)
+            if role_absent not in member.roles:
+                await member.add_roles(role_absent)
+        except Exception as e:
+            logging.error("[AbsenceManager] Error switching roles: %s", e)
+            return
+
+        try:
+            sent = await channel.send(reason_message)
+        except Exception as e:
+            logging.error("[AbsenceManager] Can't post absence message: %s", e)
+            return
+
+        try:
+            await self.bot.run_db_query(
+                "INSERT INTO absence_messages (guild_id, message_id, member_id) "
+                "VALUES (%s,%s,%s) ON DUPLICATE KEY UPDATE created_at = NOW()",
+                (guild.id, sent.id, member.id), commit=True
+            )
+        except Exception as e:
+            logging.error("[AbsenceManager] Error saving absence entry: %s", e)
+
+        cfg = self.abs_channels[guild.id]
+        await self.notify_absence(member, "addition",
+                                cfg["forum_members_channel"],
+                                cfg["guild_lang"])
+
+    @commands.slash_command(
+        name=ABSENCE_TRANSLATIONS.get("command", {}).get("name", {}).get("en-US", "absence_add"),
+        description=ABSENCE_TRANSLATIONS.get("command", {}).get("description", {}).get("en-US", "Mark a member as absent."),
+        name_localizations=ABSENCE_TRANSLATIONS.get("command", {}).get("name", {}),
+        description_localizations=ABSENCE_TRANSLATIONS.get("command", {}).get("description", {})
+    )
+    @commands.has_permissions(manage_guild=True)
+    async def absence_add(
+        self,
+        ctx: discord.ApplicationContext,
+        member: discord.Member,
+        return_date: str | None = None
+    ):
+        await ctx.defer(ephemeral=True)
+
+        loc = ctx.locale or "en-US"
+
+        cfg = self.abs_channels.get(ctx.guild_id)
+        if not cfg:
+            msg = ABSENCE_TRANSLATIONS["error_chan"].get(loc,ABSENCE_TRANSLATIONS["error_chan"]["en-US"])
+            await ctx.respond(msg, ephemeral=True)
+            return
+
+        abs_chan = ctx.guild.get_channel(cfg["abs_channel"])
+        if abs_chan is None:
+            msg = ABSENCE_TRANSLATIONS["error_chan"].get(loc,ABSENCE_TRANSLATIONS["error_chan"]["en-US"])
+            await ctx.respond(msg, ephemeral=True)
+            return
+        
+        lang = cfg.get("guild_lang") or "en-US"
+
+        reason_text = ABSENCE_TRANSLATIONS["away_ok"].get(lang, ABSENCE_TRANSLATIONS["away_ok"]["en-US"]).format(member=member.display_name)
+        if return_date:
+            back_text = ABSENCE_TRANSLATIONS["back_time"].get(lang, ABSENCE_TRANSLATIONS["back_time"]["en-US"]).format(return_date=return_date)
+            reason_text = f"{reason_text} {back_text}"
+
+        await self._set_absent(ctx.guild, member, abs_chan, reason_text)
+        resp = ABSENCE_TRANSLATIONS["absence_ok"].get(loc,ABSENCE_TRANSLATIONS["absence_ok"]["en-US"]).format(member=member)
+        await ctx.respond(resp, ephemeral=True)
 
     async def notify_absence(self, member: discord.Member, action: str, channel_id: int, guild_lang: str) -> None:
         try:
@@ -167,12 +246,11 @@ class AbsenceManager(commands.Cog):
             logging.error("[AbsenceManager] ❌ Failed to access the members notification channel.")
             return
 
-        absence_translations = self.bot.translations.get("absence", {})
-        title = absence_translations.get("title", {}).get(guild_lang, "Notification")
-        member_label = absence_translations.get("member_label", {}).get(guild_lang, "Member")
-        status_label = absence_translations.get("status_label", {}).get(guild_lang, "Status")
-        absent_text = absence_translations.get("absent", {}).get(guild_lang, "Absent")
-        returned_text = absence_translations.get("returned", {}).get(guild_lang, "Returned")
+        title = ABSENCE_TRANSLATIONS.get("title", {}).get(guild_lang, "Notification")
+        member_label = ABSENCE_TRANSLATIONS.get("member_label", {}).get(guild_lang, "Member")
+        status_label = ABSENCE_TRANSLATIONS.get("status_label", {}).get(guild_lang, "Status")
+        absent_text = ABSENCE_TRANSLATIONS.get("absent", {}).get(guild_lang, "Absent")
+        returned_text = ABSENCE_TRANSLATIONS.get("returned", {}).get(guild_lang, "Returned")
 
         status_text = absent_text if action == "addition" else returned_text
 
