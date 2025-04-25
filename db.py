@@ -30,6 +30,9 @@ def get_connection():
         pool_name="mypool"
     )
 
+class DBQueryError(Exception):
+    pass
+
 async def run_db_query(query: str, params: tuple = (), commit: bool = False, fetch_one: bool = False, fetch_all: bool = False):
     def _execute():
         max_attempts = 3
@@ -49,9 +52,15 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
                 cursor.close()
                 conn.close()
                 return result
+            except mariadb.DataError as exc:
+                logging.error(f"[DBManager] ❌ DataError: {exc}")
+                raise DBQueryError(str(exc)) from exc
+            except mariadb.IntegrityError as exc:
+                logging.error(f"[DBManager] ❌ IntegrityError: {exc}")
+                raise DBQueryError(str(exc)) from exc
             except Exception as error:
                 attempt += 1
-                logging.error(f"[DBManager] ❌ Query execution error (attempt {attempt}/{max_attempts}): {error}")
+                logging.warning(f"[DBManager] ⚠️ Query execution error (attempt {attempt}/{max_attempts}): {error}")
                 try:
                     cursor.close()
                 except Exception:
@@ -63,5 +72,5 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
                 if attempt == max_attempts:
                     raise
                 else:
-                    time.sleep(0.1)
+                    time.sleep(0.2 * attempt)
     return await asyncio.to_thread(_execute)
