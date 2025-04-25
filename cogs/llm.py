@@ -11,8 +11,40 @@ GUILD_MEMBERS = global_translations.get("llm", {})
 
 load_dotenv()
 API_KEY: str = os.getenv("API_KEY")
-
 client = OpenAI(api_key=API_KEY)
+
+_FALLBACK = {
+    "bow": "B",
+    "arc": "B",
+    "crossbow": "CB",
+    "arbalete": "CB",
+    "arbalète": "CB",
+    "dagger": "DG",
+    "dague": "DG",
+    "daggers": "DG",
+    "greatsword": "GS",
+    "épée": "GS",
+    "épées": "GS",
+    "staff": "S",
+    "bâton": "S",
+    "baton": "S",
+    "sword and shield": "SNS",
+    "bouclier": "SNS",
+    "spear": "SP",
+    "lance": "SP",
+    "wand": "W",
+    "baguette": "W",
+}
+
+def _ask_ai(prompt: str) -> str:
+    system = (
+        "You convert weapon lists for the game Throne and Liberty.\n"
+        "Return only the codes (B, CB, DG, GS, S, SNS, SP, W) separated by '/'.\n"
+        "Ignore unknown weapons."
+    )
+    msgs = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+    out = client.chat.completions.create(model="gpt-4o", messages=msgs, temperature=0)
+    return out.choices[0].message.content.strip()
 
 def query_AI(prompt: str, model: str = "gpt-4o") -> str:
     system_prompt = (
@@ -88,6 +120,22 @@ def split_message(text: str, max_length: int = 2000) -> list[str]:
 class LLMInteraction(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
+
+    async def normalize_weapons(self, raw: str) -> str:
+        try:
+            ai_out = await self.bot.loop.run_in_executor(None, _ask_ai, f"Input: {raw}")
+            codes = re.findall(r"\b(?:B|CB|DG|GS|S|SNS|SP|W)\b", ai_out.upper())
+            if codes:
+                return "/".join(dict.fromkeys(codes))[:32]
+        except Exception:
+            logging.error("[LLM Interaction] AI normalisation failed", exc_info=True)
+        codes = []
+        for token in re.split(r"[ ,;/|]+", raw.lower()):
+            for k, v in _FALLBACK.items():
+                if k in token:
+                    codes.append(v)
+                    break
+        return "/".join(dict.fromkeys(codes))[:32]
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
