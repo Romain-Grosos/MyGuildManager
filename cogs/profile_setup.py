@@ -357,6 +357,7 @@ class ProfileSetup(commands.Cog):
                     value=f"`{gametype}`",
                     inline=False,
                 )
+                postulation_embed = embed.copy()
             elif motif == "diplomate":
                 embed.color = discord.Color.dark_blue()
                 guild_name = session.get("guild_name", "N/A")
@@ -503,6 +504,11 @@ class ProfileSetup(commands.Cog):
                             category=recruitment_category,
                             topic=f"Individual application channel for {member.display_name}",
                             overwrites=overwrites,
+                        )
+                        await new_channel.send(
+                            content="@everyone",
+                            embed=postulation_embed,
+                            allowed_mentions=discord.AllowedMentions(everyone=True)
                         )
                         logging.info(
                             f"[ProfileSetup] Recruitment channel created: {new_channel.name} (ID: {new_channel.id}) for user {member.id}"

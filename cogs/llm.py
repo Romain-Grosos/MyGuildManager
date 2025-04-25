@@ -38,9 +38,18 @@ _FALLBACK = {
 
 def _ask_ai(prompt: str) -> str:
     system = (
-        "You convert weapon lists for the game Throne and Liberty.\n"
-        "Return only the codes (B, CB, DG, GS, S, SNS, SP, W) separated by '/'.\n"
-        "Ignore unknown weapons."
+        "You convert weapon names into standardized weapon codes for the game Throne and Liberty.\n"
+        "Here is the mapping of weapon names to codes:\n"
+        "- bow, arc → B\n"
+        "- crossbow, arbalète → CB\n"
+        "- dagger, daggers, dague → DG\n"
+        "- greatsword, épée, épées → GS\n"
+        "- staff, baton, bâton → S\n"
+        "- sword and shield, bouclier → SNS\n"
+        "- spear, lance → SP\n"
+        "- wand, baguette → W\n"
+        "Given a list of weapon names, return only the corresponding codes (B, CB, DG, GS, S, SNS, SP, W) separated by '/'.\n"
+        "Ignore any unknown weapons.\n"
     )
     msgs = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
     out = client.chat.completions.create(model="gpt-4o", messages=msgs, temperature=0)
