@@ -2168,6 +2168,13 @@
                 "de": "Abwesenheit",
                 "it": "Assenza"
             },
+            "none": {
+                "en-US": "None",
+                "fr": "Aucun",
+                "es-ES": "Ninguno",
+                "de": "Keine",
+                "it": "Nessuno"
+            },
             "voice_channel": {
                 "en-US": "Voice Channel",
                 "fr": "Salon Vocal",

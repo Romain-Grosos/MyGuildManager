@@ -25,11 +25,11 @@ WEAPON_EMOJIS = {
 }
 
 CLASS_EMOJIS = {
-    "Tank":    "🛡️",
-    "Healer":  "💉",
-    "Melee DPS":   "⚔️",
-    "Ranged DPS":  "⚔️",
-    "Flanker": "💢",
+    "Tank":    "<:tank:1374760483164524684>",
+    "Healer":  "<:healer:1374760495613218816>",
+    "Melee DPS":   "<:DPS:1374760287491850312>",
+    "Ranged DPS":  "<:DPS:1374760287491850312>",
+    "Flanker": "<:flank:1374762529036959854>",
 }
 
 class GuildEvents(commands.Cog):
@@ -788,9 +788,25 @@ class GuildEvents(commands.Cog):
     async def update_event_embed(self, message, event_record):
         logging.debug("✅ [GuildEvents] Starting embed update for event.")
         guild = self.bot.get_guild(message.guild.id)
+        guild_id = guild.id
+        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+
+        present_key = GUILD_EVENTS["events_infos"]["present"] \
+            .get(guild_lang, GUILD_EVENTS["events_infos"]["present"]["en-US"]) \
+            .lower()
+        attempt_key = GUILD_EVENTS["events_infos"]["attempt"] \
+            .get(guild_lang, GUILD_EVENTS["events_infos"]["attempt"]["en-US"]) \
+            .lower()
+        absence_key = GUILD_EVENTS["events_infos"]["absence"] \
+            .get(guild_lang, GUILD_EVENTS["events_infos"]["absence"]["en-US"]) \
+            .lower()
+        none_key = GUILD_EVENTS["events_infos"]["none"] \
+            .get(guild_lang, GUILD_EVENTS["events_infos"]["none"]["en-US"]) \
+            .lower()
+
         def format_list(id_list):
-            membres = [guild.get_member(uid) for uid in id_list if guild.get_member(uid)]
-            return ", ".join(m.mention for m in membres) if membres else "Aucun"
+            members = [guild.get_member(uid) for uid in id_list if guild.get_member(uid)]
+            return ", ".join(m.mention for m in members) if members else none_key
 
         presence_ids = event_record["registrations"].get("presence", [])
         tentative_ids = event_record["registrations"].get("tentative", [])
@@ -808,14 +824,14 @@ class GuildEvents(commands.Cog):
         new_fields = []
         for field in embed.fields:
             lower_name = field.name.lower()
-            if lower_name.startswith("présent"):
-                new_name = f"Présent <:_yes_:1340109996666388570> ({len(presence_ids)})"
+            if lower_name.startswith(present_key):
+                new_name = f"{GUILD_EVENTS['events_infos']['present'][guild_lang]} <:_yes_:1340109996666388570> ({len(presence_ids)})"
                 new_fields.append((new_name, presence_str, field.inline))
-            elif lower_name.startswith("tentative"):
-                new_name = f"Tentative <:_attempt_:1340110058692018248> ({len(tentative_ids)})"
+            elif lower_name.startswith(attempt_key):
+                new_name = f"{GUILD_EVENTS['events_infos']['attempt'][guild_lang]} <:_attempt_:1340110058692018248> ({len(tentative_ids)})"
                 new_fields.append((new_name, tentative_str, field.inline))
-            elif lower_name.startswith("absence"):
-                new_name = f"Absence <:_no_:1340110124521357313> ({len(absence_ids)})"
+            elif lower_name.startswith(absence_key):
+                new_name = f"{GUILD_EVENTS['events_infos']['absence'][guild_lang]} <:_no_:1340110124521357313> ({len(absence_ids)})"
                 new_fields.append((new_name, absence_str, field.inline))
             else:
                 new_fields.append((field.name, field.value, field.inline))
