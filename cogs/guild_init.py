@@ -1,14 +1,17 @@
 import discord
 from discord.ext import commands
 import logging
+from typing import Any, Dict, Tuple
 from functions import get_user_message
 from translation import translations as global_translations
+import asyncio
 
 GUILD_INIT_DATA = global_translations.get("guild_init", {})
 
 class GuildInit(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
+        self.translations = bot.translations
 
     @discord.slash_command(
         name=GUILD_INIT_DATA["name"]["en-US"],
@@ -24,56 +27,61 @@ class GuildInit(commands.Cog):
             description=GUILD_INIT_DATA["options"]["config_mode"]["description"]["en-US"],
             description_localizations=GUILD_INIT_DATA["options"]["config_mode"]["description"],
             choices=[
-                discord.OptionChoice(
-                    name=choice_data["name_localizations"]["en-US"],
-                    value=choice_data["value"],
-                    name_localizations=choice_data["name_localizations"]
-                )
-                for key, choice_data in GUILD_INIT_DATA["options"]["config_mode"]["choices"].items()
+                discord.OptionChoice(name=choice["name_localizations"]["en-US"],value=choice["value"],name_localizations=choice["name_localizations"],)
+                for choice in GUILD_INIT_DATA["options"]["config_mode"]["choices"].values()
             ]
         )
     ):
         await ctx.defer(ephemeral=True)
-        guild_id = ctx.guild.id
+        guild = ctx.guild
+        guild_id = guild.id if guild else None
 
-        # Vérifier si la guilde a été initialisée via /app_init
-        init_query = "SELECT COUNT(*) FROM guild_settings WHERE guild_id = ?"
-        init_result = await self.bot.run_db_query(init_query, (ctx.guild.id,), fetch_one=True)
-        if not init_result or init_result[0] == 0:
-            response = get_user_message(ctx, self.bot.translations, "guild_init.messages.not_initialized")
+        if not guild_id:
+            logging.error("[GuildInit] No guild context available")
+            msg = get_user_message(
+                ctx, self.translations, "guild_init.messages.error_no_guild"
+            )
+            return await ctx.followup.send(msg, ephemeral=True)
+
+        try:
+            query = "SELECT COUNT(*) FROM guild_settings WHERE guild_id = ?"
+            result = await self.bot.run_db_query(query, (guild_id,), fetch_one=True)
+            if not result or result[0] == 0:
+                response = get_user_message(ctx, self.translations, "guild_init.messages.not_initialized")
+                return await ctx.followup.send(response, ephemeral=True)
+        except Exception as e:
+            logging.error("[GuildInit] DB check failed for guild %s: %s", guild_id, e)
+            response = get_user_message(ctx, self.translations, "guild_init.messages.error", error=e)
             return await ctx.followup.send(response, ephemeral=True)
 
-        # Vérifier si le serveur est en mode communauté
-        community_activated = "COMMUNITY" in ctx.guild.features
-        logging.info(f"[GuildInit] Community mode activated: {community_activated}")
+        community_mode = "COMMUNITY" in guild.features
+        logging.info("[GuildInit] Community mode status: %s", community_mode)
 
-        # Basculer selon le mode de configuration choisi
         if config_mode == "existing":
-            # Mode 1 : Utiliser les rôles et channels existants
-            # Récupérer les rôles et channels
-            roles = ctx.guild.roles  # Liste de tous les rôles
-            channels = ctx.guild.channels  # Liste de tous les channels
-            # Ici, vous devriez implémenter la logique pour que l'utilisateur associe ces rôles et channels aux fonctions attendues.
-            # Par exemple, envoyer un message avec la liste et inviter l'utilisateur à sélectionner via des boutons ou des menus.
+            ###########################################################################
+            ###########################################################################
+            ###########################################################################
+            ###########################################################################
+            ###########################################################################
+            ###########################################################################
+            # TO BE DONE
+            roles = ctx.guild.roles
+            channels = ctx.guild.channels
+
             response = get_user_message(ctx, self.bot.translations, "guild_init.messages.setup_existing")
-            # Vous pouvez stocker les IDs correspondants dans la base via une requête SQL.
+
         elif config_mode == "complete":
             try:
-                # Récupérer la langue de la guilde depuis la BDD
-                query_lang = "SELECT guild_lang FROM guild_settings WHERE guild_id = ?"
-                result = await self.bot.run_db_query(query_lang, (ctx.guild.id,), fetch_one=True)
-                if result:
-                    guild_lang = result[0]
-                else:
-                    guild_lang = "en-US"
+                lang_query = ("SELECT guild_lang FROM guild_settings WHERE guild_id = ?")
+                lang_res = await self.bot.run_db_query(lang_query, (guild_id,), fetch_one=True)
+                guild_lang = lang_res[0] if lang_res and lang_res[0] else "en-US"
 
-                # --- Création des rôles ---
-                everyone = ctx.guild.default_role
-                new_perms = everyone.permissions
-                new_perms.update(send_messages=False)
-                await everyone.edit(permissions=new_perms)
+                everyone = guild.default_role
+                perms = everyone.permissions
+                perms.update(send_messages=False)
+                await everyone.edit(permissions=perms)
 
-                role_colors = {
+                role_colors: Dict[str, discord.Color] = {
                     "guild_master": discord.Color(int("354fb6", 16)),
                     "officer": discord.Color(int("384fa1", 16)),
                     "guardian": discord.Color(int("4b5fa8", 16)),
@@ -85,32 +93,22 @@ class GuildInit(commands.Cog):
                     "applicant": discord.Color(int("ba55d3", 16)),
                     "config_ok": discord.Color(int("646464", 16))
                 }
-                role_names_data = GUILD_INIT_DATA.get("role_names", {})
+                role_names = GUILD_INIT_DATA.get("role_names", {})
                 created_roles = {}
-                for key, translations_dict in role_names_data.items():
-                    role_name = translations_dict.get(guild_lang, translations_dict.get("en-US"))
-                    role_color = role_colors.get(key, discord.Color.default())
-                    role = await ctx.guild.create_role(name=role_name, color=role_color)
-                    created_roles[key] = role.id
-                    logging.info(f"[GuildInit] Created role '{role_name}' with ID {role.id}")
 
-                # Enregistrement dans la base de données
-                values = (
+                for key, names in role_names.items():
+                    name = names.get(guild_lang, names.get("en-US"))
+                    color = role_colors.get(key, discord.Color.default())
+                    role = await guild.create_role(name=name, color=color)
+                    created_roles[key] = role.id
+                    logging.info("[GuildInit] Created role '%s' (%s)", name, role.id)
+
+                role_values = (
                     guild_id,
-                    created_roles.get("guild_master"),
-                    created_roles.get("officer"),
-                    created_roles.get("guardian"),
-                    created_roles.get("members"),
-                    created_roles.get("absent_members"),
-                    created_roles.get("allies"),
-                    created_roles.get("diplomats"),
-                    created_roles.get("friends"),
-                    created_roles.get("applicant"),
-                    created_roles.get("config_ok"),
-                    created_roles.get("rules_ok")
+                    *[created_roles.get(k) for k in ["guild_master", "officer", "guardian","members", "absent_members", "allies","diplomats", "friends", "applicant","config_ok", "rules_ok"]]
                 )
 
-                insert_query = """
+                role_query = """
                 INSERT INTO guild_roles (
                     guild_id,
                     guild_master,
@@ -139,200 +137,110 @@ class GuildInit(commands.Cog):
                     rules_ok = VALUES(rules_ok)
                 """
 
-                await self.bot.run_db_query(insert_query, values, commit=True)
+                await self.bot.run_db_query(role_query, role_values, commit=True)
 
-                # Création des channels et catégories
                 channel_names = GUILD_INIT_DATA.get("channel_names", {})
 
-                # Créer le canal "rules"
-                rules_name = channel_names.get("rules", {}).get(guild_lang)
-                rules_channel = await ctx.guild.create_text_channel(name=rules_name)
+                rules_name = channel_names["rules"].get(guild_lang)
+                rules_channel = await guild.create_text_channel(name=rules_name)
+                rules_text = channel_names["rules_message"].get(guild_lang)
+                rules_msg = await rules_channel.send(rules_text)
+                await rules_msg.add_reaction("✅")
 
-                rules_text = channel_names.get("rules_message", {}).get(guild_lang)
-                rules_message = await rules_channel.send(rules_text)
+                guild_cat = await guild.create_category(name=channel_names["cat_guild"].get(guild_lang))
+                announce_ch = await guild.create_text_channel(name=channel_names["announcements"].get(guild_lang), category=guild_cat)
+                await guild.create_text_channel(name=channel_names["tavern"].get(guild_lang),category=guild_cat)
+                await guild.create_text_channel(name=channel_names["hall_of_fame"].get(guild_lang),category=guild_cat)
+                voice_tavern = await guild.create_voice_channel(name=channel_names["tavern_voc"].get(guild_lang),category=guild_cat)
+                afk = await guild.create_voice_channel(name="💤 AFK", category=guild_cat)
+                await guild.edit(afk_channel=afk, afk_timeout=900)
+                create_room = await guild.create_voice_channel(name=channel_names["create_room"].get(guild_lang),category=guild_cat)
 
-                await rules_message.add_reaction("✅")
+                org_cat = await guild.create_category(name=channel_names["cat_org"].get(guild_lang))
+                events = await guild.create_text_channel(name=channel_names["events"].get(guild_lang),category=org_cat)
+                members_ch = await guild.create_text_channel(name=channel_names["members"].get(guild_lang),category=org_cat)
+                members_msgs = await asyncio.gather(*(members_ch.send(".") for _ in range(5)))
+                m_ids = [msg.id for msg in members_msgs]
 
-                # Créer la catégorie "guilde" et la peupler
-                cat_guild_name = channel_names.get("cat_guild", {}).get(guild_lang)
-                category_guilde = await ctx.guild.create_category(name=cat_guild_name)
+                groups = await guild.create_text_channel(name=channel_names["groups"].get(guild_lang),category=org_cat)
+                abs_ch = await guild.create_text_channel(name=channel_names["abs"].get(guild_lang),category=org_cat)
+                await abs_ch.send(channel_names["absences_message"].get(guild_lang))
+                loot = await guild.create_text_channel(name=channel_names["loot"].get(guild_lang),category=org_cat)
 
-                announcements_name = channel_names.get("announcements", {}).get(guild_lang)
-                announcements_channel = await ctx.guild.create_text_channel(name=announcements_name,category=category_guilde)
+                conseil_cat = await guild.create_category(name=channel_names["cat_conseil"].get(guild_lang))
+                await guild.create_text_channel(name=channel_names["rounded_table"].get(guild_lang),category=conseil_cat)
+                await guild.create_text_channel(name=channel_names["compte_rendus"].get(guild_lang),category=conseil_cat)
+                notif_ch = await guild.create_text_channel(name=channel_names["notifications"].get(guild_lang),category=conseil_cat)
+                await guild.edit(system_channel=notif_ch)
+                await guild.create_voice_channel(name=channel_names["staff"].get(guild_lang),category=conseil_cat)
 
-                tavern_name = channel_names.get("tavern", {}).get(guild_lang)
-                await ctx.guild.create_text_channel(name=tavern_name,category=category_guilde)
+                recrut_cat = await guild.create_category(name=channel_names["cat_recrut"].get(guild_lang))
+                ext_recrut = await guild.create_text_channel(name=channel_names["ext_recrut"].get(guild_lang),category=recrut_cat)
+                embed = discord.Embed(title=channel_names["recrut_message"].get(guild_lang),description=".",color=discord.Color.blurple(),)
+                ext_msg = await ext_recrut.send(embed=embed)
 
-                hof_name = channel_names.get("hall_of_fame", {}).get(guild_lang)
-                await ctx.guild.create_text_channel(name=hof_name,category=category_guilde)
+                diplo_cat = await guild.create_category(name=channel_names["cat_diplo"].get(guild_lang))
+                ami_cat = await guild.create_category(name=channel_names["cat_ami"].get(guild_lang))
+                await guild.create_text_channel(name=channel_names["ami_tavern"].get(guild_lang),category=ami_cat)
+                await guild.create_voice_channel(name=channel_names["ami_tavern_voc"].get(guild_lang),category=ami_cat)
 
-                tavern_voc_name = channel_names.get("tavern_voc", {}).get(guild_lang)
-                voice_tavern_channel = await ctx.guild.create_voice_channel(name=tavern_voc_name,category=category_guilde)
-
-                afk_channel = await ctx.guild.create_voice_channel(name="💤 AFK",category=category_guilde)
-                await ctx.guild.edit(afk_channel=afk_channel, afk_timeout=900) 
-
-                create_room_name = channel_names.get("create_room", {}).get(guild_lang)
-                create_room_channel = await ctx.guild.create_voice_channel(name=create_room_name,category=category_guilde)
-
-                # Créer la catégorie "organisation" et la peupler
-                cat_org_name = channel_names.get("cat_org", {}).get(guild_lang)
-                category_org = await ctx.guild.create_category(name=cat_org_name)
-
-                events_name = channel_names.get("events", {}).get(guild_lang)
-                events_channel = await ctx.guild.create_text_channel(name=events_name,category=category_org)
-
-                members_name = channel_names.get("members", {}).get(guild_lang)
-                members_channel = await ctx.guild.create_text_channel(name=members_name,category=category_org)
-                members_text = "."
-                members_m1 = members_channel.send(members_text)
-                members_m2 = members_channel.send(members_text)
-                members_m3 = members_channel.send(members_text)
-                members_m4 = members_channel.send(members_text)
-                members_m5 = members_channel.send(members_text)
-
-                groups_name = channel_names.get("groups", {}).get(guild_lang)
-                groups_channel = await ctx.guild.create_text_channel(name=groups_name,category=category_org)
-
-                abs_name = channel_names.get("abs", {}).get(guild_lang)
-                abs_channel = await ctx.guild.create_text_channel(name=abs_name,category=category_org)
-
-                abs_text = channel_names.get("absences_message", {}).get(guild_lang)
-                await abs_channel.send(abs_text)
-
-                loot_name = channel_names.get("loot", {}).get(guild_lang)
-                loot_channel = await ctx.guild.create_text_channel(name=loot_name,category=category_org)
-
-                # Créer la catégorie "conseil" et la peupler
-                cat_conseil_name = channel_names.get("cat_conseil", {}).get(guild_lang)
-                category_conseil = await ctx.guild.create_category(name=cat_conseil_name)
-
-                rounded_tab_name = channel_names.get("rounded_table", {}).get(guild_lang)
-                await ctx.guild.create_text_channel(name=rounded_tab_name,category=category_conseil)
-
-                CR_name = channel_names.get("compte_rendus", {}).get(guild_lang)
-                await ctx.guild.create_text_channel(name=CR_name,category=category_conseil)
-
-                notifications_name = channel_names.get("notifications", {}).get(guild_lang)
-                notifications_channel = await ctx.guild.create_text_channel(name=notifications_name,category=category_conseil)
-                await ctx.guild.edit(system_channel=notifications_channel)
-
-                staff_voc_name = channel_names.get("staff", {}).get(guild_lang)
-                await ctx.guild.create_voice_channel(name=staff_voc_name,category=category_conseil)
-
-                # Créer la catégorie "recrutement" et la peupler
-                cat_recrut_name = channel_names.get("cat_recrut", {}).get(guild_lang)
-                category_recrut = await ctx.guild.create_category(name=cat_recrut_name)
-
-                external_recruitment_name = channel_names.get("ext_recrut", {}).get(guild_lang)
-                external_recruitment_channel = await ctx.guild.create_text_channel(name=external_recruitment_name,category=category_recrut)
-
-                embed = discord.Embed(
-                    title=channel_names.get("recrut_message", {}).get(guild_lang),
-                    description=".",
-                    color=discord.Color.blurple()
-                )
-                external_recruitment_message = await external_recruitment_channel.send(embed=embed)
-
-                # Créer la catégorie "diplomatie"
-                cat_diplo_name = channel_names.get("cat_diplo", {}).get(guild_lang)
-                category_diplo = await ctx.guild.create_category(name=cat_diplo_name)
-
-                # Créer la catégorie "amis" et la peupler
-                cat_ami_name = channel_names.get("cat_ami", {}).get(guild_lang)
-                category_ami = await ctx.guild.create_category(name=cat_ami_name)
-
-                tavern_amis_name = channel_names.get("ami_tavern", {}).get(guild_lang)
-                await ctx.guild.create_text_channel(name=tavern_amis_name,category=category_ami)
-
-                tavern_amis_voc_name = channel_names.get("ami_tavern_voc", {}).get(guild_lang)
-                await ctx.guild.create_voice_channel(name=tavern_amis_voc_name,category=category_ami)
-
-                # Vérifier si le serveur n'est pas déjà en mode communauté
-                if "COMMUNITY" not in ctx.guild.features:
-                    await ctx.followup.send(get_user_message(ctx, self.bot.translations, "guild_init.messages.community_required"))
+                if not community_mode:
+                    await ctx.followup.send(get_user_message(ctx, self.translations,"guild_init.messages.community_required"))
                     try:
-                        # Activation du mode communauté en fournissant les IDs des canaux requis
-                        await ctx.guild.edit(
+                        await guild.edit(
                             community=True,
                             verification_level=discord.VerificationLevel.medium,
                             explicit_content_filter=discord.ContentFilter.all_members,
                             rules_channel=rules_channel,
-                            public_updates_channel=notifications_channel,
-                            preferred_locale=guild_lang
+                            public_updates_channel=notif_ch,
+                            preferred_locale=guild_lang,
                         )
-                        logging.info("[GuildInit] Server set to community mode.")
+                        logging.info("[GuildInit] Set server to community mode")
                     except Exception as e:
-                        logging.error("[GuildInit] Failed to set community mode: %s", e)
-                        return await ctx.followup.send(get_user_message(ctx, self.bot.translations, "guild_init.messages.error", error=e), ephemeral=True)
+                        logging.error("[GuildInit] Failed to enable community mode: %s", e)
+                        response = get_user_message(ctx, self.translations,"guild_init.messages.error", error=e)
+                        return await ctx.followup.send(response, ephemeral=True)
 
-                # Activation des fonctions spécifiques communauté après activation
-                tuto_name = channel_names.get("tuto", {}).get(guild_lang)
-                tuto_channel = await ctx.guild.create_forum_channel(name=tuto_name,category=category_org,position=99)
+                tuto_channel = await ctx.guild.create_forum_channel(name=channel_names["tuto"].get(guild_lang),category=org_cat,position=99)
 
-                forum_name = channel_names.get("forum_org", {}).get(guild_lang)
-                forum_org = await ctx.guild.create_forum_channel(name=forum_name, category=category_conseil,position=99)
+                forum_org = await conseil_cat.create_forum_channel(name=channel_names["forum_org"].get(guild_lang),position=99)
+                thread_data = [
+                    ("topic_ally", "message_ally"),
+                    ("topic_friends", "message_friends"),
+                    ("topic_diplomats", "message_diplomats"),
+                    ("topic_recruitment", "message_recruitment"),
+                    ("topic_members", "message_members"),
+                ]
+                forum_ids = []
+                for topic_key, msg_key in thread_data:
+                    thread = await forum_org.create_thread(
+                        name=channel_names[topic_key].get(guild_lang),
+                        content=channel_names[msg_key].get(guild_lang),
+                        auto_archive_duration=1440,
+                    )
+                    forum_ids.append(thread.id)
 
-                forum_allies_channel = await forum_org.create_thread(
-                    name = channel_names.get("topic_ally", {}).get(guild_lang),
-                    content = channel_names.get("message_ally", {}).get(guild_lang),
-                    auto_archive_duration=1440
-                )
+                await announce_ch.edit(type=discord.ChannelType.news)
 
-                forum_friends_channel = await forum_org.create_thread(
-                    name = channel_names.get("topic_friends", {}).get(guild_lang),
-                    content = channel_names.get("message_friends", {}).get(guild_lang),
-                    auto_archive_duration=1440
-                )
-
-                forum_diplomats_channel = await forum_org.create_thread(
-                    name = channel_names.get("topic_diplomats", {}).get(guild_lang),
-                    content = channel_names.get("message_diplomats", {}).get(guild_lang),
-                    auto_archive_duration=1440
-                )
-
-                forum_recruitment_channel = await forum_org.create_thread(
-                    name = channel_names.get("topic_recruitment", {}).get(guild_lang),
-                    content = channel_names.get("message_recruitment", {}).get(guild_lang),
-                    auto_archive_duration=1440
-                )
-
-                forum_members_channel = await forum_org.create_thread(
-                    name = channel_names.get("topic_members", {}).get(guild_lang),
-                    content = channel_names.get("message_members", {}).get(guild_lang),
-                    auto_archive_duration=1440
-                )
-
-                await announcements_channel.edit(type=discord.ChannelType.news)
-
-                # Insertions dans la base de données
                 channels_values = (
                     ctx.guild.id,
                     rules_channel.id,
-                    rules_message.id,
-                    announcements_channel.id,
-                    voice_tavern_channel.id,
-                    create_room_channel.id,
-                    events_channel.id,
-                    members_channel.id,
-                    members_m1.id,
-                    members_m2.id,
-                    members_m3.id,
-                    members_m4.id,
-                    members_m5.id,
-                    groups_channel.id,
-                    abs_channel.id,
-                    loot_channel.id,
+                    rules_msg.id,
+                    announce_ch.id,
+                    voice_tavern.id,
+                    create_room.id,
+                    events.id,
+                    members_ch.id,
+                    *m_ids,
+                    groups.id,
+                    abs_ch.id,
+                    loot.id,
                     tuto_channel.id,
-                    forum_allies_channel.id,
-                    forum_friends_channel.id,
-                    forum_diplomats_channel.id,
-                    forum_recruitment_channel.id,
-                    forum_members_channel.id,
-                    notifications_channel.id,
-                    external_recruitment_channel.id,
-                    external_recruitment_message.id,
-                    category_diplo.id
+                    *forum_ids,
+                    notif_ch.id,
+                    ext_recrut.id,
+                    ext_msg.id,
+                    diplo_cat.id
                 )
 
                 insert_query = """
@@ -394,39 +302,31 @@ class GuildInit(commands.Cog):
 
                 await self.bot.run_db_query(insert_query, channels_values, commit=True)
 
-                notification_cog = self.bot.get_cog("Notification")
-                if notification_cog:
-                    await notification_cog.load_notification_channels()
+                for cog_name, methods in {
+                    "Notification": ["load_notification_channels"],
+                    "AutoRole": ["load_rules_messages", "load_rules_ok_roles", "load_guild_lang"],
+                    "GuildMembers": ["load_forum_channels"],
+                    "ProfileSetup": ["load_roles", "load_forum_channels"],
+                    "DynamicVoice": ["load_create_room_channels"],
+                    "AbsenceManager": ["load_absence_channels"],
+                }.items():
+                    cog = self.bot.get_cog(cog_name)
+                    if cog:
+                        for m in methods:
+                            try:
+                                await getattr(cog, m)()
+                            except Exception as e:
+                                logging.error(
+                                    "[GuildInit] %s.%s failed: %s", cog_name, m, e
+                                )
 
-                autorole_cog = self.bot.get_cog("AutoRole")
-                if autorole_cog:
-                    await autorole_cog.load_rules_messages()
-                    await autorole_cog.load_rules_ok_roles()
-                    await autorole_cog.load_guild_lang()
-
-                guildmembers_cog = self.bot.get_cog("GuildMembers")
-                if guildmembers_cog:
-                    await guildmembers_cog.load_forum_channels()
-
-                profilesetup_cog = self.bot.get_cog("ProfileSetup")
-                if profilesetup_cog:
-                    await profilesetup_cog.load_roles()
-                    await profilesetup_cog.load_forum_channels()
-
-                dynamic_voice_cog = self.bot.get_cog("DynamicVoice")
-                if dynamic_voice_cog:
-                    await dynamic_voice_cog.load_create_room_channels()
-
-                absence_cog = self.bot.get_cog("AbsenceManager")
-                if absence_cog:
-                    await absence_cog.load_absence_channels()
-
-                response = get_user_message(ctx, self.bot.translations, "guild_init.messages.setup_complete")
+                response = get_user_message(ctx, self.translations, "guild_init.messages.setup_complete")
             except Exception as e:
-                logging.error("[GuildInit] Error during complete configuration: %s", e)
-                response = get_user_message(ctx, self.bot.translations, "guild_init.messages.error", error=e)
+                logging.error("[GuildInit] Error during complete config for guild %s: %s",guild_id,e)
+                response = get_user_message(ctx, self.translations, "guild_init.messages.error", error=e)
         else:
-            response = get_user_message(ctx, self.bot.translations, "guild_init.messages.unknown_mode")
+            logging.warning("[GuildInit] Unknown config mode '%s' for guild %s",config_mode,guild_id,)
+            response = get_user_message(ctx, self.translations, "guild_init.messages.unknown_mode")
 
         await ctx.followup.send(response, ephemeral=True)
 

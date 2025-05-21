@@ -336,11 +336,11 @@
         },
         "channel_names": {
             "rules": {
-                "en-US": "📄・Rules",
-                "fr": "📄・Règles",
-                "es-ES": "📄・Reglas",
-                "de": "📄・Regeln",
-                "it": "📄・Regole"
+                "en-US": "📄│Rules",
+                "fr": "📄│Règles",
+                "es-ES": "📄│Reglas",
+                "de": "📄│Regeln",
+                "it": "📄│Regole"
             },
             "cat_guild": {
                 "en-US": "──── 📚 Guild",
@@ -350,25 +350,25 @@
                 "it": "──── 📚 Gilda"
             },
             "announcements": {
-                "en-US": "📢・Announcements",
-                "fr": "📢・Annonces",
-                "es-ES": "📢・Anuncios",
-                "de": "📢・Ankündigungen",
-                "it": "📢・Annunci"
+                "en-US": "📢│Announcements",
+                "fr": "📢│Annonces",
+                "es-ES": "📢│Anuncios",
+                "de": "📢│Ankündigungen",
+                "it": "📢│Annunci"
             },
             "tavern": {
-                "en-US": "🍺・Tavern",
-                "fr": "🍺・Taverne",
-                "es-ES": "🍺・Taverna",
-                "de": "🍺・Taverne",
-                "it": "🍺・Taverna"
+                "en-US": "🍺│Tavern",
+                "fr": "🍺│Taverne",
+                "es-ES": "🍺│Taverna",
+                "de": "🍺│Taverne",
+                "it": "🍺│Taverna"
             },
             "hall_of_fame": {
-                "en-US": "🏰・Hall_of_Fame",
-                "fr": "🏰・Temple_de_la_renommée",
-                "es-ES": "🏰・Salón_de_la_Fama",
-                "de": "🏰・Ruhmeshalle",
-                "it": "🏰・Sala_della_Fama"
+                "en-US": "🏰│Hall_of_Fame",
+                "fr": "🏰│Temple_de_la_renommée",
+                "es-ES": "🏰│Salón_de_la_Fama",
+                "de": "🏰│Ruhmeshalle",
+                "it": "🏰│Sala_della_Fama"
             },
             "tavern_voc": {
                 "en-US": "🍻 Tavern",
@@ -392,46 +392,46 @@
                 "it": "──── 📑 Organizzazione"
             },
             "events": {
-                "en-US": "🌟・Events",
-                "fr": "🌟・Évènements",
-                "es-ES": "🌟・Eventos",
-                "de": "🌟・Veranstaltungen",
-                "it": "🌟・Eventi"
+                "en-US": "🌟│Events",
+                "fr": "🌟│Évènements",
+                "es-ES": "🌟│Eventos",
+                "de": "🌟│Veranstaltungen",
+                "it": "🌟│Eventi"
             },
             "members": {
-                "en-US": "👥・Members",
-                "fr": "👥・Membres",
-                "es-ES": "👥・Miembros",
-                "de": "👥・Mitglieder",
-                "it": "👥・Membri"
+                "en-US": "👥│Members",
+                "fr": "👥│Membres",
+                "es-ES": "👥│Miembros",
+                "de": "👥│Mitglieder",
+                "it": "👥│Membri"
             },
             "groups": {
-                "en-US": "⏩・Groups",
-                "fr": "⏩・Groupes",
-                "es-ES": "⏩・Grupos",
-                "de": "⏩・Gruppen",
-                "it": "⏩・Gruppi"
+                "en-US": "⏩│Groups",
+                "fr": "⏩│Groupes",
+                "es-ES": "⏩│Grupos",
+                "de": "⏩│Gruppen",
+                "it": "⏩│Gruppi"
             },
             "abs": {
-                "en-US": "🕒・Absences",
-                "fr": "🕒・Absences",
-                "es-ES": "🕒・Ausencias",
-                "de": "🕒・Abwesenheiten",
-                "it": "🕒・Assenze"
+                "en-US": "🕒│Absences",
+                "fr": "🕒│Absences",
+                "es-ES": "🕒│Ausencias",
+                "de": "🕒│Abwesenheiten",
+                "it": "🕒│Assenze"
             },
             "loot": {
-                "en-US": "💍・Loot",
-                "fr": "💍・Butin",
-                "es-ES": "💍・Botín",
-                "de": "💍・Beute",
-                "it": "💍・Bottino"
+                "en-US": "💍│Loot",
+                "fr": "💍│Butin",
+                "es-ES": "💍│Botín",
+                "de": "💍│Beute",
+                "it": "💍│Bottino"
             },
             "tuto": {
-                "en-US": "❓・Tutorial",
-                "fr": "❓・Tuto",
-                "es-ES": "❓・Tutorial",
-                "de": "❓・Tutorial",
-                "it": "❓・Tutorial"
+                "en-US": "❓│Tutorial",
+                "fr": "❓│Tuto",
+                "es-ES": "❓│Tutorial",
+                "de": "❓│Tutorial",
+                "it": "❓│Tutorial"
             },
             "cat_conseil": {
                 "en-US": "──── 👑 Council",
@@ -441,25 +441,25 @@
                 "it": "──── 👑 Consiglio"
             },
             "rounded_table": {
-                "en-US": "🔱・Round_Table",
-                "fr": "🔱・Table_Ronde",
-                "es-ES": "🔱・Mesa_Redonda",
-                "de": "🔱・Runder_Tisch",
-                "it": "🔱・Tavola_Rotonda"
+                "en-US": "🔱│Round_Table",
+                "fr": "🔱│Table_Ronde",
+                "es-ES": "🔱│Mesa_Redonda",
+                "de": "🔱│Runder_Tisch",
+                "it": "🔱│Tavola_Rotonda"
             },
             "compte_rendus": {
-                "en-US": "📨・Reports",
-                "fr": "📨・Compte_Rendus",
-                "es-ES": "📨・Informes",
-                "de": "📨・Berichte",
-                "it": "📨・Resoconti"
+                "en-US": "📨│Reports",
+                "fr": "📨│Compte_Rendus",
+                "es-ES": "📨│Informes",
+                "de": "📨│Berichte",
+                "it": "📨│Resoconti"
             },
             "notifications": {
-                "en-US": "❕・Notifications",
-                "fr": "❕・Notifications",
-                "es-ES": "❕・Notificaciones",
-                "de": "❕・Benachrichtigungen",
-                "it": "❕・Notifiche"
+                "en-US": "❕│Notifications",
+                "fr": "❕│Notifications",
+                "es-ES": "❕│Notificaciones",
+                "de": "❕│Benachrichtigungen",
+                "it": "❕│Notifiche"
             },
             "staff": {
                 "en-US": "🍺 Staff Bar",
@@ -469,11 +469,11 @@
                 "it": "🍺 Bar dello Staff"
             },
             "forum_org": {
-                "en-US": "📂・Forum",
-                "fr": "📂・Forum",
-                "es-ES": "📂・Foro",
-                "de": "📂・Forum",
-                "it": "📂・Forum"
+                "en-US": "📂│Forum",
+                "fr": "📂│Forum",
+                "es-ES": "📂│Foro",
+                "de": "📂│Forum",
+                "it": "📂│Forum"
             },
             "topic_ally": {
                 "en-US": "Allies",
@@ -553,11 +553,11 @@
                 "it": "──── ✍️ Reclutamento"
             },
             "ext_recrut": {
-                "en-US": "🚩・Infos",
-                "fr": "🚩・Infos",
-                "es-ES": "🚩・Infos",
-                "de": "🚩・Infos",
-                "it": "🚩・Infos"
+                "en-US": "🚩│Infos",
+                "fr": "🚩│Infos",
+                "es-ES": "🚩│Infos",
+                "de": "🚩│Infos",
+                "it": "🚩│Infos"
             },
             "recrut_message": {
                 "en-US": "✍️ Recruitment",
@@ -567,11 +567,11 @@
                 "it": "✍️ Reclutamento"
             },
             "cat_diplo": {
-                "en-US": "──── 🕊️ Diplomacy",
-                "fr": "──── 🕊️ Diplomatie",
-                "es-ES": "──── 🕊️ Diplomacia",
-                "de": "──── 🕊️ Diplomatie",
-                "it": "──── 🕊️ Diplomazia"
+                "en-US": "──── 🤝 Diplomacy",
+                "fr": "──── 🤝 Diplomatie",
+                "es-ES": "──── 🤝 Diplomacia",
+                "de": "──── 🤝 Diplomatie",
+                "it": "──── 🤝 Diplomazia"
             },
             "cat_ami": {
                 "en-US": "──── 👫 Friends",
@@ -581,11 +581,11 @@
                 "it": "──── 👫 Amici"
             },
             "ami_tavern": {
-                "en-US": "👫・Friends'・Tavern",
-                "fr": "👫・Taverne・des・amis",
-                "es-ES": "👫・Taberna・de・amigos",
-                "de": "👫・Taverne・der・Freunde",
-                "it": "👫・Taverna・degli・amici"
+                "en-US": "👫│Friends'・Tavern",
+                "fr": "👫│Taverne・des・amis",
+                "es-ES": "👫│Taberna・de・amigos",
+                "de": "👫│Taverne・der・Freunde",
+                "it": "👫│Taverna・degli・amici"
             },
             "ami_tavern_voc": {
                 "en-US": "🍺 Friends' Tavern",
@@ -650,6 +650,13 @@
             }
         },
         "messages": {
+            "error_no_guild": {
+                "en-US": "Error retrieving Discord context.",
+                "fr": "Erreur lors de la récupération du contexte Discord.",
+                "es-ES": "Error al recuperar el contexto de Discord.",
+                "de": "Fehler beim Abrufen des Discord-Kontexts.",
+                "it": "Errore durante il recupero del contesto Discord."
+            },
             "not_initialized": {
                 "en-US": "The guild has not been initialized. Please use /app_init first.",
                 "fr": "La guilde n'est pas initialisée. Veuillez initialiser le bot avec /app_init.",
