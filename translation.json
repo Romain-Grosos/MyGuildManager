@@ -614,6 +614,27 @@
                 "es-ES": "📌 **REGLAS DEL CANAL DE AUSENCIAS** 📌\n\n👋 **Este canal es exclusivamente para anunciar ausencias de más de 3 días.**\n\n🔹 **Declarar una ausencia:**\n- Escribe un mensaje indicando la duración y la razón de tu ausencia (opcional).\n- Tu rol cambiará automáticamente de **\"Miembro\"** a **\"Miembro ausente\"**.\n\n✅ **Reaccionar a una ausencia:**\n- **No publiques mensajes** para responder a una ausencia.\n- Usa solo **reacciones** en el mensaje para interactuar.\n\n🏡 **Indicar tu regreso:**\n- **Elimina tu mensaje** de ausencia cuando regreses.\n- Tu rol cambiará automáticamente a **\"Miembro\"**.\n\n⚠️ **Cualquier mensaje fuera de tema será eliminado.** Por favor, sigue estas reglas para un seguimiento claro y eficiente de las ausencias.\n\n¡Disfruta del juego! 🎮✨",
                 "de": "📌 **REGELN FÜR DEN ABWESENHEITSKANAL** 📌\n\n👋 **Dieser Kanal ist ausschließlich für die Ankündigung von Abwesenheiten länger als 3 Tage vorgesehen.**\n\n🔹 **Abwesenheit melden:**\n- Schreibe eine Nachricht mit der Dauer und dem Grund deiner Abwesenheit (optional).\n- Deine Rolle wird automatisch von **\"Mitglied\"** zu **\"Abwesendes Mitglied\"** geändert.\n\n✅ **Auf eine Abwesenheit reagieren:**\n- **Poste keine Nachrichten**, um auf eine Abwesenheit zu antworten.\n- Verwende nur **Reaktionen** unter der Nachricht, um zu interagieren.\n\n🏡 **Rückkehr melden:**\n- **Lösche deine Abwesenheitsnachricht**, sobald du zurück bist.\n- Deine Rolle wird automatisch wieder auf **\"Mitglied\"** gesetzt.\n\n⚠️ **Jede themenfremde Nachricht wird gelöscht.** Bitte halte dich an diese Regeln, um eine klare und effiziente Abwesenheitsverfolgung zu gewährleisten.\n\nViel Spaß beim Spielen! 🎮✨",
                 "it": "📌 **REGOLE DEL CANALE ASSENZE** 📌\n\n👋 **Questo canale è esclusivamente per annunciare assenze superiori a 3 giorni.**\n\n🔹 **Dichiarare un'assenza:**\n- Scrivi un messaggio indicando la durata e il motivo della tua assenza (opzionale).\n- Il tuo ruolo passerà automaticamente da **\"Membro\"** a **\"Membro assente\"**.\n\n✅ **Reagire a un'assenza:**\n- **Non pubblicare messaggi** per rispondere a un'assenza.\n- Usa solo **le reazioni** sotto il messaggio per interagire.\n\n🏡 **Segnalare il ritorno:**\n- **Elimina il tuo messaggio** di assenza una volta tornato.\n- Il tuo ruolo tornerà automaticamente a **\"Membro\"**.\n\n⚠️ **Qualsiasi messaggio fuori tema verrà eliminato.** Segui queste regole per garantire un monitoraggio chiaro ed efficace delle assenze.\n\nBuon divertimento! 🎮✨"
+            },
+            "waiting_room": {
+                "en-US": "⏸️ Waiting Room",
+                "fr": "⏸️ Salle d'Attente",
+                "es-ES": "⏸️ Sala de Espera",
+                "de": "⏸️ Warteraum",
+                "it": "⏸️ Sala d'Attesa"
+            },
+            "recruitment": {
+                "en-US": "✍️ Recruitment",
+                "fr": "✍️ Recrutement",
+                "es-ES": "✍️ Reclutamiento",
+                "de": "✍️ Rekrutierung",
+                "it": "✍️ Reclutamento"
+            },
+            "diplomacy": {
+                "en-US": "🤝 Diplomacy",
+                "fr": "🤝 Diplomatie",
+                "es-ES": "🤝 Diplomacia",
+                "de": "🤝 Diplomatie",
+                "it": "🤝 Diplomazia"
             }
         },
         "options": {
@@ -1928,6 +1949,29 @@
                 "es-ES": "✅ Notificaciones enviadas a {successes} miembros. Errores: {failures}.",
                 "de": "✅ Benachrichtigungen an {successes} Mitglieder gesendet. Fehler: {failures}.",
                 "it": "✅ Notifiche inviate a {successes} membri. Errori: {failures}."
+            }
+        },
+        "table": {
+            "header": {
+                "en-US": ["Pseudo", "Lang", "GS", "Build", "Weapons", "Class", "DKP", "%Sign", "%Pres"],
+                "fr": ["Pseudo", "Langue", "GS", "Build", "Armes", "Classe", "DKP", "%Insc", "%Prés"],
+                "es-ES": ["Apodo", "Idioma", "GS", "Build", "Armas", "Clase", "DKP", "%Reg", "%Pres"],
+                "de": ["Spitzname", "Spr.", "GS", "Build", "Waffen", "Klasse", "DKP", "%Anm", "%Anw"],
+                "it": ["Soprannome", "Lingua", "GS", "Build", "Armi", "Classe", "DKP", "%Iscr", "%Pres"]
+            },
+            "footer": {
+                "en-US": "Number of members: {count}\\n{stats}\\nUpdated {date}",
+                "fr": "Nombre de membres : {count}\\n{stats}\\nMis à jour le {date}",
+                "es-ES": "Número de miembros: {count}\\n{stats}\\nActualizado el {date}",
+                "de": "Anzahl der Mitglieder: {count}\\n{stats}\\nAktualisiert am {date}",
+                "it": "Numero di membri: {count}\\n{stats}\\nAggiornato il {date}"
+            },
+            "role_stats": {
+                "en-US": ["Tank", "Melee DPS", "Ranged DPS", "Healer", "Flanker"],
+                "fr": ["Tank", "DPS Mélée", "DPS Distance", "Healer", "Flanker"],
+                "es-ES": ["Tanque", "DPS Cuerpo a Cuerpo", "DPS a Distancia", "Sanador", "Flanqueador"],
+                "de": ["Tank", "Nahkampf-DPS", "Fernkampf-DPS", "Heiler", "Flankierer"],
+                "it": ["Tank", "DPS Corpo a Corpo", "DPS a Distanza", "Guaritore", "Fiancheggiatore"]
             }
         },
         "post_recrut": {

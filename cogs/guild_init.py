@@ -178,8 +178,13 @@ class GuildInit(commands.Cog):
                 ext_recrut = await guild.create_text_channel(name=channel_names["ext_recrut"].get(guild_lang),category=recrut_cat)
                 embed = discord.Embed(title=channel_names["recrut_message"].get(guild_lang),description=".",color=discord.Color.blurple(),)
                 ext_msg = await ext_recrut.send(embed=embed)
+                await guild.create_voice_channel(name=channel_names["waiting_room"].get(guild_lang),category=recrut_cat)
+                await guild.create_voice_channel(name=channel_names["recruitment"].get(guild_lang),category=recrut_cat)
 
                 diplo_cat = await guild.create_category(name=channel_names["cat_diplo"].get(guild_lang))
+                await guild.create_voice_channel(name=channel_names["waiting_room"].get(guild_lang),category=diplo_cat)
+                await guild.create_voice_channel(name=channel_names["diplomacy"].get(guild_lang),category=diplo_cat)
+
                 ami_cat = await guild.create_category(name=channel_names["cat_ami"].get(guild_lang))
                 await guild.create_text_channel(name=channel_names["ami_tavern"].get(guild_lang),category=ami_cat)
                 await guild.create_voice_channel(name=channel_names["ami_tavern_voc"].get(guild_lang),category=ami_cat)
@@ -200,6 +205,8 @@ class GuildInit(commands.Cog):
                         logging.error("[GuildInit] Failed to enable community mode: %s", e)
                         response = get_user_message(ctx, self.translations,"guild_init.messages.error", error=e)
                         return await ctx.followup.send(response, ephemeral=True)
+
+                war_conf = await guild.create_voice_channel("⚔️ WAR",type=discord.ChannelType.stage_voice,category=guild_cat)
 
                 tuto_channel = await ctx.guild.create_forum_channel(name=channel_names["tuto"].get(guild_lang),category=org_cat,position=99)
 
@@ -228,6 +235,7 @@ class GuildInit(commands.Cog):
                     rules_msg.id,
                     announce_ch.id,
                     voice_tavern.id,
+                    war_conf.id,
                     create_room.id,
                     events.id,
                     members_ch.id,
@@ -250,6 +258,7 @@ class GuildInit(commands.Cog):
                     rules_message,
                     announcements_channel,
                     voice_tavern_channel,
+                    voice_war_channel,
                     create_room_channel,
                     events_channel,
                     members_channel,
@@ -271,12 +280,13 @@ class GuildInit(commands.Cog):
                     external_recruitment_channel,
                     external_recruitment_message,
                     category_diplo
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                     rules_channel = VALUES(rules_channel),
                     rules_message = VALUES(rules_message),
                     announcements_channel = VALUES(announcements_channel),
                     voice_tavern_channel = VALUES(voice_tavern_channel),
+                    voice_war_channel = VALUES(voice_war_channel),
                     create_room_channel = VALUES(create_room_channel),
                     events_channel = VALUES(events_channel),
                     members_channel = VALUES(members_channel),
@@ -301,6 +311,20 @@ class GuildInit(commands.Cog):
                 """
 
                 await self.bot.run_db_query(insert_query, channels_values, commit=True)
+
+                await rules_channel.set_permissions(
+                    guild.default_role,
+                    view_channel=True,
+                    read_message_history=True,
+                    send_messages=False,
+                    create_public_threads=False,
+                    create_private_threads=False,
+                    send_messages_in_threads=False,
+                    add_reactions=True
+                )
+
+
+
 
                 for cog_name, methods in {
                     "Notification": ["load_notification_channels"],
