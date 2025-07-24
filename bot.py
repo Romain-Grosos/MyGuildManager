@@ -63,13 +63,13 @@ EXTENSIONS: Final[list[str]] = [
     "cogs.llm",
     "cogs.guild_init",
     "cogs.notification",
-    "cogs.autorole",
     "cogs.profile_setup",
     "cogs.guild_members",
     "cogs.absence",
     "cogs.dynamic_voice",
     "cogs.contract",
     "cogs.guild_events",
+    "cogs.autorole",
     "cogs.cron"
 ]
 

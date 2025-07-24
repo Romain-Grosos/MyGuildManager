@@ -4,6 +4,7 @@ from discord.ext import commands
 from typing import Dict, Tuple
 import asyncio
 import pytz
+import time
 from datetime import datetime
 from translation import translations as global_translations
 
@@ -35,6 +36,8 @@ class AutoRole(commands.Cog):
         self.welcome_messages: Dict[Tuple[int, int], Dict[str, int]] = {}
         self.rules_ok_roles: Dict[int, int] = {}
         self.guild_langs: Dict[int, str] = {}
+        self._profile_setup_cog = None
+        self._recent_reactions: Dict[Tuple[int, int, int], float] = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -104,24 +107,60 @@ class AutoRole(commands.Cog):
         except Exception as e:
             logging.error(f"[AutoRole] Error loading guild languages: {e}", exc_info=True)
 
+    def _check_rate_limit(self, guild_id: int, user_id: int, message_id: int) -> bool:
+        key = (guild_id, user_id, message_id)
+        current_time = time.time()
+        
+        if key in self._recent_reactions:
+            if current_time - self._recent_reactions[key] < 5.0:
+                return False
+        
+        self._recent_reactions[key] = current_time
+
+        cutoff = current_time - 3600
+        self._recent_reactions = {k: v for k, v in self._recent_reactions.items() if v > cutoff}
+        
+        return True
+
+    def _get_profile_setup_cog(self):
+        if self._profile_setup_cog is None:
+            self._profile_setup_cog = self.bot.get_cog("ProfileSetup")
+        return self._profile_setup_cog
+
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent) -> None:
+        logging.debug(f"[AutoRole - on_raw_reaction_add] Processing reaction: user={payload.user_id}, message={payload.message_id}, emoji={payload.emoji}")
+        
         if not payload.guild_id:
+            logging.debug("[AutoRole - on_raw_reaction_add] No guild_id, skipping")
             return
 
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
+            logging.debug(f"[AutoRole - on_raw_reaction_add] Guild {payload.guild_id} not found")
             return
 
         rules_info = self.rules_messages.get(guild.id)
         if not rules_info or payload.message_id != rules_info.get("message"):
+            logging.debug(f"[AutoRole - on_raw_reaction_add] Message {payload.message_id} is not rules message for guild {guild.id}")
             return
 
         if str(payload.emoji) != "✅":
             return
 
+        if not self._check_rate_limit(guild.id, payload.user_id, payload.message_id):
+            logging.debug(f"[AutoRole] Rate limited reaction from user {payload.user_id}")
+            return
+
         role_id = self.rules_ok_roles.get(guild.id)
-        role = guild.get_role(role_id) if role_id else None
+        if not role_id:
+            logging.warning(f"[AutoRole] No rules_ok role configured for guild {guild.id}")
+            return
+            
+        role = guild.get_role(role_id)
+        if not role:
+            logging.warning(f"[AutoRole] Rules_ok role {role_id} not found in guild {guild.id}")
+            return
 
         try:
             member = guild.get_member(payload.user_id) or await guild.fetch_member(payload.user_id)
@@ -141,18 +180,38 @@ class AutoRole(commands.Cog):
             if key in self.welcome_messages:
                 info = self.welcome_messages[key]
                 try:
-                    channel = await self.bot.fetch_channel(info["channel"])
-                    message = await channel.fetch_message(info["message"])
+                    channel = self.bot.get_channel(info["channel"])
+                    if not channel:
+                        channel = await self.bot.fetch_channel(info["channel"])
+                    
+                    if not channel:
+                        logging.warning(f"[AutoRole] Channel {info['channel']} not found, removing from cache")
+                        del self.welcome_messages[key]
+                        return
+                    
+                    try:
+                        message = await channel.fetch_message(info["message"])
+                    except discord.NotFound:
+                        logging.warning(f"[AutoRole] Message {info['message']} not found, removing from cache")
+                        del self.welcome_messages[key]
+                        return
+
+                    if not message.embeds:
+                        logging.warning(f"[AutoRole] No embeds found in welcome message for {member.name}")
+                        return
+                        
                     lang = self.guild_langs.get(guild.id, "en-US")
                     embed = update_welcome_embed(message.embeds[0], lang, self.bot.translations)
                     await message.edit(embed=embed)
                     logging.debug(f"[AutoRole] ✅ Welcome message updated for {member.name} (ID: {member.id}).")
+                except discord.Forbidden:
+                    logging.warning(f"[AutoRole] No permission to edit message for {member.name}")
                 except Exception as e:
                     logging.error("[AutoRole] ❌ Error updating welcome message", exc_info=True)
             else:
                 logging.debug(f"[AutoRole] No welcome message in cache for key {key}.")
 
-            query = "SELECT user_id FROM user_setup WHERE guild_id = ? AND user_id = ?"
+            query = "SELECT user_id FROM user_setup WHERE guild_id = %s AND user_id = %s"
             try:
                 result = await self.bot.run_db_query(query, (guild.id, member.id), fetch_one=True)
             except Exception as e:
@@ -163,7 +222,7 @@ class AutoRole(commands.Cog):
                 logging.debug(f"[AutoRole] Profile already exists for {guild.id}_{member.id}; no DM sent for registration.")
                 return
 
-            profile_setup_cog = self.bot.get_cog("ProfileSetup")
+            profile_setup_cog = self._get_profile_setup_cog()
             if profile_setup_cog is None:
                 logging.error("[AutoRole] ProfileSetup cog not found!")
                 return
@@ -171,7 +230,7 @@ class AutoRole(commands.Cog):
                 await member.send(view=profile_setup_cog.LangSelectView(profile_setup_cog, guild.id))
                 logging.debug(f"[AutoRole] 📩 DM sent to {member.name} ({member.id}) to start the profile setup process for guild {guild.id}.")
             except discord.Forbidden:
-                logging.error(f"[AutoRole] ⚠️ Forbidden: Cannot send DM to {member.name}. Check their settings for guild {guild.id}.")
+                logging.warning(f"[AutoRole] ⚠️ Cannot send DM to {member.name} - DMs disabled for guild {guild.id}")
             except Exception as e:
                 logging.error(f"[AutoRole] ❌ Error sending DM to {member.name}: {e} in guild {guild.id}.", exc_info=True)
 
@@ -191,8 +250,19 @@ class AutoRole(commands.Cog):
         if str(payload.emoji) != "✅":
             return
 
+        if not self._check_rate_limit(guild.id, payload.user_id, payload.message_id):
+            logging.debug(f"[AutoRole] Rate limited reaction removal from user {payload.user_id}")
+            return
+
         role_id = self.rules_ok_roles.get(guild.id)
-        role = guild.get_role(role_id) if role_id else None
+        if not role_id:
+            logging.warning(f"[AutoRole] No rules_ok role configured for guild {guild.id}")
+            return
+
+        role = guild.get_role(role_id)
+        if not role:
+            logging.warning(f"[AutoRole] Rules_ok role {role_id} not found in guild {guild.id}")
+            return
 
         try:
             member = guild.get_member(payload.user_id) or await guild.fetch_member(payload.user_id)
