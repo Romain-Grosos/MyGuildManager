@@ -16,6 +16,15 @@ class AbsenceManager(commands.Cog):
         asyncio.create_task(self.load_absence_channels())
         logging.debug("[AbsenceManager] 'load_absence_channels' task started from cog load.")
 
+    def _get_guild_roles(self, guild: discord.Guild) -> tuple[discord.Role | None, discord.Role | None]:
+        roles = self.role_ids.get(guild.id, {})
+        role_member = guild.get_role(roles.get("member"))
+        role_absent = guild.get_role(roles.get("absent"))
+        if role_member is None or role_absent is None:
+            logging.warning("[AbsenceManager] Roles missing in guild %s", guild.id)
+            return None, None
+        return role_member, role_absent
+
     async def load_absence_channels(self) -> None:
         logging.debug("[AbsenceManager] Loading absence channels from the database.")
         query = """
@@ -56,11 +65,8 @@ class AbsenceManager(commands.Cog):
         if not member:
             return
 
-        roles = self.role_ids.get(guild.id, {})
-        role_member = guild.get_role(roles.get("member"))
-        role_absent = guild.get_role(roles.get("absent"))
-        if role_member is None or role_absent is None: 
-            logging.warning("[AbsenceManager] Roles missing in guild %s", guild.id)
+        role_member, role_absent = self._get_guild_roles(guild)
+        if not role_member or not role_absent:
             return
 
         if role_absent and role_member:
@@ -112,16 +118,18 @@ class AbsenceManager(commands.Cog):
             return
 
         member_id = row[0]
-        guild     = self.bot.get_guild(payload.guild_id)
-        member    = guild.get_member(member_id)
+        guild = self.bot.get_guild(payload.guild_id)
+        if not guild:
+            logging.warning("[AbsenceManager] Guild %s not found", payload.guild_id)
+            return
+            
+        member = guild.get_member(member_id)
         if not member:
+            logging.debug("[AbsenceManager] Member %s not found in guild %s", member_id, guild.id)
             return
 
-        roles = self.role_ids.get(guild.id, {})
-        role_member = guild.get_role(roles.get("member"))
-        role_absent = guild.get_role(roles.get("absent"))
-        if role_member is None or role_absent is None:
-            logging.warning("[AbsenceManager] Roles missing in guild %s", guild.id)
+        role_member, role_absent = self._get_guild_roles(guild)
+        if not role_member or not role_absent:
             return
 
         try:
@@ -133,11 +141,15 @@ class AbsenceManager(commands.Cog):
             logging.error("[AbsenceManager] Error deleting absence record: %s", e)
             return
 
-        row = await self.bot.run_db_query(
-            "SELECT COUNT(*) FROM absence_messages "
-            "WHERE guild_id = %s AND member_id = %s",
-            (payload.guild_id, member_id), fetch_one=True
-        )
+        try:
+            row = await self.bot.run_db_query(
+                "SELECT COUNT(*) FROM absence_messages "
+                "WHERE guild_id = %s AND member_id = %s",
+                (payload.guild_id, member_id), fetch_one=True
+            )
+        except Exception as e:
+            logging.error("[AbsenceManager] Error checking remaining absence messages: %s", e)
+            return
         if row and row[0] > 0:
             logging.debug("[AbsenceManager] Other absence messages remain for %s, keeping 'absent' role.", member.name)
             return
@@ -159,11 +171,8 @@ class AbsenceManager(commands.Cog):
                         member: discord.Member,
                         channel: discord.TextChannel,
                         reason_message: str) -> None:
-        roles = self.role_ids.get(guild.id, {})
-        role_member = guild.get_role(roles.get("member"))
-        role_absent = guild.get_role(roles.get("absent"))
-        if role_member is None or role_absent is None:
-            logging.warning("[AbsenceManager] Roles missing in guild %s", guild.id)
+        role_member, role_absent = self._get_guild_roles(guild)
+        if not role_member or not role_absent:
             return
 
         try:
@@ -190,7 +199,10 @@ class AbsenceManager(commands.Cog):
         except Exception as e:
             logging.error("[AbsenceManager] Error saving absence entry: %s", e)
 
-        cfg = self.abs_channels[guild.id]
+        cfg = self.abs_channels.get(guild.id)
+        if not cfg:
+            logging.error("[AbsenceManager] Guild config not found for guild %s", guild.id)
+            return
         await self.notify_absence(member, "addition",
                                 cfg["forum_members_channel"],
                                 cfg["guild_lang"])
@@ -236,11 +248,13 @@ class AbsenceManager(commands.Cog):
         await ctx.respond(resp, ephemeral=True)
 
     async def notify_absence(self, member: discord.Member, action: str, channel_id: int, guild_lang: str) -> None:
-        try:
-            channel = await self.bot.fetch_channel(channel_id)
-        except Exception as e:
-            logging.error(f"[AbsenceManager] ❌ Error fetching notification channel: {e}")
-            return
+        channel = self.bot.get_channel(channel_id)
+        if not channel:
+            try:
+                channel = await self.bot.fetch_channel(channel_id)
+            except Exception as e:
+                logging.error(f"[AbsenceManager] ❌ Error fetching notification channel: {e}")
+                return
 
         if not channel:
             logging.error("[AbsenceManager] ❌ Failed to access the members notification channel.")
