@@ -298,11 +298,9 @@ class Contract(commands.Cog):
         self._cache_lock = asyncio.Lock()
     
     def _validate_author(self, interaction: discord.Interaction, original_author: discord.Member) -> bool:
-        """Validate that the interaction user is the original command author."""
         return interaction.user.id == original_author.id
     
     async def _get_channel_safe(self, channel_id: int) -> Optional[discord.TextChannel]:
-        """Safely get a channel with caching and fallback."""
         if channel_id in getattr(self, '_channel_cache', {}):
             return self._channel_cache[channel_id]
         
@@ -319,7 +317,6 @@ class Contract(commands.Cog):
         return channel
     
     async def _get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
-        """Get guild settings with caching."""
         async with self._cache_lock:
             if guild_id in self._guild_cache:
                 return self._guild_cache[guild_id]
@@ -341,8 +338,7 @@ class Contract(commands.Cog):
                     return settings
             except Exception as e:
                 logging.error(f"[ContractManager] Error loading guild settings for {guild_id}: {e}")
-            
-            # Return defaults if query fails
+
             return {'events_channel': None, 'guild_lang': 'en-US'}
 
     @discord.slash_command(
@@ -422,7 +418,6 @@ class Contract(commands.Cog):
                         await delete_contract_message(self.bot, guild_id)
                     except Exception as db_error:
                         logging.error(f"[ContractManager] DB cleanup failed after message deletion: {db_error}")
-                        # Message already deleted, so we continue
                     
                     success_deleted = CONTRACT_DATA.get("user_messages", {})\
                         .get("notifications", {})\
@@ -431,7 +426,6 @@ class Contract(commands.Cog):
                     logging.info(success_deleted)
                     await ctx.followup.send(success_deleted)
                 except discord.NotFound:
-                    # Message doesn't exist, clean up DB
                     try:
                         await delete_contract_message(self.bot, guild_id)
                     except:
@@ -445,7 +439,6 @@ class Contract(commands.Cog):
             await ctx.followup.send("An error occurred while deleting the contract.", ephemeral=True)
 
     async def contrat_delete_cron(self):
-        """Safely delete all guild contracts with error isolation per guild."""
         failed_guilds = []
         processed = 0
         
@@ -458,12 +451,12 @@ class Contract(commands.Cog):
                 if not channel_id:
                     logging.debug(f"[ContractManager] No event channel configured for guild {guild_id}")
                     continue
-                
+
                 channel = await self._get_channel_safe(channel_id)
                 if not channel:
                     logging.warning(f"[ContractManager] Event channel {channel_id} not accessible for guild {guild_id}")
                     continue
-                
+
                 message_id = await load_contract_message(self.bot, guild_id)
                 if message_id:
                     try:
@@ -476,25 +469,23 @@ class Contract(commands.Cog):
                         logging.info(f"[ContractManager] Contract deleted for guild {guild_id}")
                         processed += 1
                     except discord.NotFound:
-                        # Clean up orphaned DB entry
                         try:
                             await delete_contract_message(self.bot, guild_id)
                         except:
                             pass
                         logging.debug(f"[ContractManager] Contract already deleted for guild {guild_id}")
-                
-                # Rate limiting to avoid hitting Discord API limits
+
                 if processed % 10 == 0:
                     await asyncio.sleep(1)
-                    
+      
             except Exception as e:
                 failed_guilds.append(guild_id)
                 logging.error(f"[ContractManager] Error processing guild {guild_id} in cron: {e}", exc_info=True)
                 continue
-        
+
         if failed_guilds:
             logging.warning(f"[ContractManager] Cron failed for {len(failed_guilds)} guilds: {failed_guilds}")
-        
+
         logging.info(f"[ContractManager] Cron completed: {processed} contracts processed, {len(failed_guilds)} failures")
 
 def setup(bot: discord.Bot):
