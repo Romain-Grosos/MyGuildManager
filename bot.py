@@ -156,10 +156,10 @@ async def monitor_resources():
                 memory_mb = process.memory_info().rss / 1024 / 1024
                 cpu_percent = process.cpu_percent()
                 
-                if memory_mb > 500:
-                    logging.warning(f"[Bot] High memory usage: {memory_mb:.1f}MB")
-                if cpu_percent > 80:
-                    logging.warning(f"[Bot] High CPU usage: {cpu_percent:.1f}%")
+                if memory_mb > config.MAX_MEMORY_MB:
+                    logging.warning(f"[Bot] High memory usage: {memory_mb:.1f}MB (limit: {config.MAX_MEMORY_MB}MB)")
+                if cpu_percent > config.MAX_CPU_PERCENT:
+                    logging.warning(f"[Bot] High CPU usage: {cpu_percent:.1f}% (limit: {config.MAX_CPU_PERCENT}%)")
                     
                 if int(time.time()) % 3600 == 0:
                     logging.info(f"[Bot] Resource usage - Memory: {memory_mb:.1f}MB, CPU: {cpu_percent:.1f}%")
@@ -175,7 +175,7 @@ async def monitor_resources():
 
 async def run_bot():
     load_extensions()
-    max_retries = 5
+    max_retries = config.MAX_RECONNECT_ATTEMPTS
     retry_count = 0
     
     while retry_count < max_retries:
