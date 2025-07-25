@@ -9,6 +9,14 @@ import signal
 import sys
 from typing import Final
 import aiohttp
+import time
+from discord.ext import commands
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    logging.warning("[Bot] psutil not available - resource monitoring disabled")
 
 # #################################################################################### #
 #                               Logging Configuration
@@ -54,9 +62,20 @@ intents.messages = True
 intents.guilds = True
 intents.members = True
 
+def validate_token():
+    token = config.TOKEN
+    if not token or len(token) < 50:
+        logging.critical("[Bot] Invalid or missing Discord token")
+        sys.exit(1)
+    masked_token = f"{token[:10]}...{token[-4:]}"
+    logging.debug(f"[Bot] Using token: {masked_token}")
+    return token
+
 bot = discord.Bot(intents=intents, loop=loop)
 bot.translations = translations
 bot.run_db_query = run_db_query
+bot.global_command_cooldown = set()
+bot.max_commands_per_minute = 100
 
 EXTENSIONS: Final[list[str]] = [
     "cogs.core",
@@ -74,17 +93,25 @@ EXTENSIONS: Final[list[str]] = [
 ]
 
 def load_extensions():
+    failed_extensions = []
     for ext in EXTENSIONS:
         try:
             bot.load_extension(ext)
-            logging.debug(f"[Bot] ✅ Extension loaded : {ext}")
+            logging.debug(f"[Bot] ✅ Extension loaded: {ext}")
         except Exception as e:
+            failed_extensions.append(ext)
             logging.exception(f"[Bot] ❌ Failed to load extension {ext}")
+    
+    if failed_extensions:
+        logging.warning(f"[Bot] {len(failed_extensions)} extensions failed to load: {failed_extensions}")
+    
+    if len(failed_extensions) >= len(EXTENSIONS) // 2:
+        logging.critical("[Bot] Too many extensions failed. Shutting down.")
+        sys.exit(1)
 
 # #################################################################################### #
 #                            Extra Event Hooks
 # #################################################################################### #
-
 @bot.event
 async def on_disconnect() -> None:
     logging.warning("[Discord] Gateway disconnected")
@@ -95,9 +122,52 @@ async def on_resumed() -> None:
     logging.info("[Discord] Gateway resume OK")
 
 
+@bot.before_invoke
+async def global_rate_limit(ctx):
+    now = time.time()
+    bot.global_command_cooldown = {
+        timestamp for timestamp in bot.global_command_cooldown 
+        if now - timestamp < 60
+    }
+    
+    if len(bot.global_command_cooldown) >= bot.max_commands_per_minute:
+        logging.warning(f"[Bot] Global rate limit exceeded ({len(bot.global_command_cooldown)} commands/min)")
+        raise commands.CommandOnCooldown(None, 60)
+    
+    bot.global_command_cooldown.add(now)
+
 @bot.event
 async def on_ready() -> None:
     logging.info("[Discord] Connected as %s (%s)", bot.user, bot.user.id)
+    
+    if PSUTIL_AVAILABLE:
+        asyncio.create_task(monitor_resources())
+        logging.debug("[Bot] Resource monitoring started")
+
+# #################################################################################### #
+#                            Resource Monitoring
+# #################################################################################### #
+
+async def monitor_resources():
+    while True:
+        try:
+            if PSUTIL_AVAILABLE:
+                process = psutil.Process()
+                memory_mb = process.memory_info().rss / 1024 / 1024
+                cpu_percent = process.cpu_percent()
+                
+                if memory_mb > 500:
+                    logging.warning(f"[Bot] High memory usage: {memory_mb:.1f}MB")
+                if cpu_percent > 80:
+                    logging.warning(f"[Bot] High CPU usage: {cpu_percent:.1f}%")
+                    
+                if int(time.time()) % 3600 == 0:
+                    logging.info(f"[Bot] Resource usage - Memory: {memory_mb:.1f}MB, CPU: {cpu_percent:.1f}%")
+                    
+            await asyncio.sleep(300)
+        except Exception as e:
+            logging.error(f"[Bot] Resource monitoring error: {e}")
+            await asyncio.sleep(300)
 
 # #################################################################################### #
 #                            Resilient runner
@@ -105,13 +175,23 @@ async def on_ready() -> None:
 
 async def run_bot():
     load_extensions()
-    while True:
+    max_retries = 5
+    retry_count = 0
+    
+    while retry_count < max_retries:
         try:
-            await bot.start(config.TOKEN)
-        except aiohttp.ClientError:
-            logging.exception("Network error — retrying in 15s")
+            await bot.start(validate_token())
+        except aiohttp.ClientError as e:
+            retry_count += 1
+            logging.exception(f"Network error (attempt {retry_count}/{max_retries}) — retrying in 15s")
+            if retry_count >= max_retries:
+                logging.critical("[Bot] Max retries reached. Shutting down.")
+                break
             await bot.close()
             await asyncio.sleep(15)
+        except Exception as e:
+            logging.critical(f"[Bot] Critical error during startup: {e}", exc_info=True)
+            break
         else:
             break
 
