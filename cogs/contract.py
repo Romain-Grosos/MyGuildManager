@@ -265,7 +265,8 @@ class ContractSelect(discord.ui.View):
                         localized_label = option[selection].get(self.guild_lang, option[selection].get("en-US", selection))
                         break
                 description += f"### **{category_name}**\n{localized_label}\n\n"
-        description += f"\n*Published by {self.author.display_name}*"
+        published_by_template = CONTRACT_DATA.get("published_by", {}).get(self.guild_lang, "Published by")
+        description += f"\n*{published_by_template} {self.author.display_name}*"
         title = CONTRACT_DATA.get("title", {}).get(self.guild_lang, "Guild Contracts")
         embed = discord.Embed(title=title, description=description, color=discord.Color.green())
         try:

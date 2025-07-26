@@ -1000,6 +1000,13 @@
             "de": "Hier sind die Gildenverträge für heute:",
             "it": "Ecco i contratti della gilda per oggi:"
         },
+        "published_by": {
+            "en-US": "Published by",
+            "fr": "Publié par",
+            "es-ES": "Publicado por",
+            "de": "Veröffentlicht von",
+            "it": "Pubblicato da"
+        },
         "categories": {
             "monster_elimination": {
                 "en-US": "Monster Elimination",
