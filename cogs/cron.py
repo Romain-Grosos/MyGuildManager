@@ -154,6 +154,12 @@ class Cron(commands.Cog):
                 try:
                     await guild_members_cog.run_maj_roster(guild_id)
                     logging.debug(f"✅ [CRON] Roster updated for guild {guild_id}")
+                    
+                    guild_events_cog = self.bot.get_cog("GuildEvents")
+                    if guild_events_cog:
+                        await guild_events_cog.update_static_groups_message_for_cron(guild_id)
+                        logging.debug(f"✅ [CRON] Static groups updated for guild {guild_id}")
+                    
                 except Exception as e:
                     logging.error(f"❌ [CRON] Roster update failed for guild {guild_id}: {e}")
                 await asyncio.sleep(0.5)

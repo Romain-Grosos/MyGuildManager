@@ -2782,5 +2782,359 @@
             "de": "Bei der Generierung der Antwort ist ein Fehler aufgetreten: {error}",
             "it": "Si è verificato un errore durante la generazione della risposta: {error}"
         }
+    },
+    "static_groups": {
+        "static_create": {
+            "name": {
+                "en-US": "static_create",
+                "fr": "static_creer",
+                "es-ES": "static_crear",
+                "de": "static_erstellen",
+                "it": "static_crea"
+            },
+            "description": {
+                "en-US": "Create a new static group (Management only)",
+                "fr": "Créer un nouveau groupe statique (Management uniquement)",
+                "es-ES": "Crear un nuevo grupo estático (Solo gestión)",
+                "de": "Erstelle eine neue statische Gruppe (Nur Management)",
+                "it": "Crea un nuovo gruppo statico (Solo gestione)"
+            },
+            "options": {
+                "group_name": {
+                    "description": {
+                        "en-US": "Static group name",
+                        "fr": "Nom du groupe statique",
+                        "es-ES": "Nombre del grupo estático",
+                        "de": "Name der statischen Gruppe",
+                        "it": "Nome del gruppo statico"
+                    }
+                }
+            },
+            "messages": {
+                "success": {
+                    "en-US": "✅ Static group '{group_name}' created successfully!",
+                    "fr": "✅ Groupe statique '{group_name}' créé avec succès !",
+                    "es-ES": "✅ Grupo estático '{group_name}' creado con éxito!",
+                    "de": "✅ Statische Gruppe '{group_name}' erfolgreich erstellt!",
+                    "it": "✅ Gruppo statico '{group_name}' creato con successo!"
+                },
+                "already_exists": {
+                    "en-US": "❌ Static group '{group_name}' already exists.",
+                    "fr": "❌ Le groupe statique '{group_name}' existe déjà.",
+                    "es-ES": "❌ El grupo estático '{group_name}' ya existe.",
+                    "de": "❌ Die statische Gruppe '{group_name}' existiert bereits.",
+                    "it": "❌ Il gruppo statico '{group_name}' esiste già."
+                },
+                "error": {
+                    "en-US": "❌ Error creating the group: {error}",
+                    "fr": "❌ Erreur lors de la création du groupe : {error}",
+                    "es-ES": "❌ Error al crear el grupo: {error}",
+                    "de": "❌ Fehler beim Erstellen der Gruppe: {error}",
+                    "it": "❌ Errore durante la creazione del gruppo: {error}"
+                }
+            }
+        },
+        "static_add": {
+            "name": {
+                "en-US": "static_add",
+                "fr": "static_ajouter",
+                "es-ES": "static_añadir",
+                "de": "static_hinzufuegen",
+                "it": "static_aggiungi"
+            },
+            "description": {
+                "en-US": "Add a member to a static group (Management only)",
+                "fr": "Ajouter un membre à un groupe statique (Management uniquement)",
+                "es-ES": "Añadir un miembro a un grupo estático (Solo gestión)",
+                "de": "Mitglied zu einer statischen Gruppe hinzufügen (Nur Management)",
+                "it": "Aggiungi un membro a un gruppo statico (Solo gestione)"
+            },
+            "options": {
+                "group_name": {
+                    "description": {
+                        "en-US": "Static group name",
+                        "fr": "Nom du groupe statique",
+                        "es-ES": "Nombre del grupo estático",
+                        "de": "Name der statischen Gruppe",
+                        "it": "Nome del gruppo statico"
+                    }
+                },
+                "member": {
+                    "description": {
+                        "en-US": "Member to add",
+                        "fr": "Membre à ajouter",
+                        "es-ES": "Miembro a añadir",
+                        "de": "Hinzuzufügendes Mitglied",
+                        "it": "Membro da aggiungere"
+                    }
+                }
+            },
+            "messages": {
+                "success": {
+                    "en-US": "✅ {member} added to group '{group_name}' ({count}/6).",
+                    "fr": "✅ {member} ajouté au groupe '{group_name}' ({count}/6).",
+                    "es-ES": "✅ {member} añadido al grupo '{group_name}' ({count}/6).",
+                    "de": "✅ {member} zur Gruppe '{group_name}' hinzugefügt ({count}/6).",
+                    "it": "✅ {member} aggiunto al gruppo '{group_name}' ({count}/6)."
+                },
+                "group_not_found": {
+                    "en-US": "❌ Static group '{group_name}' does not exist.",
+                    "fr": "❌ Le groupe statique '{group_name}' n'existe pas.",
+                    "es-ES": "❌ El grupo estático '{group_name}' no existe.",
+                    "de": "❌ Die statische Gruppe '{group_name}' existiert nicht.",
+                    "it": "❌ Il gruppo statico '{group_name}' non esiste."
+                },
+                "already_in_group": {
+                    "en-US": "❌ {member} is already in group '{group_name}'.",
+                    "fr": "❌ {member} est déjà dans le groupe '{group_name}'.",
+                    "es-ES": "❌ {member} ya está en el grupo '{group_name}'.",
+                    "de": "❌ {member} ist bereits in der Gruppe '{group_name}'.",
+                    "it": "❌ {member} è già nel gruppo '{group_name}'."
+                },
+                "group_full": {
+                    "en-US": "❌ Group '{group_name}' is full (6/6 members).",
+                    "fr": "❌ Le groupe '{group_name}' est complet (6/6 membres).",
+                    "es-ES": "❌ El grupo '{group_name}' está lleno (6/6 miembros).",
+                    "de": "❌ Die Gruppe '{group_name}' ist voll (6/6 Mitglieder).",
+                    "it": "❌ Il gruppo '{group_name}' è pieno (6/6 membri)."
+                },
+                "error": {
+                    "en-US": "❌ Error adding member: {error}",
+                    "fr": "❌ Erreur lors de l'ajout du membre : {error}",
+                    "es-ES": "❌ Error al añadir el miembro: {error}",
+                    "de": "❌ Fehler beim Hinzufügen des Mitglieds: {error}",
+                    "it": "❌ Errore durante l'aggiunta del membro: {error}"
+                }
+            }
+        },
+        "static_remove": {
+            "name": {
+                "en-US": "static_remove",
+                "fr": "static_retirer",
+                "es-ES": "static_quitar",
+                "de": "static_entfernen",
+                "it": "static_rimuovi"
+            },
+            "description": {
+                "en-US": "Remove a member from a static group (Management only)",
+                "fr": "Retirer un membre d'un groupe statique (Management uniquement)",
+                "es-ES": "Quitar un miembro de un grupo estático (Solo gestión)",
+                "de": "Mitglied aus einer statischen Gruppe entfernen (Nur Management)",
+                "it": "Rimuovi un membro da un gruppo statico (Solo gestione)"
+            },
+            "options": {
+                "group_name": {
+                    "description": {
+                        "en-US": "Static group name",
+                        "fr": "Nom du groupe statique",
+                        "es-ES": "Nombre del grupo estático",
+                        "de": "Name der statischen Gruppe",
+                        "it": "Nome del gruppo statico"
+                    }
+                },
+                "member": {
+                    "description": {
+                        "en-US": "Member to remove",
+                        "fr": "Membre à retirer",
+                        "es-ES": "Miembro a quitar",
+                        "de": "Zu entfernendes Mitglied",
+                        "it": "Membro da rimuovere"
+                    }
+                }
+            },
+            "messages": {
+                "success": {
+                    "en-US": "✅ {member} removed from group '{group_name}' ({count}/6).",
+                    "fr": "✅ {member} retiré du groupe '{group_name}' ({count}/6).",
+                    "es-ES": "✅ {member} quitado del grupo '{group_name}' ({count}/6).",
+                    "de": "✅ {member} aus der Gruppe '{group_name}' entfernt ({count}/6).",
+                    "it": "✅ {member} rimosso dal gruppo '{group_name}' ({count}/6)."
+                },
+                "group_not_found": {
+                    "en-US": "❌ Static group '{group_name}' does not exist.",
+                    "fr": "❌ Le groupe statique '{group_name}' n'existe pas.",
+                    "es-ES": "❌ El grupo estático '{group_name}' no existe.",
+                    "de": "❌ Die statische Gruppe '{group_name}' existiert nicht.",
+                    "it": "❌ Il gruppo statico '{group_name}' non esiste."
+                },
+                "not_in_group": {
+                    "en-US": "❌ {member} is not in group '{group_name}'.",
+                    "fr": "❌ {member} n'est pas dans le groupe '{group_name}'.",
+                    "es-ES": "❌ {member} no está en el grupo '{group_name}'.",
+                    "de": "❌ {member} ist nicht in der Gruppe '{group_name}'.",
+                    "it": "❌ {member} non è nel gruppo '{group_name}'."
+                },
+                "error": {
+                    "en-US": "❌ Error removing member: {error}",
+                    "fr": "❌ Erreur lors du retrait du membre : {error}",
+                    "es-ES": "❌ Error al quitar el miembro: {error}",
+                    "de": "❌ Fehler beim Entfernen des Mitglieds: {error}",
+                    "it": "❌ Errore durante la rimozione del membro: {error}"
+                }
+            }
+        },
+        "static_update": {
+            "name": {
+                "en-US": "static_update",
+                "fr": "static_maj",
+                "es-ES": "static_actualizar",
+                "de": "static_aktualisieren",
+                "it": "static_aggiorna"
+            },
+            "description": {
+                "en-US": "Update the static groups message in the dedicated channel (Management only)",
+                "fr": "Mettre à jour le message des groupes statiques dans le canal dédié (Management uniquement)",
+                "es-ES": "Actualizar el mensaje de grupos estáticos en el canal dedicado (Solo gestión)",
+                "de": "Statische Gruppen-Nachricht im dedizierten Kanal aktualisieren (Nur Management)",
+                "it": "Aggiorna il messaggio dei gruppi statici nel canale dedicato (Solo gestione)"
+            },
+            "messages": {
+                "success": {
+                    "en-US": "✅ Static groups message updated successfully.",
+                    "fr": "✅ Message des groupes statiques mis à jour avec succès.",
+                    "es-ES": "✅ Mensaje de grupos estáticos actualizado con éxito.",
+                    "de": "✅ Statische Gruppen-Nachricht erfolgreich aktualisiert.",
+                    "it": "✅ Messaggio dei gruppi statici aggiornato con successo."
+                },
+                "no_channel": {
+                    "en-US": "❌ Static groups channel not configured for this guild.",
+                    "fr": "❌ Canal des groupes statiques non configuré pour cette guilde.",
+                    "es-ES": "❌ Canal de grupos estáticos no configurado para este gremio.",
+                    "de": "❌ Statische Gruppen-Kanal für diese Gilde nicht konfiguriert.",
+                    "it": "❌ Canale dei gruppi statici non configurato per questa gilda."
+                },
+                "no_message": {
+                    "en-US": "❌ Static groups message not found in the channel.",
+                    "fr": "❌ Message des groupes statiques introuvable dans le canal.",
+                    "es-ES": "❌ Mensaje de grupos estáticos no encontrado en el canal.",
+                    "de": "❌ Statische Gruppen-Nachricht im Kanal nicht gefunden.",
+                    "it": "❌ Messaggio dei gruppi statici non trovato nel canale."
+                },
+                "error": {
+                    "en-US": "❌ Error updating static groups message: {error}",
+                    "fr": "❌ Erreur lors de la mise à jour du message des groupes statiques : {error}",
+                    "es-ES": "❌ Error al actualizar el mensaje de grupos estáticos: {error}",
+                    "de": "❌ Fehler beim Aktualisieren der statischen Gruppen-Nachricht: {error}",
+                    "it": "❌ Errore durante l'aggiornamento del messaggio dei gruppi statici: {error}"
+                },
+                "title": {
+                    "en-US": "🛡️ Static Groups Overview",
+                    "fr": "🛡️ Aperçu des Groupes Statiques",
+                    "es-ES": "🛡️ Vista General de Grupos Estáticos",
+                    "de": "🛡️ Übersicht der Statischen Gruppen",
+                    "it": "🛡️ Panoramica Gruppi Statici"
+                },
+                "no_groups": {
+                    "en-US": "*No static groups configured*",
+                    "fr": "*Aucun groupe statique configuré*",
+                    "es-ES": "*No hay grupos estáticos configurados*",
+                    "de": "*Keine statischen Gruppen konfiguriert*",
+                    "it": "*Nessun gruppo statico configurato*"
+                },
+                "leader": {
+                    "en-US": "Leader:",
+                    "fr": "Leader :",
+                    "es-ES": "Líder:",
+                    "de": "Anführer:",
+                    "it": "Leader:"
+                },
+                "members_count": {
+                    "en-US": "Members: {count}/6",
+                    "fr": "Membres : {count}/6",
+                    "es-ES": "Miembros: {count}/6",
+                    "de": "Mitglieder: {count}/6",
+                    "it": "Membri: {count}/6"
+                },
+                "no_members": {
+                    "en-US": "*No members*",
+                    "fr": "*Aucun membre*",
+                    "es-ES": "*Sin miembros*",
+                    "de": "*Keine Mitglieder*",
+                    "it": "*Nessun membro*"
+                },
+                "absent": {
+                    "en-US": "absent",
+                    "fr": "absent",
+                    "es-ES": "ausente",
+                    "de": "abwesend",
+                    "it": "assente"
+                }
+            }
+        },
+        "static_delete": {
+            "name": {
+                "en-US": "static_delete",
+                "fr": "static_supprimer",
+                "es-ES": "static_eliminar",
+                "de": "static_loeschen",
+                "it": "static_elimina"
+            },
+            "description": {
+                "en-US": "Delete a static group (Management only)",
+                "fr": "Supprimer un groupe statique (Management uniquement)",
+                "es-ES": "Eliminar un grupo estático (Solo gestión)",
+                "de": "Statische Gruppe löschen (Nur Management)",
+                "it": "Elimina un gruppo statico (Solo gestione)"
+            },
+            "options": {
+                "group_name": {
+                    "description": {
+                        "en-US": "Static group name to delete",
+                        "fr": "Nom du groupe statique à supprimer",
+                        "es-ES": "Nombre del grupo estático a eliminar",
+                        "de": "Name der zu löschenden statischen Gruppe",
+                        "it": "Nome del gruppo statico da eliminare"
+                    }
+                }
+            },
+            "messages": {
+                "success": {
+                    "en-US": "✅ Static group '{group_name}' deleted successfully.",
+                    "fr": "✅ Groupe statique '{group_name}' supprimé avec succès.",
+                    "es-ES": "✅ Grupo estático '{group_name}' eliminado con éxito.",
+                    "de": "✅ Statische Gruppe '{group_name}' erfolgreich gelöscht.",
+                    "it": "✅ Gruppo statico '{group_name}' eliminato con successo."
+                },
+                "not_found": {
+                    "en-US": "❌ Static group '{group_name}' does not exist.",
+                    "fr": "❌ Le groupe statique '{group_name}' n'existe pas.",
+                    "es-ES": "❌ El grupo estático '{group_name}' no existe.",
+                    "de": "❌ Die statische Gruppe '{group_name}' existiert nicht.",
+                    "it": "❌ Il gruppo statico '{group_name}' non esiste."
+                },
+                "error": {
+                    "en-US": "❌ Error deleting the group: {error}",
+                    "fr": "❌ Erreur lors de la suppression du groupe : {error}",
+                    "es-ES": "❌ Error al eliminar el grupo: {error}",
+                    "de": "❌ Fehler beim Löschen der Gruppe: {error}",
+                    "it": "❌ Errore durante l'eliminazione del gruppo: {error}"
+                }
+            }
+        },
+        "channel": {
+            "name": {
+                "en-US": "🪧│statics",
+                "fr": "🪧│statiques",
+                "es-ES": "🪧│estaticos", 
+                "de": "🪧│statisch",
+                "it": "🪧│statici"
+            },
+            "placeholder": {
+                "title": {
+                    "en-US": "🛡️ Static Groups Overview",
+                    "fr": "🛡️ Aperçu des Groupes Statiques",
+                    "es-ES": "🛡️ Vista General de Grupos Estáticos",
+                    "de": "🛡️ Übersicht der Statischen Gruppen",
+                    "it": "🛡️ Panoramica Gruppi Statici"
+                },
+                "description": {
+                    "en-US": "This message will be automatically updated with current static groups information.\n\n*Updated 4 times daily*",
+                    "fr": "Ce message sera automatiquement mis à jour avec les informations des groupes statiques actuels.\n\n*Mis à jour 4 fois par jour*",
+                    "es-ES": "Este mensaje se actualizará automáticamente con la información de los grupos estáticos actuales.\n\n*Actualizado 4 veces al día*",
+                    "de": "Diese Nachricht wird automatisch mit aktuellen Informationen zu statischen Gruppen aktualisiert.\n\n*4 Mal täglich aktualisiert*",
+                    "it": "Questo messaggio sarà automaticamente aggiornato con le informazioni attuali dei gruppi statici.\n\n*Aggiornato 4 volte al giorno*"
+                }
+            }
+        }
     }
 }

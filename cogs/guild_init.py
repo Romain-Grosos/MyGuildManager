@@ -44,7 +44,7 @@ class GuildInit(commands.Cog):
             return await ctx.followup.send(msg, ephemeral=True)
 
         try:
-            query = "SELECT COUNT(*) FROM guild_settings WHERE guild_id = ?"
+            query = "SELECT COUNT(*) FROM guild_settings WHERE guild_id = %s"
             result = await self.bot.run_db_query(query, (guild_id,), fetch_one=True)
             if not result or result[0] == 0:
                 response = get_user_message(ctx, self.translations, "guild_init.messages.not_initialized")
@@ -72,7 +72,7 @@ class GuildInit(commands.Cog):
 
         elif config_mode == "complete":
             try:
-                lang_query = ("SELECT guild_lang FROM guild_settings WHERE guild_id = ?")
+                lang_query = ("SELECT guild_lang FROM guild_settings WHERE guild_id = %s")
                 lang_res = await self.bot.run_db_query(lang_query, (guild_id,), fetch_one=True)
                 guild_lang = lang_res[0] if lang_res and lang_res[0] else "en-US"
 
@@ -122,7 +122,7 @@ class GuildInit(commands.Cog):
                     applicant,
                     config_ok,
                     rules_ok
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     guild_master = VALUES(guild_master),
                     officer = VALUES(officer),
@@ -158,11 +158,19 @@ class GuildInit(commands.Cog):
 
                 org_cat = await guild.create_category(name=channel_names["cat_org"].get(guild_lang))
                 events = await guild.create_text_channel(name=channel_names["events"].get(guild_lang),category=org_cat)
+                groups = await guild.create_text_channel(name=channel_names["groups"].get(guild_lang),category=org_cat)
                 members_ch = await guild.create_text_channel(name=channel_names["members"].get(guild_lang),category=org_cat)
                 members_msgs = await asyncio.gather(*(members_ch.send(".") for _ in range(5)))
                 m_ids = [msg.id for msg in members_msgs]
 
-                groups = await guild.create_text_channel(name=channel_names["groups"].get(guild_lang),category=org_cat)
+                static_groups = global_translations.get("static_groups", {})
+                statics_name = static_groups["channel"]["name"].get(guild_lang, static_groups["channel"]["name"].get("en-US"))
+                statics_ch = await guild.create_text_channel(name=statics_name, category=org_cat)
+                
+                title = static_groups["channel"]["placeholder"]["title"].get(guild_lang, static_groups["channel"]["placeholder"]["title"].get("en-US"))
+                description = static_groups["channel"]["placeholder"]["description"].get(guild_lang, static_groups["channel"]["placeholder"]["description"].get("en-US"))
+                placeholder_embed = discord.Embed(title=title, description=description, color=discord.Color.blue())
+                statics_msg = await statics_ch.send(embed=placeholder_embed)
                 abs_ch = await guild.create_text_channel(name=channel_names["abs"].get(guild_lang),category=org_cat)
                 await abs_ch.send(channel_names["absences_message"].get(guild_lang))
                 loot = await guild.create_text_channel(name=channel_names["loot"].get(guild_lang),category=org_cat)
@@ -241,6 +249,8 @@ class GuildInit(commands.Cog):
                     members_ch.id,
                     *m_ids,
                     groups.id,
+                    statics_ch.id,
+                    statics_msg.id,
                     abs_ch.id,
                     loot.id,
                     tuto_channel.id,
@@ -268,6 +278,8 @@ class GuildInit(commands.Cog):
                     members_m4,
                     members_m5,
                     groups_channel,
+                    statics_channel,
+                    statics_message,
                     abs_channel,
                     loot_channel,
                     tuto_channel,
@@ -280,7 +292,7 @@ class GuildInit(commands.Cog):
                     external_recruitment_channel,
                     external_recruitment_message,
                     category_diplo
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     rules_channel = VALUES(rules_channel),
                     rules_message = VALUES(rules_message),
@@ -296,6 +308,8 @@ class GuildInit(commands.Cog):
                     members_m4 = VALUES(members_m4),
                     members_m5 = VALUES(members_m5),
                     groups_channel = VALUES(groups_channel),
+                    statics_channel = VALUES(statics_channel),
+                    statics_message = VALUES(statics_message),
                     abs_channel = VALUES(abs_channel),
                     loot_channel = VALUES(loot_channel),
                     tuto_channel = VALUES(tuto_channel),
@@ -322,9 +336,6 @@ class GuildInit(commands.Cog):
                     send_messages_in_threads=False,
                     add_reactions=True
                 )
-
-
-
 
                 for cog_name, methods in {
                     "Notification": ["load_notification_channels"],

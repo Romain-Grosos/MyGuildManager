@@ -12,6 +12,7 @@ import json
 import math
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
+STATIC_GROUPS = global_translations.get("static_groups", {})
 
 WEAPON_EMOJIS = {
     "B":  "<:TL_B:1362340360470270075>",
@@ -39,6 +40,8 @@ class GuildEvents(commands.Cog):
         self.events_calendar = {}
         self.events_data = {}
         self.guild_members_cache = {}
+        self.static_groups_cache = {}
+        self.ideal_staff_cache = {}
         self.json_lock = asyncio.Lock()
         self.ignore_removals = {}
 
@@ -148,6 +151,51 @@ class GuildEvents(commands.Cog):
             logging.debug(f"[GuildEvents] Guild members cache loaded: {self.guild_members_cache}")
         except Exception as e:
             logging.error(f"[GuildEvents] Error loading guild members cache: {e}", exc_info=True)
+
+    async def load_static_groups_cache(self) -> None:
+        logging.debug("[GuildEvents] Loading static groups cache from database")
+        query = """
+            SELECT sg.guild_id, sg.group_name, sg.leader_id, 
+                   GROUP_CONCAT(sm.member_id ORDER BY sm.position_order) as member_ids,
+                   COUNT(sm.member_id) as member_count
+            FROM guild_static_groups sg
+            LEFT JOIN guild_static_members sm ON sg.id = sm.group_id
+            WHERE sg.is_active = TRUE
+            GROUP BY sg.id, sg.guild_id, sg.group_name, sg.leader_id
+        """
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            self.static_groups_cache = {}
+            for row in rows:
+                guild_id, group_name, leader_id, member_ids_str, member_count = row
+                member_ids = [int(mid) for mid in member_ids_str.split(',')] if member_ids_str else []
+                
+                if guild_id not in self.static_groups_cache:
+                    self.static_groups_cache[guild_id] = {}
+                
+                self.static_groups_cache[guild_id][group_name] = {
+                    "leader_id": leader_id,
+                    "member_ids": member_ids,
+                    "member_count": member_count
+                }
+            logging.debug(f"[GuildEvents] Static groups cache loaded: {self.static_groups_cache}")
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error loading static groups cache: {e}", exc_info=True)
+
+    async def load_ideal_staff_cache(self) -> None:
+        logging.debug("[GuildEvents] Loading ideal staff cache from database")
+        query = "SELECT guild_id, class_name, ideal_count FROM guild_ideal_staff"
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            self.ideal_staff_cache = {}
+            for row in rows:
+                guild_id, class_name, ideal_count = row
+                if guild_id not in self.ideal_staff_cache:
+                    self.ideal_staff_cache[guild_id] = {}
+                self.ideal_staff_cache[guild_id][class_name] = ideal_count
+            logging.debug(f"[GuildEvents] Ideal staff cache loaded: {self.ideal_staff_cache}")
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error loading ideal staff cache: {e}", exc_info=True)
 
     def get_next_date_for_day(self, day_name: str, event_time_value, tz, tomorrow_only: bool = False) -> Optional[datetime]:
         if isinstance(event_time_value, timedelta):
@@ -1198,7 +1246,180 @@ class GuildEvents(commands.Cog):
             logging.exception("[Guild_Events - GetOptimalGrouping] Unexpected error.", exc_info=exc)
             return [min_size] * math.ceil(n / min_size)
 
-    def _assign_groups(self, presence_ids: list[int], tentative_ids: list[int], roster_data: dict) -> list[list[dict]]:
+    def _assign_groups_with_statics(self, guild_id: int, presence_ids: list[int], tentative_ids: list[int], roster_data: dict) -> list[list[dict]]:
+        logging.info("[GuildEvents - AssignGroupsWithStatics] Starting advanced group assignment")
+        
+        all_inscribed = set(presence_ids + tentative_ids)
+        final_groups = []
+        used_members = set()
+        
+        def get_member_info(uid: int, tentative: bool = False):
+            info = roster_data["membres"].get(str(uid))
+            if not info:
+                return None
+            return {**info, "tentative": tentative, "user_id": uid}
+        
+        logging.debug("[AssignGroupsWithStatics] Step 1: Processing static groups")
+        
+        static_groups = self.static_groups_cache.get(guild_id, {})
+        for group_name, group_data in static_groups.items():
+            member_ids = group_data["member_ids"]
+            present_members = [mid for mid in member_ids if mid in all_inscribed and mid not in used_members]
+            present_count = len(present_members)
+            
+            logging.debug(f"[AssignGroupsWithStatics] Static group '{group_name}': {present_count}/6 members present")
+            
+            if present_count == 6:
+                group_members = []
+                for mid in present_members:
+                    is_tentative = mid in tentative_ids
+                    member_info = get_member_info(mid, is_tentative)
+                    if member_info:
+                        group_members.append(member_info)
+                        used_members.add(mid)
+                
+                if group_members:
+                    final_groups.append(group_members)
+                    logging.info(f"[AssignGroupsWithStatics] Complete static group '{group_name}' formed with 6 members")
+                    
+            elif present_count == 5:
+                missing_member_id = [mid for mid in member_ids if mid not in present_members][0]
+                missing_member_info = get_member_info(missing_member_id)
+                target_class = missing_member_info["classe"] if missing_member_info else "Tank"
+                
+                available_members = [uid for uid in all_inscribed if uid not in used_members and uid not in member_ids]
+                replacement = None
+                for uid in available_members:
+                    member_info = get_member_info(uid)
+                    if member_info and member_info["classe"] == target_class:
+                        replacement = uid
+                        break
+                
+                if replacement:
+                    group_members = []
+                    for mid in present_members:
+                        is_tentative = mid in tentative_ids
+                        member_info = get_member_info(mid, is_tentative)
+                        if member_info:
+                            group_members.append(member_info)
+                            used_members.add(mid)
+                    
+                    is_tentative = replacement in tentative_ids
+                    replacement_info = get_member_info(replacement, is_tentative)
+                    if replacement_info:
+                        group_members.append(replacement_info)
+                        used_members.add(replacement)
+                        final_groups.append(group_members)
+                        logging.info(f"[AssignGroupsWithStatics] Static group '{group_name}' completed with replacement ({target_class})")
+                else:
+                    logging.debug(f"[AssignGroupsWithStatics] Cannot complete static group '{group_name}' - no {target_class} available")
+
+        logging.debug("[AssignGroupsWithStatics] Step 2: Forming optimal ratio groups")
+
+        remaining_members = [uid for uid in all_inscribed if uid not in used_members]
+        class_buckets = {"Tank": [], "Healer": [], "Melee DPS": [], "Ranged DPS": [], "Flanker": []}
+        
+        for uid in remaining_members:
+            is_tentative = uid in tentative_ids
+            member_info = get_member_info(uid, is_tentative)
+            if member_info:
+                class_name = member_info["classe"]
+                if class_name in class_buckets:
+                    class_buckets[class_name].append(member_info)
+        
+        ideal_ratios = self.ideal_staff_cache.get(guild_id, {
+            "Tank": 20, "Healer": 20, "Melee DPS": 10, "Ranged DPS": 10, "Flanker": 10
+        })
+
+        flankers = class_buckets["Flanker"]
+        while len(flankers) >= 5:
+            flanker_group = flankers[:6] if len(flankers) >= 6 else flankers[:5]
+            final_groups.append(flanker_group)
+            flankers = flankers[len(flanker_group):]
+            logging.info(f"[AssignGroupsWithStatics] Flanker suicide group formed with {len(flanker_group)} members")
+        class_buckets["Flanker"] = flankers
+
+        tanks = class_buckets["Tank"]
+        healers = class_buckets["Healer"]
+        melee_dps = class_buckets["Melee DPS"]
+        ranged_dps = class_buckets["Ranged DPS"]
+        remaining_flankers = class_buckets["Flanker"]
+        
+        total_members = len(tanks) + len(healers) + len(melee_dps) + len(ranged_dps) + len(remaining_flankers)
+        
+        if total_members >= 4:
+            total_ideal = sum(ideal_ratios.values())
+            groups_needed = max(1, total_members // 6)
+            
+            target_tanks = max(1, int(ideal_ratios["Tank"] / total_ideal * 6))
+            target_healers = max(1, int(ideal_ratios["Healer"] / total_ideal * 6))
+            target_melee = int(ideal_ratios["Melee DPS"] / total_ideal * 6)
+            target_ranged = int(ideal_ratios["Ranged DPS"] / total_ideal * 6)
+            
+            target_tanks = max(1, min(target_tanks, 2))
+            target_healers = max(1, min(target_healers, 2))
+            
+            logging.debug(f"[AssignGroupsWithStatics] Target composition: {target_tanks}T/{target_healers}H/{target_melee}M/{target_ranged}R")
+            
+            while (len(tanks) >= 1 and len(healers) >= 1 and 
+                   (len(tanks) + len(healers) + len(melee_dps) + len(ranged_dps) + len(remaining_flankers)) >= 4):
+                
+                group = []
+
+                tanks_to_add = min(target_tanks, len(tanks))
+                for _ in range(tanks_to_add):
+                    if tanks:
+                        group.append(tanks.pop(0))
+
+                healers_to_add = min(target_healers, len(healers))
+                for _ in range(healers_to_add):
+                    if healers:
+                        group.append(healers.pop(0))
+
+                remaining_slots = 6 - len(group)
+
+                if len(melee_dps) >= len(ranged_dps):
+                    for _ in range(min(remaining_slots, len(melee_dps))):
+                        if melee_dps:
+                            group.append(melee_dps.pop(0))
+                            remaining_slots -= 1
+                    
+                    for _ in range(min(remaining_slots, len(ranged_dps))):
+                        if ranged_dps:
+                            group.append(ranged_dps.pop(0))
+                            remaining_slots -= 1
+                else:
+                    for _ in range(min(remaining_slots, len(ranged_dps))):
+                        if ranged_dps:
+                            group.append(ranged_dps.pop(0))
+                            remaining_slots -= 1
+                    
+                    for _ in range(min(remaining_slots, len(melee_dps))):
+                        if melee_dps:
+                            group.append(melee_dps.pop(0))
+                            remaining_slots -= 1
+
+                for _ in range(min(remaining_slots, len(remaining_flankers))):
+                    if remaining_flankers:
+                        group.append(remaining_flankers.pop(0))
+                
+                if len(group) >= 4:
+                    final_groups.append(group)
+                    logging.info(f"[AssignGroupsWithStatics] Balanced group formed with {len(group)} members")
+                else:
+                    for member in group:
+                        class_buckets[member["classe"]].append(member)
+                    break
+        
+        all_remaining = tanks + healers + melee_dps + ranged_dps + remaining_flankers
+        if len(all_remaining) >= 4:
+            final_groups.append(all_remaining)
+            logging.info(f"[AssignGroupsWithStatics] Final group formed with {len(all_remaining)} remaining members")
+        
+        logging.info(f"[AssignGroupsWithStatics] Completed: {len(final_groups)} groups formed")
+        return final_groups
+
+    def _assign_groups_legacy(self, presence_ids: list[int], tentative_ids: list[int], roster_data: dict) -> list[list[dict]]:
         logging.debug("[Guild_Events - AssignGroups] Starting group assignment…")
 
         buckets = {c: [] for c in ("Tank", "Healer",
@@ -1366,7 +1587,7 @@ class GuildEvents(commands.Cog):
             return
 
         try:
-            all_groups = self._assign_groups(presence_ids, tentative_ids, roster_data)
+            all_groups = self._assign_groups_with_statics(guild_id, presence_ids, tentative_ids, roster_data)
         except Exception as exc:
             logging.exception("[Guild_Events - CreateGroups] _assign_groups crashed.", exc_info=exc)
             return
@@ -1671,12 +1892,374 @@ class GuildEvents(commands.Cog):
             follow_message = GUILD_EVENTS["event_create"]["event_ko"].get(user_locale,GUILD_EVENTS["event_create"]["event_ko"].get("en-US")).format(e=e)
             await ctx.followup.send(follow_message, ephemeral=True)
 
+    @discord.slash_command(
+        name=STATIC_GROUPS["static_create"]["name"]["en-US"],
+        description=STATIC_GROUPS["static_create"]["description"]["en-US"],
+        name_localizations=STATIC_GROUPS["static_create"]["name"],
+        description_localizations=STATIC_GROUPS["static_create"]["description"]
+    )
+    @commands.has_permissions(manage_roles=True)
+    async def static_create(
+        self,
+        ctx: discord.ApplicationContext,
+        group_name: str = discord.Option(
+            str,
+            description=STATIC_GROUPS["static_create"]["options"]["group_name"]["description"]["en-US"],
+            description_localizations=STATIC_GROUPS["static_create"]["options"]["group_name"]["description"],
+            min_length=2,
+            max_length=50
+        )
+    ):
+        await ctx.defer(ephemeral=True)
+        
+        guild_id = ctx.guild.id
+        leader_id = ctx.author.id
+        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+
+        if guild_id in self.static_groups_cache and group_name in self.static_groups_cache[guild_id]:
+            error_msg = STATIC_GROUPS["static_create"]["messages"]["already_exists"].get(guild_lang, STATIC_GROUPS["static_create"]["messages"]["already_exists"].get("en-US")).format(group_name=group_name)
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+        
+        try:
+            query = "INSERT INTO guild_static_groups (guild_id, group_name, leader_id) VALUES (%s, %s, %s)"
+            await self.bot.run_db_query(query, (guild_id, group_name, leader_id), commit=True)
+
+            if guild_id not in self.static_groups_cache:
+                self.static_groups_cache[guild_id] = {}
+            self.static_groups_cache[guild_id][group_name] = {
+                "leader_id": leader_id,
+                "member_ids": [],
+                "member_count": 0
+            }
+            
+            success_msg = STATIC_GROUPS["static_create"]["messages"]["success"].get(guild_lang, STATIC_GROUPS["static_create"]["messages"]["success"].get("en-US")).format(group_name=group_name)
+            await ctx.followup.send(success_msg, ephemeral=True)
+            logging.info(f"[GuildEvents] Static group '{group_name}' created in guild {guild_id} by {ctx.author}")
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "duplicate entry" in error_msg:
+                duplicate_msg = STATIC_GROUPS["static_create"]["messages"]["already_exists"].get(guild_lang, STATIC_GROUPS["static_create"]["messages"]["already_exists"].get("en-US")).format(group_name=group_name)
+                await ctx.followup.send(duplicate_msg, ephemeral=True)
+            else:
+                general_error_msg = STATIC_GROUPS["static_create"]["messages"]["error"].get(guild_lang, STATIC_GROUPS["static_create"]["messages"]["error"].get("en-US")).format(error=e)
+                await ctx.followup.send(general_error_msg, ephemeral=True)
+                logging.error(f"[GuildEvents] Error creating static group: {e}")
+
+    @discord.slash_command(
+        name=STATIC_GROUPS["static_add"]["name"]["en-US"],
+        description=STATIC_GROUPS["static_add"]["description"]["en-US"],
+        name_localizations=STATIC_GROUPS["static_add"]["name"],
+        description_localizations=STATIC_GROUPS["static_add"]["description"]
+    )
+    @commands.has_permissions(manage_roles=True)
+    async def static_add(
+        self,
+        ctx: discord.ApplicationContext,
+        group_name: str = discord.Option(
+            str, 
+            description=STATIC_GROUPS["static_add"]["options"]["group_name"]["description"]["en-US"],
+            description_localizations=STATIC_GROUPS["static_add"]["options"]["group_name"]["description"]
+        ),
+        member: discord.Member = discord.Option(
+            discord.Member, 
+            description=STATIC_GROUPS["static_add"]["options"]["member"]["description"]["en-US"],
+            description_localizations=STATIC_GROUPS["static_add"]["options"]["member"]["description"]
+        )
+    ):
+        await ctx.defer(ephemeral=True)
+        
+        guild_id = ctx.guild.id
+        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+
+        if guild_id not in self.static_groups_cache or group_name not in self.static_groups_cache[guild_id]:
+            error_msg = STATIC_GROUPS["static_add"]["messages"]["group_not_found"].get(guild_lang, STATIC_GROUPS["static_add"]["messages"]["group_not_found"].get("en-US")).format(group_name=group_name)
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+
+        current_members = self.static_groups_cache[guild_id][group_name]["member_ids"]
+        if member.id in current_members:
+            already_in_msg = STATIC_GROUPS["static_add"]["messages"]["already_in_group"].get(guild_lang, STATIC_GROUPS["static_add"]["messages"]["already_in_group"].get("en-US")).format(member=member.mention, group_name=group_name)
+            await ctx.followup.send(already_in_msg, ephemeral=True)
+            return
+
+        if len(current_members) >= 6:
+            full_group_msg = STATIC_GROUPS["static_add"]["messages"]["group_full"].get(guild_lang, STATIC_GROUPS["static_add"]["messages"]["group_full"].get("en-US")).format(group_name=group_name)
+            await ctx.followup.send(full_group_msg, ephemeral=True)
+            return
+        
+        try:
+            query = "SELECT id FROM guild_static_groups WHERE guild_id = %s AND group_name = %s AND is_active = TRUE"
+            result = await self.bot.run_db_query(query, (guild_id, group_name), fetch_one=True)
+            
+            if not result:
+                not_found_msg = STATIC_GROUPS["static_add"]["messages"]["group_not_found"].get(guild_lang, STATIC_GROUPS["static_add"]["messages"]["group_not_found"].get("en-US")).format(group_name=group_name)
+                await ctx.followup.send(not_found_msg, ephemeral=True)
+                return
+
+            group_id = result[0]
+            position = len(current_members) + 1
+            
+            query = "INSERT INTO guild_static_members (group_id, member_id, position_order) VALUES (%s, %s, %s)"
+            await self.bot.run_db_query(query, (group_id, member.id, position), commit=True)
+
+            self.static_groups_cache[guild_id][group_name]["member_ids"].append(member.id)
+            self.static_groups_cache[guild_id][group_name]["member_count"] += 1
+            
+            member_count = len(self.static_groups_cache[guild_id][group_name]["member_ids"])
+            success_msg = STATIC_GROUPS["static_add"]["messages"]["success"].get(guild_lang, STATIC_GROUPS["static_add"]["messages"]["success"].get("en-US")).format(member=member.mention, group_name=group_name, count=member_count)
+            await ctx.followup.send(success_msg, ephemeral=True)
+            logging.info(f"[GuildEvents] Member {member.id} added to static group '{group_name}' in guild {guild_id}")
+            
+        except Exception as e:
+            error_msg = STATIC_GROUPS["static_add"]["messages"]["error"].get(guild_lang, STATIC_GROUPS["static_add"]["messages"]["error"].get("en-US")).format(error=e)
+            await ctx.followup.send(error_msg, ephemeral=True)
+            logging.error(f"[GuildEvents] Error adding member to static group: {e}")
+
+    @discord.slash_command(
+        name=STATIC_GROUPS["static_remove"]["name"]["en-US"],
+        description=STATIC_GROUPS["static_remove"]["description"]["en-US"],
+        name_localizations=STATIC_GROUPS["static_remove"]["name"],
+        description_localizations=STATIC_GROUPS["static_remove"]["description"]
+    )
+    @commands.has_permissions(manage_roles=True)
+    async def static_remove(
+        self,
+        ctx: discord.ApplicationContext,
+        group_name: str = discord.Option(
+            str, 
+            description=STATIC_GROUPS["static_remove"]["options"]["group_name"]["description"]["en-US"],
+            description_localizations=STATIC_GROUPS["static_remove"]["options"]["group_name"]["description"]
+        ),
+        member: discord.Member = discord.Option(
+            discord.Member, 
+            description=STATIC_GROUPS["static_remove"]["options"]["member"]["description"]["en-US"],
+            description_localizations=STATIC_GROUPS["static_remove"]["options"]["member"]["description"]
+        )
+    ):
+        await ctx.defer(ephemeral=True)
+        
+        guild_id = ctx.guild.id
+        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+
+        if guild_id not in self.static_groups_cache or group_name not in self.static_groups_cache[guild_id]:
+            error_msg = STATIC_GROUPS["static_remove"]["messages"]["group_not_found"].get(guild_lang, STATIC_GROUPS["static_remove"]["messages"]["group_not_found"].get("en-US")).format(group_name=group_name)
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+
+        current_members = self.static_groups_cache[guild_id][group_name]["member_ids"]
+        if member.id not in current_members:
+            not_in_group_msg = STATIC_GROUPS["static_remove"]["messages"]["not_in_group"].get(guild_lang, STATIC_GROUPS["static_remove"]["messages"]["not_in_group"].get("en-US")).format(member=member.mention, group_name=group_name)
+            await ctx.followup.send(not_in_group_msg, ephemeral=True)
+            return
+        
+        try:
+            query = "SELECT id FROM guild_static_groups WHERE guild_id = %s AND group_name = %s AND is_active = TRUE"
+            result = await self.bot.run_db_query(query, (guild_id, group_name), fetch_one=True)
+            
+            if not result:
+                not_found_msg = STATIC_GROUPS["static_remove"]["messages"]["group_not_found"].get(guild_lang, STATIC_GROUPS["static_remove"]["messages"]["group_not_found"].get("en-US")).format(group_name=group_name)
+                await ctx.followup.send(not_found_msg, ephemeral=True)
+                return
+            
+            group_id = result[0]
+
+            query = "DELETE FROM guild_static_members WHERE group_id = %s AND member_id = %s"
+            await self.bot.run_db_query(query, (group_id, member.id), commit=True)
+
+            self.static_groups_cache[guild_id][group_name]["member_ids"].remove(member.id)
+            self.static_groups_cache[guild_id][group_name]["member_count"] -= 1
+            
+            member_count = len(self.static_groups_cache[guild_id][group_name]["member_ids"])
+            success_msg = STATIC_GROUPS["static_remove"]["messages"]["success"].get(guild_lang, STATIC_GROUPS["static_remove"]["messages"]["success"].get("en-US")).format(member=member.mention, group_name=group_name, count=member_count)
+            await ctx.followup.send(success_msg, ephemeral=True)
+            logging.info(f"[GuildEvents] Member {member.id} removed from static group '{group_name}' in guild {guild_id}")
+            
+        except Exception as e:
+            error_msg = STATIC_GROUPS["static_remove"]["messages"]["error"].get(guild_lang, STATIC_GROUPS["static_remove"]["messages"]["error"].get("en-US")).format(error=e)
+            await ctx.followup.send(error_msg, ephemeral=True)
+            logging.error(f"[GuildEvents] Error removing member from static group: {e}")
+
+    async def update_static_groups_message_for_cron(self, guild_id: int) -> None:
+        """Public method for updating static groups message from cron or external calls."""
+        try:
+            await self.update_static_groups_message(guild_id)
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error in cron static groups update for guild {guild_id}: {e}")
+
+    async def update_static_groups_message(self, guild_id: int) -> bool:
+        """Update the static groups message in the dedicated channel. Returns True if successful."""
+        try:
+            guild_settings = self.guild_settings.get(guild_id, {})
+            guild_lang = guild_settings.get("guild_lang", "en-US")
+            
+            query = "SELECT statics_channel, statics_message FROM guild_channels WHERE guild_id = %s"
+            result = await self.bot.run_db_query(query, (guild_id,), fetch_one=True)
+            
+            if not result or not result[0] or not result[1]:
+                logging.warning(f"[GuildEvents] No statics channel/message configured for guild {guild_id}")
+                return False
+                
+            channel_id, message_id = result
+            
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                channel = await self.bot.fetch_channel(channel_id)
+            if not channel:
+                logging.error(f"[GuildEvents] Statics channel {channel_id} not found for guild {guild_id}")
+                return False
+                
+            try:
+                message = await channel.fetch_message(message_id)
+            except discord.NotFound:
+                logging.error(f"[GuildEvents] Statics message {message_id} not found for guild {guild_id}")
+                return False
+            
+            title = STATIC_GROUPS["static_update"]["messages"]["title"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["title"].get("en-US"))
+            
+            embeds = []
+            guild_obj = self.bot.get_guild(guild_id)
+            
+            if not self.static_groups_cache.get(guild_id):
+                no_groups_text = STATIC_GROUPS["static_update"]["messages"]["no_groups"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["no_groups"].get("en-US"))
+                embed = discord.Embed(
+                    title=title,
+                    description=no_groups_text,
+                    color=discord.Color.blue()
+                )
+                embeds.append(embed)
+            else:
+                header_embed = discord.Embed(
+                    title=title,
+                    description=f"*Updated: <t:{int(time.time())}:R>*",
+                    color=discord.Color.blue()
+                )
+                embeds.append(header_embed)
+                
+                leader_label = STATIC_GROUPS["static_update"]["messages"]["leader"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["leader"].get("en-US"))
+                members_count_template = STATIC_GROUPS["static_update"]["messages"]["members_count"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["members_count"].get("en-US"))
+                no_members_text = STATIC_GROUPS["static_update"]["messages"]["no_members"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["no_members"].get("en-US"))
+                absent_text = STATIC_GROUPS["static_update"]["messages"]["absent"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["absent"].get("en-US"))
+                
+                for group_name, group_data in self.static_groups_cache[guild_id].items():
+                    member_ids = group_data["member_ids"]
+                    member_count = len(member_ids)
+                    leader_id = group_data["leader_id"]
+                    
+                    leader = guild_obj.get_member(leader_id) if guild_obj else None
+                    leader_mention = leader.mention if leader else f"<@{leader_id}> ({absent_text})"
+                    
+                    member_mentions = []
+                    for member_id in member_ids:
+                        member = guild_obj.get_member(member_id) if guild_obj else None
+                        if member:
+                            member_mentions.append(member.mention)
+                        else:
+                            member_mentions.append(f"<@{member_id}> ({absent_text})")
+                    
+                    members_count = members_count_template.format(count=member_count)
+                    description = f"{leader_label} {leader_mention}\n{members_count}\n\n"
+                    
+                    if member_mentions:
+                        description += "\n".join(f"• {mention}" for mention in member_mentions)
+                    else:
+                        description += no_members_text
+                    
+                    group_embed = discord.Embed(
+                        title=f"🛡️ {group_name}",
+                        description=description,
+                        color=discord.Color.gold()
+                    )
+                    embeds.append(group_embed)
+            
+            await message.edit(embeds=embeds)
+            logging.info(f"[GuildEvents] Static groups message updated for guild {guild_id}")
+            return True
+            
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error updating static groups message for guild {guild_id}: {e}")
+            return False
+
+    @discord.slash_command(
+        name=STATIC_GROUPS["static_update"]["name"]["en-US"],
+        description=STATIC_GROUPS["static_update"]["description"]["en-US"],
+        name_localizations=STATIC_GROUPS["static_update"]["name"],
+        description_localizations=STATIC_GROUPS["static_update"]["description"]
+    )
+    @commands.has_permissions(manage_roles=True)
+    async def static_update(self, ctx: discord.ApplicationContext):
+        await ctx.defer(ephemeral=True)
+        
+        guild_id = ctx.guild.id
+        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+        
+        query = "SELECT statics_channel, statics_message FROM guild_channels WHERE guild_id = %s"
+        result = await self.bot.run_db_query(query, (guild_id,), fetch_one=True)
+        
+        if not result or not result[0] or not result[1]:
+            no_channel_msg = STATIC_GROUPS["static_update"]["messages"]["no_channel"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["no_channel"].get("en-US"))
+            await ctx.followup.send(no_channel_msg, ephemeral=True)
+            return
+        
+        success = await self.update_static_groups_message(guild_id)
+        
+        if success:
+            success_msg = STATIC_GROUPS["static_update"]["messages"]["success"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["success"].get("en-US"))
+            await ctx.followup.send(success_msg, ephemeral=True)
+        else:
+            error_msg = STATIC_GROUPS["static_update"]["messages"]["no_message"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["no_message"].get("en-US"))
+            await ctx.followup.send(error_msg, ephemeral=True)
+
+    @discord.slash_command(
+        name=STATIC_GROUPS["static_delete"]["name"]["en-US"],
+        description=STATIC_GROUPS["static_delete"]["description"]["en-US"],
+        name_localizations=STATIC_GROUPS["static_delete"]["name"],
+        description_localizations=STATIC_GROUPS["static_delete"]["description"]
+    )
+    @commands.has_permissions(manage_roles=True)
+    async def static_delete(
+        self,
+        ctx: discord.ApplicationContext,
+        group_name: str = discord.Option(
+            str, 
+            description=STATIC_GROUPS["static_delete"]["options"]["group_name"]["description"]["en-US"],
+            description_localizations=STATIC_GROUPS["static_delete"]["options"]["group_name"]["description"]
+        )
+    ):
+        await ctx.defer(ephemeral=True)
+        
+        guild_id = ctx.guild.id
+        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+
+        if guild_id not in self.static_groups_cache or group_name not in self.static_groups_cache[guild_id]:
+            error_msg = STATIC_GROUPS["static_delete"]["messages"]["not_found"].get(guild_lang, STATIC_GROUPS["static_delete"]["messages"]["not_found"].get("en-US")).format(group_name=group_name)
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+        
+        try:
+            query = "UPDATE guild_static_groups SET is_active = FALSE WHERE guild_id = %s AND group_name = %s"
+            await self.bot.run_db_query(query, (guild_id, group_name), commit=True)
+
+            del self.static_groups_cache[guild_id][group_name]
+            
+            success_msg = STATIC_GROUPS["static_delete"]["messages"]["success"].get(guild_lang, STATIC_GROUPS["static_delete"]["messages"]["success"].get("en-US")).format(group_name=group_name)
+            await ctx.followup.send(success_msg, ephemeral=True)
+            logging.info(f"[GuildEvents] Static group '{group_name}' deleted in guild {guild_id} by {ctx.author}")
+            
+        except Exception as e:
+            error_msg = STATIC_GROUPS["static_delete"]["messages"]["error"].get(guild_lang, STATIC_GROUPS["static_delete"]["messages"]["error"].get("en-US")).format(error=e)
+            await ctx.followup.send(error_msg, ephemeral=True)
+            logging.error(f"[GuildEvents] Error deleting static group: {e}")
+
     @commands.Cog.listener() 
     async def on_ready(self):
         asyncio.create_task(self.load_guild_settings())
         asyncio.create_task(self.load_events_calendar())
         asyncio.create_task(self.load_events_data())
         asyncio.create_task(self.load_guild_members())
+        asyncio.create_task(self.load_static_groups_cache())
+        asyncio.create_task(self.load_ideal_staff_cache())
         logging.debug("[GuildEvents] Cache loading tasks started in on_ready.")
 
 def setup(bot: discord.Bot):
