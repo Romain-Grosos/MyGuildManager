@@ -11,7 +11,7 @@ from translation import translations as global_translations
 from urllib.parse import urlparse
 
 GUILD_MEMBERS = global_translations.get("guild_members", {})
-CONFIG_EFFECTIFS_DATA = global_translations.get("commands", {}).get("config_effectifs", {})
+CONFIG_ROSTER_DATA = global_translations.get("commands", {}).get("config_roster", {})
 
 class GuildMembers(commands.Cog):
     def __init__(self, bot):
@@ -25,7 +25,7 @@ class GuildMembers(commands.Cog):
         self.ideal_staff: Dict[int, Dict[str, int]] = {}
         
         self.allowed_build_domains = ['questlog.gg', 'maxroll.gg']
-        self.max_pseudo_length = 32
+        self.max_username_length = 32
         self.max_gs_value = 9999
         self.min_gs_value = 500
     
@@ -176,18 +176,18 @@ class GuildMembers(commands.Cog):
     async def load_user_setup_members(self) -> Dict[Tuple[int, int], Dict[str, Any]]:
         logging.debug("[GuildMembers] Loading Guilds users settings from database")
         query = """
-            SELECT guild_id, user_id, pseudo, locale, gs, weapons
+            SELECT guild_id, user_id, username, locale, gs, weapons
             FROM user_setup
-            WHERE motif IN ('membre', 'postulation')
+            WHERE motif IN ('member', 'application')
         """
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             self.user_setup_members = {}
             for row in rows:
-                guild_id, user_id, pseudo, locale, gs, weapons = row
+                guild_id, user_id, username, locale, gs, weapons = row
                 key = (int(guild_id), int(user_id))
                 self.user_setup_members[key] = {
-                    "pseudo": pseudo,
+                    "username": username,
                     "locale": locale,
                     "gs": gs,
                     "weapons": weapons
@@ -200,26 +200,26 @@ class GuildMembers(commands.Cog):
     async def load_guild_members(self) -> None:
         logging.debug("[GuildMembers] Loading Guilds members infos from database")
         query = """
-            SELECT guild_id, member_id, pseudo, lang, GS, build, armes, DKP, nb_events, inscriptions, presences, classe
+            SELECT guild_id, member_id, username, language, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`
             FROM guild_members
         """
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             self.guild_members = {}
             for row in rows:
-                guild_id, member_id, pseudo, lang, GS, build, armes, DKP, nb_events, inscriptions, presences, classe = row
+                guild_id, member_id, username, language, GS, build, weapons, DKP, nb_events, registrations, attendances, class_name = row
                 key = (guild_id, member_id)
                 self.guild_members[key] = {
-                    "pseudo": pseudo,
-                    "lang": lang,
+                    "username": username,
+                    "language": language,
                     "GS": GS,
                     "build": build,
-                    "armes": armes,
+                    "weapons": weapons,
                     "DKP": DKP,
                     "nb_events": nb_events,
-                    "inscriptions": inscriptions,
-                    "presences": presences,
-                    "classe": classe
+                    "registrations": registrations,
+                    "attendances": attendances,
+                    "class": class_name
                 }
             logging.debug(f"[GuildMembers] Members loaded: {self.guild_members}")
         except Exception as e:
@@ -242,8 +242,8 @@ class GuildMembers(commands.Cog):
             logging.error(f"[GuildMembers] Error loading ideal staff: {e}", exc_info=True)
             self.ideal_staff = {}
 
-    def determine_class(self, armes_list: list, guild_id: int) -> str:
-        if not isinstance(armes_list, list) or not armes_list:
+    def determine_class(self, weapons_list: list, guild_id: int) -> str:
+        if not isinstance(weapons_list, list) or not weapons_list:
             return "NULL"
         
         guild_info = self.forum_channels.get(guild_id, {})
@@ -255,9 +255,9 @@ class GuildMembers(commands.Cog):
         if game_id is None:
             return "NULL"
         combinations = self.weapons_combinations.get(game_id, [])
-        sorted_armes = sorted(armes_list)
+        sorted_weapons = sorted(weapons_list)
         for combo in combinations:
-            if sorted([combo["weapon1"], combo["weapon2"]]) == sorted_armes:
+            if sorted([combo["weapon1"], combo["weapon2"]]) == sorted_weapons:
                 return combo["role"]
         return "NULL"
 
@@ -326,7 +326,7 @@ class GuildMembers(commands.Cog):
             await self.bot.run_db_query(query, (validated_value, guild_id, member_id), commit=True)
             self.guild_members[key]["GS"] = validated_value
             logging.debug(f"[GuildMembers - GS] Successfully updated GS for {ctx.author} (ID: {member_id}) to {validated_value}")
-            msg = get_user_message(ctx, GUILD_MEMBERS["gs"], "updated", pseudo=ctx.author.display_name, value=validated_value)
+            msg = get_user_message(ctx, GUILD_MEMBERS["gs"], "updated", username=ctx.author.display_name, value=validated_value)
             await ctx.followup.send(msg, ephemeral=True)
         except Exception as e:
             logging.exception(f"[GuildMembers - GS] Error updating GS for {ctx.author} (ID: {member_id}): {e}")
@@ -338,7 +338,7 @@ class GuildMembers(commands.Cog):
         name_localizations=GUILD_MEMBERS["weapons"]["name"],
         description_localizations=GUILD_MEMBERS["weapons"]["description"]
     )
-    async def armes(
+    async def weapons(
         self,
         ctx: discord.ApplicationContext,
         weapon1: str = discord.Option(
@@ -366,37 +366,37 @@ class GuildMembers(commands.Cog):
             await ctx.followup.send(msg, ephemeral=True)
             return
 
-        arme1_code = self._validate_weapon_code(weapon1)
-        arme2_code = self._validate_weapon_code(weapon2)
+        weapon1_code = self._validate_weapon_code(weapon1)
+        weapon2_code = self._validate_weapon_code(weapon2)
         
-        if not arme1_code or not arme2_code:
+        if not weapon1_code or not weapon2_code:
             msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_valid")
             await ctx.followup.send(msg, ephemeral=True)
             return
         
-        if arme1_code == arme2_code:
+        if weapon1_code == weapon2_code:
             msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_valid_same")
             await ctx.followup.send(msg, ephemeral=True)
             return
 
         valid_weapons = self.get_valid_weapons(guild_id)
-        if arme1_code not in valid_weapons or arme2_code not in valid_weapons:
+        if weapon1_code not in valid_weapons or weapon2_code not in valid_weapons:
             msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_valid")
             await ctx.followup.send(msg, ephemeral=True)
             return
 
         try:
-            armes_normalized = sorted([arme1_code, arme2_code])
-            player_class = self.determine_class(armes_normalized, guild_id)
-            armes_str = "/".join(armes_normalized)
+            weapons_normalized = sorted([weapon1_code, weapon2_code])
+            player_class = self.determine_class(weapons_normalized, guild_id)
+            weapons_str = "/".join(weapons_normalized)
             
-            query = "UPDATE guild_members SET armes = ?, classe = ? WHERE guild_id = ? AND member_id = ?"
-            await self.bot.run_db_query(query, (armes_str, player_class, guild_id, member_id), commit=True)
+            query = "UPDATE guild_members SET weapons = ?, `class` = ? WHERE guild_id = ? AND member_id = ?"
+            await self.bot.run_db_query(query, (weapons_str, player_class, guild_id, member_id), commit=True)
             
-            self.guild_members[key]["armes"] = armes_str
-            self.guild_members[key]["classe"] = player_class
+            self.guild_members[key]["weapons"] = weapons_str
+            self.guild_members[key]["class"] = player_class
 
-            msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "updated", pseudo=ctx.author.display_name, armes_str=armes_str)
+            msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "updated", username=ctx.author.display_name, weapons_str=weapons_str)
             await ctx.followup.send(msg, ephemeral=True)
         except Exception as e:
             logging.exception(f"[GuildMembers - Weapons] Error updating weapons for {ctx.author} (ID: {member_id}): {e}")
@@ -442,30 +442,30 @@ class GuildMembers(commands.Cog):
             query = "UPDATE guild_members SET build = ? WHERE guild_id = ? AND member_id = ?"
             await self.bot.run_db_query(query, (sanitized_url, guild_id, member_id), commit=True)
             self.guild_members[key]["build"] = sanitized_url
-            msg = get_user_message(ctx, GUILD_MEMBERS["build"], "updated", pseudo=ctx.author.display_name)
+            msg = get_user_message(ctx, GUILD_MEMBERS["build"], "updated", username=ctx.author.display_name)
             await ctx.followup.send(msg, ephemeral=True)
         except Exception as e:
             logging.exception(f"[GuildMembers - Build] Error updating build for {ctx.author} (ID: {member_id}): {e}")
             await ctx.followup.send("❌ Database error occurred", ephemeral=True)
 
     @discord.slash_command(
-        name=GUILD_MEMBERS["pseudo"]["name"]["en-US"],
-        description=GUILD_MEMBERS["pseudo"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["pseudo"]["name"],
-        description_localizations=GUILD_MEMBERS["pseudo"]["description"]
+        name=GUILD_MEMBERS["username"]["name"]["en-US"],
+        description=GUILD_MEMBERS["username"]["description"]["en-US"],
+        name_localizations=GUILD_MEMBERS["username"]["name"],
+        description_localizations=GUILD_MEMBERS["username"]["description"]
     )
-    async def pseudo(
+    async def username(
         self,
         ctx: discord.ApplicationContext,
         new_name: str = discord.Option(
-            description=GUILD_MEMBERS["pseudo"]["value_comment"]["en-US"],
-            description_localizations=GUILD_MEMBERS["pseudo"]["value_comment"]
+            description=GUILD_MEMBERS["username"]["value_comment"]["en-US"],
+            description_localizations=GUILD_MEMBERS["username"]["value_comment"]
         ),
     ):
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
-            logging.error("[GuildMembers - Pseudo] Invalid context: missing guild or author")
+            logging.error("[GuildMembers - Username] Invalid context: missing guild or author")
             await ctx.followup.send("❌ Invalid request context", ephemeral=True)
             return
         
@@ -474,31 +474,31 @@ class GuildMembers(commands.Cog):
         key = (guild_id, member_id)
         
         if key not in self.guild_members:
-            msg = get_user_message(ctx, GUILD_MEMBERS["pseudo"], "not_registered")
+            msg = get_user_message(ctx, GUILD_MEMBERS["username"], "not_registered")
             await ctx.followup.send(msg, ephemeral=True)
             return
 
-        new_pseudo = self._sanitize_string(new_name, self.max_pseudo_length)
-        if not new_pseudo or len(new_pseudo.strip()) == 0:
-            await ctx.followup.send("❌ Invalid pseudo name", ephemeral=True)
+        new_username = self._sanitize_string(new_name, self.max_username_length)
+        if not new_username or len(new_username.strip()) == 0:
+            await ctx.followup.send("❌ Invalid username name", ephemeral=True)
             return
         
         try:
-            query = "UPDATE guild_members SET pseudo = ? WHERE guild_id = ? AND member_id = ?"
-            await self.bot.run_db_query(query, (new_pseudo, guild_id, member_id), commit=True)
-            self.guild_members[key]["pseudo"] = new_pseudo
+            query = "UPDATE guild_members SET username = ? WHERE guild_id = ? AND member_id = ?"
+            await self.bot.run_db_query(query, (new_username, guild_id, member_id), commit=True)
+            self.guild_members[key]["username"] = new_username
             
             try:
-                await ctx.author.edit(nick=new_pseudo)
+                await ctx.author.edit(nick=new_username)
             except discord.Forbidden:
-                logging.warning(f"[GuildMembers - Pseudo] Unable to update nickname for {ctx.author.display_name}")
+                logging.warning(f"[GuildMembers - Username] Unable to update nickname for {ctx.author.display_name}")
             except Exception as e:
-                logging.warning(f"[GuildMembers - Pseudo] Error updating nickname for {ctx.author.display_name}: {e}")
+                logging.warning(f"[GuildMembers - Username] Error updating nickname for {ctx.author.display_name}: {e}")
             
-            msg = get_user_message(ctx, GUILD_MEMBERS["pseudo"], "updated", pseudo=new_pseudo)
+            msg = get_user_message(ctx, GUILD_MEMBERS["username"], "updated", username=new_username)
             await ctx.followup.send(msg, ephemeral=True)
         except Exception as e:
-            logging.exception(f"[GuildMembers - Pseudo] Error updating pseudo for {ctx.author} (ID: {member_id}): {e}")
+            logging.exception(f"[GuildMembers - Username] Error updating username for {ctx.author} (ID: {member_id}): {e}")
             await ctx.followup.send("❌ Database error occurred", ephemeral=True)
 
     @discord.slash_command(
@@ -544,17 +544,17 @@ class GuildMembers(commands.Cog):
             key = (int(guild_id), int(member.id))
             if key in self.guild_members:
                 record = self.guild_members[key]
-                if record.get("pseudo") != member.display_name:
-                    record["pseudo"] = member.display_name
-                    update_query = "UPDATE guild_members SET pseudo = ? WHERE guild_id = ? AND member_id = ?"
+                if record.get("username") != member.display_name:
+                    record["username"] = member.display_name
+                    update_query = "UPDATE guild_members SET username = ? WHERE guild_id = ? AND member_id = ?"
                     await self.bot.run_db_query(update_query, (member.display_name, guild_id, member.id), commit=True)
-                    logging.debug(f"[GuildMembers - MAJ_Roster] Pseudo updated for {member.display_name} (ID: {member.id})")
+                    logging.debug(f"[GuildMembers - UpdateRoster] Username updated for {member.display_name} (ID: {member.id})")
             else:
                 user_setup = self.user_setup_members.get(key, {})
                 if user_setup:
-                    lang = user_setup.get("locale") or locale
+                    language = user_setup.get("locale") or locale
                     gs_value = user_setup.get("gs")
-                    logging.debug(f"[GuildMembers - MAJ_Roster] Values retrieved from user_setup for {member.display_name}: lang={lang}, gs={gs_value}")
+                    logging.debug(f"[GuildMembers - UpdateRoster] Values retrieved from user_setup for {member.display_name}: language={language}, gs={gs_value}")
 
                     weapons_raw = user_setup.get("weapons")
                     if weapons_raw and isinstance(weapons_raw, str):
@@ -585,33 +585,33 @@ class GuildMembers(commands.Cog):
                         computed_class = "NULL"
 
                 else:
-                    lang = locale
+                    language = locale
                     gs_value = 0
                     weapons_normalized = "NULL"
                     computed_class = "NULL"
-                    logging.debug(f"[GuildMembers - MAJ_Roster] No user_setup info for {member.display_name}. Default values: lang={lang}, gs={gs_value}")
+                    logging.debug(f"[GuildMembers - UpdateRoster] No user_setup info for {member.display_name}. Default values: language={language}, gs={gs_value}")
 
-                if lang and '-' in lang:
-                    lang = lang.split('-')[0]
+                if language and '-' in language:
+                    language = language.split('-')[0]
 
                 if gs_value in (None, "", "NULL"):
                     gs_value = 0
 
                 new_record = {
-                    "pseudo": member.display_name,
-                    "lang": lang,
+                    "username": member.display_name,
+                    "language": language,
                     "GS": gs_value,
                     "build": "NULL",
-                    "armes": weapons_normalized,
+                    "weapons": weapons_normalized,
                     "DKP": 0,
                     "nb_events": 0,
-                    "inscriptions": 0,
-                    "presences": 0,
-                    "classe": computed_class
+                    "registrations": 0,
+                    "attendances": 0,
+                    "class": computed_class
                 }
                 insert_query = """
                     INSERT INTO guild_members 
-                    (guild_id, member_id, pseudo, lang, GS, build, armes, DKP, nb_events, inscriptions, presences, classe)
+                    (guild_id, member_id, username, lang, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
                 await self.bot.run_db_query(
@@ -619,21 +619,21 @@ class GuildMembers(commands.Cog):
                     (
                         guild_id,
                         member.id,
-                        new_record["pseudo"],
-                        new_record["lang"],
+                        new_record["username"],
+                        new_record["language"],
                         new_record["GS"],
                         new_record["build"],
-                        new_record["armes"],
+                        new_record["weapons"],
                         new_record["DKP"],
                         new_record["nb_events"],
-                        new_record["inscriptions"],
-                        new_record["presences"],
-                        new_record["classe"]
+                        new_record["registrations"],
+                        new_record["attendances"],
+                        new_record["class"]
                     ),
                     commit=True
                 )
                 self.guild_members[key] = new_record
-                logging.debug(f"[GuildMembers - MAJ_Roster] New member added: {member.display_name} (ID: {member.id})")
+                logging.debug(f"[GuildMembers - UpdateRoster] New member added: {member.display_name} (ID: {member.id})")
 
         try:
             await self.load_guild_members()
@@ -643,7 +643,7 @@ class GuildMembers(commands.Cog):
             msg = get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "updated")
             await ctx.followup.send(msg, ephemeral=True)
         except Exception as e:
-            logging.exception(f"[GuildMembers - MAJ_Roster] Error during roster update: {e}")
+            logging.exception(f"[GuildMembers - UpdateRoster] Error during roster update: {e}")
             await ctx.followup.send("❌ Error occurred during roster update", ephemeral=True)
 
     async def update_recruitment_message(self, ctx):
@@ -667,7 +667,7 @@ class GuildMembers(commands.Cog):
 
         members_in_roster = [v for (g, _), v in self.guild_members.items() if g == guild_id]
         total_members = len(members_in_roster)
-        effectif_max = guild_config.get("max_members")
+        roster_size_max = guild_config.get("max_members")
 
         ideal_staff = self.ideal_staff.get(guild_id, {
             "Tank": 20,
@@ -679,19 +679,19 @@ class GuildMembers(commands.Cog):
 
         class_counts = { key: 0 for key in ideal_staff.keys() }
         for m in members_in_roster:
-            cls = m.get("classe", "NULL")
+            cls = m.get("class", "NULL")
             if cls in ideal_staff:
                 class_counts[cls] += 1
 
-        places_restantes = max(0, effectif_max - total_members)
+        remaining_slots = max(0, roster_size_max - total_members)
 
-        title = GUILD_MEMBERS["post_recrut"]["name"][locale]
-        effectif_template = GUILD_MEMBERS["post_recrut"]["effectif"][locale]
-        effectif_line = effectif_template.format(total_members=total_members, effectif_max=effectif_max)
-        places_template = GUILD_MEMBERS["post_recrut"]["places"][locale]
-        places_line = places_template.format(places_restantes=places_restantes)
-        post_dispos_template = GUILD_MEMBERS["post_recrut"]["post_dispos"][locale]
-        updated_template = GUILD_MEMBERS["post_recrut"]["updated"][locale]
+        title = GUILD_MEMBERS["post_recruitment"]["name"][locale]
+        roster_size_template = GUILD_MEMBERS["post_recruitment"]["roster_size"][locale]
+        roster_size_line = roster_size_template.format(total_members=total_members, roster_size_max=roster_size_max)
+        places_template = GUILD_MEMBERS["post_recruitment"]["places"][locale]
+        places_line = places_template.format(remaining_slots=remaining_slots)
+        post_availability_template = GUILD_MEMBERS["post_recruitment"]["post_availability"][locale]
+        updated_template = GUILD_MEMBERS["post_recruitment"]["updated"][locale]
 
         positions_details = ""
         for cls_key, ideal_number in ideal_staff.items():
@@ -700,7 +700,7 @@ class GuildMembers(commands.Cog):
             available = max(0, ideal_number - current_count)
             positions_details += f"- **{class_name}** : {available} \n"
 
-        description = effectif_line + places_line + post_dispos_template + positions_details
+        description = roster_size_line + places_line + post_availability_template + positions_details
 
         embed = discord.Embed(
             title=title,
@@ -745,76 +745,74 @@ class GuildMembers(commands.Cog):
             return
 
         members_in_roster = [v for (g, _), v in self.guild_members.items() if g == guild_id]
-        sorted_members = sorted(members_in_roster, key=lambda x: x.get("pseudo", "").lower())
+        sorted_members = sorted(members_in_roster, key=lambda x: x.get("username", "").lower())
 
-        tank_count = sum(1 for m in sorted_members if m.get("classe", "").lower() == "tank")
-        dps_melee_count = sum(1 for m in sorted_members if m.get("classe", "").lower() == "melee dps")
-        dps_distant_count = sum(1 for m in sorted_members if m.get("classe", "").lower() == "ranged dps")
-        heal_count = sum(1 for m in sorted_members if m.get("classe", "").lower() == "healer")
-        flank_count = sum(1 for m in sorted_members if m.get("classe", "").lower() == "flanker")
+        tank_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "tank")
+        dps_melee_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "melee dps")
+        dps_distant_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "ranged dps")
+        heal_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "healer")
+        flank_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "flanker")
 
-        pseudo_width = 20
-        lang_width = 8
+        username_width = 20
+        language_width = 8
         gs_width = 8
         build_width = 7
-        armes_width = 9
-        classe_width = 14
+        weapons_width = 9
+        class_width = 14
         dkp_width = 10
-        insc_width = 8
-        pres_width = 8
+        reg_width = 8
+        att_width = 8
 
-        header_labels = GUILD_MEMBERS.get("table", {}).get("header", {}).get(locale, 
-            ["Pseudo", "Langue", "GS", "Build", "Armes", "Classe", "DKP", "%Insc", "%Prés"])
+        header_labels = GUILD_MEMBERS.get("table", {}).get("header", {}).get(locale)
         
         header = (
-            f"{header_labels[0].ljust(pseudo_width)}│"
-            f"{header_labels[1].center(lang_width)}│"
+            f"{header_labels[0].ljust(username_width)}│"
+            f"{header_labels[1].center(language_width)}│"
             f"{header_labels[2].center(gs_width)}│"
             f"{header_labels[3].center(build_width)}│"
-            f"{header_labels[4].center(armes_width)}│"
-            f"{header_labels[5].center(classe_width)}│"
+            f"{header_labels[4].center(weapons_width)}│"
+            f"{header_labels[5].center(class_width)}│"
             f"{header_labels[6].center(dkp_width)}│"
-            f"{header_labels[7].center(insc_width)}│"
-            f"{header_labels[8].center(pres_width)}"
+            f"{header_labels[7].center(reg_width)}│"
+            f"{header_labels[8].center(att_width)}"
         )
         separator = "─" * len(header)
 
         rows = []
         for m in sorted_members:
-            pseudo = m.get("pseudo", "")[:pseudo_width].ljust(pseudo_width)
-            lang_text = str(m.get("lang", "en-US"))[:lang_width].center(lang_width)
+            username = m.get("username", "")[:username_width].ljust(username_width)
+            language_text = str(m.get("language", "en-US"))[:language_width].center(language_width)
             gs = str(m.get("GS", "NULL")).center(gs_width)
             build_flag = "Y" if m.get("build", "NULL") != "NULL" else " "
             build_flag = build_flag.center(build_width)
-            armes = m.get("armes", "NULL")
-            if isinstance(armes, str) and armes != "NULL":
-                armes_str = armes.center(armes_width)
+            weapons = m.get("weapons", "NULL")
+            if isinstance(weapons, str) and weapons != "NULL":
+                weapons_str = weapons.center(weapons_width)
             else:
-                armes_str = " ".center(armes_width)
-            classe = m.get("classe", "NULL")
-            if isinstance(classe, str) and classe != "NULL":
-                classe_str = classe.center(classe_width)
+                weapons_str = " ".center(weapons_width)
+            member_class = m.get("class", "NULL")
+            if isinstance(member_class, str) and member_class != "NULL":
+                class_str = member_class.center(class_width)
             else :
-                classe_str = " ".center(classe_width)
+                class_str = " ".center(class_width)
             dkp = str(m.get("DKP", 0)).center(dkp_width)
             nb_events = m.get("nb_events", 0)
             if nb_events > 0:
-                insc_pct = round((m.get("inscriptions", 0) / nb_events) * 100)
-                pres_pct = round((m.get("presences", 0) / nb_events) * 100)
+                reg_pct = round((m.get("registrations", 0) / nb_events) * 100)
+                att_pct = round((m.get("attendances", 0) / nb_events) * 100)
             else:
-                insc_pct = 0
-                pres_pct = 0
-            inscriptions = f"{insc_pct}%".center(insc_width)
-            presences = f"{pres_pct}%".center(pres_width)
-            rows.append(f"{pseudo}│{lang_text}│{gs}│{build_flag}│{armes_str}│{classe_str}│{dkp}│{inscriptions}│{presences}")
+                reg_pct = 0
+                att_pct = 0
+            registrations = f"{reg_pct}%".center(reg_width)
+            attendances = f"{att_pct}%".center(att_width)
+            rows.append(f"{username}│{language_text}│{gs}│{build_flag}│{weapons_str}│{class_str}│{dkp}│{registrations}│{attendances}")
 
         if not rows:
             logging.warning("[GuildMembers] No members found in roster")
             return
 
         now_str = datetime.now().strftime("%d/%m/%Y à %H:%M")
-        role_labels = GUILD_MEMBERS.get("table", {}).get("role_stats", {}).get(locale,
-            ["Tank", "DPS Mélée", "DPS Distance", "Healer", "Flanker"])
+        role_labels = GUILD_MEMBERS.get("table", {}).get("role_stats", {}).get(locale)
         
         role_stats = (
             f"{role_labels[0]}: {tank_count}\n"
@@ -862,7 +860,7 @@ class GuildMembers(commands.Cog):
     async def show_build(
         self,
         ctx: discord.ApplicationContext,
-        pseudo: str = discord.Option(
+        username: str = discord.Option(
             description=GUILD_MEMBERS["show_build"]["value_comment"]["en-US"],
             description_localizations=GUILD_MEMBERS["show_build"]["value_comment"]
         ),
@@ -874,29 +872,29 @@ class GuildMembers(commands.Cog):
             await ctx.followup.send("❌ Invalid request context", ephemeral=True)
             return
         
-        sanitized_pseudo = self._sanitize_string(pseudo, 32)
-        if not sanitized_pseudo:
-            await ctx.followup.send("❌ Invalid pseudo format", ephemeral=True)
+        sanitized_username = self._sanitize_string(username, 32)
+        if not sanitized_username:
+            await ctx.followup.send("❌ Invalid username format", ephemeral=True)
             return
         
         guild_id = ctx.guild.id
         matching = [m for (g, _), m in self.guild_members.items() 
-                   if g == guild_id and m.get("pseudo", "").lower().startswith(sanitized_pseudo.lower())]
+                   if g == guild_id and m.get("username", "").lower().startswith(sanitized_username.lower())]
 
         if not matching:
-            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "not_found", pseudo=pseudo)
+            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "not_found", username=username)
             await ctx.followup.send(msg, ephemeral=True)
             return
 
         member_data = matching[0]
         build_url = member_data.get("build", "NULL")
         if build_url == "NULL":
-            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "no_build", pseudo=pseudo)
+            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "no_build", username=username)
             await ctx.followup.send(msg, ephemeral=True)
             return
 
         try:
-            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "build_sent", member=member_data.get('pseudo'), build_url=build_url)
+            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "build_sent", member=member_data.get('username'), build_url=build_url)
             await ctx.author.send(msg)
             msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "sent")
             await ctx.followup.send(msg, ephemeral=True)
@@ -920,8 +918,8 @@ class GuildMembers(commands.Cog):
         for (g, member_id), data in self.guild_members.items():
             if g == guild_id:
                 gs = data.get("GS", 0)
-                armes = data.get("armes", "NULL")
-                if gs in (0, "0", 0.0) or armes == "NULL":
+                weapons = data.get("weapons", "NULL")
+                if gs in (0, "0", 0.0) or weapons == "NULL":
                     incomplete_members.append(member_id)
 
         if not incomplete_members:
@@ -948,51 +946,51 @@ class GuildMembers(commands.Cog):
         await ctx.followup.send(msg,ephemeral=True)
 
     @discord.slash_command(
-        name=CONFIG_EFFECTIFS_DATA.get("name", {}).get("en-US", "config_effectifs"),
-        description=CONFIG_EFFECTIFS_DATA.get("description", {}).get("en-US", "Configure les effectifs idéaux par classe pour la guilde"),
-        name_localizations=CONFIG_EFFECTIFS_DATA.get("name", {}),
-        description_localizations=CONFIG_EFFECTIFS_DATA.get("description", {})
+        name=CONFIG_ROSTER_DATA.get("name", {}).get("en-US", "config_roster"),
+        description=CONFIG_ROSTER_DATA.get("description", {}).get("en-US", "Configure ideal roster sizes by class for the guild"),
+        name_localizations=CONFIG_ROSTER_DATA.get("name", {}),
+        description_localizations=CONFIG_ROSTER_DATA.get("description", {})
     )
     @commands.has_permissions(administrator=True)
-    async def config_effectifs(
+    async def config_roster(
         self,
         ctx: discord.ApplicationContext,
         tank: int = discord.Option(
             int,
-            description=CONFIG_EFFECTIFS_DATA.get("options", {}).get("tank", {}).get("description", {}).get("en-US", "Nombre idéal de Tank"),
-            description_localizations=CONFIG_EFFECTIFS_DATA.get("options", {}).get("tank", {}).get("description", {}),
+            description=CONFIG_ROSTER_DATA.get("options", {}).get("tank", {}).get("description", {}).get("en-US", "Ideal number of Tanks"),
+            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("tank", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=20
         ),
         healer: int = discord.Option(
             int,
-            description=CONFIG_EFFECTIFS_DATA.get("options", {}).get("healer", {}).get("description", {}).get("en-US", "Nombre idéal de Healer"),
-            description_localizations=CONFIG_EFFECTIFS_DATA.get("options", {}).get("healer", {}).get("description", {}),
+            description=CONFIG_ROSTER_DATA.get("options", {}).get("healer", {}).get("description", {}).get("en-US", "Ideal number of Healers"),
+            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("healer", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=20
         ),
         flanker: int = discord.Option(
             int,
-            description=CONFIG_EFFECTIFS_DATA.get("options", {}).get("flanker", {}).get("description", {}).get("en-US", "Nombre idéal de Flanker"),
-            description_localizations=CONFIG_EFFECTIFS_DATA.get("options", {}).get("flanker", {}).get("description", {}),
+            description=CONFIG_ROSTER_DATA.get("options", {}).get("flanker", {}).get("description", {}).get("en-US", "Ideal number of Flankers"),
+            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("flanker", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=10
         ),
         ranged_dps: int = discord.Option(
             int,
-            description=CONFIG_EFFECTIFS_DATA.get("options", {}).get("ranged_dps", {}).get("description", {}).get("en-US", "Nombre idéal de Ranged DPS"),
-            description_localizations=CONFIG_EFFECTIFS_DATA.get("options", {}).get("ranged_dps", {}).get("description", {}),
+            description=CONFIG_ROSTER_DATA.get("options", {}).get("ranged_dps", {}).get("description", {}).get("en-US", "Ideal number of Ranged DPS"),
+            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("ranged_dps", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=10
         ),
         melee_dps: int = discord.Option(
             int,
-            description=CONFIG_EFFECTIFS_DATA.get("options", {}).get("melee_dps", {}).get("description", {}).get("en-US", "Nombre idéal de Melee DPS"),
-            description_localizations=CONFIG_EFFECTIFS_DATA.get("options", {}).get("melee_dps", {}).get("description", {}),
+            description=CONFIG_ROSTER_DATA.get("options", {}).get("melee_dps", {}).get("description", {}).get("en-US", "Ideal number of Melee DPS"),
+            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("melee_dps", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=10
@@ -1001,14 +999,14 @@ class GuildMembers(commands.Cog):
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
-            logging.error("[GuildMembers - Config_Effectifs] Invalid context: missing guild or author")
-            invalid_context_msg = get_user_message(ctx, CONFIG_EFFECTIFS_DATA, "messages.invalid_context")
+            logging.error("[GuildMembers - ConfigRoster] Invalid context: missing guild or author")
+            invalid_context_msg = get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.invalid_context")
             await ctx.followup.send(invalid_context_msg, ephemeral=True)
             return
         
         guild_id = ctx.guild.id
         
-        classes_config = {
+        class_config = {
             "Tank": tank,
             "Healer": healer,
             "Flanker": flanker,
@@ -1017,7 +1015,7 @@ class GuildMembers(commands.Cog):
         }
         
         try:
-            for class_name, count in classes_config.items():
+            for class_name, count in class_config.items():
                 query = """
                     INSERT INTO guild_ideal_staff (guild_id, class_name, ideal_count) 
                     VALUES (%s, %s, %s) 
@@ -1029,43 +1027,40 @@ class GuildMembers(commands.Cog):
             
             await self.update_recruitment_message(ctx)
             
-            config_summary = "\\n".join([f"- **{class_name}** : {count}" for class_name, count in classes_config.items()])
-            success_msg = get_user_message(ctx, CONFIG_EFFECTIFS_DATA, "messages.success", config_summary=config_summary)
+            config_summary = "\\n".join([f"- **{class_name}** : {count}" for class_name, count in class_config.items()])
+            success_msg = get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.success", config_summary=config_summary)
             
             await ctx.followup.send(success_msg, ephemeral=True)
-            logging.debug(f"[GuildMembers - Config_Effectifs] Ideal staff configuration updated for guild {guild_id}: {classes_config}")
+            logging.debug(f"[GuildMembers - ConfigRoster] Ideal staff configuration updated for guild {guild_id}: {class_config}")
             
         except Exception as e:
-            logging.exception(f"[GuildMembers - Config_Effectifs] Error updating ideal staff config for guild {guild_id}: {e}")
-            error_msg = get_user_message(ctx, CONFIG_EFFECTIFS_DATA, "messages.update_error")
+            logging.exception(f"[GuildMembers - ConfigRoster] Error updating ideal staff config for guild {guild_id}: {e}")
+            error_msg = get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.update_error")
             await ctx.followup.send(error_msg, ephemeral=True)
 
     @discord.slash_command(
-        name=GUILD_MEMBERS["change_langue"]["name"]["en-US"],
-        description=GUILD_MEMBERS["change_langue"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["change_langue"]["name"],
-        description_localizations=GUILD_MEMBERS["change_langue"]["description"]
+        name=GUILD_MEMBERS["change_language"]["name"]["en-US"],
+        description=GUILD_MEMBERS["change_language"]["description"]["en-US"],
+        name_localizations=GUILD_MEMBERS["change_language"]["name"],
+        description_localizations=GUILD_MEMBERS["change_language"]["description"]
     )
-    async def change_langue(
+    async def change_language(
         self,
         ctx: discord.ApplicationContext,
-        langue: str = discord.Option(
+        language: str = discord.Option(
             str,
-            description=GUILD_MEMBERS["change_langue"]["options"]["langue"]["description"]["en-US"],
-            description_localizations=GUILD_MEMBERS["change_langue"]["options"]["langue"]["description"],
+            description=GUILD_MEMBERS["change_language"]["options"]["language"]["description"]["en-US"],
+            description_localizations=GUILD_MEMBERS["change_language"]["options"]["language"]["description"],
             choices=[
-                discord.OptionChoice(name="English", value="en-US"),
-                discord.OptionChoice(name="Français", value="fr"),
-                discord.OptionChoice(name="Español", value="es-ES"),
-                discord.OptionChoice(name="Deutsch", value="de"),
-                discord.OptionChoice(name="Italiano", value="it")
+                discord.OptionChoice(name=global_translations["language_names"][locale], value=locale)
+                for locale in global_translations.get("supported_locales", ["en-US"])
             ]
         )
     ):
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
-            logging.error("[GuildMembers - Change_Langue] Invalid context: missing guild or author")
+            logging.error("[GuildMembers - ChangeLanguage] Invalid context: missing guild or author")
             return
         
         guild_id = ctx.guild.id
@@ -1073,33 +1068,28 @@ class GuildMembers(commands.Cog):
 
         key = (guild_id, member_id)
         if key not in self.guild_members:
-            not_registered_msg = get_user_message(ctx, GUILD_MEMBERS["change_langue"], "messages.not_registered")
+            not_registered_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.not_registered")
             await ctx.followup.send(not_registered_msg, ephemeral=True)
             return
         
         try:
-            query = "UPDATE guild_members SET lang = ? WHERE guild_id = ? AND member_id = ?"
-            await self.bot.run_db_query(query, (langue, guild_id, member_id), commit=True)
+            short_language = language[:2] if len(language) >= 2 else language
             
-            self.guild_members[key]["lang"] = langue
+            query = "UPDATE guild_members SET language = ? WHERE guild_id = ? AND member_id = ?"
+            await self.bot.run_db_query(query, (short_language, guild_id, member_id), commit=True)
             
-            language_names = {
-                "en": "English",
-                "fr": "Français", 
-                "es": "Español",
-                "de": "Deutsch",
-                "it": "Italiano"
-            }
-            language_name = language_names.get(langue, langue)
+            self.guild_members[key]["language"] = short_language
             
-            success_msg = get_user_message(ctx, GUILD_MEMBERS["change_langue"], "messages.success", language_name=language_name)
+            language_name = global_translations.get("language_names", {}).get(language, language)
+            
+            success_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.success", language_name=language_name)
             await ctx.followup.send(success_msg, ephemeral=True)
             
-            logging.debug(f"[GuildMembers - Change_Langue] Language updated for user {member_id} in guild {guild_id}: {langue}")
+            logging.debug(f"[GuildMembers - ChangeLanguage] Language updated for user {member_id} in guild {guild_id}: {language}")
             
         except Exception as e:
-            logging.exception(f"[GuildMembers - Change_Langue] Error updating language for user {member_id} in guild {guild_id}: {e}")
-            error_msg = get_user_message(ctx, GUILD_MEMBERS["change_langue"], "messages.error", error=str(e))
+            logging.exception(f"[GuildMembers - ChangeLanguage] Error updating language for user {member_id} in guild {guild_id}: {e}")
+            error_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.error", error=str(e))
             await ctx.followup.send(error_msg, ephemeral=True)
 
     async def run_maj_roster(self, guild_id: int) -> None:
@@ -1137,41 +1127,41 @@ class GuildMembers(commands.Cog):
             key = (guild_id, member.id)
             if key in self.guild_members:
                 record = self.guild_members[key]
-                if record.get("pseudo") != member.display_name:
-                    record["pseudo"] = member.display_name
-                    update_query = "UPDATE guild_members SET pseudo = ? WHERE guild_id = ? AND member_id = ?"
+                if record.get("username") != member.display_name:
+                    record["username"] = member.display_name
+                    update_query = "UPDATE guild_members SET username = ? WHERE guild_id = ? AND member_id = ?"
                     await self.bot.run_db_query(update_query, (member.display_name, guild_id, member.id), commit=True)
-                    logging.debug(f"[GuildMembers] Pseudo updated for {member.display_name} (ID: {member.id})")
+                    logging.debug(f"[GuildMembers] Username updated for {member.display_name} (ID: {member.id})")
             else:
                 key_setup = (guild_id, member.id)
                 user_setup = self.user_setup_members.get(key_setup, {})
                 if user_setup:
-                    lang = user_setup.get("locale") or "en-US"
-                    if lang and '-' in lang:
-                        lang = lang.split('-')[0]
+                    language = user_setup.get("locale") or "en-US"
+                    if language and '-' in language:
+                        language = language.split('-')[0]
                     gs_value = user_setup.get("gs")
-                    logging.debug(f"[GuildMembers] Valeurs user_setup pour {member.display_name} : lang={lang}, gs={gs_value}")
+                    logging.debug(f"[GuildMembers] User setup values for {member.display_name}: language={language}, gs={gs_value}")
                 else:
-                    lang = "en-US"
+                    language = "en-US"
                     gs_value = 0
-                    logging.debug(f"[GuildMembers] Pas d'info user_setup pour {member.display_name}. Valeurs par défaut : lang={lang}, gs={gs_value}")
+                    logging.debug(f"[GuildMembers] No user_setup info for {member.display_name}. Default values: language={language}, gs={gs_value}")
                 if gs_value in (None, "", "NULL"):
                     gs_value = 0
                 new_record = {
-                    "pseudo": member.display_name,
-                    "lang": lang,
+                    "username": member.display_name,
+                    "language": language,
                     "GS": gs_value,
                     "build": "NULL",
-                    "armes": "NULL",
+                    "weapons": "NULL",
                     "DKP": 0,
                     "nb_events": 0,
-                    "inscriptions": 0,
-                    "presences": 0,
-                    "classe": "NULL"
+                    "registrations": 0,
+                    "attendances": 0,
+                    "class": "NULL"
                 }
                 insert_query = """
                     INSERT INTO guild_members 
-                    (guild_id, member_id, pseudo, lang, GS, build, armes, DKP, nb_events, inscriptions, presences, classe)
+                    (guild_id, member_id, username, lang, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
                 await self.bot.run_db_query(
@@ -1179,16 +1169,16 @@ class GuildMembers(commands.Cog):
                     (
                         guild_id,
                         member.id,
-                        new_record["pseudo"],
-                        new_record["lang"],
+                        new_record["username"],
+                        new_record["language"],
                         new_record["GS"],
                         new_record["build"],
-                        new_record["armes"],
+                        new_record["weapons"],
                         new_record["DKP"],
                         new_record["nb_events"],
-                        new_record["inscriptions"],
-                        new_record["presences"],
-                        new_record["classe"]
+                        new_record["registrations"],
+                        new_record["attendances"],
+                        new_record["class"]
                     ),
                     commit=True
                 )

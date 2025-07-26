@@ -89,7 +89,7 @@ CREATE TABLE `events_calendar` (
   `name` varchar(255) NOT NULL,
   `day` enum('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday') NOT NULL,
   `time` time NOT NULL,
-  `duree` int(11) NOT NULL,
+  `duration` int(11) NOT NULL DEFAULT 0 COMMENT 'Event duration in minutes',
   `week` enum('all','odd','even') NOT NULL,
   `dkp_value` int(11) NOT NULL,
   `dkp_ins` int(11) NOT NULL,
@@ -182,9 +182,9 @@ CREATE TABLE `guild_channels` (
   `forum_members_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for member discussions',
   `notifications_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for bot notifications and alerts',
   `external_recruitment_cat` bigint(20) DEFAULT NULL COMMENT 'External recruitment category ID',
+  `category_diplomat` bigint(20) DEFAULT NULL COMMENT 'Diplomat category channel ID',
   `external_recruitment_channel` bigint(20) DEFAULT NULL COMMENT 'External recruitment channel ID',
   `external_recruitment_message` bigint(20) DEFAULT NULL COMMENT 'External recruitment message ID',
-  `category_diplo` bigint(20) DEFAULT NULL COMMENT 'Diplomatic category for organized channels',
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT 'Last modification timestamp for channel configuration',
   PRIMARY KEY (`guild_id`),
   KEY `idx_guild_channels_statics_channel` (`statics_channel`),
@@ -222,21 +222,19 @@ DROP TABLE IF EXISTS `guild_members`;
 CREATE TABLE `guild_members` (
   `guild_id` bigint(20) NOT NULL,
   `member_id` bigint(20) NOT NULL,
-  `pseudo` varchar(32) DEFAULT NULL COMMENT 'In-game character name',
-  `lang` varchar(5) DEFAULT NULL COMMENT 'User preferred language',
+  `username` varchar(64) DEFAULT NULL COMMENT 'User display name/nickname',
+  `language` varchar(8) DEFAULT 'en-US' COMMENT 'User preferred language',
   `GS` int(11) DEFAULT NULL COMMENT 'Gear Score/Power Level',
   `build` text DEFAULT NULL COMMENT 'Character build URL or description',
-  `armes` varchar(16) DEFAULT NULL COMMENT 'Weapon combination codes',
+  `weapons` varchar(16) DEFAULT NULL COMMENT 'Weapon combination codes',
   `DKP` decimal(10,2) DEFAULT NULL COMMENT 'Dragon Kill Points for loot distribution',
   `nb_events` int(11) DEFAULT NULL COMMENT 'Total events participated in',
-  `inscriptions` int(11) DEFAULT NULL COMMENT 'Total event registrations',
-  `presences` int(11) DEFAULT NULL COMMENT 'Total confirmed attendances',
-  `classe` varchar(32) DEFAULT NULL COMMENT 'Character class/role',
+  `registrations` int(11) DEFAULT 0 COMMENT 'Number of event registrations',
+  `attendances` int(11) DEFAULT 0 COMMENT 'Number of event attendances',
+  `class` varchar(32) DEFAULT NULL COMMENT 'Character class/role',
   PRIMARY KEY (`guild_id`,`member_id`),
-  KEY `idx_guild_members_pseudo` (`pseudo`),
-  KEY `idx_guild_members_classe` (`classe`),
   KEY `idx_guild_members_dkp` (`DKP` DESC),
-  KEY `idx_guild_members_presences` (`presences` DESC),
+  KEY `idx_guild_members_class` (`class`),
   CONSTRAINT `fk_guild_members_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Guild member profiles and game statistics';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -332,7 +330,7 @@ CREATE TABLE `guild_static_groups` (
   KEY `idx_leader_id` (`leader_id`),
   KEY `idx_active` (`is_active`),
   CONSTRAINT `fk_static_groups_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -354,7 +352,7 @@ CREATE TABLE `guild_static_members` (
   KEY `idx_group_id` (`group_id`),
   KEY `idx_static_members_member_group` (`member_id`,`group_id`),
   CONSTRAINT `guild_static_members_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `guild_static_groups` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group membership with positions';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group membership with positions';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -368,13 +366,13 @@ SET character_set_client = utf8mb4;
 /*!50001 CREATE VIEW `member_statistics` AS SELECT
  1 AS `guild_id`,
   1 AS `member_id`,
-  1 AS `pseudo`,
-  1 AS `classe`,
+  1 AS `username`,
+  1 AS `class`,
   1 AS `GS`,
   1 AS `DKP`,
   1 AS `nb_events`,
-  1 AS `inscriptions`,
-  1 AS `presences`,
+  1 AS `registrations`,
+  1 AS `attendances`,
   1 AS `attendance_rate`,
   1 AS `avg_dkp_per_event` */;
 SET character_set_client = @saved_cs_client;
@@ -436,7 +434,8 @@ DROP TABLE IF EXISTS `user_setup`;
 CREATE TABLE `user_setup` (
   `guild_id` bigint(20) NOT NULL,
   `user_id` bigint(20) NOT NULL,
-  `pseudo` varchar(32) NOT NULL,
+  `nickname` varchar(32) DEFAULT NULL COMMENT 'User in-game nickname',
+  `username` varchar(64) DEFAULT NULL COMMENT 'User display name/nickname',
   `locale` varchar(5) NOT NULL,
   `motif` varchar(32) NOT NULL,
   `friend_pseudo` varchar(32) DEFAULT NULL,
@@ -445,12 +444,10 @@ CREATE TABLE `user_setup` (
   `guild_acronym` varchar(16) DEFAULT NULL,
   `gs` smallint(5) DEFAULT NULL,
   `playtime` varchar(64) DEFAULT NULL,
-  `gametype` varchar(32) DEFAULT NULL,
+  `game_mode` varchar(64) DEFAULT NULL COMMENT 'User preferred game mode (PvE/PvP/Mixed)',
   PRIMARY KEY (`guild_id`,`user_id`),
-  KEY `idx_user_setup_pseudo` (`pseudo`),
   KEY `idx_user_setup_locale` (`locale`),
   KEY `idx_user_setup_motif` (`motif`),
-  KEY `idx_user_setup_gametype` (`gametype`),
   CONSTRAINT `fk_user_setup_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='User registration and setup process data';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -558,7 +555,7 @@ USE `DB_discordbot`;
 /*!50001 SET collation_connection      = utf8mb4_unicode_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`USER_discordbot`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `member_statistics` AS select `gm`.`guild_id` AS `guild_id`,`gm`.`member_id` AS `member_id`,`gm`.`pseudo` AS `pseudo`,`gm`.`classe` AS `classe`,`gm`.`GS` AS `GS`,`gm`.`DKP` AS `DKP`,`gm`.`nb_events` AS `nb_events`,`gm`.`inscriptions` AS `inscriptions`,`gm`.`presences` AS `presences`,case when `gm`.`inscriptions` > 0 then round(`gm`.`presences` / `gm`.`inscriptions` * 100,2) else 0 end AS `attendance_rate`,case when `gm`.`nb_events` > 0 then round(`gm`.`DKP` / `gm`.`nb_events`,2) else 0 end AS `avg_dkp_per_event` from `guild_members` `gm` where `gm`.`pseudo` is not null */;
+/*!50001 VIEW `member_statistics` AS select `gm`.`guild_id` AS `guild_id`,`gm`.`member_id` AS `member_id`,`gm`.`username` AS `username`,`gm`.`class` AS `class`,`gm`.`GS` AS `GS`,`gm`.`DKP` AS `DKP`,`gm`.`nb_events` AS `nb_events`,`gm`.`registrations` AS `registrations`,`gm`.`attendances` AS `attendances`,case when `gm`.`registrations` > 0 then round(`gm`.`attendances` / `gm`.`registrations` * 100,2) else 0 end AS `attendance_rate`,case when `gm`.`nb_events` > 0 then round(`gm`.`DKP` / `gm`.`nb_events`,2) else 0 end AS `avg_dkp_per_event` from `guild_members` `gm` where `gm`.`username` is not null */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -590,4 +587,4 @@ USE `DB_discordbot`;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-07-26 15:30:18
+-- Dump completed on 2025-07-26 20:25:31

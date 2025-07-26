@@ -74,19 +74,19 @@ class GuildEvents(commands.Cog):
 
     async def load_events_calendar(self) -> None:
         query = """
-        SELECT game_id, day, time, duree, dkp_value, dkp_ins, week, name
+        SELECT game_id, day, time, duration, dkp_value, dkp_ins, week, name
         FROM events_calendar;
         """
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             self.events_calendar = {}
             for row in rows:
-                game_id, day, time_str, duree, dkp_value, dkp_ins, week, name = row
+                game_id, day, time_str, duration, dkp_value, dkp_ins, week, name = row
                 game_id = int(game_id)
                 event = {
                     "day": day,
                     "time": time_str,
-                    "duree": duree,
+                    "duration": duration,
                     "dkp_value": dkp_value,
                     "dkp_ins": dkp_ins,
                     "week": week,
@@ -133,20 +133,20 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error loading events data: {e}", exc_info=True)
 
     async def load_guild_members(self) -> None:
-        query = "SELECT guild_id, member_id, classe, GS, armes FROM guild_members"
+        query = "SELECT guild_id, member_id, class, GS, weapons FROM guild_members"
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             self.guild_members_cache = {}
             for row in rows:
-                guild_id, member_id, member_class, gs, armes = row
+                guild_id, member_id, member_class, gs, weapons = row
                 guild_id = int(guild_id)
                 member_id = int(member_id)
                 if guild_id not in self.guild_members_cache:
                     self.guild_members_cache[guild_id] = {}
                 self.guild_members_cache[guild_id][member_id] = {
-                    "classe": member_class,
+                    "class": member_class,
                     "GS": gs if gs is not None else "N/A",
-                    "armes": armes if armes is not None else "N/A"
+                    "weapons": weapons if weapons is not None else "N/A"
                 }
             logging.debug(f"[GuildEvents] Guild members cache loaded: {self.guild_members_cache}")
         except Exception as e:
@@ -306,7 +306,7 @@ class GuildEvents(commands.Cog):
                     continue
 
                 try:
-                    duration_minutes = int(cal_event.get("duree", 60))
+                    duration_minutes = int(cal_event.get("duration", 60))
                 except:
                     duration_minutes = 60
                 end_time = start_time + timedelta(minutes=duration_minutes)
@@ -337,8 +337,8 @@ class GuildEvents(commands.Cog):
                 event_groups = GUILD_EVENTS["events_infos"]["groups"].get(guild_lang,GUILD_EVENTS["events_infos"]["groups"].get("en-US"))
                 event_auto_grouping = GUILD_EVENTS["events_infos"]["auto_grouping"].get(guild_lang,GUILD_EVENTS["events_infos"]["auto_grouping"].get("en-US"))
 
-                status = GUILD_EVENTS["events_infos"]["status_planified"].get(guild_lang,GUILD_EVENTS["events_infos"]["status_planified"].get("en-US"))
-                status_db = GUILD_EVENTS["events_infos"]["status_planified"].get("en-US")
+                status = GUILD_EVENTS["events_infos"]["status_planned"].get(guild_lang,GUILD_EVENTS["events_infos"]["status_planned"].get("en-US"))
+                status_db = GUILD_EVENTS["events_infos"]["status_planned"].get("en-US")
                 description = GUILD_EVENTS["events_infos"]["description"].get(guild_lang,GUILD_EVENTS["events_infos"]["description"].get("en-US"))
 
                 try:
@@ -353,9 +353,10 @@ class GuildEvents(commands.Cog):
                     embed.add_field(name=event_status, value=status, inline=True)
                     embed.add_field(name=event_dkp_v, value=str(cal_event.get("dkp_value", 0)), inline=True)
                     embed.add_field(name=event_dkp_i, value=str(cal_event.get("dkp_ins", 0)), inline=True)
-                    embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value="Aucun", inline=False)
-                    embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value="Aucun", inline=False)
-                    embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value="Aucun", inline=False)
+                    none_text = GUILD_EVENTS["events_infos"]["none"].get(guild_lang, "None")
+                    embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value=none_text, inline=False)
+                    embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value=none_text, inline=False)
+                    embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value=none_text, inline=False)
                     conference_link = f"https://discord.com/channels/{guild.id}/{conference_channel.id}"
                     embed.add_field(name=event_voice_channel, value=f"[🏹 WAR]({conference_link})", inline=False)
                     embed.add_field(name=event_groups, value=event_auto_grouping, inline=False)
@@ -759,7 +760,7 @@ class GuildEvents(commands.Cog):
                     target_event["registrations"] = json.loads(target_event["registrations"])
                     logging.debug("[GuildEvents - on_raw_reaction_add] Registrations decoded from JSON.")
                 except Exception as e:
-                    logging.error(f"[GuildEvents - on_raw_reaction_add] Erreur lors du décodage de registrations: {e}")
+                    logging.error(f"[GuildEvents - on_raw_reaction_add] Error during registration decoding: {e}")
                     target_event["registrations"] = {"presence": [], "tentative": [], "absence": []}
 
             logging.debug(f"[GuildEvents - on_raw_reaction_add] Registrations BEFORE update: {target_event['registrations']}")
@@ -1011,14 +1012,14 @@ class GuildEvents(commands.Cog):
                 continue
 
             for event in confirmed_events:
-                regs_obj = event.get("registrations", {})
-                if isinstance(regs_obj, str):
+                registrations_obj = event.get("registrations", {})
+                if isinstance(registrations_obj, str):
                     try:
-                        regs_obj = json.loads(regs_obj)
+                        registrations_obj = json.loads(registrations_obj)
                     except Exception as e:
                         logging.error(f"[GuildEvents - event_reminder_cron] Error parsing 'registrations' for event {event['event_id']}: {e}", exc_info=True)
-                        regs_obj = {"presence": [], "tentative": [], "absence": []}
-                regs = set(regs_obj.get("presence", [])) | set(regs_obj.get("tentative", [])) | set(regs_obj.get("absence", []))
+                        registrations_obj = {"presence": [], "tentative": [], "absence": []}
+                registrations = set(registrations_obj.get("presence", [])) | set(registrations_obj.get("tentative", [])) | set(registrations_obj.get("absence", []))
                 initial_members = event.get("initial_members", [])
                 if isinstance(initial_members, str):
                     try:
@@ -1043,11 +1044,11 @@ class GuildEvents(commands.Cog):
                     current_members = set()
                 
                 updated_initial = current_members
-                to_remind = list(updated_initial - regs)
+                to_remind = list(updated_initial - registrations)
                 reminded = []
                 event_link = f"https://discord.com/channels/{guild.id}/{events_channel.id}/{event['event_id']}"
                 dm_template = GUILD_EVENTS.get("event_reminder", {}).get("dm_message", {}).get(guild_locale,GUILD_EVENTS.get("event_reminder", {}).get("dm_message", {}).get("en-US"))
-                logging.debug(f"[GuildEvents - event_reminder_cron] For event {event['event_id']}, initial members: {initial}, registered: {regs}, to remind: {to_remind}")
+                logging.debug(f"[GuildEvents - event_reminder_cron] For event {event['event_id']}, initial members: {initial}, registered: {registrations}, to remind: {to_remind}")
                 for member_id in to_remind:
                     member = guild.get_member(member_id)
                     if member:
@@ -1194,7 +1195,7 @@ class GuildEvents(commands.Cog):
 
         for mid in member_ids:
             try:
-                info = roster_data["membres"][str(mid)]
+                info = roster_data["members"][str(mid)]
             except KeyError:
                 logging.warning(f"[Guild_Events - GroupsMembersByClass] Member ID {mid} not found in roster.")
                 missing.append(mid)
@@ -1202,15 +1203,15 @@ class GuildEvents(commands.Cog):
 
             pseudo = info.get("pseudo", "Unknown")
             gs     = info.get("GS", "N/A")
-            armes  = info.get("armes", "")
-            mclass = info.get("classe", "Unknown")
+            weapons  = info.get("weapons", "")
+            member_class = info.get("class", "Unknown")
 
             emojis = " ".join(
                 WEAPON_EMOJIS.get(c.strip(), c.strip())
-                for c in armes.split("/") if c.strip()
+                for c in weapons.split("/") if c.strip()
             ) or "N/A"
 
-            classes.setdefault(mclass, []).append(f"{pseudo} {emojis} - GS: {gs}")
+            classes.setdefault(member_class, []).append(f"{pseudo} {emojis} - GS: {gs}")
 
         logging.info(f"[Guild_Events - GroupsMembersByClass] Buckets built – {sum(len(v) for v in classes.values())} "
                     f"entries, {len(missing)} missing.")
@@ -1254,7 +1255,7 @@ class GuildEvents(commands.Cog):
         used_members = set()
         
         def get_member_info(uid: int, tentative: bool = False):
-            info = roster_data["membres"].get(str(uid))
+            info = roster_data["members"].get(str(uid))
             if not info:
                 return None
             return {**info, "tentative": tentative, "user_id": uid}
@@ -1285,13 +1286,13 @@ class GuildEvents(commands.Cog):
             elif present_count == 5:
                 missing_member_id = [mid for mid in member_ids if mid not in present_members][0]
                 missing_member_info = get_member_info(missing_member_id)
-                target_class = missing_member_info["classe"] if missing_member_info else "Tank"
+                target_class = missing_member_info["class"] if missing_member_info else "Tank"
                 
                 available_members = [uid for uid in all_inscribed if uid not in used_members and uid not in member_ids]
                 replacement = None
                 for uid in available_members:
                     member_info = get_member_info(uid)
-                    if member_info and member_info["classe"] == target_class:
+                    if member_info and member_info["class"] == target_class:
                         replacement = uid
                         break
                 
@@ -1323,7 +1324,7 @@ class GuildEvents(commands.Cog):
             is_tentative = uid in tentative_ids
             member_info = get_member_info(uid, is_tentative)
             if member_info:
-                class_name = member_info["classe"]
+                class_name = member_info["class"]
                 if class_name in class_buckets:
                     class_buckets[class_name].append(member_info)
         
@@ -1408,7 +1409,7 @@ class GuildEvents(commands.Cog):
                     logging.info(f"[AssignGroupsWithStatics] Balanced group formed with {len(group)} members")
                 else:
                     for member in group:
-                        class_buckets[member["classe"]].append(member)
+                        class_buckets[member["class"]].append(member)
                     break
         
         all_remaining = tanks + healers + melee_dps + ranged_dps + remaining_flankers
@@ -1426,14 +1427,14 @@ class GuildEvents(commands.Cog):
                                    "Melee DPS", "Ranged DPS", "Flanker")}
 
         def _push(uid: int, tentative: bool):
-            info = roster_data["membres"].get(str(uid))
+            info = roster_data["members"].get(str(uid))
             if not info:
                 logging.warning(f"[Guild_Events - AssignGroups] UID {uid} missing from roster, skipped.")
                 return
             try:
-                buckets[info["classe"]].append({**info, "tentative": tentative})
+                buckets[info["class"]].append({**info, "tentative": tentative})
             except KeyError:
-                logging.error(f"[Guild_Events - AssignGroups] Unknown class '{info.get('classe')}' for UID {uid}.")
+                logging.error(f"[Guild_Events - AssignGroups] Unknown class '{info.get('class')}' for UID {uid}.")
 
         for uid in presence_ids:
             _push(uid, False)
@@ -1491,7 +1492,7 @@ class GuildEvents(commands.Cog):
             fill_order = ("Healer", "Tank", "Melee DPS", "Ranged DPS")
 
             def _need_role(g):
-                classes = [m["classe"] for m in g]
+                classes = [m["class"] for m in g]
                 if "Healer" not in classes and buckets["Healer"]:
                     return "Healer"
                 if "Tank" not in classes and buckets["Tank"]:
@@ -1537,6 +1538,8 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvent - Cron Create_Groups] No configuration found for guild {guild_id}")
             return
 
+        guild_lang = settings.get("guild_lang", "en-US")
+
         groups_channel = guild.get_channel(int(settings.get("groups_channel")))
         events_channel = guild.get_channel(int(settings.get("events_channel")))
         members_role_id = settings.get("members_role")
@@ -1551,36 +1554,36 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvent - Cron Create_Groups] Event not found for guild {guild_id} and event {event_id}")
             return
 
-        regs = event.get("registrations", {})
-        if isinstance(regs, str):
+        registrations = event.get("registrations", {})
+        if isinstance(registrations, str):
             try:
-                regs = json.loads(regs)
+                registrations = json.loads(registrations)
             except:
-                regs = {"presence": [], "tentative": [], "absence": []}
-        presence_ids  = regs.get("presence", [])
-        tentative_ids = regs.get("tentative", [])
+                registrations = {"presence": [], "tentative": [], "absence": []}
+        presence_ids  = registrations.get("presence", [])
+        tentative_ids = registrations.get("tentative", [])
 
         presence_count  = len(presence_ids)
         tentative_count = len(tentative_ids)
         event_link = f"https://discord.com/channels/{guild.id}/{events_channel.id}/{event_id}"
         header = (
             f"{mention_role}\n\n"
-            f"**__Évènement :__ {event['name']}**\n"
-            f"{event['event_date']} à {event['event_time']}\n"
-            f"Présents : {presence_count}\nTentatives : {tentative_count}\n\n"
-            f"[Voir l'Évènement et les inscriptions]({event_link})\n\n"
-            f"Groupes ci-dessous\n"
+            f"**__{GUILD_EVENTS['events_infos']['event_name'].get(guild_lang, 'Event')} :__ {event['name']}**\n"
+            f"{event['event_date']} {GUILD_EVENTS['events_infos']['time_at'].get(guild_lang, 'at')} {event['event_time']}\n"
+            f"{GUILD_EVENTS['events_infos']['present_count'].get(guild_lang, 'Present')} : {presence_count}\n{GUILD_EVENTS['events_infos']['attempt_count'].get(guild_lang, 'Attempts')} : {tentative_count}\n\n"
+            f"[{GUILD_EVENTS['events_infos']['view_event'].get(guild_lang, 'View Event and registrations')}]({event_link})\n\n"
+            f"{GUILD_EVENTS['events_infos']['groups_below'].get(guild_lang, 'Groups below')}\n"
         )
 
         try:
-            roster_data = {"membres": {}}
+            roster_data = {"members": {}}
             for member in guild.members:
                 md = self.guild_members_cache.get(guild_id, {}).get(member.id, {})
-                roster_data["membres"][str(member.id)] = {
+                roster_data["members"][str(member.id)] = {
                     "pseudo": member.display_name,
                     "GS": md.get("GS", "N/A"),
-                    "armes": md.get("armes", "N/A"),
-                    "classe": md.get("classe", "Unknown"),
+                    "weapons": md.get("weapons", "N/A"),
+                    "class": md.get("class", "Unknown"),
                 }
         except Exception as exc:
             logging.exception("[Guild_Events - CreateGroups] Failed to build roster.", exc_info=exc)
@@ -1600,16 +1603,17 @@ class GuildEvents(commands.Cog):
                                 color=discord.Color.blue())
                 lines = []
                 for m in grp:
-                    cls_emoji = CLASS_EMOJIS.get(m["classe"], "")
-                    armes_emoji = " ".join(
+                    cls_emoji = CLASS_EMOJIS.get(m["class"], "")
+                    weapons_emoji = " ".join(
                         WEAPON_EMOJIS.get(c.strip(), c.strip())
-                        for c in m["armes"].split("/") if c.strip()
+                        for c in m["weapons"].split("/") if c.strip()
                     )
                     if m.get("tentative"):
-                        lines.append(f"{cls_emoji} {armes_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
+                        lines.append(f"{cls_emoji} {weapons_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
                     else:
-                        lines.append(f"{cls_emoji} {armes_emoji} {m['pseudo']} ({m['GS']})")
-                e.description = "\n".join(lines) or "Aucun membre"
+                        lines.append(f"{cls_emoji} {weapons_emoji} {m['pseudo']} ({m['GS']})")
+                no_member_text = GUILD_EVENTS["events_infos"]["no_member"].get(guild_lang, "No member")
+                e.description = "\n".join(lines) or no_member_text
                 embeds.append(e)
 
             await groups_channel.send(content=header, embeds=embeds)
@@ -1743,7 +1747,7 @@ class GuildEvents(commands.Cog):
         if status.lower() == "confirmed":
             localized_status = GUILD_EVENTS["events_infos"]["status_confirmed"].get(guild_lang, GUILD_EVENTS["events_infos"]["status_confirmed"].get("en-US"))
         else:
-            localized_status = GUILD_EVENTS["events_infos"]["status_planified"].get(guild_lang, GUILD_EVENTS["events_infos"]["status_planified"].get("en-US"))
+            localized_status = GUILD_EVENTS["events_infos"]["status_planned"].get(guild_lang, GUILD_EVENTS["events_infos"]["status_planned"].get("en-US"))
         event_present = GUILD_EVENTS["events_infos"]["present"].get(guild_lang,GUILD_EVENTS["events_infos"]["present"].get("en-US"))
         event_attempt = GUILD_EVENTS["events_infos"]["attempt"].get(guild_lang,GUILD_EVENTS["events_infos"]["attempt"].get("en-US"))
         event_absence = GUILD_EVENTS["events_infos"]["absence"].get(guild_lang,GUILD_EVENTS["events_infos"]["absence"].get("en-US"))
@@ -1766,9 +1770,10 @@ class GuildEvents(commands.Cog):
         embed.add_field(name=GUILD_EVENTS["events_infos"]["status"].get(guild_lang, GUILD_EVENTS["events_infos"]["status"].get("en-US")), value=localized_status, inline=True)
         embed.add_field(name=GUILD_EVENTS["events_infos"]["dkp_v"].get(guild_lang, GUILD_EVENTS["events_infos"]["dkp_v"].get("en-US")), value=str(dkp_value), inline=True)
         embed.add_field(name=GUILD_EVENTS["events_infos"]["dkp_i"].get(guild_lang, GUILD_EVENTS["events_infos"]["dkp_i"].get("en-US")), value=str(dkp_ins), inline=True)
-        embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value="Aucun", inline=False)
-        embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value="Aucun", inline=False)
-        embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value="Aucun", inline=False)
+        none_text = GUILD_EVENTS["events_infos"]["none"].get(guild_lang, "None")
+        embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value=none_text, inline=False)
+        embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value=none_text, inline=False)
+        embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value=none_text, inline=False)
         conference_link = f"https://discord.com/channels/{guild.id}/{conference_channel.id}"
         embed.add_field(name=event_voice_channel, value=f"[🏹 WAR]({conference_link})", inline=False)
         embed.add_field(name=event_groups, value=event_auto_grouping, inline=False)
@@ -1783,7 +1788,7 @@ class GuildEvents(commands.Cog):
                 announcement = await events_channel.send(content=update_message, embed=embed)
             else:
                 announcement = await events_channel.send(embed=embed)
-            logging.debug(f"[GuildEvents - event_create] Message d'annonce envoyé: id={announcement.id} dans le salon {announcement.channel.id}")
+            logging.debug(f"[GuildEvents - event_create] Announcement message sent: id={announcement.id} in channel {announcement.channel.id}")
             message_link = f"https://discord.com/channels/{guild.id}/{announcement.channel.id}/{announcement.id}"
             embed.set_footer(text=f"Event ID = {announcement.id}")
             await announcement.edit(embed=embed)

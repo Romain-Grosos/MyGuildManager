@@ -81,7 +81,7 @@ class ProfileSetup(commands.Cog):
                    gc.forum_diplomats_channel,
                    gc.forum_recruitment_channel,
                    gc.external_recruitment_cat,
-                   gc.category_diplo,
+                   gc.category_diplomat,
                    gc.forum_members_channel,
                    gc.notifications_channel,
                    gs.guild_lang
@@ -99,7 +99,7 @@ class ProfileSetup(commands.Cog):
                     diplomats,
                     recruitment,
                     external_recruitment_cat,
-                    category_diplo,
+                    category_diplomat,
                     members,
                     notifications,
                     guild_lang,
@@ -110,7 +110,7 @@ class ProfileSetup(commands.Cog):
                     "forum_diplomats_channel": diplomats,
                     "forum_recruitment_channel": recruitment,
                     "external_recruitment_cat": external_recruitment_cat,
-                    "category_diplo": category_diplo,
+                    "category_diplomat": category_diplomat,
                     "forum_members_channel": members,
                     "notifications_channel": notifications,
                     "guild_lang": guild_lang,
@@ -255,8 +255,8 @@ class ProfileSetup(commands.Cog):
         try:
             existing_guild_names = []
             for channel in category_channel.channels:
-                if isinstance(channel, discord.TextChannel) and channel.name.startswith("diplo-"):
-                    channel_guild_name = channel.name.replace("diplo-", "").replace("-", " ").title()
+                if isinstance(channel, discord.TextChannel) and channel.name.startswith("diplomat-"):
+                    channel_guild_name = channel.name.replace("diplomat-", "").replace("-", " ").title()
                     existing_guild_names.append(channel_guild_name)
             
             if not existing_guild_names:
@@ -273,7 +273,7 @@ class ProfileSetup(commands.Cog):
             Examples:
             - Prompted "Guild War" vs existing "Guild Wars" -> return "Guild Wars"
             - Prompted "MGM" vs existing "MGM Guild" -> return "MGM Guild"
-            - Prompted "DarK Kights" vs existing "Dark Knights" -> return "Dark Knights"
+            - Prompted "DarK Knight" vs existing "Dark Knights" -> return "Dark Knights"
             Only return the guild name, nothing else."""
             
             try:
@@ -315,7 +315,7 @@ class ProfileSetup(commands.Cog):
             return (
                 guild_id,
                 user_id,
-                s.get("pseudo"),
+                s.get("nickname"),
                 s.get("locale"),
                 s.get("motif"),
                 s.get("friend_pseudo"),
@@ -324,8 +324,8 @@ class ProfileSetup(commands.Cog):
                 s.get("guild_acronym"),
                 s.get("gs"),
                 s.get("playtime"),
-                s.get("gametype"),
-                s.get("pseudo"),
+                s.get("game_mode"),
+                s.get("nickname"),
                 s.get("locale"),
                 s.get("motif"),
                 s.get("friend_pseudo"),
@@ -334,16 +334,16 @@ class ProfileSetup(commands.Cog):
                 s.get("guild_acronym"),
                 s.get("gs"),
                 s.get("playtime"),
-                s.get("gametype"),
+                s.get("game_mode"),
             )
 
         query = """
             INSERT INTO user_setup
-                (guild_id, user_id, pseudo, locale, motif, friend_pseudo, weapons, guild_name, guild_acronym, gs, playtime, gametype)
+                (guild_id, user_id, nickname, locale, motif, friend_pseudo, weapons, guild_name, guild_acronym, gs, playtime, game_mode)
             VALUES
                 (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
-                pseudo = %s, locale = %s, motif = %s, friend_pseudo = %s, weapons = %s, guild_name = %s, guild_acronym = %s, gs = %s, playtime = %s, gametype = %s
+                nickname = %s, locale = %s, motif = %s, friend_pseudo = %s, weapons = %s, guild_name = %s, guild_acronym = %s, gs = %s, playtime = %s, game_mode = %s
         """
 
         try:
@@ -375,11 +375,11 @@ class ProfileSetup(commands.Cog):
             motif = session.get("motif")
             logging.debug(f"[ProfileSetup] Motif for user {user_id}: {motif}")
             role_id = None
-            if motif == "diplomate":
+            if motif == "diplomat":
                 role_id = self.roles.get(guild_id, {}).get("diplomats")
-            elif motif == "amis":
+            elif motif == "friends":
                 role_id = self.roles.get(guild_id, {}).get("friends")
-            elif motif == "postulation":
+            elif motif == "application":
                 role_id = self.roles.get(guild_id, {}).get("applicant")
 
             await member.add_roles(guild.get_role(self.roles.get(guild.id, {}).get("config_ok")))
@@ -403,17 +403,17 @@ class ProfileSetup(commands.Cog):
             logging.error("[ProfileSetup] Error while assigning role in finalize_profile", exc_info=True)
 
         try:
-            pseudo = session.get("pseudo", "")
-            new_nickname = pseudo
-            if motif == "postulation":
+            nickname = session.get("nickname", "")
+            new_nickname = nickname
+            if motif == "application":
                 post_acronym = PROFILE_SETUP_DATA["acronym"].get(
                     session.get("locale", "en-US"),
                     PROFILE_SETUP_DATA["acronym"].get("en-US"),
                 )
-                new_nickname = f"{post_acronym} {pseudo}"
-            elif motif in ["diplomate", "allies"]:
+                new_nickname = f"{post_acronym} {nickname}"
+            elif motif in ["diplomat", "allies"]:
                 guild_acronym = session.get("guild_acronym", "")
-                new_nickname = f"[{guild_acronym}] {pseudo}"
+                new_nickname = f"[{guild_acronym}] {nickname}"
             await member.edit(nick=new_nickname)
             logging.debug(f"[ProfileSetup] Nickname updated for {member.name} to '{new_nickname}'")
         except discord.Forbidden:
@@ -427,11 +427,11 @@ class ProfileSetup(commands.Cog):
 
         channels_data = self.forum_channels.get(guild_id, {})
         channels = {
-            "membre": channels_data.get("forum_members_channel"),
-            "postulation": channels_data.get("forum_recruitment_channel"),
-            "diplomate": channels_data.get("forum_diplomats_channel"),
+            "member": channels_data.get("forum_members_channel"),
+            "application": channels_data.get("forum_recruitment_channel"),
+            "diplomat": channels_data.get("forum_diplomats_channel"),
             "allies": channels_data.get("forum_allies_channel"),
-            "amis": channels_data.get("forum_friends_channel"),
+            "friends": channels_data.get("forum_friends_channel"),
         }
         channel_id = channels.get(motif)
         if not channel_id:
@@ -448,15 +448,15 @@ class ProfileSetup(commands.Cog):
                 )
                 return
 
-            if motif == "membre":
+            if motif == "member":
                 embed_color = discord.Color.gold()
-            elif motif == "postulation":
+            elif motif == "application":
                 embed_color = discord.Color.purple()
-            elif motif == "diplomate":
+            elif motif == "diplomat":
                 embed_color = discord.Color.dark_blue()
             elif motif == "allies":
                 embed_color = discord.Color.green()
-            elif motif == "amis":
+            elif motif == "friends":
                 embed_color = discord.Color.blue()
             else:
                 embed_color = discord.Color.blue()
@@ -481,7 +481,7 @@ class ProfileSetup(commands.Cog):
                     self.locale,
                     PROFILE_SETUP_DATA["notification"]["fields"]["discord_name"].get("en-US"),
                 ),
-                value=f"`{session.get('pseudo', 'Unknown')}`",
+                value=f"`{session.get('nickname', 'Unknown')}`",
                 inline=False,
             )
             embed.set_footer(
@@ -490,7 +490,7 @@ class ProfileSetup(commands.Cog):
                 )
             )
 
-            if motif == "membre":
+            if motif == "member":
                 weapons = session.get("weapons", "N/A")
                 gs = session.get("gs", "N/A")
                 embed.add_field(
@@ -508,11 +508,11 @@ class ProfileSetup(commands.Cog):
                     value=f"`{gs}`",
                     inline=True,
                 )
-            elif motif == "postulation":
+            elif motif == "application":
                 weapons = session.get("weapons", "N/A")
                 gs = session.get("gs", "N/A")
                 playtime = session.get("playtime", "N/A")
-                gametype = session.get("gametype", "N/A")
+                game_mode = session.get("game_mode", "N/A")
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get(
                         self.locale,
@@ -537,15 +537,15 @@ class ProfileSetup(commands.Cog):
                     inline=False,
                 )
                 embed.add_field(
-                    name=PROFILE_SETUP_DATA["notification"]["fields"]["gametype"].get(
+                    name=PROFILE_SETUP_DATA["notification"]["fields"]["game_mode"].get(
                         self.locale,
-                        PROFILE_SETUP_DATA["notification"]["fields"]["gametype"].get("en-US"),
+                        PROFILE_SETUP_DATA["notification"]["fields"]["game_mode"].get("en-US"),
                     ),
-                    value=f"`{gametype}`",
+                    value=f"`{game_mode}`",
                     inline=False,
                 )
-                postulation_embed = embed.copy()
-            elif motif == "diplomate":
+                application_embed = embed.copy()
+            elif motif == "diplomat":
                 guild_name = session.get("guild_name", "N/A")
                 guild_acronym = session.get("guild_acronym", "N/A")
                 embed.add_field(
@@ -566,7 +566,7 @@ class ProfileSetup(commands.Cog):
                     value=f"`{guild_name}` ({guild_acronym})",
                     inline=False,
                 )
-            elif motif == "amis":
+            elif motif == "friends":
                 friend_pseudo = session.get("friend_pseudo", "N/A")
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["friend"].get(
@@ -592,16 +592,16 @@ class ProfileSetup(commands.Cog):
                 message = await channel.fetch_message(info["message"])
                 if not message.embeds:
                     logging.error(
-                        f"[ProfileSetup] ❌ No embed found in welcome message for {session.get('pseudo', 'Unknown')}."
+                        f"[ProfileSetup] ❌ No embed found in welcome message for {session.get('nickname', 'Unknown')}."
                     )
                     return
                 embed = message.embeds[0]
                 colors = {
-                    "membre": discord.Color.gold(),
-                    "postulation": discord.Color.purple(),
-                    "diplomate": discord.Color.dark_blue(),
+                    "member": discord.Color.gold(),
+                    "application": discord.Color.purple(),
+                    "diplomat": discord.Color.dark_blue(),
                     "allies": discord.Color.green(),
-                    "amis": discord.Color.blue(),
+                    "friends": discord.Color.blue(),
                 }
                 embed.color = colors.get(session.get("motif"), discord.Color.default())
                 tz_france = pytz.timezone("Europe/Paris")
@@ -609,20 +609,20 @@ class ProfileSetup(commands.Cog):
                 pending_text = PROFILE_SETUP_DATA["pending"].get(
                     guild_lang, PROFILE_SETUP_DATA["pending"].get("en-US")
                 )
-                if motif == "membre":
-                    template = PROFILE_SETUP_DATA["accepted_membre"].get(
-                        guild_lang, PROFILE_SETUP_DATA["accepted_membre"].get("en-US")
+                if motif == "member":
+                    template = PROFILE_SETUP_DATA["accepted_member"].get(
+                        guild_lang, PROFILE_SETUP_DATA["accepted_member"].get("en-US")
                     )
                     new_text = template.format(new_nickname=new_nickname, gs=gs, now=now)
-                elif motif == "postulation":
-                    template = PROFILE_SETUP_DATA["accepted_postulation"].get(
-                        guild_lang, PROFILE_SETUP_DATA["accepted_postulation"].get("en-US")
+                elif motif == "application":
+                    template = PROFILE_SETUP_DATA["accepted_application"].get(
+                        guild_lang, PROFILE_SETUP_DATA["accepted_application"].get("en-US")
                     )
                     new_text = template.format(new_nickname=new_nickname, gs=gs, now=now)
-                elif motif == "diplomate":
+                elif motif == "diplomat":
                     guild_name = session.get("guild_name", "Unknown")
-                    template = PROFILE_SETUP_DATA["accepted_diplomate"].get(
-                        guild_lang, PROFILE_SETUP_DATA["accepted_diplomate"].get("en-US")
+                    template = PROFILE_SETUP_DATA["accepted_diplomat"].get(
+                        guild_lang, PROFILE_SETUP_DATA["accepted_diplomat"].get("en-US")
                     )
                     new_text = template.format(new_nickname=new_nickname, guild_name=guild_name, now=now)
                 elif motif == "allies":
@@ -631,23 +631,23 @@ class ProfileSetup(commands.Cog):
                         guild_lang, PROFILE_SETUP_DATA["accepted_allies"].get("en-US")
                     )
                     new_text = template.format(new_nickname=new_nickname, guild_name=guild_name, now=now)
-                elif motif == "amis":
+                elif motif == "friends":
                     friend_pseudo = session.get("friend_pseudo", "Unknown")
-                    template = PROFILE_SETUP_DATA["accepted_amis"].get(
-                        guild_lang, PROFILE_SETUP_DATA["accepted_amis"].get("en-US")
+                    template = PROFILE_SETUP_DATA["accepted_friends"].get(
+                        guild_lang, PROFILE_SETUP_DATA["accepted_friends"].get("en-US")
                     )
                     new_text = template.format(new_nickname=new_nickname, friend_pseudo=friend_pseudo, now=now)
                 embed.description = embed.description.replace(pending_text, new_text)
                 await message.edit(embed=embed)
                 logging.debug(
-                    f"[ProfileSetup] Welcome message updated for {session.get('pseudo', 'Unknown')} with motif {motif}."
+                    f"[ProfileSetup] Welcome message updated for {session.get('nickname', 'Unknown')} with motif {motif}."
                 )
             except Exception as e:
                 logging.error(f"[ProfileSetup] ❌ Error updating welcome message: {e}", exc_info=True)
         else:
             logging.debug(f"[ProfileSetup] No welcome message cached for key {key}.")
 
-        if motif == "postulation":
+        if motif == "application":
             channels_data = self.forum_channels.get(guild_id, {})
             recruitment_category_id = channels_data.get("external_recruitment_cat")
             if not recruitment_category_id:
@@ -691,7 +691,7 @@ class ProfileSetup(commands.Cog):
                         )
                         await new_channel.send(
                             content="@everyone",
-                            embed=postulation_embed,
+                            embed=application_embed,
                             allowed_mentions=discord.AllowedMentions(everyone=True)
                         )
                         logging.info(
@@ -702,9 +702,9 @@ class ProfileSetup(commands.Cog):
                             f"[ProfileSetup] Error creating individual channel for {member.display_name}: {e}"
                         )
 
-        elif motif == "diplomate":
+        elif motif == "diplomat":
             channels_data = self.forum_channels.get(guild_id, {})
-            diplomats_category_id = channels_data.get("category_diplo")
+            diplomats_category_id = channels_data.get("category_diplomat")
             if not diplomats_category_id:
                 logging.error(
                     "[ProfileSetup] Missing diplomacy category ID. Diplomat channel creation aborted."
@@ -762,12 +762,12 @@ class ProfileSetup(commands.Cog):
                                 existing_diplomat=existing_members[0].mention
                             )
                             
-                            diplomate_embed = embed.copy()
+                            diplomat_embed = embed.copy()
                             
                             view = self.DiplomatValidationView(member, existing_channel, guild_lang, guild_name)
                             message = await existing_channel.send(
                                 f"@everyone\n\n{alert_text}",
-                                embed=diplomate_embed,
+                                embed=diplomat_embed,
                                 view=view,
                                 allowed_mentions=discord.AllowedMentions(everyone=True, users=True)
                             )
@@ -808,9 +808,9 @@ class ProfileSetup(commands.Cog):
                             )
                             await existing_channel.edit(overwrites=overwrites)
                             
-                            diplomate_embed = embed.copy()
+                            diplomat_embed = embed.copy()
                             await existing_channel.send(
-                                embed=diplomate_embed,
+                                embed=diplomat_embed,
                                 allowed_mentions=discord.AllowedMentions(everyone=False)
                             )
                             
@@ -818,7 +818,7 @@ class ProfileSetup(commands.Cog):
                                 f"[ProfileSetup] Diplomat {member.display_name} added to existing channel for guild '{guild_name}'"
                             )
                     else:
-                        channel_name = f"diplo-{normalized_guild_name}"
+                        channel_name = f"diplomat-{normalized_guild_name}"
                         overwrites = {guild.default_role: discord.PermissionOverwrite(view_channel=False)}
                         
                         diplomat_role_id = self.roles.get(guild_id, {}).get("diplomats")
@@ -851,9 +851,9 @@ class ProfileSetup(commands.Cog):
                                 overwrites=overwrites,
                             )
                             
-                            diplomate_embed = embed.copy()
+                            diplomat_embed = embed.copy()
                             await new_channel.send(
-                                embed=diplomate_embed,
+                                embed=diplomat_embed,
                                 allowed_mentions=discord.AllowedMentions(everyone=False)
                             )
                             
@@ -865,9 +865,9 @@ class ProfileSetup(commands.Cog):
                                 f"[ProfileSetup] Error creating diplomat channel for guild '{guild_name}': {e}"
                             )
 
-        guildmembers_cog = self.bot.get_cog("GuildMembers")
-        if guildmembers_cog:
-            await guildmembers_cog.load_user_setup_members()
+        guild_members_cog = self.bot.get_cog("GuildMembers")
+        if guild_members_cog:
+            await guild_members_cog.load_user_setup_members()
 
     class LangButton(discord.ui.Button):
         def __init__(self, locale: str):
@@ -947,15 +947,15 @@ class ProfileSetup(commands.Cog):
                 f"[ProfileSetup] Initializing QuestionsSelect modal for guild_id={guild_id}, motif={motif}, locale={locale}"
             )
 
-            self.pseudo = discord.ui.InputText(
-                label=PROFILE_SETUP_DATA["pseudo_select"].get(locale, PROFILE_SETUP_DATA["pseudo_select"].get("en-US")),
+            self.nickname = discord.ui.InputText(
+                label=PROFILE_SETUP_DATA["nickname_select"].get(locale, PROFILE_SETUP_DATA["nickname_select"].get("en-US")),
                 min_length=3,
                 max_length=16,
                 required=True,
             )
-            self.add_item(self.pseudo)
+            self.add_item(self.nickname)
 
-            if motif in ["diplomate", "allies"]:
+            if motif in ["diplomat", "allies"]:
                 self.guild_name = discord.ui.InputText(
                     label=PROFILE_SETUP_DATA["guild_select"].get(locale, PROFILE_SETUP_DATA["guild_select"].get("en-US")),
                     min_length=3,
@@ -972,7 +972,7 @@ class ProfileSetup(commands.Cog):
                 )
                 self.add_item(self.guild_acronym)
 
-            if motif == "amis":
+            if motif == "friends":
                 self.friend_pseudo = discord.ui.InputText(
                     label=PROFILE_SETUP_DATA["friend_pseudo"].get(locale, PROFILE_SETUP_DATA["friend_pseudo"].get("en-US")),
                     min_length=3,
@@ -981,7 +981,7 @@ class ProfileSetup(commands.Cog):
                 )
                 self.add_item(self.friend_pseudo)
 
-            if motif in ["postulation", "membre"]:
+            if motif in ["application", "member"]:
                 self.weapons = discord.ui.InputText(
                     label=PROFILE_SETUP_DATA["weapons_select"].get(locale, PROFILE_SETUP_DATA["weapons_select"].get("en-US")),
                     required=True,
@@ -997,13 +997,13 @@ class ProfileSetup(commands.Cog):
                 )
                 self.add_item(self.gs)
 
-            if motif == "postulation":
-                self.gametype = discord.ui.InputText(
-                    label=PROFILE_SETUP_DATA["gametype_select"].get(locale, PROFILE_SETUP_DATA["gametype_select"].get("en-US")),
+            if motif == "application":
+                self.game_mode = discord.ui.InputText(
+                    label=PROFILE_SETUP_DATA["game_mode_select"].get(locale, PROFILE_SETUP_DATA["game_mode_select"].get("en-US")),
                     required=True,
                     placeholder="PvE / PvP / PvE + PvP",
                 )
-                self.add_item(self.gametype)
+                self.add_item(self.game_mode)
 
                 self.playtime = discord.ui.InputText(
                     label=PROFILE_SETUP_DATA["playtime_select"].get(locale, PROFILE_SETUP_DATA["playtime_select"].get("en-US")),
@@ -1024,7 +1024,7 @@ class ProfileSetup(commands.Cog):
                 user_id = interaction.user.id
                 session = await cog.load_session(guild_id, user_id)
                 logging.debug(f"[ProfileSetup] Session before update: {session}")
-                session["pseudo"] = self.pseudo.value
+                session["nickname"] = self.nickname.value
                 if hasattr(self, "guild_name"):
                     session["guild_name"] = self.guild_name.value
                     session["guild_acronym"] = self.guild_acronym.value
@@ -1041,9 +1041,9 @@ class ProfileSetup(commands.Cog):
                         weapons_clean = weapons_input
                     session["weapons"] = weapons_clean[:32]
                     session["gs"] = self.gs.value
-                if hasattr(self, "gametype"):
+                if hasattr(self, "game_mode"):
                     raw_playtime = self.playtime.value.strip()
-                    session["gametype"] = self.gametype.value
+                    session["game_mode"] = self.game_mode.value
                     session["playtime"] = raw_playtime[:MAX_PLAYTIME_LEN]
                     if len(raw_playtime) > MAX_PLAYTIME_LEN:
                         logging.warning(
@@ -1139,7 +1139,10 @@ class ProfileSetup(commands.Cog):
                     self.guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["validation_success"].get("en-US")
                 ).format(diplomat_name=self.member.display_name)
                 
-                validation_by_text = f"\n👤 Validé par : {interaction.user.mention}"
+                validated_by_template = PROFILE_SETUP_DATA["anti_espionage"]["validated_by"].get(
+                    self.guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["validated_by"].get("en-US")
+                )
+                validation_by_text = f"\n👤 {validated_by_template.format(user=interaction.user.mention)}"
                 full_message = success_text + validation_by_text
                 
                 await interaction.response.send_message(full_message, view=None)

@@ -239,9 +239,9 @@
                 }
             }
         },
-        "config_effectifs": {
+        "config_roster": {
             "name": {
-                "en-US": "config_effectifs",
+                "en-US": "config_roster",
                 "fr": "config_effectifs",
                 "es-ES": "config_efectivos",
                 "de": "config_besetzung",
@@ -1534,7 +1534,7 @@
             "de": "Profilkonfiguration",
             "it": "Configurazione del tuo profilo"
         },
-        "pseudo_select": {
+        "nickname_select": {
             "en-US": "👤 Enter your in-game username",
             "fr": "👤 Entre ton pseudo en jeu", 
             "es-ES": "👤 Ingresa tu nombre de usuario en el juego",
@@ -1576,7 +1576,7 @@
             "de": "🚀 Gib dein GS ein",
             "it": "🚀 Inserisci il tuo GS"
         },
-        "gametype_select": {
+        "game_mode_select": {
             "en-US": "🎮 Choose your gameplay type",
             "fr": "🎮 Choisis ton type de gameplay",
             "es-ES": "🎮 Elige tu tipo de jugabilidad",
@@ -1641,7 +1641,7 @@
                     "de": "⏳ Spielzeit",
                     "it": "⏳ Tempo di gioco"
                 },
-                "gametype": {
+                "game_mode": {
                     "en-US": "⚖️ Gameplay Type",
                     "fr": "⚖️ Type de joueur",
                     "es-ES": "⚖️ Tipo de juego",
@@ -1692,21 +1692,21 @@
             "de": "🚀 Ausstehende Konfiguration...",
             "it": "🚀 In attesa di configurazione..."
         },
-        "accepted_membre": {
+        "accepted_member": {
             "en-US": "🔹 **Confirmed Member:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Confirmed on {now}**",
             "fr": "🔹 **Membre confirmé :** {new_nickname}\n🎯 **GS :** {gs}\n📆 **Confirmé le {now}**",
             "es-ES": "🔹 **Miembro confirmado:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Confirmado el {now}**",
             "de": "🔹 **Bestätigtes Mitglied:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Bestätigt am {now}**",
             "it": "🔹 **Membro confermato:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Confermato il {now}**"
         },
-        "accepted_postulation": {
+        "accepted_application": {
             "en-US": "🛡️ **New Application:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Application confirmed on {now}**",
             "fr": "🛡️ **Nouvelle postulation :** {new_nickname}\n🎯 **GS :** {gs}\n📆 **Postulation confirmée le {now}**",
             "es-ES": "🛡️ **Nueva postulación:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Postulación confirmada el {now}**",
             "de": "🛡️ **Neue Bewerbung:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Bewerbung bestätigt am {now}**",
             "it": "🛡️ **Nuova candidatura:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Candidatura confermata il {now}**"
         },
-        "accepted_diplomate": {
+        "accepted_diplomat": {
             "en-US": "🤝 **Confirmed Diplomat:** {new_nickname}\n🏰 **Guild:** {guild_name}\n📆 **Confirmed on {now}**",
             "fr": "🤝 **Diplomate confirmé :** {new_nickname}\n🏰 **Guilde :** {guild_name}\n📆 **Confirmé le {now}**",
             "es-ES": "🤝 **Diplomático confirmado:** {new_nickname}\n🏰 **Gremio:** {guild_name}\n📆 **Confirmado el {now}**",
@@ -1720,7 +1720,7 @@
             "de": "🏰 **Bestätigter Verbündeter:** {new_nickname}\n🏰 **Gilde:** {guild_name}\n📆 **Bestätigt am {now}**",
             "it": "🏰 **Alleato confermato:** {new_nickname}\n🏰 **Gilda:** {guild_name}\n📆 **Confermato il {now}**"
         },
-        "accepted_amis": {
+        "accepted_friends": {
             "en-US": "🎭 **Confirmed Friend:** {new_nickname}\n👤 **Recommended by:** {friend_pseudo}\n📆 **Confirmed on {now}**",
             "fr": "🎭 **Ami confirmé :** {new_nickname}\n👤 **Recommandé par :** {friend_pseudo}\n📆 **Confirmé le {now}**",
             "es-ES": "🎭 **Amigo confirmado:** {new_nickname}\n👤 **Recomendado por:** {friend_pseudo}\n📆 **Confirmado el {now}**",
@@ -1783,6 +1783,13 @@
                 "es-ES": "❌ No tienes permisos para validar este diplomático.",
                 "de": "❌ Sie haben keine Berechtigung, diesen Diplomaten zu validieren.",
                 "it": "❌ Non hai i permessi per convalidare questo diplomatico."
+            },
+            "validated_by": {
+                "en-US": "Validated by: {user}",
+                "fr": "Validé par : {user}",
+                "es-ES": "Validado por: {user}",
+                "de": "Validiert von: {user}",
+                "it": "Convalidato da: {user}"
             }
         }
     },
@@ -1824,11 +1831,11 @@
                 "it": "❌ Il punteggio equipaggiamento deve essere un numero positivo."
             },
             "updated": {
-                "en-US": "✅ {pseudo}, your gear score has been updated to {value}.",
-                "fr": "✅ {pseudo}, votre score d'équipement a été mis à jour à {value}.",
-                "es-ES": "✅ {pseudo}, tu puntuación de equipo ha sido actualizada a {value}.",
-                "de": "✅ {pseudo}, dein Ausrüstungswert wurde auf {value} aktualisiert.",
-                "it": "✅ {pseudo}, il tuo punteggio equipaggiamento è stato aggiornato a {value}."
+                "en-US": "✅ {username}, your gear score has been updated to {value}.",
+                "fr": "✅ {username}, votre score d'équipement a été mis à jour à {value}.",
+                "es-ES": "✅ {username}, tu puntuación de equipo ha sido actualizada a {value}.",
+                "de": "✅ {username}, dein Ausrüstungswert wurde auf {value} aktualisiert.",
+                "it": "✅ {username}, il tuo punteggio equipaggiamento è stato aggiornato a {value}."
             }
         },
         "weapons": {
@@ -1875,11 +1882,11 @@
                 "it": "❌ Le armi inserite non sono valide. Inserisci armi valide."
             },
             "updated": {
-                "en-US": "✅ {pseudo}, your weapons have been updated to {armes_str}.",
-                "fr": "✅ {pseudo}, vos armes ont été mises à jour en {armes_str}.",
-                "es-ES": "✅ {pseudo}, tus armas han sido actualizadas a {armes_str}.",
-                "de": "✅ {pseudo}, deine Waffen wurden auf {armes_str} aktualisiert.",
-                "it": "✅ {pseudo}, le tue armi sono state aggiornate a {armes_str}."
+                "en-US": "✅ {username}, your weapons have been updated to {weapons_str}.",
+                "fr": "✅ {username}, vos armes ont été mises à jour en {weapons_str}.",
+                "es-ES": "✅ {username}, tus armas han sido actualizadas a {weapons_str}.",
+                "de": "✅ {username}, deine Waffen wurden auf {weapons_str} aktualisiert.",
+                "it": "✅ {username}, le tue armi sono state aggiornate a {weapons_str}."
             }
         },
         "build": {
@@ -1919,14 +1926,14 @@
                 "it": "❌ L'URL della build deve iniziare con https://questlog.gg/ o https://maxroll.gg/"
             },
             "updated": {
-                "en-US": "✅ {pseudo}, your build has been updated.",
-                "fr": "✅ {pseudo}, votre build a été mis à jour.",
-                "es-ES": "✅ {pseudo}, tu build ha sido actualizada.",
-                "de": "✅ {pseudo}, dein Build wurde aktualisiert.",
-                "it": "✅ {pseudo}, la tua build è stata aggiornata."
+                "en-US": "✅ {username}, your build has been updated.",
+                "fr": "✅ {username}, votre build a été mis à jour.",
+                "es-ES": "✅ {username}, tu build ha sido actualizada.",
+                "de": "✅ {username}, dein Build wurde aktualisiert.",
+                "it": "✅ {username}, la tua build è stata aggiornata."
             }
         },
-        "pseudo": {
+        "username": {
             "name": {
                 "en-US": "username",
                 "fr": "pseudo",
@@ -1956,11 +1963,11 @@
                 "it": "❌ Il tuo profilo non è ancora registrato nell'elenco dei membri."
             },
             "updated": {
-                "en-US": "✅ Your username has been updated to {pseudo}.",
-                "fr": "✅ Votre pseudo a été mis à jour en {pseudo}.",
-                "es-ES": "✅ Tu nombre de usuario ha sido actualizado a {pseudo}.",
-                "de": "✅ Dein Benutzername wurde auf {pseudo} aktualisiert.",
-                "it": "✅ Il tuo nome utente è stato aggiornato a {pseudo}."
+                "en-US": "✅ Your username has been updated to {username}.",
+                "fr": "✅ Votre pseudo a été mis à jour en {username}.",
+                "es-ES": "✅ Tu nombre de usuario ha sido actualizado a {username}.",
+                "de": "✅ Dein Benutzername wurde auf {username} aktualisiert.",
+                "it": "✅ Il tuo nome utente è stato aggiornato a {username}."
             }
         },
         "show_build": {
@@ -1986,18 +1993,18 @@
                 "it": "Nome utente del membro desiderato."
             },
             "not_found": {
-                "en-US": "❌ No member found with the username {pseudo}.",
-                "fr": "❌ Aucun membre trouvé avec le pseudo {pseudo}.",
-                "es-ES": "❌ Ningún miembro encontrado con el nombre de usuario {pseudo}.",
-                "de": "❌ Kein Mitglied mit dem Benutzernamen {pseudo} gefunden.",
-                "it": "❌ Nessun membro trovato con il nome utente {pseudo}."
+                "en-US": "❌ No member found with the username {username}.",
+                "fr": "❌ Aucun membre trouvé avec le pseudo {username}.",
+                "es-ES": "❌ Ningún miembro encontrado con el nombre de usuario {username}.",
+                "de": "❌ Kein Mitglied mit dem Benutzernamen {username} gefunden.",
+                "it": "❌ Nessun membro trovato con il nome utente {username}."
             },
             "no_build": {
-                "en-US": "❌ {pseudo} has not yet provided their build.",
-                "fr": "❌ {pseudo} n'a pas encore renseigné son build.",
-                "es-ES": "❌ {pseudo} aún no ha proporcionado su build.",
-                "de": "❌ {pseudo} hat sein Build noch nicht angegeben.",
-                "it": "❌ {pseudo} non ha ancora inserito il suo build."
+                "en-US": "❌ {username} has not yet provided their build.",
+                "fr": "❌ {username} n'a pas encore renseigné son build.",
+                "es-ES": "❌ {username} aún no ha proporcionado su build.",
+                "de": "❌ {username} hat sein Build noch nicht angegeben.",
+                "it": "❌ {username} non ha ancora inserito il suo build."
             },
             "build_sent": {
                 "en-US": "📜 **Build of {member}**\n🔗 {build_url}",
@@ -2097,7 +2104,7 @@
         },
         "table": {
             "header": {
-                "en-US": ["Pseudo", "Lang", "GS", "Build", "Weapons", "Class", "DKP", "%Sign", "%Pres"],
+                "en-US": ["Username", "Lang", "GS", "Build", "Weapons", "Class", "DKP", "%Reg", "%Att"],
                 "fr": ["Pseudo", "Langue", "GS", "Build", "Armes", "Classe", "DKP", "%Insc", "%Prés"],
                 "es-ES": ["Apodo", "Idioma", "GS", "Build", "Armas", "Clase", "DKP", "%Reg", "%Pres"],
                 "de": ["Spitzname", "Spr.", "GS", "Build", "Waffen", "Klasse", "DKP", "%Anm", "%Anw"],
@@ -2118,7 +2125,7 @@
                 "it": ["Tank", "DPS Corpo a Corpo", "DPS a Distanza", "Guaritore", "Fiancheggiatore"]
             }
         },
-        "post_recrut": {
+        "post_recruitment": {
             "name": {
                 "en-US": "📢 Recruitment",
                 "fr": "📢 Recrutement",
@@ -2192,7 +2199,7 @@
                 "it": "Fiancheggiatore"
             }
         },
-        "change_langue": {
+        "change_language": {
             "name": {
                 "en-US": "change_language",
                 "fr": "change_langue",
@@ -2208,7 +2215,7 @@
                 "it": "Cambia la tua lingua nell'elenco dei membri della gilda"
             },
             "options": {
-                "langue": {
+                "language": {
                     "description": {
                         "en-US": "Choose your preferred language",
                         "fr": "Choisissez votre langue préférée",
@@ -2315,7 +2322,7 @@
                 "de": "Um den Status des Ereignisses zu sehen, folge dem untenstehenden Link.\nVergiss nicht, zu reagieren, um dich anzumelden!\n\n➡️ {link}",
                 "it": "Per vedere lo stato dell'evento, segui il link qui sotto.\nNon dimenticare di reagire per iscriverti!\n\n➡️ {link}"
             },
-            "status_planified": {
+            "status_planned": {
                 "en-US": "Planned",
                 "fr": "Planifié",
                 "es-ES": "Planificado",
@@ -2519,6 +2526,69 @@
                 "es-ES": "❌ Error al confirmar el evento: {error}",
                 "de": "❌ Fehler bei der Bestätigung des Ereignisses: {error}",
                 "it": "❌ Errore durante la conferma dell'evento: {error}"
+            },
+            "event_name": {
+                "en-US": "Event",
+                "fr": "Évènement",
+                "es-ES": "Evento",
+                "de": "Ereignis",
+                "it": "Evento"
+            },
+            "see_event": {
+                "en-US": "See the Event",
+                "fr": "Voir l'Évènement",
+                "es-ES": "Ver el Evento",
+                "de": "Ereignis anzeigen",
+                "it": "Vedi l'Evento"
+            },
+            "groups_below": {
+                "en-US": "Groups below",
+                "fr": "Groupes ci-dessous",
+                "es-ES": "Grupos abajo",
+                "de": "Gruppen unten",
+                "it": "Gruppi qui sotto"
+            },
+            "no_member": {
+                "en-US": "No member",
+                "fr": "Aucun membre",
+                "es-ES": "Ningún miembro",
+                "de": "Kein Mitglied",
+                "it": "Nessun membro"
+            },
+            "announcement_sent": {
+                "en-US": "Announcement message sent",
+                "fr": "Message d'annonce envoyé",
+                "es-ES": "Mensaje de anuncio enviado",
+                "de": "Ankündigungsnachricht gesendet",
+                "it": "Messaggio di annuncio inviato"
+            },
+            "registration_decode_error": {
+                "en-US": "Error during registration decoding",
+                "fr": "Erreur lors du décodage de registrations",
+                "es-ES": "Error durante la decodificación de registros",
+                "de": "Fehler beim Dekodieren der Registrierungen",
+                "it": "Errore durante la decodifica delle registrazioni"
+            },
+            "at": {
+                "en-US": "at",
+                "fr": "à",
+                "es-ES": "a las",
+                "de": "um",
+                "it": "alle"
+            },
+            "present_count": {
+                "en-US": "Present",
+                "fr": "Présents",
+                "es-ES": "Presentes",
+                "de": "Anwesend",
+                "it": "Presenti"
+            },
+            "attempt_count": {
+                "en-US": "Attempts",
+                "fr": "Tentatives",
+                "es-ES": "Intentos",
+                "de": "Versuche",
+                "it": "Tentativi"
             }
         },
         "event_cancel": {
