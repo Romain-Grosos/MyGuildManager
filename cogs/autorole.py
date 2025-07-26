@@ -38,6 +38,7 @@ class AutoRole(commands.Cog):
         self.guild_langs: Dict[int, str] = {}
         self._profile_setup_cog = None
         self._recent_reactions: Dict[Tuple[int, int, int], float] = {}
+        self._reaction_counts: Dict[Tuple[int, int, int], int] = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -111,15 +112,27 @@ class AutoRole(commands.Cog):
         key = (guild_id, user_id, message_id)
         current_time = time.time()
         
+        self._reaction_counts[key] = self._reaction_counts.get(key, 0) + 1
+        
+        cutoff = current_time - 3600
+        keys_to_remove = []
+        for k, timestamp in self._recent_reactions.items():
+            if timestamp <= cutoff:
+                keys_to_remove.append(k)
+        
+        for k in keys_to_remove:
+            self._recent_reactions.pop(k, None)
+            self._reaction_counts.pop(k, None)
+        
+        if self._reaction_counts[key] <= 2:
+            self._recent_reactions[key] = current_time
+            return True
+        
         if key in self._recent_reactions:
             if current_time - self._recent_reactions[key] < 5.0:
                 return False
         
         self._recent_reactions[key] = current_time
-
-        cutoff = current_time - 3600
-        self._recent_reactions = {k: v for k, v in self._recent_reactions.items() if v > cutoff}
-        
         return True
 
     def _get_profile_setup_cog(self):
