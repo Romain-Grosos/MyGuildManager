@@ -12,8 +12,8 @@ class DynamicVoice(commands.Cog):
         self.create_room_channels = {}
         self.user_channels = {}
         self.max_channels_per_user = 5
-        self.user_cooldowns = {}
-        self.cooldown_seconds = 5
+        self.user_cool_downs = {}
+        self.cool_down_seconds = 5
 
     def sanitize_channel_name(self, name: str) -> str:
         name = re.sub(r'[^\w\s-]', '', name)[:100]
@@ -66,7 +66,7 @@ class DynamicVoice(commands.Cog):
         logging.debug(f"[DynamicVoice] Monitored channels for guild {guild.id}: {monitored_channels}")
         
         now = time.time()
-        self.user_cooldowns = {uid: ts for uid, ts in self.user_cooldowns.items() if now - ts < 3600}
+        self.user_cool_downs = {uid: ts for uid, ts in self.user_cool_downs.items() if now - ts < 3600}
 
         if after.channel and after.channel.id in monitored_channels:
             safe_name = self.get_safe_username(member)
@@ -78,11 +78,11 @@ class DynamicVoice(commands.Cog):
                 return
             
             now = time.time()
-            if member.id in self.user_cooldowns:
-                if now - self.user_cooldowns[member.id] < self.cooldown_seconds:
-                    logging.warning(f"[DynamicVoice] {safe_name} is on cooldown")
+            if member.id in self.user_cool_downs:
+                if now - self.user_cool_downs[member.id] < self.cool_down_seconds:
+                    logging.warning(f"[DynamicVoice] {safe_name} is on cool down")
                     return
-            self.user_cooldowns[member.id] = now
+            self.user_cool_downs[member.id] = now
 
             query = """
             SELECT gs.guild_lang, gr.members, gr.absent_members

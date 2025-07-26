@@ -195,10 +195,10 @@ async def run_bot():
         else:
             break
 
-def _graceful_exit(signame):
-    logging.warning("[Bot] Signal %s received — closing the bot", signame)
-    coro = bot.close()
-    asyncio.create_task(coro)
+def _graceful_exit(sig_name):
+    logging.warning("[Bot] Signal %s received — closing the bot", sig_name)
+    coroutine = bot.close()
+    asyncio.create_task(coroutine)
 
 if __name__ == "__main__":
     for sig in (signal.SIGTERM, signal.SIGINT):

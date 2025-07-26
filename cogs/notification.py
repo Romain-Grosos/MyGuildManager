@@ -15,7 +15,7 @@ def create_embed(title: str, description: str, color: discord.Color, member: dis
 class Notification(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self.notif_channels = {}
+        self.notify_channels = {}
         self.member_events = {}
         self.max_events_per_minute = 10
         self.notification_locks = {}
@@ -82,19 +82,19 @@ class Notification(commands.Cog):
         """
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.notif_channels = {}
+            self.notify_channels = {}
             for row in rows:
                 guild_id, notif_channel_id, guild_lang = row
-                self.notif_channels[guild_id] = {
+                self.notify_channels[guild_id] = {
                     "notif_channel": notif_channel_id,
                     "guild_lang": guild_lang
                 }
-            logging.debug(f"[NotificationManager] Notification information loaded: {self.notif_channels}")
+            logging.debug(f"[NotificationManager] Notification information loaded: {self.notify_channels}")
         except Exception as e:
             logging.error(f"[NotificationManager] Error loading notification information: {e}")
 
     async def get_guild_lang(self, guild: discord.Guild) -> str:
-        info = self.notif_channels.get(guild.id)
+        info = self.notify_channels.get(guild.id)
         if info and info.get("guild_lang"):
             return info["guild_lang"]
         return "en-US"
@@ -114,7 +114,7 @@ class Notification(commands.Cog):
                 return
             
             try:
-                info = self.notif_channels.get(guild.id)
+                info = self.notify_channels.get(guild.id)
                 if info and info.get("notif_channel"):
                     channel = await self.get_safe_channel(info["notif_channel"])
                     if not channel:
@@ -141,12 +141,12 @@ class Notification(commands.Cog):
                             await self.bot.run_db_query(insert_query, (guild.id, member.id, channel.id, msg.id), commit=True)
                             logging.debug(f"[NotificationManager] Welcome message saved for {safe_user} (ID: {msg.id})")
                             
-                            autorole_cog = self.bot.get_cog("AutoRole")
-                            if autorole_cog:
-                                await autorole_cog.load_welcome_messages_cache()
-                            profilesetup_cog = self.bot.get_cog("ProfileSetup")
-                            if profilesetup_cog:
-                                await profilesetup_cog.load_welcome_messages_cache()
+                            auto_role_cog = self.bot.get_cog("AutoRole")
+                            if auto_role_cog:
+                                await auto_role_cog.load_welcome_messages_cache()
+                            profile_setup_cog = self.bot.get_cog("ProfileSetup")
+                            if profile_setup_cog:
+                                await profile_setup_cog.load_welcome_messages_cache()
                         except Exception as e:
                             logging.error(f"[NotificationManager] Error saving welcome message to DB: {e}", exc_info=True)
                     else:
@@ -208,7 +208,7 @@ class Notification(commands.Cog):
                 except Exception as e:
                     logging.error(f"[NotificationManager] Error cleaning up DB records for {safe_user}: {e}", exc_info=True)
             else:
-                info = self.notif_channels.get(guild.id)
+                info = self.notify_channels.get(guild.id)
                 if info and info.get("notif_channel"):
                     channel = await self.get_safe_channel(info["notif_channel"])
                     if channel:

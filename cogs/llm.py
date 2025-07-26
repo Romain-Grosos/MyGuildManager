@@ -70,7 +70,7 @@ def query_AI(prompt: str, model: str = "gpt-4o") -> str:
 
         "Your core responsibilities include:\n"
         "  • **Bot Functionality**: Explaining how the bot commands work, such as:\n"
-        "       - **/weapons arme1 arme2**: Accepts two weapon codes. The available codes are:\n"
+        "       - **/weapons weapon1 weapon2**: Accepts two weapon codes. The available codes are:\n"
         "            • B = longbow\n"
         "            • S = staff\n"
         "            • DG = daggers\n"
@@ -192,7 +192,7 @@ class LLMInteraction(commands.Cog):
             if codes:
                 return "/".join(dict.fromkeys(codes))[:32]
         except Exception as e:
-            logging.error(f"[LLM Interaction] AI normalisation failed: {e}", exc_info=True)
+            logging.error(f"[LLM Interaction] AI normalization failed: {e}", exc_info=True)
         codes = []
         for token in re.split(r"[ ,;/|]+", raw.lower()):
             for k, v in _FALLBACK.items():

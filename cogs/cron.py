@@ -38,10 +38,10 @@ class Cron(commands.Cog):
         self._last_execution[task_key] = current_time
         return True
     
-    async def _execute_with_monitoring(self, task_name: str, coro, *args, **kwargs):
+    async def _execute_with_monitoring(self, task_name: str, coroutine, *args, **kwargs):
         start_time = time.time()
         try:
-            await coro(*args, **kwargs)
+            await coroutine(*args, **kwargs)
             self._task_metrics[task_name]['success'] += 1
             execution_time = int((time.time() - start_time) * 1000)
             self._task_metrics[task_name]['total_time'] += execution_time
@@ -72,7 +72,7 @@ class Cron(commands.Cog):
                     if contracts:
                         await self._execute_with_monitoring(
                             'contracts', 
-                            contracts.contrat_delete_cron
+                            contracts.contract_delete_cron
                         )
 
         if now in {"05:00", "11:00", "17:00", "23:00"} and self._should_execute('roster', now):

@@ -348,7 +348,7 @@ class Contract(commands.Cog):
         description_localizations=CONTRACT_DATA.get("command", {}).get("description", {})
     )
     @commands.has_permissions(manage_messages=True)
-    async def contrat(self, ctx: discord.ApplicationContext):
+    async def contract(self, ctx: discord.ApplicationContext):
         if not ctx.guild:
             await ctx.respond("This command can only be used in a guild.", ephemeral=True)
             return
@@ -386,7 +386,7 @@ class Contract(commands.Cog):
         description_localizations=CONTRACT_DATA.get("command_delete", {}).get("description", {})
     )
     @commands.has_permissions(manage_messages=True)
-    async def contrat_delete(self, ctx: discord.ApplicationContext):
+    async def contract_delete(self, ctx: discord.ApplicationContext):
         try:
             await ctx.defer(ephemeral=True)
             if not ctx.guild:
@@ -438,7 +438,7 @@ class Contract(commands.Cog):
             logging.error(f"[ContractManager] Error in /contract_delete command: {e}", exc_info=True)
             await ctx.followup.send("An error occurred while deleting the contract.", ephemeral=True)
 
-    async def contrat_delete_cron(self):
+    async def contract_delete_cron(self):
         failed_guilds = []
         processed = 0
         
