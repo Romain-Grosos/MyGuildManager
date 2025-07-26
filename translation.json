@@ -512,14 +512,14 @@
                 "de": "💍│Beute",
                 "it": "💍│Bottino"
             },
-            "tuto": {
+            "tutorial": {
                 "en-US": "❓│Tutorial",
                 "fr": "❓│Tuto",
                 "es-ES": "❓│Tutorial",
                 "de": "❓│Tutorial",
                 "it": "❓│Tutorial"
             },
-            "cat_conseil": {
+            "cat_council": {
                 "en-US": "──── 👑 Council",
                 "fr": "──── 👑 Conseil",
                 "es-ES": "──── 👑 Consejo",
@@ -533,7 +533,7 @@
                 "de": "🔱│Runder_Tisch",
                 "it": "🔱│Tavola_Rotonda"
             },
-            "compte_rendus": {
+            "reports": {
                 "en-US": "📨│Reports",
                 "fr": "📨│Compte_Rendus",
                 "es-ES": "📨│Informes",
@@ -631,28 +631,28 @@
                 "de": "# Benachrichtigungen über die Ankünfte und Abwesenheiten von Mitgliedern \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&",
                 "it": "# Notifiche sugli arrivi e le assenze dei membri \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&"
             },
-            "cat_recrut": {
+            "cat_recruitment": {
                 "en-US": "──── ✍️ Recruitment",
                 "fr": "──── ✍️ Recrutement",
                 "es-ES": "──── ✍️ Reclutamiento",
                 "de": "──── ✍️ Rekrutierung",
                 "it": "──── ✍️ Reclutamento"
             },
-            "ext_recrut": {
+            "ext_recruitment": {
                 "en-US": "🚩│Infos",
                 "fr": "🚩│Infos",
                 "es-ES": "🚩│Infos",
                 "de": "🚩│Infos",
                 "it": "🚩│Infos"
             },
-            "recrut_message": {
+            "recruitment_message": {
                 "en-US": "✍️ Recruitment",
                 "fr": "✍️ Recrutement",
                 "es-ES": "✍️ Reclutamiento",
                 "de": "✍️ Rekrutierung",
                 "it": "✍️ Reclutamento"
             },
-            "cat_diplo": {
+            "cat_diplomacy": {
                 "en-US": "──── 🤝 Diplomacy",
                 "fr": "──── 🤝 Diplomatie",
                 "es-ES": "──── 🤝 Diplomacia",
