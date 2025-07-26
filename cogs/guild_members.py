@@ -727,6 +727,8 @@ class GuildMembers(commands.Cog):
         if not guild_config:
             logging.error(f"[GuildMembers] No configuration found for guild {guild_id}")
             return
+        
+        locale = guild_config.get("guild_lang", "en-US")
 
         channel_id = guild_config.get("members_channel")
         message_ids = [
@@ -752,7 +754,7 @@ class GuildMembers(commands.Cog):
         flank_count = sum(1 for m in sorted_members if m.get("classe", "").lower() == "flanker")
 
         pseudo_width = 20
-        lang_width = 6
+        lang_width = 8
         gs_width = 8
         build_width = 7
         armes_width = 9
@@ -761,16 +763,19 @@ class GuildMembers(commands.Cog):
         insc_width = 8
         pres_width = 8
 
+        header_labels = GUILD_MEMBERS.get("table", {}).get("header", {}).get(locale, 
+            ["Pseudo", "Langue", "GS", "Build", "Armes", "Classe", "DKP", "%Insc", "%Prés"])
+        
         header = (
-            f"{'Pseudo'.ljust(pseudo_width)}│"
-            f"{'Langue'.center(lang_width)}│"
-            f"{'GS'.center(gs_width)}│"
-            f"{'Build'.center(build_width)}│"
-            f"{'Armes'.center(armes_width)}│"
-            f"{'Classe'.center(classe_width)}│"
-            f"{'DKP'.center(dkp_width)}│"
-            f"{'%Insc'.center(insc_width)}│"
-            f"{'%Prés'.center(pres_width)}"
+            f"{header_labels[0].ljust(pseudo_width)}│"
+            f"{header_labels[1].center(lang_width)}│"
+            f"{header_labels[2].center(gs_width)}│"
+            f"{header_labels[3].center(build_width)}│"
+            f"{header_labels[4].center(armes_width)}│"
+            f"{header_labels[5].center(classe_width)}│"
+            f"{header_labels[6].center(dkp_width)}│"
+            f"{header_labels[7].center(insc_width)}│"
+            f"{header_labels[8].center(pres_width)}"
         )
         separator = "─" * len(header)
 
@@ -808,14 +813,19 @@ class GuildMembers(commands.Cog):
             return
 
         now_str = datetime.now().strftime("%d/%m/%Y à %H:%M")
+        role_labels = GUILD_MEMBERS.get("table", {}).get("role_stats", {}).get(locale,
+            ["Tank", "DPS Mélée", "DPS Distance", "Healer", "Flanker"])
+        
         role_stats = (
-            f"Tank: {tank_count}\n"
-            f"DPS Mélée: {dps_melee_count}\n"
-            f"DPS Distance: {dps_distant_count}\n"
-            f"Healer: {heal_count}\n"
-            f"Flanker: {flank_count}"
+            f"{role_labels[0]}: {tank_count}\n"
+            f"{role_labels[1]}: {dps_melee_count}\n"
+            f"{role_labels[2]}: {dps_distant_count}\n"
+            f"{role_labels[3]}: {heal_count}\n"
+            f"{role_labels[4]}: {flank_count}"
         )
-        update_footer = f"\n**Nombre de membres** : {len(rows)}\n{role_stats}\n\n*Mis à jour le {now_str}*"
+        footer_template = GUILD_MEMBERS.get("table", {}).get("footer", {}).get(locale,
+            "Number of members: {count}\\n{stats}\\nUpdated {date}")
+        update_footer = "\n" + footer_template.format(count=len(rows), stats=role_stats, date=now_str).replace("\\n", "\n")
         max_length = 2000
         message_contents = []
         current_block = f"```\n{header}\n{separator}\n"
