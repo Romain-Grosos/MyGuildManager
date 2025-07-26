@@ -1726,6 +1726,64 @@
             "es-ES": "🎭 **Amigo confirmado:** {new_nickname}\n👤 **Recomendado por:** {friend_pseudo}\n📆 **Confirmado el {now}**",
             "de": "🎭 **Bestätigter Freund:** {new_nickname}\n👤 **Empfohlen von:** {friend_pseudo}\n📆 **Bestätigt am {now}**",
             "it": "🎭 **Amico confermato:** {new_nickname}\n👤 **Raccomandato da:** {friend_pseudo}\n📆 **Confermato il {now}**"
+        },
+        "anti_espionage": {
+            "alert_message": {
+                "en-US": "⚠️ **Anti-Espionage Alert** ⚠️\nNew diplomat **{new_diplomat}** from guild **{guild_name}** requires manual validation.\nExisting diplomat: {existing_diplomat}\nPlease verify both members before granting channel access.",
+                "fr": "⚠️ **Alerte Anti-Espionnage** ⚠️\nLe nouveau diplomate **{new_diplomat}** de la guilde **{guild_name}** nécessite une validation manuelle.\nDiplomate existant : {existing_diplomat}\nVeuillez vérifier les deux membres avant d'accorder l'accès au canal.",
+                "es-ES": "⚠️ **Alerta Anti-Espionaje** ⚠️\nEl nuevo diplomático **{new_diplomat}** de la guild **{guild_name}** requiere validación manual.\nDiplomático existente: {existing_diplomat}\nPor favor, verifique ambos miembros antes de otorgar acceso al canal.",
+                "de": "⚠️ **Anti-Spionage-Alarm** ⚠️\nNeuer Diplomat **{new_diplomat}** aus der Gilde **{guild_name}** benötigt manuelle Validierung.\nVorhandener Diplomat: {existing_diplomat}\nBitte überprüfen Sie beide Mitglieder, bevor Sie Kanalzugang gewähren.",
+                "it": "⚠️ **Allerta Anti-Spionaggio** ⚠️\nIl nuovo diplomatico **{new_diplomat}** della gilda **{guild_name}** richiede validazione manuale.\nDiplomatico esistente: {existing_diplomat}\nSi prega di verificare entrambi i membri prima di concedere l'accesso al canale."
+            },
+            "validation_button": {
+                "en-US": "✅ Validate New Diplomat",
+                "fr": "✅ Valider le Nouveau Diplomate",
+                "es-ES": "✅ Validar Nuevo Diplomático",
+                "de": "✅ Neuen Diplomat Validieren",
+                "it": "✅ Convalida Nuovo Diplomatico"
+            },
+            "validation_success": {
+                "en-US": "✅ **{diplomat_name}** has been granted access to the diplomatic channel.",
+                "fr": "✅ **{diplomat_name}** a obtenu l'accès au canal diplomatique.",
+                "es-ES": "✅ **{diplomat_name}** ha obtenido acceso al canal diplomático.",
+                "de": "✅ **{diplomat_name}** hat Zugang zum diplomatischen Kanal erhalten.",
+                "it": "✅ **{diplomat_name}** ha ottenuto l'accesso al canale diplomatico."
+            },
+            "validation_error": {
+                "en-US": "❌ Error granting access to **{diplomat_name}**. Please contact an administrator.",
+                "fr": "❌ Erreur lors de l'octroi de l'accès à **{diplomat_name}**. Veuillez contacter un administrateur.",
+                "es-ES": "❌ Error al otorgar acceso a **{diplomat_name}**. Por favor, contacte a un administrador.",
+                "de": "❌ Fehler beim Gewähren des Zugangs für **{diplomat_name}**. Bitte kontaktieren Sie einen Administrator.",
+                "it": "❌ Errore nel concedere l'accesso a **{diplomat_name}**. Si prega di contattare un amministratore."
+            },
+            "pending_notification": {
+                "en-US": "🔄 **Diplomatic Access Pending**\n\nHello **{diplomat_name}**!\n\nYour registration as a diplomat for guild **{guild_name}** has been received. However, there is already another diplomat from your guild on the server.\n\nFor security reasons, your access to the diplomatic channel is currently pending manual validation by the server administrators.\n\nYou will be notified once your access has been approved.\n\nThank you for your patience! 🛡️",
+                "fr": "🔄 **Accès Diplomatique en Attente**\n\nBonjour **{diplomat_name}** !\n\nVotre inscription en tant que diplomate pour la guilde **{guild_name}** a été reçue. Cependant, il y a déjà un autre diplomate de votre guilde sur le serveur.\n\nPour des raisons de sécurité, votre accès au canal diplomatique est actuellement en attente d'une validation manuelle par les administrateurs du serveur.\n\nVous serez notifié une fois votre accès approuvé.\n\nMerci pour votre patience ! 🛡️",
+                "es-ES": "🔄 **Acceso Diplomático Pendiente**\n\n¡Hola **{diplomat_name}**!\n\nSu registro como diplomático para la guild **{guild_name}** ha sido recibido. Sin embargo, ya hay otro diplomático de su guild en el servidor.\n\nPor razones de seguridad, su acceso al canal diplomático está actualmente pendiente de validación manual por los administradores del servidor.\n\nSerá notificado una vez que su acceso haya sido aprobado.\n\n¡Gracias por su paciencia! 🛡️",
+                "de": "🔄 **Diplomatischer Zugang Ausstehend**\n\nHallo **{diplomat_name}**!\n\nIhre Registrierung als Diplomat für die Gilde **{guild_name}** wurde erhalten. Es gibt jedoch bereits einen anderen Diplomaten Ihrer Gilde auf dem Server.\n\nAus Sicherheitsgründen wartet Ihr Zugang zum diplomatischen Kanal derzeit auf manuelle Validierung durch die Server-Administratoren.\n\nSie werden benachrichtigt, sobald Ihr Zugang genehmigt wurde.\n\nVielen Dank für Ihre Geduld! 🛡️",
+                "it": "🔄 **Accesso Diplomatico in Attesa**\n\nCiao **{diplomat_name}**!\n\nLa tua registrazione come diplomatico per la gilda **{guild_name}** è stata ricevuta. Tuttavia, c'è già un altro diplomatico della tua gilda sul server.\n\nPer motivi di sicurezza, il tuo accesso al canale diplomatico è attualmente in attesa di validazione manuale da parte degli amministratori del server.\n\nSarai notificato una volta che il tuo accesso sarà stato approvato.\n\nGrazie per la pazienza! 🛡️"
+            },
+            "access_granted_notification": {
+                "en-US": "✅ **Diplomatic Access Granted**\n\nGreat news **{diplomat_name}**!\n\nYour access to the diplomatic channel for guild **{guild_name}** has been approved by the server administrators.\n\nYou can now access your dedicated diplomatic channel and communicate with the server leadership.\n\nWelcome aboard! 🎉",
+                "fr": "✅ **Accès Diplomatique Accordé**\n\nBonne nouvelle **{diplomat_name}** !\n\nVotre accès au canal diplomatique pour la guilde **{guild_name}** a été approuvé par les administrateurs du serveur.\n\nVous pouvez maintenant accéder à votre canal diplomatique dédié et communiquer avec les dirigeants du serveur.\n\nBienvenue à bord ! 🎉",
+                "es-ES": "✅ **Acceso Diplomático Concedido**\n\n¡Excelentes noticias **{diplomat_name}**!\n\nSu acceso al canal diplomático para la guild **{guild_name}** ha sido aprobado por los administradores del servidor.\n\nAhora puede acceder a su canal diplomático dedicado y comunicarse con el liderazgo del servidor.\n\n¡Bienvenido a bordo! 🎉",
+                "de": "✅ **Diplomatischer Zugang Gewährt**\n\nGroßartige Neuigkeiten **{diplomat_name}**!\n\nIhr Zugang zum diplomatischen Kanal für die Gilde **{guild_name}** wurde von den Server-Administratoren genehmigt.\n\nSie können nun auf Ihren dedizierten diplomatischen Kanal zugreifen und mit der Server-Leitung kommunizieren.\n\nWillkommen an Bord! 🎉",
+                "it": "✅ **Accesso Diplomatico Concesso**\n\nOttime notizie **{diplomat_name}**!\n\nIl tuo accesso al canale diplomatico per la gilda **{guild_name}** è stato approvato dagli amministratori del server.\n\nOra puoi accedere al tuo canale diplomatico dedicato e comunicare con la leadership del server.\n\nBenvenuto a bordo! 🎉"
+            },
+            "validation_timeout": {
+                "en-US": "⏰ **Validation timeout** - The validation button for this diplomat has expired after 24 hours.",
+                "fr": "⏰ **Délai de validation expiré** - Le bouton de validation pour ce diplomate a expiré après 24 heures.",
+                "es-ES": "⏰ **Tiempo de validación agotado** - El botón de validación para este diplomático ha expirado después de 24 horas.",
+                "de": "⏰ **Validierungszeit abgelaufen** - Der Validierungsbutton für diesen Diplomaten ist nach 24 Stunden abgelaufen.",
+                "it": "⏰ **Timeout di convalida** - Il pulsante di convalida per questo diplomatico è scaduto dopo 24 ore."
+            },
+            "permission_denied": {
+                "en-US": "❌ You do not have permission to validate this diplomat.",
+                "fr": "❌ Vous n'avez pas les permissions pour valider ce diplomate.",
+                "es-ES": "❌ No tienes permisos para validar este diplomático.",
+                "de": "❌ Sie haben keine Berechtigung, diesen Diplomaten zu validieren.",
+                "it": "❌ Non hai i permessi per convalidare questo diplomatico."
+            }
         }
     },
     "guild_members": {
