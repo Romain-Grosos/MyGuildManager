@@ -1027,7 +1027,7 @@ class GuildMembers(commands.Cog):
             
             await self.update_recruitment_message(ctx)
             
-            config_summary = "\\n".join([f"- **{class_name}** : {count}" for class_name, count in class_config.items()])
+            config_summary = "\n".join([f"- **{class_name}** : {count}" for class_name, count in class_config.items()])
             success_msg = get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.success", config_summary=config_summary)
             
             await ctx.followup.send(success_msg, ephemeral=True)

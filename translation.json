@@ -2133,21 +2133,21 @@
                 "de": "📢 Rekrutierung",
                 "it": "📢 Reclutamento"
             },
-            "effectif": {
-                "en-US": "👥 Current staff: **{total_members}/{effectif_max}**\n",
-                "fr": "👥 Effectif actuel : **{total_members}/{effectif_max}**\n",
-                "es-ES": "👥 Personal actual: **{total_members}/{effectif_max}**\n",
-                "de": "👥 Aktueller Bestand: **{total_members}/{effectif_max}**\n",
-                "it": "👥 Effettivo attuale: **{total_members}/{effectif_max}**\n"
+            "roster_size": {
+                "en-US": "👥 Current staff: **{total_members}/{roster_size_max}**\n",
+                "fr": "👥 Effectif actuel : **{total_members}/{roster_size_max}**\n",
+                "es-ES": "👥 Personal actual: **{total_members}/{roster_size_max}**\n",
+                "de": "👥 Aktueller Bestand: **{total_members}/{roster_size_max}**\n",
+                "it": "👥 Effettivo attuale: **{total_members}/{roster_size_max}**\n"
             },
             "places": {
-                "en-US": "📌 Available spots: **{places_restantes}**\n\n",
-                "fr": "📌 Places disponibles : **{places_restantes}**\n\n",
-                "es-ES": "📌 Plazas disponibles: **{places_restantes}**\n\n",
-                "de": "📌 Verfügbare Plätze: **{places_restantes}**\n\n",
-                "it": "📌 Posti disponibili: **{places_restantes}**\n\n"
+                "en-US": "📌 Available spots: **{remaining_slots}**\n\n",
+                "fr": "📌 Places disponibles : **{remaining_slots}**\n\n",
+                "es-ES": "📌 Plazas disponibles: **{remaining_slots}**\n\n",
+                "de": "📌 Verfügbare Plätze: **{remaining_slots}**\n\n",
+                "it": "📌 Posti disponibili: **{remaining_slots}**\n\n"
             },
-            "post_dispos": {
+            "post_availability": {
                 "en-US": "**Positions available:**\n",
                 "fr": "**Postes à pourvoir :**\n",
                 "es-ES": "**Puestos disponibles:**\n",
