@@ -18,6 +18,7 @@ class Notification(commands.Cog):
         self.notif_channels = {}
         self.member_events = {}
         self.max_events_per_minute = 10
+        self.notification_locks = {}
     
     def get_safe_user_info(self, member):
         return f"User{member.id}"
@@ -103,53 +104,57 @@ class Notification(commands.Cog):
         guild = member.guild
         safe_user = self.get_safe_user_info(member)
         logging.debug(f"[NotificationManager] New member detected: {safe_user} in guild {guild.id}")
-
-        if not self.check_event_rate_limit(guild.id):
-            logging.warning(f"[NotificationManager] Rate limit exceeded for guild {guild.id}")
-            return
         
-        try:
-            info = self.notif_channels.get(guild.id)
-            if info and info.get("notif_channel"):
-                channel = await self.get_safe_channel(info["notif_channel"])
-                if not channel:
-                    logging.warning(f"[NotificationManager] Unable to access notification channel for guild {guild.id}")
-                    return
-                
-                guild_lang = await self.get_guild_lang(guild)
-                notif_trans = self.bot.translations["notification"]["member_join"]
-                title = notif_trans["title"][guild_lang]
-                
-                safe_name = self.sanitize_user_data(member.name)
-                description = notif_trans["description"][guild_lang].format(
-                    member_mention=member.mention,
-                    member_name=safe_name,
-                    member_id=member.id
-                )
-                
-                embed = create_embed(title, description, discord.Color.light_grey(), member)
-                msg = await self.safe_send_notification(channel, embed)
-                
-                if msg:
-                    try:
-                        insert_query = "INSERT INTO welcome_messages (guild_id, member_id, channel_id, message_id) VALUES (?, ?, ?, ?)"
-                        await self.bot.run_db_query(insert_query, (guild.id, member.id, channel.id, msg.id), commit=True)
-                        logging.debug(f"[NotificationManager] Welcome message saved for {safe_user} (ID: {msg.id})")
-                        
-                        autorole_cog = self.bot.get_cog("AutoRole")
-                        if autorole_cog:
-                            await autorole_cog.load_welcome_messages_cache()
-                        profilesetup_cog = self.bot.get_cog("ProfileSetup")
-                        if profilesetup_cog:
-                            await profilesetup_cog.load_welcome_messages_cache()
-                    except Exception as e:
-                        logging.error(f"[NotificationManager] Error saving welcome message to DB: {e}", exc_info=True)
+        if guild.id not in self.notification_locks:
+            self.notification_locks[guild.id] = asyncio.Lock()
+        
+        async with self.notification_locks[guild.id]:
+            if not self.check_event_rate_limit(guild.id):
+                logging.warning(f"[NotificationManager] Rate limit exceeded for guild {guild.id}")
+                return
+            
+            try:
+                info = self.notif_channels.get(guild.id)
+                if info and info.get("notif_channel"):
+                    channel = await self.get_safe_channel(info["notif_channel"])
+                    if not channel:
+                        logging.warning(f"[NotificationManager] Unable to access notification channel for guild {guild.id}")
+                        return
+                    
+                    guild_lang = await self.get_guild_lang(guild)
+                    notif_trans = self.bot.translations["notification"]["member_join"]
+                    title = notif_trans["title"][guild_lang]
+                    
+                    safe_name = self.sanitize_user_data(member.name)
+                    description = notif_trans["description"][guild_lang].format(
+                        member_mention=member.mention,
+                        member_name=safe_name,
+                        member_id=member.id
+                    )
+                    
+                    embed = create_embed(title, description, discord.Color.light_grey(), member)
+                    msg = await self.safe_send_notification(channel, embed)
+                    
+                    if msg:
+                        try:
+                            insert_query = "INSERT INTO welcome_messages (guild_id, member_id, channel_id, message_id) VALUES (?, ?, ?, ?)"
+                            await self.bot.run_db_query(insert_query, (guild.id, member.id, channel.id, msg.id), commit=True)
+                            logging.debug(f"[NotificationManager] Welcome message saved for {safe_user} (ID: {msg.id})")
+                            
+                            autorole_cog = self.bot.get_cog("AutoRole")
+                            if autorole_cog:
+                                await autorole_cog.load_welcome_messages_cache()
+                            profilesetup_cog = self.bot.get_cog("ProfileSetup")
+                            if profilesetup_cog:
+                                await profilesetup_cog.load_welcome_messages_cache()
+                        except Exception as e:
+                            logging.error(f"[NotificationManager] Error saving welcome message to DB: {e}", exc_info=True)
+                    else:
+                        logging.error(f"[NotificationManager] Failed to send welcome message for {safe_user}")
                 else:
-                    logging.error(f"[NotificationManager] Failed to send welcome message for {safe_user}")
-            else:
-                logging.warning(f"[NotificationManager] Notification channel not configured for guild {guild.id}.")
-        except Exception as e:
-            logging.error(f"[NotificationManager] Error in on_member_join for {safe_user}: {e}", exc_info=True)
+                    logging.warning(f"[NotificationManager] Notification channel not configured for guild {guild.id}.")
+            except Exception as e:
+                logging.error(f"[NotificationManager] Error in on_member_join for {safe_user}: {e}", exc_info=True)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:

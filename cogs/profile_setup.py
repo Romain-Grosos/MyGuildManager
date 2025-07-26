@@ -22,11 +22,14 @@ class ProfileSetup(commands.Cog):
         self.roles: Dict[int, int] = {}
         self.forum_channels: Dict[int, int] = {}
         self.welcome_messages: Dict[Tuple[int, int], Dict[str, int]] = {}
+        self.session_locks: Dict[str, asyncio.Lock] = {}
 
     async def load_session(self, guild_id: int, user_id: int) -> Dict[str, Any]:
         key = f"{guild_id}_{user_id}"
         if key not in self.sessions:
             self.sessions[key] = {}
+        if key not in self.session_locks:
+            self.session_locks[key] = asyncio.Lock()
         return self.sessions[key]
     
     async def load_roles(self) -> None:
@@ -274,11 +277,24 @@ class ProfileSetup(commands.Cog):
                 )
                 return
 
+            if motif == "membre":
+                embed_color = discord.Color.gold()
+            elif motif == "postulation":
+                embed_color = discord.Color.purple()
+            elif motif == "diplomate":
+                embed_color = discord.Color.dark_blue()
+            elif motif == "allies":
+                embed_color = discord.Color.green()
+            elif motif == "amis":
+                embed_color = discord.Color.blue()
+            else:
+                embed_color = discord.Color.blue()
+            
             embed = discord.Embed(
                 title=PROFILE_SETUP_DATA["notification"]["title"].get(
                     self.locale, PROFILE_SETUP_DATA["notification"]["title"].get("en-US")
                 ),
-                color=discord.Color.blue(),
+                color=embed_color,
             )
             embed.add_field(
                 name=PROFILE_SETUP_DATA["notification"]["fields"]["user"].get(
@@ -302,7 +318,6 @@ class ProfileSetup(commands.Cog):
             )
 
             if motif == "membre":
-                embed.color = discord.Color.gold()
                 weapons = session.get("weapons", "N/A")
                 gs = session.get("gs", "N/A")
                 embed.add_field(
@@ -321,7 +336,6 @@ class ProfileSetup(commands.Cog):
                     inline=True,
                 )
             elif motif == "postulation":
-                embed.color = discord.Color.purple()
                 weapons = session.get("weapons", "N/A")
                 gs = session.get("gs", "N/A")
                 playtime = session.get("playtime", "N/A")
@@ -359,7 +373,6 @@ class ProfileSetup(commands.Cog):
                 )
                 postulation_embed = embed.copy()
             elif motif == "diplomate":
-                embed.color = discord.Color.dark_blue()
                 guild_name = session.get("guild_name", "N/A")
                 guild_acronym = session.get("guild_acronym", "N/A")
                 embed.add_field(
@@ -370,7 +383,6 @@ class ProfileSetup(commands.Cog):
                     inline=False,
                 )
             elif motif == "allies":
-                embed.color = discord.Color.green()
                 guild_name = session.get("guild_name", "N/A")
                 guild_acronym = session.get("guild_acronym", "N/A")
                 embed.add_field(
@@ -382,7 +394,6 @@ class ProfileSetup(commands.Cog):
                     inline=False,
                 )
             elif motif == "amis":
-                embed.color = discord.Color.blue()
                 friend_pseudo = session.get("friend_pseudo", "N/A")
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["friend"].get(
