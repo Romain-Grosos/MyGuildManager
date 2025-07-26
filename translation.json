@@ -2308,6 +2308,27 @@
                 "de": "Burgbelagerung",
                 "it": "Assedio al Castello"
             },
+            "event_name": {
+                "en-US": "Event",
+                "fr": "Évènement",
+                "es-ES": "Evento",
+                "de": "Ereignis",
+                "it": "Evento"
+            },
+            "time_at": {
+                "en-US": "at",
+                "fr": "à",
+                "es-ES": "a las",
+                "de": "um",
+                "it": "alle"
+            },
+            "view_event": {
+                "en-US": "View Event and registrations",
+                "fr": "Voir l'évènement et les inscriptions",
+                "es-ES": "Ver evento e inscripciones",
+                "de": "Ereignis und Anmeldungen anzeigen",
+                "it": "Visualizza evento e iscrizioni"
+            },
             "description": {
                 "en-US": "React to indicate your presence, attempt, or absence.",
                 "fr": "Réagissez pour indiquer votre présence, tentative ou absence.",
