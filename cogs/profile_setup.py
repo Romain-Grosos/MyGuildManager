@@ -373,6 +373,7 @@ class ProfileSetup(commands.Cog):
 
             member = guild.get_member(user_id) or await guild.fetch_member(user_id)
             motif = session.get("motif")
+            logging.debug(f"[ProfileSetup] Motif for user {user_id}: {motif}")
             role_id = None
             if motif == "diplomate":
                 role_id = self.roles.get(guild_id, {}).get("diplomats")
@@ -459,6 +460,8 @@ class ProfileSetup(commands.Cog):
                 embed_color = discord.Color.blue()
             else:
                 embed_color = discord.Color.blue()
+            
+            logging.debug(f"[ProfileSetup] Embed color for motif '{motif}': {embed_color}")
             
             embed = discord.Embed(
                 title=PROFILE_SETUP_DATA["notification"]["title"].get(
