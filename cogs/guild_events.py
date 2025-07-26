@@ -422,7 +422,13 @@ class GuildEvents(commands.Cog):
                     await self.bot.run_db_query(query, record, commit=True)
                     logging.info(f"[GuildEvents - create_events - create_events_for_guild] Event saved in DB successfully: {announcement.id}")
                 except Exception as e:
-                    logging.error(f"[GuildEvents - create_events - create_events_for_guild] Error saving event in DB for guild {guild_id}: {e}")
+                    error_msg = str(e).lower()
+                    if "duplicate entry" in error_msg or "1062" in error_msg:
+                        logging.warning(f"[GuildEvents] Duplicate event entry for guild {guild_id}: {e}")
+                    elif "foreign key constraint" in error_msg or "1452" in error_msg:
+                        logging.error(f"[GuildEvents] Foreign key constraint failed for guild {guild_id}: {e}")
+                    else:
+                        logging.error(f"[GuildEvents - create_events - create_events_for_guild] Error saving event in DB for guild {guild_id}: {e}")
             except Exception as outer_e:
                 logging.error(f"[GuildEvents - create_events_for_guild] Unexpected error in create_events_for_guild for guild {guild_id}: {outer_e}", exc_info=True)
 
@@ -463,7 +469,7 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-        query = "UPDATE events_data SET status = ? WHERE guild_id = ? AND event_id = ?"
+        query = "UPDATE events_data SET status = %s WHERE guild_id = %s AND event_id = %s"
         try:
             await self.bot.run_db_query(query, ("Confirmed", guild.id, event_id), commit=True)
             target_event["status"] = "Confirmed"
@@ -564,7 +570,7 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-        query = "UPDATE events_data SET status = ? WHERE guild_id = ? AND event_id = ?"
+        query = "UPDATE events_data SET status = %s WHERE guild_id = %s AND event_id = %s"
         try:
             await self.bot.run_db_query(query, ("Canceled", guild.id, event_id_int), commit=True)
             target_event["status"] = "Canceled"
@@ -724,7 +730,7 @@ class GuildEvents(commands.Cog):
 
         try:
             new_registrations = json.dumps(target_event["registrations"])
-            update_query = "UPDATE events_data SET registrations = ? WHERE guild_id = ? AND event_id = ?"
+            update_query = "UPDATE events_data SET registrations = %s WHERE guild_id = %s AND event_id = %s"
             await self.bot.run_db_query(update_query, (new_registrations, target_event["guild_id"], target_event["event_id"]), commit=True)
             logging.debug("[GuildEvents - on_raw_reaction_add] DB update successful for registrations.")
         except Exception as e:
@@ -779,7 +785,7 @@ class GuildEvents(commands.Cog):
 
         try:
             new_registrations = json.dumps(target_event["registrations"])
-            update_query = "UPDATE events_data SET registrations = ? WHERE guild_id = ? AND event_id = ?"
+            update_query = "UPDATE events_data SET registrations = %s WHERE guild_id = %s AND event_id = %s"
             await self.bot.run_db_query(update_query, (new_registrations, target_event["guild_id"], target_event["event_id"]), commit=True)
             logging.debug("[GuildEvents - on_raw_reaction_remove] DB update successful for registrations.")
         except Exception as e:
@@ -910,7 +916,7 @@ class GuildEvents(commands.Cog):
 
                     if str(ev.get("status", "")).lower() == "canceled":
                         try:
-                            delete_query = "DELETE FROM events_data WHERE guild_id = ? AND event_id = ?"
+                            delete_query = "DELETE FROM events_data WHERE guild_id = %s AND event_id = %s"
                             await self.bot.run_db_query(delete_query, (ev["guild_id"], ev["event_id"]), commit=True)
                             logging.debug(f"[GuildEvents CRON] Record deleted in DB for event {ev['event_id']}")
                         except Exception as e:
@@ -1120,7 +1126,7 @@ class GuildEvents(commands.Cog):
                             embed.add_field(name=field["name"], value=field["value"], inline=field["inline"])
                         try:
                             await msg.edit(embed=embed)
-                            update_query = "UPDATE events_data SET status = ? WHERE guild_id = ? AND event_id = ?"
+                            update_query = "UPDATE events_data SET status = %s WHERE guild_id = %s AND event_id = %s"
                             await self.bot.run_db_query(update_query, (closed_db, guild_id, ev["event_id"]), commit=True)
                             ev["status"] = closed_db
                             logging.info(f"[GuildEvents CRON] Event {ev['event_id']} marked as Closed.")
