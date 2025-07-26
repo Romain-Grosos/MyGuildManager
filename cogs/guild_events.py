@@ -1413,8 +1413,11 @@ class GuildEvents(commands.Cog):
             description_localizations=GUILD_EVENTS["event_create"]["event_hour"]
         ),
         duration: int = discord.Option(
+            int,
             description=GUILD_EVENTS["event_create"]["event_time"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["event_time"]
+            description_localizations=GUILD_EVENTS["event_create"]["event_time"],
+            min_value=1,
+            max_value=1440
         ),
         status: str = discord.Option(
             default="Confirmed",
@@ -1430,14 +1433,20 @@ class GuildEvents(commands.Cog):
             ]
         ),
         dkp_value: int = discord.Option(
+            int,
             default=0,
             description=GUILD_EVENTS["event_create"]["dkp_value"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["dkp_value"]
+            description_localizations=GUILD_EVENTS["event_create"]["dkp_value"],
+            min_value=0,
+            max_value=9999
         ),
         dkp_ins: int = discord.Option(
+            int,
             default=0,
             description=GUILD_EVENTS["event_create"]["dkp_ins"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["dkp_ins"]
+            description_localizations=GUILD_EVENTS["event_create"]["dkp_ins"],
+            min_value=0,
+            max_value=9999
         )
     ):
         await ctx.defer(ephemeral=True)
@@ -1453,6 +1462,32 @@ class GuildEvents(commands.Cog):
             return
 
         logging.debug(f"[GuildEvents - event_create] Received parameters: event_name={event_name}, event_date={event_date}, event_time={event_time}, duration={duration}, status={status}, dkp_value={dkp_value}, dkp_ins={dkp_ins}")
+        
+        if not event_name or not event_name.strip():
+            follow_message = GUILD_EVENTS.get("event_create", {}).get("name_empty", {}).get(user_locale, "❌ Event name cannot be empty.")
+            await ctx.followup.send(follow_message, ephemeral=True)
+            return
+            
+        event_name = event_name.strip()
+        if len(event_name) > 100:
+            follow_message = GUILD_EVENTS.get("event_create", {}).get("name_too_long", {}).get(user_locale, "❌ Event name is too long (max 100 characters).")
+            await ctx.followup.send(follow_message, ephemeral=True)
+            return
+            
+        if dkp_value < 0 or dkp_value > 9999:
+            follow_message = GUILD_EVENTS.get("event_create", {}).get("dkp_value_invalid", {}).get(user_locale, "❌ DKP value must be between 0 and 9999.")
+            await ctx.followup.send(follow_message, ephemeral=True)
+            return
+            
+        if dkp_ins < 0 or dkp_ins > 9999:
+            follow_message = GUILD_EVENTS.get("event_create", {}).get("dkp_ins_invalid", {}).get(user_locale, "❌ DKP inscription value must be between 0 and 9999.")
+            await ctx.followup.send(follow_message, ephemeral=True)
+            return
+            
+        if duration <= 0 or duration > 1440:
+            follow_message = GUILD_EVENTS.get("event_create", {}).get("duration_invalid", {}).get(user_locale, "❌ Duration must be between 1 and 1440 minutes (24 hours).")
+            await ctx.followup.send(follow_message, ephemeral=True)
+            return
         
         tz = pytz.timezone("Europe/Paris")
         try:
