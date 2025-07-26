@@ -216,7 +216,7 @@ class LLMInteraction(commands.Cog):
             
             locale = message.guild.preferred_locale or "en-US"
             try:
-                query_premium = "SELECT premium FROM guild_settings WHERE guild_id = ?"
+                query_premium = "SELECT premium FROM guild_settings WHERE guild_id = %s"
                 result = await self.bot.run_db_query(query_premium, (message.guild.id,), fetch_one=True)
             except Exception as e:
                 logging.error(f"[LLM Interaction] Error checking premium status for guild {message.guild.id}: {e}", exc_info=True)

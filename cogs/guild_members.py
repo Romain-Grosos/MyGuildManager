@@ -322,7 +322,7 @@ class GuildMembers(commands.Cog):
             return
 
         try: 
-            query = "UPDATE guild_members SET GS = ? WHERE guild_id = ? AND member_id = ?"
+            query = "UPDATE guild_members SET GS = %s WHERE guild_id = %s AND member_id = %s"
             await self.bot.run_db_query(query, (validated_value, guild_id, member_id), commit=True)
             self.guild_members[key]["GS"] = validated_value
             logging.debug(f"[GuildMembers - GS] Successfully updated GS for {ctx.author} (ID: {member_id}) to {validated_value}")
@@ -390,7 +390,7 @@ class GuildMembers(commands.Cog):
             player_class = self.determine_class(weapons_normalized, guild_id)
             weapons_str = "/".join(weapons_normalized)
             
-            query = "UPDATE guild_members SET weapons = ?, `class` = ? WHERE guild_id = ? AND member_id = ?"
+            query = "UPDATE guild_members SET weapons = %s, `class` = %s WHERE guild_id = %s AND member_id = %s"
             await self.bot.run_db_query(query, (weapons_str, player_class, guild_id, member_id), commit=True)
             
             self.guild_members[key]["weapons"] = weapons_str
@@ -439,7 +439,7 @@ class GuildMembers(commands.Cog):
 
         try:
             sanitized_url = self._sanitize_string(url.strip(), 500)
-            query = "UPDATE guild_members SET build = ? WHERE guild_id = ? AND member_id = ?"
+            query = "UPDATE guild_members SET build = %s WHERE guild_id = %s AND member_id = %s"
             await self.bot.run_db_query(query, (sanitized_url, guild_id, member_id), commit=True)
             self.guild_members[key]["build"] = sanitized_url
             msg = get_user_message(ctx, GUILD_MEMBERS["build"], "updated", username=ctx.author.display_name)
@@ -484,7 +484,7 @@ class GuildMembers(commands.Cog):
             return
         
         try:
-            query = "UPDATE guild_members SET username = ? WHERE guild_id = ? AND member_id = ?"
+            query = "UPDATE guild_members SET username = %s WHERE guild_id = %s AND member_id = %s"
             await self.bot.run_db_query(query, (new_username, guild_id, member_id), commit=True)
             self.guild_members[key]["username"] = new_username
             
@@ -534,7 +534,7 @@ class GuildMembers(commands.Cog):
         keys_to_remove = []
         for (g, user_id), data in self.guild_members.items():
             if g == guild_id and user_id not in actual_members:
-                delete_query = "DELETE FROM guild_members WHERE guild_id = ? AND member_id = ?"
+                delete_query = "DELETE FROM guild_members WHERE guild_id = %s AND member_id = %s"
                 await self.bot.run_db_query(delete_query, (guild_id, user_id), commit=True)
                 keys_to_remove.append((g, user_id))
         for key in keys_to_remove:
@@ -546,7 +546,7 @@ class GuildMembers(commands.Cog):
                 record = self.guild_members[key]
                 if record.get("username") != member.display_name:
                     record["username"] = member.display_name
-                    update_query = "UPDATE guild_members SET username = ? WHERE guild_id = ? AND member_id = ?"
+                    update_query = "UPDATE guild_members SET username = %s WHERE guild_id = %s AND member_id = %s"
                     await self.bot.run_db_query(update_query, (member.display_name, guild_id, member.id), commit=True)
                     logging.debug(f"[GuildMembers - UpdateRoster] Username updated for {member.display_name} (ID: {member.id})")
             else:
@@ -612,7 +612,7 @@ class GuildMembers(commands.Cog):
                 insert_query = """
                     INSERT INTO guild_members 
                     (guild_id, member_id, username, lang, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 await self.bot.run_db_query(
                     insert_query,
@@ -1075,7 +1075,7 @@ class GuildMembers(commands.Cog):
         try:
             short_language = language[:2] if len(language) >= 2 else language
             
-            query = "UPDATE guild_members SET language = ? WHERE guild_id = ? AND member_id = ?"
+            query = "UPDATE guild_members SET language = %s WHERE guild_id = %s AND member_id = %s"
             await self.bot.run_db_query(query, (short_language, guild_id, member_id), commit=True)
             
             self.guild_members[key]["language"] = short_language
@@ -1117,7 +1117,7 @@ class GuildMembers(commands.Cog):
         keys_to_remove = []
         for (g, user_id), data in self.guild_members.items():
             if g == guild_id and user_id not in actual_members:
-                delete_query = "DELETE FROM guild_members WHERE guild_id = ? AND member_id = ?"
+                delete_query = "DELETE FROM guild_members WHERE guild_id = %s AND member_id = %s"
                 await self.bot.run_db_query(delete_query, (guild_id, user_id), commit=True)
                 keys_to_remove.append((g, user_id))
         for key in keys_to_remove:
@@ -1129,7 +1129,7 @@ class GuildMembers(commands.Cog):
                 record = self.guild_members[key]
                 if record.get("username") != member.display_name:
                     record["username"] = member.display_name
-                    update_query = "UPDATE guild_members SET username = ? WHERE guild_id = ? AND member_id = ?"
+                    update_query = "UPDATE guild_members SET username = %s WHERE guild_id = %s AND member_id = %s"
                     await self.bot.run_db_query(update_query, (member.display_name, guild_id, member.id), commit=True)
                     logging.debug(f"[GuildMembers] Username updated for {member.display_name} (ID: {member.id})")
             else:
@@ -1162,7 +1162,7 @@ class GuildMembers(commands.Cog):
                 insert_query = """
                     INSERT INTO guild_members 
                     (guild_id, member_id, username, lang, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 await self.bot.run_db_query(
                     insert_query,

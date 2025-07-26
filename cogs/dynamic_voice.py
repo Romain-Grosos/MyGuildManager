@@ -88,7 +88,7 @@ class DynamicVoice(commands.Cog):
             SELECT gs.guild_lang, gr.members, gr.absent_members
             FROM guild_settings gs
             LEFT JOIN guild_roles gr ON gs.guild_id = gr.guild_id
-            WHERE gs.guild_id = ?
+            WHERE gs.guild_id = %s
             """
             try:
                 result = await self.bot.run_db_query(query, (guild.id,), fetch_one=True)
@@ -147,7 +147,7 @@ class DynamicVoice(commands.Cog):
                     self.user_channels[member.id] = []
                 self.user_channels[member.id].append(new_channel.id)
                 try:
-                    query_insert = "INSERT INTO dynamic_voice_channels (channel_id, guild_id) VALUES (?, ?)"
+                    query_insert = "INSERT INTO dynamic_voice_channels (channel_id, guild_id) VALUES (%s, %s)"
                     await self.bot.run_db_query(query_insert, (new_channel.id, guild.id), commit=True)
                     logging.debug(f"[DynamicVoice] Persistent channel registered in DB for {safe_name}")
                 except Exception as e:
@@ -174,7 +174,7 @@ class DynamicVoice(commands.Cog):
                     logging.debug(f"[DynamicVoice] Voice channel deleted: {channel.name} (ID: {channel.id})")
                     
                     try:
-                        query_delete = "DELETE FROM dynamic_voice_channels WHERE channel_id = ?"
+                        query_delete = "DELETE FROM dynamic_voice_channels WHERE channel_id = %s"
                         await self.bot.run_db_query(query_delete, (channel.id,), commit=True)
                         logging.debug(f"[DynamicVoice] Database record removed for channel {channel.id}")
                     except Exception as e:

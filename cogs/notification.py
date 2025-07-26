@@ -137,7 +137,7 @@ class Notification(commands.Cog):
                     
                     if msg:
                         try:
-                            insert_query = "INSERT INTO welcome_messages (guild_id, member_id, channel_id, message_id) VALUES (?, ?, ?, ?)"
+                            insert_query = "INSERT INTO welcome_messages (guild_id, member_id, channel_id, message_id) VALUES (%s, %s, %s, %s)"
                             await self.bot.run_db_query(insert_query, (guild.id, member.id, channel.id, msg.id), commit=True)
                             logging.debug(f"[NotificationManager] Welcome message saved for {safe_user} (ID: {msg.id})")
                             
@@ -168,7 +168,7 @@ class Notification(commands.Cog):
         
         try:
             guild_lang = await self.get_guild_lang(guild)
-            query = "SELECT channel_id, message_id FROM welcome_messages WHERE guild_id = ? AND member_id = ?"
+            query = "SELECT channel_id, message_id FROM welcome_messages WHERE guild_id = %s AND member_id = %s"
             result = await self.bot.run_db_query(query, (guild.id, member.id), fetch_one=True)
             
             if result:
@@ -201,9 +201,9 @@ class Notification(commands.Cog):
                         logging.error(f"[NotificationManager] Error replying to welcome message for {safe_user}: {e}", exc_info=True)
                 
                 try:
-                    delete_query = "DELETE FROM welcome_messages WHERE guild_id = ? AND member_id = ?"
+                    delete_query = "DELETE FROM welcome_messages WHERE guild_id = %s AND member_id = %s"
                     await self.bot.run_db_query(delete_query, (guild.id, member.id), commit=True)
-                    delete_query = "DELETE FROM user_setup WHERE guild_id = ? AND user_id = ?"
+                    delete_query = "DELETE FROM user_setup WHERE guild_id = %s AND user_id = %s"
                     await self.bot.run_db_query(delete_query, (guild.id, member.id), commit=True)
                 except Exception as e:
                     logging.error(f"[NotificationManager] Error cleaning up DB records for {safe_user}: {e}", exc_info=True)
