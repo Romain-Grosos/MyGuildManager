@@ -1020,7 +1020,7 @@ class GuildMembers(commands.Cog):
             for class_name, count in classes_config.items():
                 query = """
                     INSERT INTO guild_ideal_staff (guild_id, class_name, ideal_count) 
-                    VALUES (?, ?, ?) 
+                    VALUES (%s, %s, %s) 
                     ON DUPLICATE KEY UPDATE ideal_count = VALUES(ideal_count)
                 """
                 await self.bot.run_db_query(query, (guild_id, class_name, count), commit=True)
