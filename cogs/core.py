@@ -225,6 +225,30 @@ class Core(commands.Cog):
             await self.bot.run_db_query(update_query, (new_guild_name, new_guild_lang, new_guild_game, new_guild_server, guild_id), commit=True)
             logging.info(f"[CoreManager] Guild {guild_id} successfully modified in the database.")
 
+            guild_members_cog = self.bot.get_cog("GuildMembers")
+            if guild_members_cog:
+                try:
+                    await guild_members_cog.load_forum_channels()
+                    logging.debug(f"[CoreManager] GuildMembers cache reloaded after guild {guild_id} modification")
+                except Exception as cache_error:
+                    logging.error(f"[CoreManager] Error reloading GuildMembers cache: {cache_error}")
+            
+            autorole_cog = self.bot.get_cog("AutoRole")
+            if autorole_cog:
+                try:
+                    await autorole_cog.load_guild_lang()
+                    logging.debug(f"[CoreManager] AutoRole cache reloaded after guild {guild_id} modification")
+                except Exception as cache_error:
+                    logging.error(f"[CoreManager] Error reloading AutoRole cache: {cache_error}")
+            
+            guild_events_cog = self.bot.get_cog("GuildEvents")
+            if guild_events_cog:
+                try:
+                    await guild_events_cog.load_guild_settings()
+                    logging.debug(f"[CoreManager] GuildEvents cache reloaded after guild {guild_id} modification")
+                except Exception as cache_error:
+                    logging.error(f"[CoreManager] Error reloading GuildEvents cache: {cache_error}")
+
             rename_templates = APP_MODIFICATION_DATA.get("rename_templates", APP_INITIALIZE_DATA.get("rename_templates", {}))
             template = rename_templates.get(new_guild_lang, rename_templates.get("en-US", "MGM - {guild_name}"))
             new_nickname = template.format(guild_name=new_guild_name)
