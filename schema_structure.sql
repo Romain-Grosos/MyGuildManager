@@ -34,10 +34,10 @@ DROP TABLE IF EXISTS `absence_messages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `absence_messages` (
-  `guild_id` bigint(20) unsigned NOT NULL,
-  `message_id` bigint(20) unsigned NOT NULL,
-  `member_id` bigint(20) unsigned NOT NULL,
-  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `guild_id` bigint(20) unsigned NOT NULL COMMENT 'Discord guild ID (FK to guild_settings)',
+  `message_id` bigint(20) unsigned NOT NULL COMMENT 'Discord message ID containing absence request',
+  `member_id` bigint(20) unsigned NOT NULL COMMENT 'Discord member ID who requested absence',
+  `created_at` timestamp NULL DEFAULT current_timestamp() COMMENT 'Timestamp when absence request was created',
   PRIMARY KEY (`guild_id`,`message_id`),
   KEY `idx_member` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Absence request messages tracking';
@@ -140,9 +140,9 @@ DROP TABLE IF EXISTS `games_list`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `games_list` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `game_name` varchar(30) NOT NULL,
-  `max_members` tinyint(4) DEFAULT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique game identifier',
+  `game_name` varchar(30) NOT NULL COMMENT 'Official game title/name',
+  `max_members` tinyint(4) DEFAULT NULL COMMENT 'Maximum members per group/party in this game',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Supported games and their configurations';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -156,36 +156,36 @@ DROP TABLE IF EXISTS `guild_channels`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `guild_channels` (
   `guild_id` bigint(20) NOT NULL,
-  `rules_channel` bigint(20) DEFAULT NULL,
-  `rules_message` bigint(20) DEFAULT NULL,
-  `announcements_channel` bigint(20) DEFAULT NULL,
-  `voice_tavern_channel` bigint(20) DEFAULT NULL,
-  `voice_war_channel` bigint(20) DEFAULT NULL,
-  `create_room_channel` bigint(20) DEFAULT NULL,
-  `events_channel` bigint(20) DEFAULT NULL,
-  `members_channel` bigint(20) DEFAULT NULL,
-  `members_m1` bigint(20) DEFAULT NULL,
-  `members_m2` bigint(20) DEFAULT NULL,
-  `members_m3` bigint(20) DEFAULT NULL,
-  `members_m4` bigint(20) DEFAULT NULL,
-  `members_m5` bigint(20) DEFAULT NULL,
-  `groups_channel` bigint(20) DEFAULT NULL,
-  `abs_channel` bigint(20) DEFAULT NULL,
-  `loot_channel` bigint(20) DEFAULT NULL,
-  `tuto_channel` bigint(20) DEFAULT NULL,
-  `forum_allies_channel` bigint(20) DEFAULT NULL,
-  `forum_friends_channel` bigint(20) DEFAULT NULL,
-  `forum_diplomats_channel` bigint(20) DEFAULT NULL,
-  `forum_recruitment_channel` bigint(20) DEFAULT NULL,
-  `forum_members_channel` bigint(20) DEFAULT NULL,
-  `notifications_channel` bigint(20) DEFAULT NULL,
-  `external_recruitment_cat` bigint(11) DEFAULT NULL,
-  `external_recruitment_channel` bigint(20) DEFAULT NULL,
-  `external_recruitment_message` bigint(20) DEFAULT NULL,
-  `category_diplo` bigint(20) DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `statics_channel` bigint(20) unsigned DEFAULT NULL COMMENT 'ID du canal des groupes statiques',
-  `statics_message` bigint(20) unsigned DEFAULT NULL COMMENT 'ID du message des groupes statiques dans le canal',
+  `rules_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for guild rules display',
+  `rules_message` bigint(20) DEFAULT NULL COMMENT 'Message ID containing guild rules',
+  `announcements_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for guild announcements',
+  `voice_tavern_channel` bigint(20) DEFAULT NULL COMMENT 'Social voice channel for casual chat',
+  `voice_war_channel` bigint(20) DEFAULT NULL COMMENT 'Voice channel for combat/war activities',
+  `create_room_channel` bigint(20) DEFAULT NULL COMMENT 'Channel to trigger dynamic voice room creation',
+  `events_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for event announcements and scheduling',
+  `members_channel` bigint(20) DEFAULT NULL COMMENT 'Main member list display channel',
+  `members_m1` bigint(20) DEFAULT NULL COMMENT 'Member list message 1 (pagination)',
+  `members_m2` bigint(20) DEFAULT NULL COMMENT 'Member list message 2 (pagination)',
+  `members_m3` bigint(20) DEFAULT NULL COMMENT 'Member list message 3 (pagination)',
+  `members_m4` bigint(20) DEFAULT NULL COMMENT 'Member list message 4 (pagination)',
+  `members_m5` bigint(20) DEFAULT NULL COMMENT 'Member list message 5 (pagination)',
+  `groups_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for group management and display',
+  `statics_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for static group displays',
+  `statics_message` bigint(20) DEFAULT NULL COMMENT 'Message ID for static groups list',
+  `abs_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for absence requests and tracking',
+  `loot_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for loot distribution and DKP',
+  `tuto_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for tutorials and guides',
+  `forum_allies_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for ally guild communications',
+  `forum_friends_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for friendly guild communications',
+  `forum_diplomats_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for diplomatic discussions',
+  `forum_recruitment_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for recruitment posts',
+  `forum_members_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for member discussions',
+  `notifications_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for bot notifications and alerts',
+  `external_recruitment_cat` bigint(20) DEFAULT NULL COMMENT 'External recruitment category ID',
+  `external_recruitment_channel` bigint(20) DEFAULT NULL COMMENT 'External recruitment channel ID',
+  `external_recruitment_message` bigint(20) DEFAULT NULL COMMENT 'External recruitment message ID',
+  `category_diplo` bigint(20) DEFAULT NULL COMMENT 'Diplomatic category for organized channels',
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT 'Last modification timestamp for channel configuration',
   PRIMARY KEY (`guild_id`),
   KEY `idx_guild_channels_statics_channel` (`statics_channel`),
   KEY `idx_guild_channels_statics_message` (`statics_message`),
@@ -201,14 +201,15 @@ DROP TABLE IF EXISTS `guild_ideal_staff`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `guild_ideal_staff` (
-  `guild_id` bigint(20) NOT NULL,
-  `class_name` varchar(50) NOT NULL,
-  `ideal_count` int(11) NOT NULL DEFAULT 0,
-  `created_at` timestamp NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `guild_id` bigint(20) NOT NULL COMMENT 'Discord guild ID (FK to guild_settings)',
+  `class_name` varchar(50) NOT NULL COMMENT 'Character class/role name',
+  `ideal_count` int(11) NOT NULL DEFAULT 0 COMMENT 'Target number of members for this class',
+  `created_at` timestamp NULL DEFAULT current_timestamp() COMMENT 'Record creation timestamp',
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT 'Last modification timestamp',
   PRIMARY KEY (`guild_id`,`class_name`),
+  KEY `idx_guild_ideal_staff_guild_class` (`guild_id`,`class_name`),
   CONSTRAINT `guild_ideal_staff_ibfk_1` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Ideal class composition targets for guild optimization';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -271,18 +272,18 @@ DROP TABLE IF EXISTS `guild_roles`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `guild_roles` (
   `guild_id` bigint(20) NOT NULL,
-  `guild_master` bigint(20) DEFAULT NULL,
-  `officer` bigint(20) DEFAULT NULL,
-  `guardian` bigint(20) DEFAULT NULL,
-  `members` bigint(20) DEFAULT NULL,
-  `absent_members` bigint(20) DEFAULT NULL,
-  `allies` bigint(20) DEFAULT NULL,
-  `diplomats` bigint(20) DEFAULT NULL,
-  `friends` bigint(20) DEFAULT NULL,
-  `applicant` bigint(20) DEFAULT NULL,
-  `config_ok` bigint(20) DEFAULT NULL,
-  `rules_ok` bigint(20) DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `guild_master` bigint(20) DEFAULT NULL COMMENT 'Guild leader role ID with full permissions',
+  `officer` bigint(20) DEFAULT NULL COMMENT 'Officer role ID with management permissions',
+  `guardian` bigint(20) DEFAULT NULL COMMENT 'Guardian role ID with moderation permissions',
+  `members` bigint(20) DEFAULT NULL COMMENT 'Standard member role ID',
+  `absent_members` bigint(20) DEFAULT NULL COMMENT 'Role for members marked as absent',
+  `allies` bigint(20) DEFAULT NULL COMMENT 'Allied guild member role ID',
+  `diplomats` bigint(20) DEFAULT NULL COMMENT 'Diplomatic representative role ID',
+  `friends` bigint(20) DEFAULT NULL COMMENT 'Friendly guild member role ID',
+  `applicant` bigint(20) DEFAULT NULL COMMENT 'Role for pending guild applicants',
+  `config_ok` bigint(20) DEFAULT NULL COMMENT 'Role for members who completed configuration',
+  `rules_ok` bigint(20) DEFAULT NULL COMMENT 'Role for members who acknowledged rules',
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT 'Last role configuration update timestamp',
   PRIMARY KEY (`guild_id`),
   CONSTRAINT `fk_guild_roles_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Discord role IDs for guild permissions and hierarchy';
@@ -318,13 +319,13 @@ DROP TABLE IF EXISTS `guild_static_groups`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `guild_static_groups` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `guild_id` bigint(20) NOT NULL,
-  `group_name` varchar(100) NOT NULL,
-  `leader_id` bigint(20) NOT NULL,
-  `created_at` timestamp NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `is_active` tinyint(1) DEFAULT 1,
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique static group identifier',
+  `guild_id` bigint(20) NOT NULL COMMENT 'Discord guild ID (FK to guild_settings)',
+  `group_name` varchar(100) NOT NULL COMMENT 'Display name of the static group',
+  `leader_id` bigint(20) NOT NULL COMMENT 'Discord member ID of group leader',
+  `created_at` timestamp NULL DEFAULT current_timestamp() COMMENT 'Group creation timestamp',
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT 'Last group modification timestamp',
+  `is_active` tinyint(1) DEFAULT 1 COMMENT 'Whether group is currently active (1=active, 0=inactive)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_group_name` (`guild_id`,`group_name`),
   KEY `idx_guild_id` (`guild_id`),
@@ -342,15 +343,16 @@ DROP TABLE IF EXISTS `guild_static_members`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `guild_static_members` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `group_id` int(11) NOT NULL,
-  `member_id` bigint(20) NOT NULL,
-  `position_order` tinyint(4) DEFAULT 1,
-  `joined_at` timestamp NULL DEFAULT current_timestamp(),
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique membership record identifier',
+  `group_id` int(11) NOT NULL COMMENT 'Static group ID (FK to guild_static_groups)',
+  `member_id` bigint(20) NOT NULL COMMENT 'Discord member ID (FK to guild_members)',
+  `position_order` tinyint(4) DEFAULT 1 COMMENT 'Display order position within the group (1-based)',
+  `joined_at` timestamp NULL DEFAULT current_timestamp() COMMENT 'Timestamp when member joined the group',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_member_group` (`group_id`,`member_id`),
   KEY `idx_member_id` (`member_id`),
   KEY `idx_group_id` (`group_id`),
+  KEY `idx_static_members_member_group` (`member_id`,`group_id`),
   CONSTRAINT `guild_static_members_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `guild_static_groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group membership with positions';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -448,6 +450,7 @@ CREATE TABLE `user_setup` (
   KEY `idx_user_setup_pseudo` (`pseudo`),
   KEY `idx_user_setup_locale` (`locale`),
   KEY `idx_user_setup_motif` (`motif`),
+  KEY `idx_user_setup_gametype` (`gametype`),
   CONSTRAINT `fk_user_setup_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='User registration and setup process data';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -505,6 +508,7 @@ CREATE TABLE `welcome_messages` (
   PRIMARY KEY (`guild_id`,`member_id`),
   KEY `idx_welcome_messages_channel` (`channel_id`),
   KEY `idx_welcome_messages_created` (`created_at`),
+  KEY `idx_welcome_messages_message` (`message_id`),
   CONSTRAINT `fk_welcome_messages_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Welcome message tracking for new members';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -586,4 +590,4 @@ USE `DB_discordbot`;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-07-26 14:59:40
+-- Dump completed on 2025-07-26 15:30:18
