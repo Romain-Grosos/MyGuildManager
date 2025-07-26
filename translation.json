@@ -238,6 +238,92 @@
                     "it": "Il ripristino non è riuscito: {error}"
                 }
             }
+        },
+        "config_effectifs": {
+            "name": {
+                "en-US": "config_effectifs",
+                "fr": "config_effectifs",
+                "es-ES": "config_efectivos",
+                "de": "config_besetzung",
+                "it": "config_effettivi"
+            },
+            "description": {
+                "en-US": "Configure ideal staff numbers by class for the guild",
+                "fr": "Configure les effectifs idéaux par classe pour la guilde",
+                "es-ES": "Configura los efectivos ideales por clase para el gremio",
+                "de": "Konfiguriert die ideale Anzahl von Mitarbeitern nach Klasse für die Gilde",
+                "it": "Configura gli effettivi ideali per classe per la gilda"
+            },
+            "options": {
+                "tank": {
+                    "description": {
+                        "en-US": "Ideal number of Tank",
+                        "fr": "Nombre idéal de Tank",
+                        "es-ES": "Número ideal de Tank",
+                        "de": "Ideale Anzahl von Tank",
+                        "it": "Numero ideale di Tank"
+                    }
+                },
+                "healer": {
+                    "description": {
+                        "en-US": "Ideal number of Healer",
+                        "fr": "Nombre idéal de Healer",
+                        "es-ES": "Número ideal de Healer",
+                        "de": "Ideale Anzahl von Healer",
+                        "it": "Numero ideale di Healer"
+                    }
+                },
+                "flanker": {
+                    "description": {
+                        "en-US": "Ideal number of Flanker",
+                        "fr": "Nombre idéal de Flanker",
+                        "es-ES": "Número ideal de Flanker",
+                        "de": "Ideale Anzahl von Flanker",
+                        "it": "Numero ideale di Flanker"
+                    }
+                },
+                "ranged_dps": {
+                    "description": {
+                        "en-US": "Ideal number of Ranged DPS",
+                        "fr": "Nombre idéal de DPS Distance",
+                        "es-ES": "Número ideal de DPS a distancia",
+                        "de": "Ideale Anzahl von Fernkampf-DPS",
+                        "it": "Numero ideale di DPS a distanza"
+                    }
+                },
+                "melee_dps": {
+                    "description": {
+                        "en-US": "Ideal number of Melee DPS",
+                        "fr": "Nombre idéal de DPS CàC",
+                        "es-ES": "Número ideal de DPS cuerpo a cuerpo",
+                        "de": "Ideale Anzahl von Nahkampf-DPS",
+                        "it": "Numero ideale di DPS corpo a corpo"
+                    }
+                }
+            },
+            "messages": {
+                "invalid_context": {
+                    "en-US": "❌ Invalid request context",
+                    "fr": "❌ Contexte de requête invalide",
+                    "es-ES": "❌ Contexto de solicitud inválido",
+                    "de": "❌ Ungültiger Anfrage-Kontext",
+                    "it": "❌ Contesto di richiesta non valido"
+                },
+                "update_error": {
+                    "en-US": "❌ Error updating configuration",
+                    "fr": "❌ Erreur lors de la mise à jour de la configuration",
+                    "es-ES": "❌ Error al actualizar la configuración",
+                    "de": "❌ Fehler beim Aktualisieren der Konfiguration",
+                    "it": "❌ Errore durante l'aggiornamento della configurazione"
+                },
+                "success": {
+                    "en-US": "✅ **Staff configuration updated**\n\n{config_summary}\n\n*The recruitment message has been automatically updated.*",
+                    "fr": "✅ **Configuration des effectifs mise à jour**\n\n{config_summary}\n\n*Le message de recrutement a été automatiquement mis à jour.*",
+                    "es-ES": "✅ **Configuración de efectivos actualizada**\n\n{config_summary}\n\n*El mensaje de reclutamiento se ha actualizado automáticamente.*",
+                    "de": "✅ **Personalbesetzung-Konfiguration aktualisiert**\n\n{config_summary}\n\n*Die Rekrutierungsnachricht wurde automatisch aktualisiert.*",
+                    "it": "✅ **Configurazione degli effettivi aggiornata**\n\n{config_summary}\n\n*Il messaggio di reclutamento è stato aggiornato automaticamente.*"
+                }
+            }
         }
     },
     "guild_init": {
@@ -1768,11 +1854,11 @@
                 "it": "❌ Il tuo profilo non è ancora registrato nell'elenco dei membri."
             },
             "not_correct": {
-                "en-US": "❌ The build URL must start with https://questlog.gg/",
-                "fr": "❌ L'URL du build doit commencer par https://questlog.gg/",
-                "es-ES": "❌ La URL del build debe comenzar con https://questlog.gg/",
-                "de": "❌ Die Build-URL muss mit https://questlog.gg/ beginnen.",
-                "it": "❌ L'URL della build deve iniziare con https://questlog.gg/"
+                "en-US": "❌ The build URL must start with https://questlog.gg/ or https://maxroll.gg/",
+                "fr": "❌ L'URL du build doit commencer par https://questlog.gg/ ou https://maxroll.gg/",
+                "es-ES": "❌ La URL del build debe comenzar con https://questlog.gg/ o https://maxroll.gg/",
+                "de": "❌ Die Build-URL muss mit https://questlog.gg/ oder https://maxroll.gg/ beginnen.",
+                "it": "❌ L'URL della build deve iniziare con https://questlog.gg/ o https://maxroll.gg/"
             },
             "updated": {
                 "en-US": "✅ {pseudo}, your build has been updated.",
@@ -2046,6 +2132,56 @@
                 "es-ES": "Flanqueador",
                 "de": "Flankierer",
                 "it": "Fiancheggiatore"
+            }
+        },
+        "change_langue": {
+            "name": {
+                "en-US": "change_language",
+                "fr": "change_langue",
+                "es-ES": "cambiar_idioma",
+                "de": "sprache_aendern",
+                "it": "cambia_lingua"
+            },
+            "description": {
+                "en-US": "Change your language in the guild member list",
+                "fr": "Changer votre langue dans la liste des membres de la guilde",
+                "es-ES": "Cambiar tu idioma en la lista de miembros del gremio",
+                "de": "Ändere deine Sprache in der Gildenmitgliederliste",
+                "it": "Cambia la tua lingua nell'elenco dei membri della gilda"
+            },
+            "options": {
+                "langue": {
+                    "description": {
+                        "en-US": "Choose your preferred language",
+                        "fr": "Choisissez votre langue préférée",
+                        "es-ES": "Elige tu idioma preferido",
+                        "de": "Wähle deine bevorzugte Sprache",
+                        "it": "Scegli la tua lingua preferita"
+                    }
+                }
+            },
+            "messages": {
+                "not_registered": {
+                    "en-US": "❌ You are not registered in the guild. Please register first.",
+                    "fr": "❌ Vous n'êtes pas enregistré dans la guilde. Veuillez vous inscrire d'abord.",
+                    "es-ES": "❌ No estás registrado en el gremio. Por favor, regístrate primero.",
+                    "de": "❌ Du bist nicht in der Gilde registriert. Bitte registriere dich zuerst.",
+                    "it": "❌ Non sei registrato nella gilda. Per favore registrati prima."
+                },
+                "success": {
+                    "en-US": "✅ Your language has been updated to **{language_name}**",
+                    "fr": "✅ Votre langue a été mise à jour vers **{language_name}**",
+                    "es-ES": "✅ Tu idioma se ha actualizado a **{language_name}**",
+                    "de": "✅ Deine Sprache wurde auf **{language_name}** aktualisiert",
+                    "it": "✅ La tua lingua è stata aggiornata a **{language_name}**"
+                },
+                "error": {
+                    "en-US": "❌ Error updating your language: {error}",
+                    "fr": "❌ Erreur lors de la mise à jour de votre langue : {error}",
+                    "es-ES": "❌ Error al actualizar tu idioma: {error}",
+                    "de": "❌ Fehler beim Aktualisieren deiner Sprache: {error}",
+                    "it": "❌ Errore durante l'aggiornamento della tua lingua: {error}"
+                }
             }
         }
     },
