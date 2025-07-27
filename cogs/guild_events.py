@@ -1309,6 +1309,64 @@ class GuildEvents(commands.Cog):
             pass
         return 0
 
+    def _format_static_group_members(self, member_ids: List[int], guild_obj, absent_text: str) -> List[str]:
+        """Formate les membres d'un groupe statique avec tri par classe et émojis"""
+        member_info_list = []
+        
+        # Collecter les informations de tous les membres
+        for member_id in member_ids:
+            member = guild_obj.get_member(member_id) if guild_obj else None
+            member_data = self.guild_members_cache.get(guild_obj.id, {}).get(member_id, {}) if guild_obj else {}
+            
+            member_info = {
+                "member": member,
+                "member_id": member_id,
+                "class": member_data.get("class", "Unknown"),
+                "gs": member_data.get("GS", "N/A"),
+                "weapons": member_data.get("weapons", "N/A"),
+                "mention": member.mention if member else f"<@{member_id}> ({absent_text})",
+                "is_present": member is not None
+            }
+            member_info_list.append(member_info)
+        
+        # Définir l'ordre de priorité des classes
+        class_priority = {
+            "Tank": 1,
+            "Healer": 2,
+            "Melee DPS": 3,
+            "Ranged DPS": 4,
+            "Flanker": 5,
+            "Unknown": 99
+        }
+        
+        # Trier par classe puis par présence (présents en premier)
+        member_info_list.sort(key=lambda x: (class_priority.get(x["class"], 99), not x["is_present"]))
+        
+        # Formater chaque membre
+        formatted_members = []
+        for info in member_info_list:
+            # Emoji de classe
+            class_emoji = CLASS_EMOJIS.get(info["class"], "❓")
+            
+            # Émojis d'armes
+            weapons_emoji = ""
+            if info["weapons"] and info["weapons"] != "N/A":
+                weapon_list = [w.strip() for w in info["weapons"].split("/") if w.strip()]
+                weapons_emoji = " ".join(WEAPON_EMOJIS.get(weapon, weapon) for weapon in weapon_list)
+            
+            # GS formaté
+            gs_display = f"({info['gs']})" if info["gs"] and info["gs"] != "N/A" else "(N/A)"
+            
+            # Ligne complète
+            if info["is_present"]:
+                line = f"{class_emoji} {info['mention']} {weapons_emoji} {gs_display}"
+            else:
+                line = f"{class_emoji} {info['mention']} {weapons_emoji} {gs_display}"
+            
+            formatted_members.append(line)
+        
+        return formatted_members
+
     def _calculate_member_score(self, member: Dict, target_class: str, target_gs_range: int, 
                                gs_ranges: List[Tuple[int, int]], is_tentative: bool = False) -> float:
         score = 0.0
@@ -2452,19 +2510,14 @@ class GuildEvents(commands.Cog):
                     leader = guild_obj.get_member(leader_id) if guild_obj else None
                     leader_mention = leader.mention if leader else f"<@{leader_id}> ({absent_text})"
                     
-                    member_mentions = []
-                    for member_id in member_ids:
-                        member = guild_obj.get_member(member_id) if guild_obj else None
-                        if member:
-                            member_mentions.append(member.mention)
-                        else:
-                            member_mentions.append(f"<@{member_id}> ({absent_text})")
+                    # Utiliser la nouvelle fonction de formatage des membres
+                    formatted_members = self._format_static_group_members(member_ids, guild_obj, absent_text)
                     
                     members_count = members_count_template.format(count=member_count)
                     description = f"{leader_label} {leader_mention}\n{members_count}\n\n"
                     
-                    if member_mentions:
-                        description += "\n".join(f"• {mention}" for mention in member_mentions)
+                    if formatted_members:
+                        description += "\n".join(f"• {member_line}" for member_line in formatted_members)
                     else:
                         description += no_members_text
                     
