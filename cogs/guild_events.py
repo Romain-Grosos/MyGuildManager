@@ -110,13 +110,14 @@ class GuildEvents(commands.Cog):
             rows = await self.bot.run_db_query(query, fetch_all=True)
             self.events_data = {}
             for row in rows:
-                (guild_id, event_message_id, game_id, name, event_date,
-                event_time, duration, dkp_value, dkp_ins, status,
-                initial_members, registrations, actual_presence) = row
-                key = f"{int(guild_id)}_{int(event_message_id)}"
-                self.events_data[key] = {
-                    "guild_id": int(guild_id),
-                    "event_id": int(event_message_id),
+                try:
+                    (guild_id, event_message_id, game_id, name, event_date,
+                    event_time, duration, dkp_value, dkp_ins, status,
+                    initial_members, registrations, actual_presence) = row
+                    key = f"{int(guild_id)}_{int(event_message_id)}"
+                    self.events_data[key] = {
+                        "guild_id": int(guild_id),
+                        "event_id": int(event_message_id),
                     "game_id": game_id,
                     "name": name,
                     "event_date": event_date,
@@ -129,6 +130,9 @@ class GuildEvents(commands.Cog):
                     "registrations": registrations,
                     "actual_presence": actual_presence
                 }
+                except (ValueError, TypeError) as e:
+                    logging.warning(f"[GuildEvents] Invalid data for event {event_message_id} in guild {guild_id}: {e}")
+                    continue
             logging.debug(f"[GuildEvents] Events data loaded: {self.events_data}")
         except Exception as e:
             logging.error(f"[GuildEvents] Error loading events data: {e}", exc_info=True)
@@ -308,7 +312,8 @@ class GuildEvents(commands.Cog):
 
                 try:
                     duration_minutes = int(cal_event.get("duration", 60))
-                except:
+                except (ValueError, TypeError) as e:
+                    logging.warning(f"[GuildEvents] Invalid duration value for event, using default 60min: {e}")
                     duration_minutes = 60
                 end_time = start_time + timedelta(minutes=duration_minutes)
 
@@ -535,7 +540,8 @@ class GuildEvents(commands.Cog):
 
         try:
             message = await events_channel.fetch_message(event_id)
-        except Exception as e:
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException) as e:
+            logging.warning(f"[GuildEvents] Cannot fetch event message {event_id}: {e}")
             follow_message = GUILD_EVENTS["event_confirm"]["no_events_message"].get(user_locale,GUILD_EVENTS["event_confirm"]["no_events_message"].get("en-US"))
             await ctx.followup.send(follow_message, ephemeral=True)
             return
@@ -907,6 +913,7 @@ class GuildEvents(commands.Cog):
 
         for guild_id, settings in self.guild_settings.items():
             total_deleted = 0
+            canceled_events_to_delete = []
             guild = self.bot.get_guild(guild_id)
             if not guild:
                 logging.error(f"[GuildEvents CRON] Guild {guild_id} not found.")
@@ -964,14 +971,19 @@ class GuildEvents(commands.Cog):
                     del self.events_data[key]
 
                     if str(ev.get("status", "")).lower() == "canceled":
-                        try:
-                            delete_query = "DELETE FROM events_data WHERE guild_id = %s AND event_id = %s"
-                            await self.bot.run_db_query(delete_query, (ev["guild_id"], ev["event_id"]), commit=True)
-                            logging.debug(f"[GuildEvents CRON] Record deleted in DB for event {ev['event_id']}")
-                        except Exception as e:
-                            logging.error(f"[GuildEvents CRON] Error deleting event {ev['event_id']} in DB: {e}", exc_info=True)
+                        canceled_events_to_delete.append((ev["guild_id"], ev["event_id"]))
                     else:
                         logging.debug(f"[GuildEvents CRON] Event {ev['event_id']} ended but status is not 'Canceled' => record kept.")
+
+            if canceled_events_to_delete:
+                try:
+                    placeholders = ",".join(["(%s,%s)"] * len(canceled_events_to_delete))
+                    delete_query = f"DELETE FROM events_data WHERE (guild_id, event_id) IN ({placeholders})"
+                    params = [item for sublist in canceled_events_to_delete for item in sublist]
+                    await self.bot.run_db_query(delete_query, params, commit=True)
+                    logging.debug(f"[GuildEvents CRON] Batch deleted {len(canceled_events_to_delete)} canceled events from DB for guild {guild_id}")
+                except Exception as e:
+                    logging.error(f"[GuildEvents CRON] Error batch deleting events for guild {guild_id}: {e}", exc_info=True)
 
             logging.info(f"[GuildEvents CRON] For guild {guild_id}, messages deleted: {total_deleted}")
 
@@ -1107,6 +1119,7 @@ class GuildEvents(commands.Cog):
         now = datetime.now(tz)
 
         for guild_id, settings in self.guild_settings.items():
+            closed_events_to_update = []
             guild = self.bot.get_guild(guild_id)
             if not guild:
                 logging.error(f"[GuildEvents CRON] Guild {guild_id} not found.")
@@ -1175,8 +1188,7 @@ class GuildEvents(commands.Cog):
                             embed.add_field(name=field["name"], value=field["value"], inline=field["inline"])
                         try:
                             await msg.edit(embed=embed)
-                            update_query = "UPDATE events_data SET status = %s WHERE guild_id = %s AND event_id = %s"
-                            await self.bot.run_db_query(update_query, (closed_db, guild_id, ev["event_id"]), commit=True)
+                            closed_events_to_update.append((closed_db, guild_id, ev["event_id"]))
                             ev["status"] = closed_db
                             logging.info(f"[GuildEvents CRON] Event {ev['event_id']} marked as Closed.")
                             await msg.clear_reactions()
@@ -1184,6 +1196,18 @@ class GuildEvents(commands.Cog):
                             await self.create_groups(guild_id, ev["event_id"])
                         except Exception as e:
                             logging.error(f"[GuildEvents CRON] Error updating event {ev['event_id']}: {e}", exc_info=True)
+
+            if closed_events_to_update:
+                try:
+                    event_ids = [str(item[2]) for item in closed_events_to_update]
+                    placeholders = ",".join(["%s"] * len(event_ids))
+                    update_query = f"UPDATE events_data SET status = %s WHERE guild_id = %s AND event_id IN ({placeholders})"
+                    params = [closed_events_to_update[0][0], guild_id] + event_ids
+                    await self.bot.run_db_query(update_query, params, commit=True)
+                    logging.debug(f"[GuildEvents CRON] Batch updated {len(closed_events_to_update)} events to Closed status for guild {guild_id}")
+                except Exception as e:
+                    logging.error(f"[GuildEvents CRON] Error batch updating event statuses for guild {guild_id}: {e}", exc_info=True)
+
         logging.info("[GuildEvents CRON] Finished event_close_cron.")
 
     @staticmethod
@@ -1265,7 +1289,6 @@ class GuildEvents(commands.Cog):
         
         gs_values.sort()
         min_gs, max_gs = gs_values[0], gs_values[-1]
-        median_gs = statistics.median(gs_values)
         
         total_members = len(gs_values)
         gs_spread = max_gs - min_gs
@@ -1312,8 +1335,7 @@ class GuildEvents(commands.Cog):
     def _format_static_group_members(self, member_ids: List[int], guild_obj, absent_text: str) -> List[str]:
         """Formate les membres d'un groupe statique avec tri par classe et émojis"""
         member_info_list = []
-        
-        # Collecter les informations de tous les membres
+
         for member_id in member_ids:
             member = guild_obj.get_member(member_id) if guild_obj else None
             member_data = self.guild_members_cache.get(guild_obj.id, {}).get(member_id, {}) if guild_obj else {}
@@ -1328,8 +1350,7 @@ class GuildEvents(commands.Cog):
                 "is_present": member is not None
             }
             member_info_list.append(member_info)
-        
-        # Définir l'ordre de priorité des classes
+
         class_priority = {
             "Tank": 1,
             "Healer": 2,
@@ -1338,26 +1359,20 @@ class GuildEvents(commands.Cog):
             "Flanker": 5,
             "Unknown": 99
         }
-        
-        # Trier par classe puis par présence (présents en premier)
+
         member_info_list.sort(key=lambda x: (class_priority.get(x["class"], 99), not x["is_present"]))
-        
-        # Formater chaque membre
+
         formatted_members = []
         for info in member_info_list:
-            # Emoji de classe
             class_emoji = CLASS_EMOJIS.get(info["class"], "❓")
-            
-            # Émojis d'armes
+
             weapons_emoji = ""
             if info["weapons"] and info["weapons"] != "N/A":
                 weapon_list = [w.strip() for w in info["weapons"].split("/") if w.strip()]
                 weapons_emoji = " ".join(WEAPON_EMOJIS.get(weapon, weapon) for weapon in weapon_list)
-            
-            # GS formaté
+
             gs_display = f"({info['gs']})" if info["gs"] and info["gs"] != "N/A" else "(N/A)"
-            
-            # Ligne complète
+
             if info["is_present"]:
                 line = f"{class_emoji} {info['mention']} {weapons_emoji} {gs_display}"
             else:
@@ -1771,7 +1786,8 @@ class GuildEvents(commands.Cog):
         if isinstance(registrations, str):
             try:
                 registrations = json.loads(registrations)
-            except:
+            except (json.JSONDecodeError, ValueError) as e:
+                logging.warning(f"[GuildEvents] Invalid JSON in registrations, using defaults: {e}")
                 registrations = {"presence": [], "tentative": [], "absence": []}
         presence_ids  = registrations.get("presence", [])
         tentative_ids = registrations.get("tentative", [])
@@ -2345,7 +2361,8 @@ class GuildEvents(commands.Cog):
         if isinstance(registrations, str):
             try:
                 registrations = json.loads(registrations)
-            except:
+            except (json.JSONDecodeError, ValueError) as e:
+                logging.warning(f"[GuildEvents] Invalid JSON in registrations, using defaults: {e}")
                 registrations = {"presence": [], "tentative": [], "absence": []}
         
         presence_ids = registrations.get("presence", [])
@@ -2367,6 +2384,7 @@ class GuildEvents(commands.Cog):
                     "class": md.get("class", "Unknown"),
                 }
         except Exception as exc:
+            logging.error(f"[GuildEvents] Error building roster for guild {guild_id}: {exc}")
             error_msg = STATIC_GROUPS["preview_groups"]["messages"]["error_building_roster"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["error_building_roster"].get("en-US")).format(error=exc)
             await ctx.followup.send(error_msg, ephemeral=True)
             return
@@ -2374,6 +2392,7 @@ class GuildEvents(commands.Cog):
         try:
             all_groups = self._assign_groups_enhanced(guild_id, presence_ids, tentative_ids, roster_data)
         except Exception as exc:
+            logging.error(f"[GuildEvents] Error generating groups for event {event_id}: {exc}")
             error_msg = STATIC_GROUPS["preview_groups"]["messages"]["error_generating_groups"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["error_generating_groups"].get("en-US")).format(error=exc)
             await ctx.followup.send(error_msg, ephemeral=True)
             return
@@ -2509,8 +2528,7 @@ class GuildEvents(commands.Cog):
                     
                     leader = guild_obj.get_member(leader_id) if guild_obj else None
                     leader_mention = leader.mention if leader else f"<@{leader_id}> ({absent_text})"
-                    
-                    # Utiliser la nouvelle fonction de formatage des membres
+
                     formatted_members = self._format_static_group_members(member_ids, guild_obj, absent_text)
                     
                     members_count = members_count_template.format(count=member_count)
