@@ -2462,6 +2462,27 @@
                 "de": "Gruppen",
                 "it": "Gruppi"
             },
+            "groups_below": {
+                "en-US": "Groups below",
+                "fr": "Groupes ci-dessous",
+                "es-ES": "Grupos abajo",
+                "de": "Gruppen unten",
+                "it": "Gruppi qui sotto"
+            },
+            "present_count": {
+                "en-US": "Present",
+                "fr": "Présents",
+                "es-ES": "Presentes",
+                "de": "Anwesend",
+                "it": "Presenti"
+            },
+            "attempt_count": {
+                "en-US": "Attempts",
+                "fr": "Tentatives",
+                "es-ES": "Intentos",
+                "de": "Versuche",
+                "it": "Tentativi"
+            },
             "auto_grouping": {
                 "en-US": "Automatic group assignment and gathering 15 minutes before the event!",
                 "fr": "Envoi automatique des groupes et regroupement 15 minutes avant l'évènement !",
@@ -2569,13 +2590,6 @@
                 "de": "Ereignis anzeigen",
                 "it": "Vedi l'Evento"
             },
-            "groups_below": {
-                "en-US": "Groups below",
-                "fr": "Groupes ci-dessous",
-                "es-ES": "Grupos abajo",
-                "de": "Gruppen unten",
-                "it": "Gruppi qui sotto"
-            },
             "no_member": {
                 "en-US": "No member",
                 "fr": "Aucun membre",
@@ -2596,27 +2610,6 @@
                 "es-ES": "Error durante la decodificación de registros",
                 "de": "Fehler beim Dekodieren der Registrierungen",
                 "it": "Errore durante la decodifica delle registrazioni"
-            },
-            "at": {
-                "en-US": "at",
-                "fr": "à",
-                "es-ES": "a las",
-                "de": "um",
-                "it": "alle"
-            },
-            "present_count": {
-                "en-US": "Present",
-                "fr": "Présents",
-                "es-ES": "Presentes",
-                "de": "Anwesend",
-                "it": "Presenti"
-            },
-            "attempt_count": {
-                "en-US": "Attempts",
-                "fr": "Tentatives",
-                "es-ES": "Intentos",
-                "de": "Versuche",
-                "it": "Tentativi"
             }
         },
         "event_cancel": {

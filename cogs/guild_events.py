@@ -681,7 +681,7 @@ class GuildEvents(commands.Cog):
             embed.add_field(name=field["name"], value=field["value"], inline=field["inline"])
 
         try:
-            await message.edit(embed=embed)
+            await message.edit(content="", embed=embed)
             follow_message = GUILD_EVENTS["event_cancel"]["event_updated"].get(user_locale,GUILD_EVENTS["event_cancel"]["event_updated"].get("en-US")).format(event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
@@ -856,8 +856,7 @@ class GuildEvents(commands.Cog):
             .get(guild_lang, GUILD_EVENTS["events_infos"]["absence"]["en-US"]) \
             .lower()
         none_key = GUILD_EVENTS["events_infos"]["none"] \
-            .get(guild_lang, GUILD_EVENTS["events_infos"]["none"]["en-US"]) \
-            .lower()
+            .get(guild_lang, GUILD_EVENTS["events_infos"]["none"]["en-US"])
 
         def format_list(id_list):
             members = [guild.get_member(uid) for uid in id_list if guild.get_member(uid)]
