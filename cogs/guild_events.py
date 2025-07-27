@@ -7,9 +7,10 @@ from discord.ext import commands, tasks
 from datetime import datetime, timedelta, time as dt_time
 import time
 from translation import translations as global_translations
-from typing import Optional
+from typing import Optional, List, Dict, Set, Tuple
 import json
 import math
+import statistics
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
 STATIC_GROUPS = global_translations.get("static_groups", {})
@@ -1246,12 +1247,99 @@ class GuildEvents(commands.Cog):
             logging.exception("[Guild_Events - GetOptimalGrouping] Unexpected error.", exc_info=exc)
             return [min_size] * math.ceil(n / min_size)
 
-    def _assign_groups_with_statics(self, guild_id: int, presence_ids: list[int], tentative_ids: list[int], roster_data: dict) -> list[list[dict]]:
-        logging.info("[GuildEvents - AssignGroupsWithStatics] Starting advanced group assignment")
+    def _calculate_gs_ranges(self, members_data: List[Dict]) -> List[Tuple[int, int]]:
+        gs_values = []
+        for member in members_data:
+            try:
+                gs_str = member.get("GS", "0")
+                if isinstance(gs_str, str) and gs_str.lower() in ["n/a", "na", "", "unknown"]:
+                    continue
+                gs = int(float(gs_str))
+                if gs > 0:
+                    gs_values.append(gs)
+            except (ValueError, TypeError):
+                continue
+        
+        if len(gs_values) < 2:
+            return [(0, 10000)]
+        
+        gs_values.sort()
+        min_gs, max_gs = gs_values[0], gs_values[-1]
+        median_gs = statistics.median(gs_values)
+        
+        total_members = len(gs_values)
+        gs_spread = max_gs - min_gs
+        
+        if total_members < 10:
+            tolerance = max(gs_spread * 0.4, 200)
+        elif total_members < 30:
+            tolerance = max(gs_spread * 0.25, 150)
+        else:
+            std_dev = statistics.stdev(gs_values) if len(gs_values) > 1 else 100
+            tolerance = min(std_dev * 1.2, 200)
+        
+        ranges = []
+        current_min = min_gs
+        
+        while current_min < max_gs:
+            range_max = min(current_min + tolerance, max_gs)
+            ranges.append((int(current_min), int(range_max)))
+            current_min = range_max - (tolerance * 0.1)
+            
+            if len(ranges) >= 5:
+                break
+        
+        logging.debug(f"[GuildEvents - GS Ranges] Calculated ranges for {total_members} members: {ranges}")
+        return ranges
+
+    def _get_member_gs_range(self, member_gs, gs_ranges: List[Tuple[int, int]]) -> int:
+        try:
+            if isinstance(member_gs, str) and member_gs.lower() in ["n/a", "na", ""]:
+                return 0
+            gs = int(float(member_gs))
+            for i, (min_gs, max_gs) in enumerate(gs_ranges):
+                if min_gs <= gs <= max_gs:
+                    return i
+            for i, (min_gs, max_gs) in enumerate(gs_ranges):
+                if gs < min_gs:
+                    return i
+                if gs > max_gs and i == len(gs_ranges) - 1:
+                    return i
+        except (ValueError, TypeError):
+            pass
+        return 0
+
+    def _calculate_member_score(self, member: Dict, target_class: str, target_gs_range: int, 
+                               gs_ranges: List[Tuple[int, int]], is_tentative: bool = False) -> float:
+        score = 0.0
+        
+        if member.get("class") == target_class:
+            score += 0.7
+        elif target_class in ["Melee DPS", "Ranged DPS"] and member.get("class") in ["Melee DPS", "Ranged DPS"]:
+            score += 0.5
+        elif member.get("class") in ["Melee DPS", "Ranged DPS", "Flanker"]:
+            score += 0.3
+        
+        member_gs_range = self._get_member_gs_range(member.get("GS", 0), gs_ranges)
+        if member_gs_range == target_gs_range:
+            score += 0.2
+        elif abs(member_gs_range - target_gs_range) == 1:
+            score += 0.1
+        
+        if not is_tentative:
+            score += 0.1
+        else:
+            score += 0.05
+        
+        return score
+
+    def _assign_groups_enhanced(self, guild_id: int, presence_ids: List[int], tentative_ids: List[int], roster_data: Dict) -> List[List[Dict]]:
+        logging.info("[GuildEvents - Groups Enhanced] Starting enhanced group assignment")
         
         all_inscribed = set(presence_ids + tentative_ids)
         final_groups = []
         used_members = set()
+        incomplete_static_groups = []
         
         def get_member_info(uid: int, tentative: bool = False):
             info = roster_data["members"].get(str(uid))
@@ -1259,17 +1347,22 @@ class GuildEvents(commands.Cog):
                 return None
             return {**info, "tentative": tentative, "user_id": uid}
         
-        logging.debug("[AssignGroupsWithStatics] Step 1: Processing static groups")
+        all_members_data = [get_member_info(uid) for uid in all_inscribed if get_member_info(uid)]
+        gs_ranges = self._calculate_gs_ranges(all_members_data)
+        logging.info(f"[GuildEvents - Groups Enhanced] GS ranges calculated: {gs_ranges}")
+        
+        logging.info("[GuildEvents - Groups Enhanced] Step 1: Processing static groups (complete or N-1)")
         
         static_groups = self.static_groups_cache.get(guild_id, {})
         for group_name, group_data in static_groups.items():
             member_ids = group_data["member_ids"]
-            present_members = [mid for mid in member_ids if mid in all_inscribed and mid not in used_members]
+            configured_count = len(member_ids)
+            present_members = [mid for mid in member_ids if mid in presence_ids and mid not in used_members]
             present_count = len(present_members)
             
-            logging.debug(f"[AssignGroupsWithStatics] Static group '{group_name}': {present_count}/6 members present")
+            logging.debug(f"[GuildEvents - Groups Enhanced] Static '{group_name}': {present_count}/{configured_count} present")
             
-            if present_count == 6:
+            if present_count == configured_count or present_count == (configured_count - 1):
                 group_members = []
                 for mid in present_members:
                     is_tentative = mid in tentative_ids
@@ -1279,144 +1372,207 @@ class GuildEvents(commands.Cog):
                         used_members.add(mid)
                 
                 if group_members:
-                    final_groups.append(group_members)
-                    logging.info(f"[AssignGroupsWithStatics] Complete static group '{group_name}' formed with 6 members")
-                    
-            elif present_count == 5:
-                missing_member_id = [mid for mid in member_ids if mid not in present_members][0]
-                missing_member_info = get_member_info(missing_member_id)
-                target_class = missing_member_info["class"] if missing_member_info else "Tank"
-                
-                available_members = [uid for uid in all_inscribed if uid not in used_members and uid not in member_ids]
-                replacement = None
-                for uid in available_members:
-                    member_info = get_member_info(uid)
-                    if member_info and member_info["class"] == target_class:
-                        replacement = uid
-                        break
-                
-                if replacement:
-                    group_members = []
-                    for mid in present_members:
-                        is_tentative = mid in tentative_ids
-                        member_info = get_member_info(mid, is_tentative)
-                        if member_info:
-                            group_members.append(member_info)
-                            used_members.add(mid)
-                    
-                    is_tentative = replacement in tentative_ids
-                    replacement_info = get_member_info(replacement, is_tentative)
-                    if replacement_info:
-                        group_members.append(replacement_info)
-                        used_members.add(replacement)
-                        final_groups.append(group_members)
-                        logging.info(f"[AssignGroupsWithStatics] Static group '{group_name}' completed with replacement ({target_class})")
-                else:
-                    logging.debug(f"[AssignGroupsWithStatics] Cannot complete static group '{group_name}' - no {target_class} available")
+                    incomplete_static_groups.append({
+                        "name": group_name,
+                        "members": group_members,
+                        "missing_slots": 6 - len(group_members),
+                        "original_ids": member_ids
+                    })
+                    logging.info(f"[GuildEvents - Groups Enhanced] Static '{group_name}' created with {len(group_members)}/6 members")
+            else:
+                logging.debug(f"[GuildEvents - Groups Enhanced] Static '{group_name}' not eligible ({present_count}/{configured_count})")
 
-        logging.debug("[AssignGroupsWithStatics] Step 2: Forming optimal ratio groups")
+        logging.info("[GuildEvents - Groups Enhanced] Step 2: Completing static groups")
+        
+        for static_group in incomplete_static_groups:
+            if static_group["missing_slots"] > 0:
+                existing_classes = [m["class"] for m in static_group["members"]]
+                missing_classes = []
 
+                if len(static_group["members"]) == (len(static_group["original_ids"]) - 1):
+                    missing_id = [mid for mid in static_group["original_ids"] if mid not in [m["user_id"] for m in static_group["members"]]][0]
+                    missing_info = get_member_info(missing_id)
+                    if missing_info:
+                        missing_classes.append(missing_info["class"])
+
+                essential_classes = ["Tank", "Healer"]
+                for essential in essential_classes:
+                    if essential not in existing_classes:
+                        missing_classes.append(essential)
+
+                available_members = [uid for uid in all_inscribed if uid not in used_members and uid not in static_group["original_ids"]]
+                
+                for _ in range(static_group["missing_slots"]):
+                    best_candidate = None
+                    best_score = 0
+                    
+                    for uid in available_members:
+                        member_info = get_member_info(uid, uid in tentative_ids)
+                        if not member_info:
+                            continue
+
+                        if missing_classes and member_info["class"] in missing_classes:
+                            score = self._calculate_member_score(
+                                member_info, missing_classes[0], 0, gs_ranges, uid in tentative_ids
+                            )
+                        else:
+                            score = self._calculate_member_score(
+                                member_info, "Melee DPS", 0, gs_ranges, uid in tentative_ids
+                            )
+                        
+                        if score > best_score:
+                            best_score = score
+                            best_candidate = uid
+                    
+                    if best_candidate:
+                        member_info = get_member_info(best_candidate, best_candidate in tentative_ids)
+                        static_group["members"].append(member_info)
+                        used_members.add(best_candidate)
+                        available_members.remove(best_candidate)
+                        static_group["missing_slots"] -= 1
+                        
+                        if missing_classes and member_info["class"] in missing_classes:
+                            missing_classes.remove(member_info["class"])
+                        
+                        logging.info(f"[GuildEvents - Groups Enhanced] Added {member_info['class']} to static '{static_group['name']}'")
+            
+            final_groups.append(static_group["members"])
+
+        logging.info("[GuildEvents - Groups Enhanced] Step 3: Creating optimized groups with GS matching")
+        
         remaining_members = [uid for uid in all_inscribed if uid not in used_members]
-        class_buckets = {"Tank": [], "Healer": [], "Melee DPS": [], "Ranged DPS": [], "Flanker": []}
-        
-        for uid in remaining_members:
-            is_tentative = uid in tentative_ids
-            member_info = get_member_info(uid, is_tentative)
+        present_remaining = [uid for uid in remaining_members if uid in presence_ids]
+        tentative_remaining = [uid for uid in remaining_members if uid in tentative_ids]
+
+        gs_buckets = {}
+        for i, gs_range in enumerate(gs_ranges):
+            gs_buckets[i] = {"Tank": [], "Healer": [], "Melee DPS": [], "Ranged DPS": [], "Flanker": []}
+
+        for uid in present_remaining:
+            member_info = get_member_info(uid, False)
             if member_info:
-                class_name = member_info["class"]
-                if class_name in class_buckets:
-                    class_buckets[class_name].append(member_info)
+                gs_range_idx = self._get_member_gs_range(member_info.get("GS", 0), gs_ranges)
+                if member_info["class"] in gs_buckets[gs_range_idx]:
+                    gs_buckets[gs_range_idx][member_info["class"]].append(member_info)
         
-        ideal_ratios = self.ideal_staff_cache.get(guild_id, {
-            "Tank": 20, "Healer": 20, "Melee DPS": 10, "Ranged DPS": 10, "Flanker": 10
-        })
+        for gs_idx in sorted(gs_buckets.keys(), reverse=True):
+            bucket = gs_buckets[gs_idx]
 
-        flankers = class_buckets["Flanker"]
-        while len(flankers) >= 5:
-            flanker_group = flankers[:6] if len(flankers) >= 6 else flankers[:5]
-            final_groups.append(flanker_group)
-            flankers = flankers[len(flanker_group):]
-            logging.info(f"[AssignGroupsWithStatics] Flanker suicide group formed with {len(flanker_group)} members")
-        class_buckets["Flanker"] = flankers
+            while len(bucket["Flanker"]) >= 5:
+                flanker_group = bucket["Flanker"][:6] if len(bucket["Flanker"]) >= 6 else bucket["Flanker"][:5]
+                final_groups.append(flanker_group)
+                bucket["Flanker"] = bucket["Flanker"][len(flanker_group):]
+                for member in flanker_group:
+                    used_members.add(member["user_id"])
+                logging.info(f"[GuildEvents - Groups Enhanced] Flanker group formed for GS range {gs_ranges[gs_idx]}")
 
-        tanks = class_buckets["Tank"]
-        healers = class_buckets["Healer"]
-        melee_dps = class_buckets["Melee DPS"]
-        ranged_dps = class_buckets["Ranged DPS"]
-        remaining_flankers = class_buckets["Flanker"]
-        
-        total_members = len(tanks) + len(healers) + len(melee_dps) + len(ranged_dps) + len(remaining_flankers)
-        
-        if total_members >= 4:
-            total_ideal = sum(ideal_ratios.values())
-            groups_needed = max(1, total_members // 6)
-            
-            target_tanks = max(1, int(ideal_ratios["Tank"] / total_ideal * 6))
-            target_healers = max(1, int(ideal_ratios["Healer"] / total_ideal * 6))
-            target_melee = int(ideal_ratios["Melee DPS"] / total_ideal * 6)
-            target_ranged = int(ideal_ratios["Ranged DPS"] / total_ideal * 6)
-            
-            target_tanks = max(1, min(target_tanks, 2))
-            target_healers = max(1, min(target_healers, 2))
-            
-            logging.debug(f"[AssignGroupsWithStatics] Target composition: {target_tanks}T/{target_healers}H/{target_melee}M/{target_ranged}R")
-            
-            while (len(tanks) >= 1 and len(healers) >= 1 and 
-                   (len(tanks) + len(healers) + len(melee_dps) + len(ranged_dps) + len(remaining_flankers)) >= 4):
-                
+            while (len(bucket["Tank"]) >= 1 and len(bucket["Healer"]) >= 1):
                 group = []
 
-                tanks_to_add = min(target_tanks, len(tanks))
-                for _ in range(tanks_to_add):
-                    if tanks:
-                        group.append(tanks.pop(0))
-
-                healers_to_add = min(target_healers, len(healers))
-                for _ in range(healers_to_add):
-                    if healers:
-                        group.append(healers.pop(0))
+                tanks_needed = min(2, len(bucket["Tank"]))
+                healers_needed = min(2, len(bucket["Healer"]))
+                
+                for _ in range(tanks_needed):
+                    if bucket["Tank"]:
+                        member = bucket["Tank"].pop(0)
+                        group.append(member)
+                        used_members.add(member["user_id"])
+                
+                for _ in range(healers_needed):
+                    if bucket["Healer"]:
+                        member = bucket["Healer"].pop(0)
+                        group.append(member)
+                        used_members.add(member["user_id"])
 
                 remaining_slots = 6 - len(group)
-
-                if len(melee_dps) >= len(ranged_dps):
-                    for _ in range(min(remaining_slots, len(melee_dps))):
-                        if melee_dps:
-                            group.append(melee_dps.pop(0))
-                            remaining_slots -= 1
-                    
-                    for _ in range(min(remaining_slots, len(ranged_dps))):
-                        if ranged_dps:
-                            group.append(ranged_dps.pop(0))
-                            remaining_slots -= 1
-                else:
-                    for _ in range(min(remaining_slots, len(ranged_dps))):
-                        if ranged_dps:
-                            group.append(ranged_dps.pop(0))
-                            remaining_slots -= 1
-                    
-                    for _ in range(min(remaining_slots, len(melee_dps))):
-                        if melee_dps:
-                            group.append(melee_dps.pop(0))
-                            remaining_slots -= 1
-
-                for _ in range(min(remaining_slots, len(remaining_flankers))):
-                    if remaining_flankers:
-                        group.append(remaining_flankers.pop(0))
+                dps_classes = ["Melee DPS", "Ranged DPS", "Flanker"]
+                
+                for dps_class in dps_classes:
+                    while remaining_slots > 0 and bucket[dps_class]:
+                        member = bucket[dps_class].pop(0)
+                        group.append(member)
+                        used_members.add(member["user_id"])
+                        remaining_slots -= 1
                 
                 if len(group) >= 4:
                     final_groups.append(group)
-                    logging.info(f"[AssignGroupsWithStatics] Balanced group formed with {len(group)} members")
+                    logging.info(f"[GuildEvents - Groups Enhanced] Optimized group formed for GS range {gs_ranges[gs_idx]} with {len(group)} members")
                 else:
                     for member in group:
-                        class_buckets[member["class"]].append(member)
+                        used_members.discard(member["user_id"])
+                        bucket[member["class"]].append(member)
                     break
+
+        for uid in tentative_remaining:
+            if uid not in used_members:
+                member_info = get_member_info(uid, True)
+                if member_info and final_groups:
+                    best_group = None
+                    best_score = 0
+                    
+                    for group in final_groups:
+                        if len(group) < 6:
+                            valid_gs_values = [int(m.get("GS", 0)) for m in group if m.get("GS", "0").isdigit()]
+                            group_gs_avg = sum(valid_gs_values) / len(valid_gs_values) if valid_gs_values else 0
+                            gs_range_idx = self._get_member_gs_range(group_gs_avg, gs_ranges)
+                            score = self._calculate_member_score(member_info, "Melee DPS", gs_range_idx, gs_ranges, True)
+                            
+                            if score > best_score:
+                                best_score = score
+                                best_group = group
+                    
+                    if best_group:
+                        best_group.append(member_info)
+                        used_members.add(uid)
+                        logging.info(f"[GuildEvents - Groups Enhanced] Added tentative {member_info['class']} to optimized group")
+
+        logging.info("[GuildEvents - Groups Enhanced] Step 4: Creating non-optimized groups")
         
-        all_remaining = tanks + healers + melee_dps + ranged_dps + remaining_flankers
-        if len(all_remaining) >= 4:
-            final_groups.append(all_remaining)
-            logging.info(f"[AssignGroupsWithStatics] Final group formed with {len(all_remaining)} remaining members")
+        remaining_members = [uid for uid in all_inscribed if uid not in used_members]
         
-        logging.info(f"[AssignGroupsWithStatics] Completed: {len(final_groups)} groups formed")
+        while len(remaining_members) >= 4:
+            group = []
+
+            for uid in remaining_members[:6]:
+                member_info = get_member_info(uid, uid in tentative_ids)
+                if member_info:
+                    group.append(member_info)
+                    used_members.add(uid)
+            
+            remaining_members = [uid for uid in remaining_members if uid not in used_members]
+            
+            if len(group) >= 4:
+                final_groups.append(group)
+                logging.info(f"[GuildEvents - Groups Enhanced] Non-optimized group formed with {len(group)} members")
+
+        logging.info("[GuildEvents - Groups Enhanced] Step 5: Final redistribution")
+        
+        final_remaining = [uid for uid in all_inscribed if uid not in used_members]
+
+        for uid in final_remaining[:]:
+            member_info = get_member_info(uid, uid in tentative_ids)
+            if member_info:
+                for group in final_groups:
+                    if len(group) < 6:
+                        group.append(member_info)
+                        used_members.add(uid)
+                        final_remaining.remove(uid)
+                        logging.info(f"[GuildEvents - Groups Enhanced] Added remaining member to existing group")
+                        break
+
+        if final_remaining:
+            last_group = []
+            for uid in final_remaining:
+                member_info = get_member_info(uid, uid in tentative_ids)
+                if member_info:
+                    last_group.append(member_info)
+                    used_members.add(uid)
+            
+            if last_group:
+                final_groups.append(last_group)
+                logging.info(f"[GuildEvents - Groups Enhanced] Final isolation group formed with {len(last_group)} members")
+        
+        logging.info(f"[GuildEvents - Groups Enhanced] Completed: {len(final_groups)} groups formed with enhanced logic")
         return final_groups
 
     def _assign_groups_legacy(self, presence_ids: list[int], tentative_ids: list[int], roster_data: dict) -> list[list[dict]]:
@@ -1589,9 +1745,9 @@ class GuildEvents(commands.Cog):
             return
 
         try:
-            all_groups = self._assign_groups_with_statics(guild_id, presence_ids, tentative_ids, roster_data)
+            all_groups = self._assign_groups_enhanced(guild_id, presence_ids, tentative_ids, roster_data)
         except Exception as exc:
-            logging.exception("[Guild_Events - CreateGroups] _assign_groups crashed.", exc_info=exc)
+            logging.exception("[Guild_Events - CreateGroups] _assign_groups_enhanced crashed.", exc_info=exc)
             return
 
         try:
@@ -2085,15 +2241,157 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(error_msg, ephemeral=True)
             logging.error(f"[GuildEvents] Error removing member from static group: {e}")
 
+    @discord.slash_command(
+        name=STATIC_GROUPS.get("preview_groups", {}).get("name", {}).get("en-US", "preview_groups"),
+        description=STATIC_GROUPS.get("preview_groups", {}).get("description", {}).get("en-US", "Preview groups before automatic creation for an event"),
+        name_localizations=STATIC_GROUPS.get("preview_groups", {}).get("name", {}),
+        description_localizations=STATIC_GROUPS.get("preview_groups", {}).get("description", {})
+    )
+    @commands.has_permissions(manage_guild=True)
+    async def preview_groups(
+        self,
+        ctx: discord.ApplicationContext,
+        event_id: str = discord.Option(
+            str,
+            description=STATIC_GROUPS["preview_groups"]["options"]["event_id"]["description"]["en-US"],
+            description_localizations=STATIC_GROUPS["preview_groups"]["options"]["event_id"]["description"]
+        )
+    ):
+        await ctx.defer(ephemeral=True)
+        
+        guild_id = ctx.guild.id
+        settings = self.guild_settings.get(guild_id)
+        user_locale = ctx.locale if hasattr(ctx, "locale") and ctx.locale else "en-US"
+        guild_lang = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
+        
+        if not settings:
+            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["no_guild_config"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["no_guild_config"].get("en-US"))
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+        
+        try:
+            event_id_int = int(event_id)
+        except ValueError:
+            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["invalid_event_id"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["invalid_event_id"].get("en-US"))
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+
+        key = f"{guild_id}_{event_id_int}"
+        event = self.events_data.get(key)
+        if not event:
+            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["event_not_found"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["event_not_found"].get("en-US"))
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+        
+        registrations = event.get("registrations", {})
+        if isinstance(registrations, str):
+            try:
+                registrations = json.loads(registrations)
+            except:
+                registrations = {"presence": [], "tentative": [], "absence": []}
+        
+        presence_ids = registrations.get("presence", [])
+        tentative_ids = registrations.get("tentative", [])
+        
+        if not presence_ids and not tentative_ids:
+            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["no_registrations"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["no_registrations"].get("en-US"))
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+
+        try:
+            roster_data = {"members": {}}
+            for member in ctx.guild.members:
+                md = self.guild_members_cache.get(guild_id, {}).get(member.id, {})
+                roster_data["members"][str(member.id)] = {
+                    "pseudo": member.display_name,
+                    "GS": md.get("GS", "N/A"),
+                    "weapons": md.get("weapons", "N/A"),
+                    "class": md.get("class", "Unknown"),
+                }
+        except Exception as exc:
+            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["error_building_roster"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["error_building_roster"].get("en-US")).format(error=exc)
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+
+        try:
+            all_groups = self._assign_groups_enhanced(guild_id, presence_ids, tentative_ids, roster_data)
+        except Exception as exc:
+            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["error_generating_groups"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["error_generating_groups"].get("en-US")).format(error=exc)
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+        
+        if not all_groups:
+            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["no_groups_formed"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["no_groups_formed"].get("en-US"))
+            await ctx.followup.send(error_msg, ephemeral=True)
+            return
+
+        embeds = []
+        total = len(all_groups)
+
+        preview_title = STATIC_GROUPS["preview_groups"]["embeds"]["preview_title"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["preview_title"].get("en-US"))
+        preview_description = STATIC_GROUPS["preview_groups"]["embeds"]["preview_description"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["preview_description"].get("en-US")).format(
+            event_name=event['name'],
+            event_date=event['event_date'],
+            event_time=event['event_time'],
+            total=total
+        )
+        
+        header_embed = discord.Embed(
+            title=preview_title,
+            description=preview_description,
+            color=discord.Color.orange()
+        )
+        embeds.append(header_embed)
+        
+        for idx, grp in enumerate(all_groups, 1):
+            group_title = STATIC_GROUPS["preview_groups"]["embeds"]["group_title"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["group_title"].get("en-US")).format(
+                index=idx,
+                total=total
+            )
+            
+            e = discord.Embed(
+                title=group_title,
+                color=discord.Color.blue()
+            )
+            lines = []
+            for m in grp:
+                cls_emoji = CLASS_EMOJIS.get(m["class"], "")
+                weapons_emoji = " ".join(
+                    WEAPON_EMOJIS.get(c.strip(), c.strip())
+                    for c in m["weapons"].split("/") if c.strip()
+                )
+                if m.get("tentative"):
+                    lines.append(f"{cls_emoji} {weapons_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
+                else:
+                    lines.append(f"{cls_emoji} {weapons_emoji} {m['pseudo']} ({m['GS']})")
+            
+            no_members_text = STATIC_GROUPS["preview_groups"]["embeds"]["no_members"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["no_members"].get("en-US"))
+            e.description = "\n".join(lines) or no_members_text
+            embeds.append(e)
+
+        if len(embeds) > 10:
+            embeds = embeds[:10]
+            
+            truncated_title = STATIC_GROUPS["preview_groups"]["embeds"]["truncated_title"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["truncated_title"].get("en-US"))
+            truncated_description = STATIC_GROUPS["preview_groups"]["embeds"]["truncated_description"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["truncated_description"].get("en-US")).format(total=total)
+            
+            warning_embed = discord.Embed(
+                title=truncated_title,
+                description=truncated_description,
+                color=discord.Color.yellow()
+            )
+            embeds.append(warning_embed)
+        
+        await ctx.followup.send(embeds=embeds, ephemeral=True)
+        logging.info(f"[GuildEvents] Groups preview generated for event {event_id} in guild {guild_id}")
+
     async def update_static_groups_message_for_cron(self, guild_id: int) -> None:
-        """Public method for updating static groups message from cron or external calls."""
         try:
             await self.update_static_groups_message(guild_id)
         except Exception as e:
             logging.error(f"[GuildEvents] Error in cron static groups update for guild {guild_id}: {e}")
 
     async def update_static_groups_message(self, guild_id: int) -> bool:
-        """Update the static groups message in the dedicated channel. Returns True if successful."""
         try:
             guild_settings = self.guild_settings.get(guild_id, {})
             guild_lang = guild_settings.get("guild_lang", "en-US")

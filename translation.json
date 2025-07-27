@@ -3226,6 +3226,128 @@
                     "it": "Questo messaggio sarà automaticamente aggiornato con le informazioni attuali dei gruppi statici.\n\n*Aggiornato 4 volte al giorno*"
                 }
             }
+        },
+        "preview_groups": {
+            "name": {
+                "en-US": "preview_groups",
+                "fr": "preview_groupes",
+                "es-ES": "vista_previa_grupos",
+                "de": "gruppen_vorschau",
+                "it": "anteprima_gruppi"
+            },
+            "description": {
+                "en-US": "Preview groups before automatic creation for an event",
+                "fr": "Prévisualiser les groupes avant la création automatique pour un événement",
+                "es-ES": "Vista previa de grupos antes de la creación automática para un evento",
+                "de": "Gruppen vor der automatischen Erstellung für ein Ereignis in der Vorschau anzeigen",
+                "it": "Anteprima dei gruppi prima della creazione automatica per un evento"
+            },
+            "options": {
+                "event_id": {
+                    "description": {
+                        "en-US": "Event message ID to preview groups for",
+                        "fr": "ID du message d'événement pour prévisualiser les groupes",
+                        "es-ES": "ID del mensaje del evento para vista previa de grupos",
+                        "de": "Event-Nachrichten-ID für Gruppenvorschau",
+                        "it": "ID del messaggio evento per l'anteprima dei gruppi"
+                    }
+                }
+            },
+            "messages": {
+                "no_guild_config": {
+                    "en-US": "❌ No guild configuration found.",
+                    "fr": "❌ Aucune configuration de guilde trouvée.",
+                    "es-ES": "❌ No se encontró configuración del gremio.",
+                    "de": "❌ Keine Gildenkonfiguration gefunden.",
+                    "it": "❌ Nessuna configurazione della gilda trovata."
+                },
+                "invalid_event_id": {
+                    "en-US": "❌ Invalid event ID format.",
+                    "fr": "❌ Format d'ID d'événement invalide.",
+                    "es-ES": "❌ Formato de ID de evento inválido.",
+                    "de": "❌ Ungültiges Event-ID-Format.",
+                    "it": "❌ Formato ID evento non valido."
+                },
+                "event_not_found": {
+                    "en-US": "❌ Event not found.",
+                    "fr": "❌ Événement introuvable.",
+                    "es-ES": "❌ Evento no encontrado.",
+                    "de": "❌ Ereignis nicht gefunden.",
+                    "it": "❌ Evento non trovato."
+                },
+                "no_registrations": {
+                    "en-US": "❌ No registrations found for this event.",
+                    "fr": "❌ Aucune inscription trouvée pour cet événement.",
+                    "es-ES": "❌ No se encontraron registros para este evento.",
+                    "de": "❌ Keine Registrierungen für dieses Ereignis gefunden.",
+                    "it": "❌ Nessuna registrazione trovata per questo evento."
+                },
+                "error_building_roster": {
+                    "en-US": "❌ Error building roster: {error}",
+                    "fr": "❌ Erreur lors de la construction du roster : {error}",
+                    "es-ES": "❌ Error al construir la lista: {error}",
+                    "de": "❌ Fehler beim Erstellen der Mitgliederliste: {error}",
+                    "it": "❌ Errore nella costruzione del roster: {error}"
+                },
+                "error_generating_groups": {
+                    "en-US": "❌ Error generating groups: {error}",
+                    "fr": "❌ Erreur lors de la génération des groupes : {error}",
+                    "es-ES": "❌ Error al generar grupos: {error}",
+                    "de": "❌ Fehler beim Generieren der Gruppen: {error}",
+                    "it": "❌ Errore nella generazione dei gruppi: {error}"
+                },
+                "no_groups_formed": {
+                    "en-US": "❌ No groups could be formed.",
+                    "fr": "❌ Aucun groupe n'a pu être formé.",
+                    "es-ES": "❌ No se pudieron formar grupos.",
+                    "de": "❌ Es konnten keine Gruppen gebildet werden.",
+                    "it": "❌ Non è stato possibile formare gruppi."
+                }
+            },
+            "embeds": {
+                "preview_title": {
+                    "en-US": "🔍 Preview Groups",
+                    "fr": "🔍 Aperçu des Groupes",
+                    "es-ES": "🔍 Vista Previa de Grupos",
+                    "de": "🔍 Gruppenvorschau",
+                    "it": "🔍 Anteprima Gruppi"
+                },
+                "preview_description": {
+                    "en-US": "**Event:** {event_name}\n**Date:** {event_date} at {event_time}\n**Groups to be created:** {total}",
+                    "fr": "**Événement :** {event_name}\n**Date :** {event_date} à {event_time}\n**Groupes à créer :** {total}",
+                    "es-ES": "**Evento:** {event_name}\n**Fecha:** {event_date} a las {event_time}\n**Grupos a crear:** {total}",
+                    "de": "**Ereignis:** {event_name}\n**Datum:** {event_date} um {event_time}\n**Zu erstellende Gruppen:** {total}",
+                    "it": "**Evento:** {event_name}\n**Data:** {event_date} alle {event_time}\n**Gruppi da creare:** {total}"
+                },
+                "group_title": {
+                    "en-US": "Group {index} / {total}",
+                    "fr": "Groupe {index} / {total}",
+                    "es-ES": "Grupo {index} / {total}",
+                    "de": "Gruppe {index} / {total}",
+                    "it": "Gruppo {index} / {total}"
+                },
+                "no_members": {
+                    "en-US": "No members",
+                    "fr": "Aucun membre",
+                    "es-ES": "Sin miembros",
+                    "de": "Keine Mitglieder",
+                    "it": "Nessun membro"
+                },
+                "truncated_title": {
+                    "en-US": "⚠️ Preview Truncated",
+                    "fr": "⚠️ Aperçu Tronqué",
+                    "es-ES": "⚠️ Vista Previa Truncada",
+                    "de": "⚠️ Vorschau Gekürzt",
+                    "it": "⚠️ Anteprima Troncata"
+                },
+                "truncated_description": {
+                    "en-US": "Only showing first 9 groups out of {total}. Use the actual command to see all groups.",
+                    "fr": "Affichage seulement des 9 premiers groupes sur {total}. Utilisez la commande réelle pour voir tous les groupes.",
+                    "es-ES": "Solo se muestran los primeros 9 grupos de {total}. Use el comando real para ver todos los grupos.",
+                    "de": "Es werden nur die ersten 9 Gruppen von {total} angezeigt. Verwenden Sie den tatsächlichen Befehl, um alle Gruppen zu sehen.",
+                    "it": "Mostra solo i primi 9 gruppi su {total}. Usa il comando effettivo per vedere tutti i gruppi."
+                }
+            }
         }
     }
 }
