@@ -3425,6 +3425,41 @@
                     "de": "Neue Anwesenheiten",
                     "it": "Nuove Presenze"
                 },
+                "confirmed_presences": {
+                    "en-US": "confirmed presences",
+                    "fr": "présences confirmées",
+                    "es-ES": "presencias confirmadas",
+                    "de": "bestätigte Anwesenheiten",
+                    "it": "presenze confermate"
+                },
+                "members": {
+                    "en-US": "members",
+                    "fr": "membres",
+                    "es-ES": "miembros",
+                    "de": "Mitglieder",
+                    "it": "membri"
+                },
+                "dkp_total": {
+                    "en-US": "DKP total",
+                    "fr": "DKP total",
+                    "es-ES": "DKP total",
+                    "de": "DKP gesamt",
+                    "it": "DKP totale"
+                },
+                "dkp_modifications_summary": {
+                    "en-US": "🏆 DKP Modifications",
+                    "fr": "🏆 Modifications DKP",
+                    "es-ES": "🏆 Modificaciones DKP",
+                    "de": "🏆 DKP Änderungen",
+                    "it": "🏆 Modifiche DKP"
+                },
+                "date": {
+                    "en-US": "Date",
+                    "fr": "Date",
+                    "es-ES": "Fecha",
+                    "de": "Datum",
+                    "it": "Data"
+                },
                 "impacted_members": {
                     "en-US": "Impacted Members",
                     "fr": "Membres Impactés",

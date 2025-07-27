@@ -517,6 +517,8 @@ class GuildAttendance(commands.Cog):
         
         try:
             guild_lang = settings.get("guild_lang", "en-US")
+            tz = pytz.timezone("Europe/Paris")
+            current_date = datetime.now(tz).strftime("%Y-%m-%d")
 
             title = GUILD_ATTENDANCE["notifications"]["registration"]["title"].get(
                 guild_lang, GUILD_ATTENDANCE["notifications"]["registration"]["title"].get("en-US")
@@ -525,7 +527,6 @@ class GuildAttendance(commands.Cog):
                 guild_lang, GUILD_ATTENDANCE["notifications"]["registration"]["description"].get("en-US")
             ).format(event_id=event_id)
             
-            tz = pytz.timezone("Europe/Paris")
             embed = discord.Embed(
                 title=title,
                 description=description,
@@ -533,9 +534,26 @@ class GuildAttendance(commands.Cog):
                 timestamp=datetime.now(tz)
             )
 
+            event_data = None
+            for key, event in self.events_data.items():
+                if event.get("event_id") == event_id and event.get("guild_id") == guild_id:
+                    event_data = event
+                    break
+            
+            dkp_registration = int(event_data.get("dkp_ins", 0)) if event_data else 0
+            total_dkp_given = total * dkp_registration
+
             total_field = GUILD_ATTENDANCE["notifications"]["registration"]["total_registered"].get(
                 guild_lang, GUILD_ATTENDANCE["notifications"]["registration"]["total_registered"].get("en-US")
             )
+            members_text = GUILD_ATTENDANCE["notifications"]["attendance"]["members"].get(
+                guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["members"].get("en-US")
+            )
+            dkp_total_text = GUILD_ATTENDANCE["notifications"]["attendance"]["dkp_total"].get(
+                guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["dkp_total"].get("en-US")
+            )
+            embed.add_field(name=total_field, value=f"{total} {members_text} (+{total_dkp_given} {dkp_total_text})", inline=False)
+
             present_field = GUILD_ATTENDANCE["notifications"]["registration"]["present"].get(
                 guild_lang, GUILD_ATTENDANCE["notifications"]["registration"]["present"].get("en-US")
             )
@@ -546,10 +564,14 @@ class GuildAttendance(commands.Cog):
                 guild_lang, GUILD_ATTENDANCE["notifications"]["registration"]["absent"].get("en-US")
             )
             
-            embed.add_field(name=total_field, value=str(total), inline=True)
             embed.add_field(name=present_field, value=str(present), inline=True)
             embed.add_field(name=tentative_field, value=str(tentative), inline=True)
             embed.add_field(name=absent_field, value=str(absent), inline=True)
+
+            date_field = GUILD_ATTENDANCE["notifications"]["attendance"]["date"].get(
+                guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["date"].get("en-US")
+            )
+            embed.add_field(name=date_field, value=current_date, inline=False)
             
             await channel.send(embed=embed)
             
@@ -571,6 +593,8 @@ class GuildAttendance(commands.Cog):
         
         try:
             guild_lang = settings.get("guild_lang", "en-US")
+            tz = pytz.timezone("Europe/Paris")
+            current_date = datetime.now(tz).strftime("%Y-%m-%d")
 
             title = GUILD_ATTENDANCE["notifications"]["attendance"]["title"].get(
                 guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["title"].get("en-US")
@@ -579,7 +603,6 @@ class GuildAttendance(commands.Cog):
                 guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["description"].get("en-US")
             ).format(event_id=event_id)
             
-            tz = pytz.timezone("Europe/Paris")
             embed = discord.Embed(
                 title=title,
                 description=description,
@@ -590,35 +613,40 @@ class GuildAttendance(commands.Cog):
             dkp_total = sum(change["dkp_change"] for change in changes)
             attendance_total = sum(change["attendance_change"] for change in changes)
 
-            dkp_field = GUILD_ATTENDANCE["notifications"]["attendance"]["dkp_changes"].get(
-                guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["dkp_changes"].get("en-US")
+            dkp_sign = "+" if dkp_total >= 0 else ""
+            dkp_modifications_title = GUILD_ATTENDANCE["notifications"]["attendance"]["dkp_modifications_summary"].get(
+                guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["dkp_modifications_summary"].get("en-US")
             )
-            attendance_field = GUILD_ATTENDANCE["notifications"]["attendance"]["new_attendances"].get(
-                guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["new_attendances"].get("en-US")
+            confirmed_presences_text = GUILD_ATTENDANCE["notifications"]["attendance"]["confirmed_presences"].get(
+                guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["confirmed_presences"].get("en-US")
             )
-            impacted_field = GUILD_ATTENDANCE["notifications"]["attendance"]["impacted_members"].get(
+            impacted_members_text = GUILD_ATTENDANCE["notifications"]["attendance"]["impacted_members"].get(
                 guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["impacted_members"].get("en-US")
             )
+            embed.add_field(name=dkp_modifications_title, value=f"{dkp_sign}{dkp_total} DKP | {attendance_total} {confirmed_presences_text} | {len(changes)} {impacted_members_text}", inline=False)
+
             details_field = GUILD_ATTENDANCE["notifications"]["attendance"]["details"].get(
                 guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["details"].get("en-US")
             )
             
-            embed.add_field(name=dkp_field, value=f"+{dkp_total}", inline=True)
-            embed.add_field(name=attendance_field, value=str(attendance_total), inline=True)
-            embed.add_field(name=impacted_field, value=str(len(changes)), inline=True)
-
             if len(changes) <= 10:
                 details = []
                 for change in changes:
                     member = guild.get_member(change["member_id"])
                     member_name = member.display_name if member else f"ID: {change['member_id']}"
-                    details.append(f"{member_name}: {change['reason']}")
+                    dkp_change_str = f"{'+' if change['dkp_change'] >= 0 else ''}{change['dkp_change']}" if change['dkp_change'] != 0 else "0"
+                    details.append(f"**{member_name}**: {change['reason']} ({dkp_change_str} DKP)")
                 embed.add_field(name=details_field, value="\n".join(details), inline=False)
             else:
                 too_many_msg = GUILD_ATTENDANCE["notifications"]["attendance"]["too_many_changes"].get(
                     guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["too_many_changes"].get("en-US")
                 ).format(count=len(changes))
                 embed.add_field(name=details_field, value=too_many_msg, inline=False)
+
+            date_field = GUILD_ATTENDANCE["notifications"]["attendance"]["date"].get(
+                guild_lang, GUILD_ATTENDANCE["notifications"]["attendance"]["date"].get("en-US")
+            )
+            embed.add_field(name=date_field, value=current_date, inline=False)
             
             await channel.send(embed=embed)
             
