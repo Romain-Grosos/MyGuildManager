@@ -3349,5 +3349,148 @@
                 }
             }
         }
+    },
+    "guild_attendance": {
+        "notifications": {
+            "registration": {
+                "title": {
+                    "en-US": "📊 Registrations Processed",
+                    "fr": "📊 Inscriptions Traitées",
+                    "es-ES": "📊 Inscripciones Procesadas",
+                    "de": "📊 Anmeldungen Verarbeitet",
+                    "it": "📊 Iscrizioni Elaborate"
+                },
+                "description": {
+                    "en-US": "Event ID: {event_id}",
+                    "fr": "Événement ID: {event_id}",
+                    "es-ES": "Evento ID: {event_id}",
+                    "de": "Event ID: {event_id}",
+                    "it": "Evento ID: {event_id}"
+                },
+                "total_registered": {
+                    "en-US": "Total Registered",
+                    "fr": "Total Inscrits",
+                    "es-ES": "Total Inscritos",
+                    "de": "Gesamt Angemeldet",
+                    "it": "Totale Iscritti"
+                },
+                "present": {
+                    "en-US": "Present",
+                    "fr": "Présents",
+                    "es-ES": "Presentes",
+                    "de": "Anwesend",
+                    "it": "Presenti"
+                },
+                "tentative": {
+                    "en-US": "Tentative",
+                    "fr": "Tentatives",
+                    "es-ES": "Tentativos",
+                    "de": "Vorläufig",
+                    "it": "Tentativi"
+                },
+                "absent": {
+                    "en-US": "Absent",
+                    "fr": "Absents",
+                    "es-ES": "Ausentes",
+                    "de": "Abwesend",
+                    "it": "Assenti"
+                }
+            },
+            "attendance": {
+                "title": {
+                    "en-US": "🎤 Voice Presence Verified",
+                    "fr": "🎤 Présence Vocale Vérifiée",
+                    "es-ES": "🎤 Presencia de Voz Verificada",
+                    "de": "🎤 Sprach-Anwesenheit Verifiziert",
+                    "it": "🎤 Presenza Vocale Verificata"
+                },
+                "description": {
+                    "en-US": "Event ID: {event_id}",
+                    "fr": "Événement ID: {event_id}",
+                    "es-ES": "Evento ID: {event_id}",
+                    "de": "Event ID: {event_id}",
+                    "it": "Evento ID: {event_id}"
+                },
+                "dkp_changes": {
+                    "en-US": "DKP Changes",
+                    "fr": "Modifications DKP",
+                    "es-ES": "Cambios DKP",
+                    "de": "DKP Änderungen",
+                    "it": "Modifiche DKP"
+                },
+                "new_attendances": {
+                    "en-US": "New Attendances",
+                    "fr": "Nouvelles Attendances",
+                    "es-ES": "Nuevas Asistencias",
+                    "de": "Neue Anwesenheiten",
+                    "it": "Nuove Presenze"
+                },
+                "impacted_members": {
+                    "en-US": "Impacted Members",
+                    "fr": "Membres Impactés",
+                    "es-ES": "Miembros Impactados",
+                    "de": "Betroffene Mitglieder",
+                    "it": "Membri Interessati"
+                },
+                "details": {
+                    "en-US": "Details",
+                    "fr": "Détails",
+                    "es-ES": "Detalles",
+                    "de": "Details",
+                    "it": "Dettagli"
+                },
+                "too_many_changes": {
+                    "en-US": "Too many changes to display ({count} members)",
+                    "fr": "Trop de changements pour afficher ({count} membres)",
+                    "es-ES": "Demasiados cambios para mostrar ({count} miembros)",
+                    "de": "Zu viele Änderungen zum Anzeigen ({count} Mitglieder)",
+                    "it": "Troppi cambiamenti da visualizzare ({count} membri)"
+                }
+            }
+        },
+        "reasons": {
+            "present_and_present": {
+                "en-US": "Registered present and actually present",
+                "fr": "Inscrit présent et effectivement présent",
+                "es-ES": "Registrado presente y realmente presente",
+                "de": "Angemeldet anwesend und tatsächlich anwesend",
+                "it": "Registrato presente e effettivamente presente"
+            },
+            "present_but_absent": {
+                "en-US": "Registered present but absent (penalty)",
+                "fr": "Inscrit présent mais absent (pénalité)",
+                "es-ES": "Registrado presente pero ausente (penalización)",
+                "de": "Angemeldet anwesend aber abwesend (Strafe)",
+                "it": "Registrato presente ma assente (penalità)"
+            },
+            "tentative_and_present": {
+                "en-US": "Registered tentative and present",
+                "fr": "Inscrit tentative et présent",
+                "es-ES": "Registrado tentativo y presente",
+                "de": "Angemeldet vorläufig und anwesend",
+                "it": "Registrato tentativo e presente"
+            },
+            "tentative_and_absent": {
+                "en-US": "Registered tentative and absent (no change)",
+                "fr": "Inscrit tentative et absent (aucun changement)",
+                "es-ES": "Registrado tentativo y ausente (sin cambio)",
+                "de": "Angemeldet vorläufig und abwesend (keine Änderung)",
+                "it": "Registrato tentativo e assente (nessun cambiamento)"
+            },
+            "absent_but_present": {
+                "en-US": "Registered absent but present",
+                "fr": "Inscrit absent mais présent",
+                "es-ES": "Registrado ausente pero presente",
+                "de": "Angemeldet abwesend aber anwesend",
+                "it": "Registrato assente ma presente"
+            },
+            "absent_and_absent": {
+                "en-US": "Registered absent and absent (no change)",
+                "fr": "Inscrit absent et absent (aucun changement)",
+                "es-ES": "Registrado ausente y ausente (sin cambio)",
+                "de": "Angemeldet abwesend und abwesend (keine Änderung)",
+                "it": "Registrato assente e assente (nessun cambiamento)"
+            }
+        }
     }
 }

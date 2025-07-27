@@ -88,6 +88,7 @@ EXTENSIONS: Final[list[str]] = [
     "cogs.dynamic_voice",
     "cogs.contract",
     "cogs.guild_events",
+    "cogs.guild_attendance",
     "cogs.autorole",
     "cogs.cron"
 ]

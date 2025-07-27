@@ -18,7 +18,8 @@ class Cron(commands.Cog):
             'events_create': asyncio.Lock(),
             'events_reminder': asyncio.Lock(),
             'events_delete': asyncio.Lock(),
-            'events_close': asyncio.Lock()
+            'events_close': asyncio.Lock(),
+            'attendance_check': asyncio.Lock()
         }
         self._last_execution: Dict[str, str] = {}
         self._task_metrics: Dict[str, Dict[str, int]] = {
@@ -139,6 +140,19 @@ class Cron(commands.Cog):
                         await self._execute_with_monitoring(
                             'events_close',
                             events_cog.event_close_cron
+                        )
+
+        if now_time.minute % 5 == 0 and self._should_execute('attendance_check', f"{now}:{now_time.minute//5}"):
+            if self._task_locks['attendance_check'].locked():
+                logging.debug("⚠️ [CRON] Attendance check already running, skipping")
+            else:
+                async with self._task_locks['attendance_check']:
+                    logging.debug("⏰ [CRON] Automatic voice presence check")
+                    attendance_cog = await self._safe_get_cog("GuildAttendance")
+                    if attendance_cog:
+                        await self._execute_with_monitoring(
+                            'attendance_check',
+                            attendance_cog.check_voice_presence
                         )
 
     async def _process_roster_updates_parallel(self, guild_members_cog):

@@ -270,6 +270,11 @@ class GuildEvents(commands.Cog):
                     logging.error(f"❌ [GuildEvents] Guild {guild_id} not found.")
         await self.load_events_data()
 
+        attendance_cog = self.bot.get_cog("GuildAttendance")
+        if attendance_cog:
+            await attendance_cog.reload_events_cache_all_guilds()
+            logging.debug("[GuildEvents] Reloaded events cache in attendance cog after bulk creation")
+
     async def create_events_for_guild(self, guild: discord.Guild) -> None:
         guild_id = guild.id
         settings = self.guild_settings.get(guild_id)
@@ -529,6 +534,12 @@ class GuildEvents(commands.Cog):
             await self.bot.run_db_query(query, ("Confirmed", guild.id, event_id), commit=True)
             target_event["status"] = "Confirmed"
             logging.info(f"[GuildEvents] Event {event_id} status updated to 'Confirmed' for guild {guild.id}.")
+
+            attendance_cog = self.bot.get_cog("GuildAttendance")
+            if attendance_cog:
+                await attendance_cog.reload_events_cache_for_guild(guild.id)
+                logging.debug(f"[GuildEvents] Reloaded events cache for guild {guild.id} in attendance cog")
+                
         except Exception as e:
             logging.error(f"[GuildEvents] Error updating event {event_id} status for guild {guild.id}: {e}", exc_info=True)
 
@@ -631,6 +642,12 @@ class GuildEvents(commands.Cog):
             await self.bot.run_db_query(query, ("Canceled", guild.id, event_id_int), commit=True)
             target_event["status"] = "Canceled"
             logging.info(f"[GuildEvents] Event {event_id_int} status updated to 'Canceled' for guild {guild.id}.")
+
+            attendance_cog = self.bot.get_cog("GuildAttendance")
+            if attendance_cog:
+                await attendance_cog.reload_events_cache_for_guild(guild.id)
+                logging.debug(f"[GuildEvents] Reloaded events cache for guild {guild.id} in attendance cog")
+                
         except Exception as e:
             logging.error(f"[GuildEvents] Error updating status for event {event_id_int} in guild {guild.id}: {e}", exc_info=True)
 
@@ -1161,7 +1178,13 @@ class GuildEvents(commands.Cog):
                     logging.error(f"[GuildEvents CRON] Error parsing event {ev['event_id']}: {e}", exc_info=True)
                     continue
 
-                if timedelta(0) <= (start_dt - now) <= timedelta(minutes=15) and ev.get("status", "").strip().lower() in ["confirmed", "planned"]:
+                time_diff = start_dt - now
+                time_condition = timedelta(minutes=-60) <= time_diff <= timedelta(minutes=15)
+                status_condition = ev.get("status", "").strip().lower() in ["confirmed", "planned"]
+                
+                logging.debug(f"[GuildEvents CRON] Event {ev['event_id']}: time_diff={time_diff}, condition={time_condition and status_condition}")
+                
+                if time_condition and status_condition:
                     try:
                         await self.load_guild_members()
                     except Exception as e:
@@ -1194,6 +1217,14 @@ class GuildEvents(commands.Cog):
                             await msg.clear_reactions()
                             logging.info(f"[GuildEvents CRON] Reactions cleared for event {ev['event_id']}.")
                             await self.create_groups(guild_id, ev["event_id"])
+                            
+                            attendance_cog = self.bot.get_cog("GuildAttendance")
+                            if attendance_cog:
+                                try:
+                                    await attendance_cog.process_event_registrations(guild_id, ev["event_id"], ev)
+                                    logging.debug(f"[GuildEvents CRON] Registrations processed for event {ev['event_id']}")
+                                except Exception as e:
+                                    logging.error(f"[GuildEvents CRON] Error processing registrations for event {ev['event_id']}: {e}", exc_info=True)
                         except Exception as e:
                             logging.error(f"[GuildEvents CRON] Error updating event {ev['event_id']}: {e}", exc_info=True)
 
@@ -1205,6 +1236,12 @@ class GuildEvents(commands.Cog):
                     params = [closed_events_to_update[0][0], guild_id] + event_ids
                     await self.bot.run_db_query(update_query, params, commit=True)
                     logging.debug(f"[GuildEvents CRON] Batch updated {len(closed_events_to_update)} events to Closed status for guild {guild_id}")
+
+                    attendance_cog = self.bot.get_cog("GuildAttendance")
+                    if attendance_cog:
+                        await attendance_cog.reload_events_cache_for_guild(guild_id)
+                        logging.debug(f"[GuildEvents CRON] Reloaded events cache for guild {guild_id} in attendance cog")
+                        
                 except Exception as e:
                     logging.error(f"[GuildEvents CRON] Error batch updating event statuses for guild {guild_id}: {e}", exc_info=True)
 
@@ -1333,7 +1370,6 @@ class GuildEvents(commands.Cog):
         return 0
 
     def _format_static_group_members(self, member_ids: List[int], guild_obj, absent_text: str) -> List[str]:
-        """Formate les membres d'un groupe statique avec tri par classe et émojis"""
         member_info_list = []
 
         for member_id in member_ids:
@@ -1841,7 +1877,7 @@ class GuildEvents(commands.Cog):
                         lines.append(f"{cls_emoji} {weapons_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
                     else:
                         lines.append(f"{cls_emoji} {weapons_emoji} {m['pseudo']} ({m['GS']})")
-                no_member_text = GUILD_EVENTS["events_infos"]["no_member"].get(guild_lang, "No member")
+                no_member_text = GUILD_EVENTS.get("no_member", {}).get(guild_lang, "No member")
                 e.description = "\n".join(lines) or no_member_text
                 embeds.append(e)
 
@@ -2119,6 +2155,12 @@ class GuildEvents(commands.Cog):
             await self.bot.run_db_query(query, record, commit=True)
             self.events_data[f"{guild.id}_{announcement.id}"] = record
             logging.info(f"[GuildEvents - event_create] Event saved in DB successfully: {announcement.id}")
+
+            attendance_cog = self.bot.get_cog("GuildAttendance")
+            if attendance_cog:
+                await attendance_cog.reload_events_cache_for_guild(guild.id)
+                logging.debug(f"[GuildEvents - event_create] Reloaded events cache for guild {guild.id} in attendance cog")
+            
             follow_message = GUILD_EVENTS["event_create"]["events_created"].get(user_locale,GUILD_EVENTS["event_create"]["events_created"].get("en-US")).format(event_id=announcement.id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
