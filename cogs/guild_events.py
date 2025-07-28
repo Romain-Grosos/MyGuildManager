@@ -1883,6 +1883,10 @@ class GuildEvents(commands.Cog):
 
             await groups_channel.send(content=header, embeds=embeds)
             logging.info(f"[GuildEvents - Create_Groups] Groups sent to channel {groups_channel.id}.")
+
+            await self._notify_ptb_groups(guild_id, event_id, all_groups)
+            logging.info(f"[GuildEvents - Create_Groups] Groups sent to PTB.")
+            
         except Exception as exc:
             logging.exception("[GuildEvents - Create_Groups] Failed to send embeds.", exc_info=exc)
 
@@ -2666,6 +2670,97 @@ class GuildEvents(commands.Cog):
             error_msg = STATIC_GROUPS["static_delete"]["messages"]["error"].get(guild_lang, STATIC_GROUPS["static_delete"]["messages"]["error"].get("en-US")).format(error=e)
             await ctx.followup.send(error_msg, ephemeral=True)
             logging.error(f"[GuildEvents] Error deleting static group: {e}")
+
+    async def _notify_ptb_groups(self, guild_id: int, event_id: int, all_groups: List) -> None:
+        try:
+            ptb_cog = self.bot.get_cog("GuildPTB")
+            if not ptb_cog:
+                logging.debug(f"[GuildEvents] PTB cog not available for guild {guild_id}")
+                return
+
+            groups_data = {}
+            for idx, group_members in enumerate(all_groups, 1):
+                group_name = f"G{idx}"
+                member_ids = []
+                
+                for member_data in group_members:
+                    guild = self.bot.get_guild(guild_id)
+                    if guild:
+                        for member in guild.members:
+                            if member.display_name == member_data.get("pseudo"):
+                                member_ids.append(member.id)
+                                break
+                
+                if member_ids:
+                    groups_data[group_name] = member_ids
+            
+            if groups_data:
+                success = await ptb_cog.assign_event_permissions(guild_id, event_id, groups_data)
+                if success:
+                    logging.info(f"[GuildEvents] PTB permissions assigned for event {event_id}")
+
+                    await self._schedule_ptb_cleanup(guild_id, event_id)
+                else:
+                    logging.error(f"[GuildEvents] Failed to assign PTB permissions for event {event_id}")
+            
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error notifying PTB groups: {e}", exc_info=True)
+    
+    async def _schedule_ptb_cleanup(self, guild_id: int, event_id: int) -> None:
+        try:
+            key = f"{guild_id}_{event_id}"
+            event_data = self.events_data.get(key)
+            if not event_data:
+                logging.error(f"[GuildEvents] Event data not found for PTB cleanup scheduling: {key}")
+                return
+
+            event_date = event_data["event_date"]
+            event_time = event_data["event_time"]
+            duration = int(event_data.get("duration", 60))
+            
+            if isinstance(event_date, str):
+                event_date = datetime.strptime(event_date, "%Y-%m-%d").date()
+            
+            if isinstance(event_time, str):
+                event_time = datetime.strptime(event_time[:5], "%H:%M").time()
+            elif hasattr(event_time, 'total_seconds'):
+                total_seconds = int(event_time.total_seconds())
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                event_time = dt_time(hours, minutes)
+            
+            tz = pytz.timezone("Europe/Paris")
+            event_start = tz.localize(datetime.combine(event_date, event_time))
+            cleanup_time = event_start + timedelta(minutes=duration + 15)
+            
+            now = datetime.now(tz)
+            delay_seconds = (cleanup_time - now).total_seconds()
+            
+            if delay_seconds > 0:
+                asyncio.create_task(self._delayed_ptb_cleanup(guild_id, event_id, delay_seconds))
+                logging.info(f"[GuildEvents] Scheduled PTB cleanup for event {event_id} in {delay_seconds/60:.1f} minutes")
+            else:
+                logging.warning(f"[GuildEvents] Event {event_id} has already ended, scheduling immediate cleanup")
+                asyncio.create_task(self._delayed_ptb_cleanup(guild_id, event_id, 0))
+                
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error scheduling PTB cleanup: {e}", exc_info=True)
+    
+    async def _delayed_ptb_cleanup(self, guild_id: int, event_id: int, delay_seconds: float) -> None:
+        try:
+            if delay_seconds > 0:
+                await asyncio.sleep(delay_seconds)
+            
+            ptb_cog = self.bot.get_cog("GuildPTB")
+            if ptb_cog:
+                success = await ptb_cog.remove_event_permissions(guild_id, event_id)
+                if success:
+                    logging.info(f"[GuildEvents] PTB permissions removed for event {event_id}")
+                else:
+                    logging.error(f"[GuildEvents] Failed to remove PTB permissions for event {event_id}")
+            
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error in delayed PTB cleanup: {e}", exc_info=True)
 
     @commands.Cog.listener() 
     async def on_ready(self):

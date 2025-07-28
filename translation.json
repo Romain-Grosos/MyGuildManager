@@ -3527,5 +3527,140 @@
                 "it": "Registrato assente e assente (nessun cambiamento)"
             }
         }
+    },
+    "guild_ptb": {
+        "event_recap": {
+            "title": {
+                "en-US": "📋 Event {event_id} - Group Assignments",
+                "fr": "📋 Évènement {event_id} - Assignation des groupes",
+                "es-ES": "📋 Evento {event_id} - Asignación de grupos",
+                "de": "📋 Event {event_id} - Gruppenzuteilungen",
+                "it": "📋 Evento {event_id} - Assegnazione gruppi"
+            },
+            "description": {
+                "en-US": "Current group assignments for this event:",
+                "fr": "Assignations actuelles des groupes pour cet évènement :",
+                "es-ES": "Asignaciones actuales de grupos para este evento:",
+                "de": "Aktuelle Gruppenzuteilungen für dieses Event:",
+                "it": "Assegnazioni attuali dei gruppi per questo evento:"
+            },
+            "members_count": {
+                "en-US": "{count} members",
+                "fr": "{count} membres",
+                "es-ES": "{count} miembros",
+                "de": "{count} Mitglieder",
+                "it": "{count} membri"
+            },
+            "footer": {
+                "en-US": "Groups are automatically assigned 15 minutes before events",
+                "fr": "Les groupes sont automatiquement assignés 15 minutes avant les évènements",
+                "es-ES": "Los grupos se asignan automáticamente 15 minutos antes de los eventos",
+                "de": "Gruppen werden automatisch 15 Minuten vor Events zugewiesen",
+                "it": "I gruppi vengono assegnati automaticamente 15 minuti prima degli eventi"
+            }
+        },
+        "invitation": {
+            "dm_message": {
+                "en-US": "🎮 **Event Starting Soon!**\n\nYou've been assigned to a group for an upcoming event.\nJoin the PTB server to participate: {invite_url}\n\n*You'll automatically get the appropriate permissions when you join.*",
+                "fr": "🎮 **Évènement bientôt !**\n\nVous avez été assigné à un groupe pour un évènement à venir.\nRejoignez le serveur PTB pour participer : {invite_url}\n\n*Vous obtiendrez automatiquement les permissions appropriées en rejoignant.*",
+                "es-ES": "🎮 **¡Evento próximo!**\n\nHas sido asignado a un grupo para un evento próximo.\nÚnete al servidor PTB para participar: {invite_url}\n\n*Obtendrás automáticamente los permisos apropiados al unirte.*",
+                "de": "🎮 **Event startet bald!**\n\nDu wurdest einer Gruppe für ein bevorstehendes Event zugewiesen.\nTritt dem PTB-Server bei, um teilzunehmen: {invite_url}\n\n*Du erhältst automatisch die entsprechenden Berechtigungen beim Beitreten.*",
+                "it": "🎮 **Evento in arrivo!**\n\nSei stato assegnato a un gruppo per un evento imminente.\nUnisciti al server PTB per partecipare: {invite_url}\n\n*Otterrai automaticamente i permessi appropriati quando ti unirai.*"
+            }
+        },
+        "commands": {
+            "ptb_init": {
+                "name": {
+                    "en-US": "ptb_init",
+                    "fr": "ptb_init",
+                    "es-ES": "ptb_init",
+                    "de": "ptb_init",
+                    "it": "ptb_init"
+                },
+                "description": {
+                    "en-US": "Configure this server as a PTB (Public Test Build) for a main guild",
+                    "fr": "Configurer ce serveur comme PTB (Public Test Build) pour une guilde principale",
+                    "es-ES": "Configurar este servidor como PTB (Public Test Build) para un servidor principal",
+                    "de": "Diesen Server als PTB (Public Test Build) für eine Hauptgilde konfigurieren",
+                    "it": "Configura questo server come PTB (Public Test Build) per una gilda principale"
+                },
+                "options": {
+                    "main_guild_id": {
+                        "description": {
+                            "en-US": "ID of the main guild this PTB belongs to",
+                            "fr": "ID de la guilde principale à laquelle ce PTB appartient",
+                            "es-ES": "ID del servidor principal al que pertenece este PTB",
+                            "de": "ID der Hauptgilde, zu der dieser PTB gehört",
+                            "it": "ID della gilda principale a cui appartiene questo PTB"
+                        }
+                    }
+                },
+                "messages": {
+                    "initializing": {
+                        "en-US": "🔄 Configuring PTB server...",
+                        "fr": "🔄 Configuration du serveur PTB...",
+                        "es-ES": "🔄 Configurando servidor PTB...",
+                        "de": "🔄 PTB-Server wird konfiguriert...",
+                        "it": "🔄 Configurazione server PTB..."
+                    },
+                    "success": {
+                        "en-US": "✅ **PTB Server Successfully Configured!**\n\n🎮 **PTB Server:** {ptb_name}\n🏠 **Main Guild:** {main_guild_name}\n📋 **Features:**\n• 12 groups (G1-G12) with voice channels\n• Automatic permissions management\n• Event integration\n\n*The PTB server is now linked and ready for events!*",
+                        "fr": "✅ **Serveur PTB configuré avec succès !**\n\n🎮 **Serveur PTB :** {ptb_name}\n🏠 **Guilde principale :** {main_guild_name}\n📋 **Fonctionnalités :**\n• 12 groupes (G1-G12) avec canaux vocaux\n• Gestion automatique des permissions\n• Intégration des évènements\n\n*Le serveur PTB est maintenant lié et prêt pour les évènements !*",
+                        "es-ES": "✅ **¡Servidor PTB configurado exitosamente!**\n\n🎮 **Servidor PTB:** {ptb_name}\n🏠 **Servidor principal:** {main_guild_name}\n📋 **Características:**\n• 12 grupos (G1-G12) con canales de voz\n• Gestión automática de permisos\n• Integración de eventos\n\n*¡El servidor PTB está ahora vinculado y listo para eventos!*",
+                        "de": "✅ **PTB-Server erfolgreich konfiguriert!**\n\n🎮 **PTB-Server:** {ptb_name}\n🏠 **Hauptgilde:** {main_guild_name}\n📋 **Features:**\n• 12 Gruppen (G1-G12) mit Sprachkanälen\n• Automatische Berechtigungsverwaltung\n• Event-Integration\n\n*Der PTB-Server ist jetzt verknüpft und bereit für Events!*",
+                        "it": "✅ **Server PTB configurato con successo!**\n\n🎮 **Server PTB:** {ptb_name}\n🏠 **Gilda principale:** {main_guild_name}\n📋 **Funzionalità:**\n• 12 gruppi (G1-G12) con canali vocali\n• Gestione automatica dei permessi\n• Integrazione eventi\n\n*Il server PTB è ora collegato e pronto per gli eventi!*"
+                    },
+                    "already_exists": {
+                        "en-US": "⚠️ **PTB Already Exists**\n\nThis guild already has a PTB server configured.\nUse `/ptb_audit` to check its status.",
+                        "fr": "⚠️ **PTB déjà existant**\n\nCette guilde a déjà un serveur PTB configuré.\nUtilisez `/ptb_audit` pour vérifier son statut.",
+                        "es-ES": "⚠️ **PTB ya existe**\n\nEste servidor ya tiene un servidor PTB configurado.\nUsa `/ptb_audit` para verificar su estado.",
+                        "de": "⚠️ **PTB bereits vorhanden**\n\nDiese Gilde hat bereits einen PTB-Server konfiguriert.\nVerwende `/ptb_audit` um den Status zu überprüfen.",
+                        "it": "⚠️ **PTB già esistente**\n\nQuesta gilda ha già un server PTB configurato.\nUsa `/ptb_audit` per controllare il suo stato."
+                    },
+                    "error": {
+                        "en-US": "❌ **PTB Initialization Failed**\n\nAn error occurred during PTB setup:\n`{error}`\n\nPlease check bot permissions and try again.",
+                        "fr": "❌ **Échec de l'initialisation PTB**\n\nUne erreur s'est produite lors de la configuration PTB :\n`{error}`\n\nVeuillez vérifier les permissions du bot et réessayer.",
+                        "es-ES": "❌ **Falló la inicialización PTB**\n\nOcurrió un error durante la configuración PTB:\n`{error}`\n\nPor favor verifica los permisos del bot e intenta de nuevo.",
+                        "de": "❌ **PTB-Initialisierung fehlgeschlagen**\n\nEin Fehler ist während der PTB-Einrichtung aufgetreten:\n`{error}`\n\nBitte überprüfe die Bot-Berechtigungen und versuche es erneut.",
+                        "it": "❌ **Inizializzazione PTB fallita**\n\nSi è verificato un errore durante la configurazione PTB:\n`{error}`\n\nControlla i permessi del bot e riprova."
+                    },
+                    "main_guild_not_found": {
+                        "en-US": "❌ **Main Guild Not Found**\n\nCannot find the main guild with ID `{guild_id}`.\nMake sure the bot is present in the main guild and the ID is correct.",
+                        "fr": "❌ **Guilde principale introuvable**\n\nImpossible de trouver la guilde principale avec l'ID `{guild_id}`.\nAssurez-vous que le bot est présent dans la guilde principale et que l'ID est correct.",
+                        "es-ES": "❌ **Servidor principal no encontrado**\n\nNo se puede encontrar el servidor principal con ID `{guild_id}`.\nAsegúrate de que el bot esté presente en el servidor principal y que el ID sea correcto.",
+                        "de": "❌ **Hauptgilde nicht gefunden**\n\nKann die Hauptgilde mit ID `{guild_id}` nicht finden.\nStelle sicher, dass der Bot in der Hauptgilde vorhanden ist und die ID korrekt ist.",
+                        "it": "❌ **Gilda principale non trovata**\n\nImpossibile trovare la gilda principale con ID `{guild_id}`.\nAssicurati che il bot sia presente nella gilda principale e che l'ID sia corretto."
+                    },
+                    "main_guild_not_initialized": {
+                        "en-US": "❌ **Main Guild Not Initialized**\n\nThe main guild (ID: `{guild_id}`) must be properly initialized first.\nUse `/91_app_initialize` in the main guild.",
+                        "fr": "❌ **Guilde principale non initialisée**\n\nLa guilde principale (ID : `{guild_id}`) doit d'abord être correctement initialisée.\nUtilisez `/91_app_initialize` dans la guilde principale.",
+                        "es-ES": "❌ **Servidor principal no inicializado**\n\nEl servidor principal (ID: `{guild_id}`) debe estar correctamente inicializado primero.\nUsa `/91_app_initialize` en el servidor principal.",
+                        "de": "❌ **Hauptgilde nicht initialisiert**\n\nDie Hauptgilde (ID: `{guild_id}`) muss zuerst ordnungsgemäß initialisiert werden.\nVerwende `/91_app_initialize` in der Hauptgilde.",
+                        "it": "❌ **Gilda principale non inizializzata**\n\nLa gilda principale (ID: `{guild_id}`) deve essere prima correttamente inizializzata.\nUsa `/91_app_initialize` nella gilda principale."
+                    },
+                    "main_guild_already_has_ptb": {
+                        "en-US": "❌ **Main Guild Already Has PTB**\n\nThe main guild (ID: `{guild_id}`) already has a PTB server configured.\nEach main guild can only have one PTB server.",
+                        "fr": "❌ **La guilde principale a déjà un PTB**\n\nLa guilde principale (ID : `{guild_id}`) a déjà un serveur PTB configuré.\nChaque guilde principale ne peut avoir qu'un seul serveur PTB.",
+                        "es-ES": "❌ **El servidor principal ya tiene PTB**\n\nEl servidor principal (ID: `{guild_id}`) ya tiene un servidor PTB configurado.\nCada servidor principal solo puede tener un servidor PTB.",
+                        "de": "❌ **Hauptgilde hat bereits PTB**\n\nDie Hauptgilde (ID: `{guild_id}`) hat bereits einen PTB-Server konfiguriert.\nJede Hauptgilde kann nur einen PTB-Server haben.",
+                        "it": "❌ **La gilda principale ha già un PTB**\n\nLa gilda principale (ID: `{guild_id}`) ha già un server PTB configurato.\nOgni gilda principale può avere solo un server PTB."
+                    },
+                    "ptb_already_configured": {
+                        "en-US": "⚠️ **PTB Already Configured**\n\nThis server is already configured as a PTB.\nLinked to main guild: `{main_guild_id}`",
+                        "fr": "⚠️ **PTB déjà configuré**\n\nCe serveur est déjà configuré comme PTB.\nLié à la guilde principale : `{main_guild_id}`",
+                        "es-ES": "⚠️ **PTB ya configurado**\n\nEste servidor ya está configurado como PTB.\nVinculado al servidor principal: `{main_guild_id}`",
+                        "de": "⚠️ **PTB bereits konfiguriert**\n\nDieser Server ist bereits als PTB konfiguriert.\nVerknüpft mit Hauptgilde: `{main_guild_id}`",
+                        "it": "⚠️ **PTB già configurato**\n\nQuesto server è già configurato come PTB.\nCollegato alla gilda principale: `{main_guild_id}`"
+                    },
+                    "no_permissions": {
+                        "en-US": "❌ **No Permissions**\n\nYou need `Manage Server` permissions to initialize a PTB server.",
+                        "fr": "❌ **Pas de permissions**\n\nVous avez besoin des permissions `Gérer le serveur` pour initialiser un serveur PTB.",
+                        "es-ES": "❌ **Sin permisos**\n\nNecesitas permisos de `Administrar servidor` para inicializar un servidor PTB.",
+                        "de": "❌ **Keine Berechtigung**\n\nDu benötigst `Server verwalten` Berechtigung um einen PTB-Server zu initialisieren.",
+                        "it": "❌ **Nessun permesso**\n\nHai bisogno dei permessi `Gestisci server` per inizializzare un server PTB."
+                    }
+                }
+            }
+        }
     }
 }
