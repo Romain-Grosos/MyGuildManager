@@ -148,7 +148,17 @@ class GuildAttendance(commands.Cog):
         dkp_registration = int(event_data.get("dkp_ins", 0))
         dkp_presence = int(event_data.get("dkp_value", 0))
 
-        registrations = event_data.get("registrations", {})
+        registrations_raw = event_data.get("registrations", {})
+        if isinstance(registrations_raw, str):
+            try:
+                import json
+                registrations = json.loads(registrations_raw)
+            except (json.JSONDecodeError, TypeError) as e:
+                logging.warning(f"[GuildAttendance] Failed to parse registrations JSON for event {event_id}: {e}")
+                registrations = {}
+        else:
+            registrations = registrations_raw
+
         presence_ids = set(registrations.get("presence", []))
         tentative_ids = set(registrations.get("tentative", []))
         absence_ids = set(registrations.get("absence", []))
