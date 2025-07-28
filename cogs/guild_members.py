@@ -601,7 +601,7 @@ class GuildMembers(commands.Cog):
                     "username": member.display_name,
                     "language": language,
                     "GS": gs_value,
-                    "build": "NULL",
+                    "build": None,
                     "weapons": weapons_normalized,
                     "DKP": 0,
                     "nb_events": 0,
@@ -611,7 +611,7 @@ class GuildMembers(commands.Cog):
                 }
                 insert_query = """
                     INSERT INTO guild_members 
-                    (guild_id, member_id, username, lang, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
+                    (guild_id, member_id, username, language, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 await self.bot.run_db_query(
@@ -747,11 +747,11 @@ class GuildMembers(commands.Cog):
         members_in_roster = [v for (g, _), v in self.guild_members.items() if g == guild_id]
         sorted_members = sorted(members_in_roster, key=lambda x: x.get("username", "").lower())
 
-        tank_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "tank")
-        dps_melee_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "melee dps")
-        dps_distant_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "ranged dps")
-        heal_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "healer")
-        flank_count = sum(1 for m in sorted_members if m.get("class", "").lower() == "flanker")
+        tank_count = sum(1 for m in sorted_members if (m.get("class") or "").lower() == "tank")
+        dps_melee_count = sum(1 for m in sorted_members if (m.get("class") or "").lower() == "melee dps")
+        dps_distant_count = sum(1 for m in sorted_members if (m.get("class") or "").lower() == "ranged dps")
+        heal_count = sum(1 for m in sorted_members if (m.get("class") or "").lower() == "healer")
+        flank_count = sum(1 for m in sorted_members if (m.get("class") or "").lower() == "flanker")
 
         username_width = 20
         language_width = 8
@@ -1151,17 +1151,17 @@ class GuildMembers(commands.Cog):
                     "username": member.display_name,
                     "language": language,
                     "GS": gs_value,
-                    "build": "NULL",
-                    "weapons": "NULL",
+                    "build": None,
+                    "weapons": None,
                     "DKP": 0,
                     "nb_events": 0,
                     "registrations": 0,
                     "attendances": 0,
-                    "class": "NULL"
+                    "class": None
                 }
                 insert_query = """
                     INSERT INTO guild_members 
-                    (guild_id, member_id, username, lang, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
+                    (guild_id, member_id, username, language, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 await self.bot.run_db_query(
@@ -1234,7 +1234,7 @@ class GuildMembers(commands.Cog):
                 return
 
             try:
-                await ptb_member.edit(nick=after.display_name, reason="Synchronisation automatique depuis le Discord principal")
+                await ptb_member.edit(nick=after.display_name, reason="Auto sync from main Discord server")
                 logging.info(f"[GuildMembers] Synchronized PTB nickname for {after.id}: '{before.display_name}' -> '{after.display_name}'")
             except discord.Forbidden:
                 logging.warning(f"[GuildMembers] Cannot change PTB nickname for {after.id} - insufficient permissions")
