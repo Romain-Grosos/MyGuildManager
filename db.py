@@ -155,6 +155,7 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False,fetc
                 raise DBQueryError("Database connection error")
             except mariadb.PoolError as e:
                 safe_log_error(e, query)
+                db_circuit_breaker.record_failure()
                 raise DBQueryError("Connection pool exhausted - too many concurrent requests")
             except mariadb.ProgrammingError as e:
                 safe_log_error(e, query)
@@ -173,12 +174,16 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False,fetc
                 raise DBQueryError("Query timeout after multiple attempts")
             await asyncio.sleep(0.5 * (attempt + 1))
         except DBQueryError as e:
-            if "pool exhausted" in str(e).lower():
+            error_msg = str(e).lower()
+            if "pool exhausted" in error_msg or "too many concurrent" in error_msg:
                 if attempt == max_attempts - 1:
                     raise
-                logging.warning(f"[DBManager] Pool exhausted, retrying (attempt {attempt+1}/{max_attempts})")
-                await asyncio.sleep(0.5 * (attempt + 1))
+                wait_time = min(2.0 * (attempt + 1), 5.0)
+                logging.warning(f"[DBManager] Pool exhausted, retrying in {wait_time}s (attempt {attempt+1}/{max_attempts})")
+                await asyncio.sleep(wait_time)
                 continue
+            elif "temporarily unavailable" in error_msg:
+                raise
             else:
                 raise
         except Exception as e:

@@ -44,9 +44,10 @@ class GuildPTB(commands.Cog):
                     "guild_lang": row[2] or "en-US",
                     "initialized": bool(row[3])
                 }
-            logging.debug(f"[GuildPTB] Guild settings loaded: {len(self.guild_settings)} guilds with PTB")
+            logging.debug(f"[GuildPTB] Guild settings loaded: {len(self.guild_settings)} guilds")
         except Exception as e:
             logging.error(f"[GuildPTB] Error loading guild settings: {e}", exc_info=True)
+            self.guild_settings = {}
     
     async def load_ptb_settings(self) -> None:
         query = """
