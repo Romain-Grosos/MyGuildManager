@@ -840,13 +840,18 @@ class GuildMembers(commands.Cog):
 
         try:
             for i in range(5):
-                message = await channel.fetch_message(message_ids[i])
-                if i < len(message_contents):
-                    await message.edit(content=message_contents[i])
-                else:
-                    await message.edit(content=".")
-        except discord.NotFound:
-            logging.warning("[GuildMembers] One or more roster messages not found")
+                try:
+                    message = await channel.fetch_message(message_ids[i])
+                    new_content = message_contents[i] if i < len(message_contents) else "."
+
+                    if message.content != new_content:
+                        await message.edit(content=new_content)
+                        if i < 4:
+                            await asyncio.sleep(0.25)
+                except discord.NotFound:
+                    logging.warning(f"[GuildMembers] Roster message {i+1}/5 not found")
+                except Exception as e:
+                    logging.error(f"[GuildMembers] Error updating roster message {i+1}/5: {e}")
         except Exception as e:
             logging.exception(f"[GuildMembers] Error updating member messages: {e}")
         logging.info("[GuildMembers] Member message update completed")
