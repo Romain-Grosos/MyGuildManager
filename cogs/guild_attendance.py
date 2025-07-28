@@ -34,9 +34,10 @@ class GuildAttendance(commands.Cog):
 
     async def load_guild_settings(self) -> None:
         query = """
-        SELECT gs.guild_id, gs.guild_lang, gs.premium, gc.events_channel, gc.notifications_channel
+        SELECT gs.guild_id, gs.guild_lang, gs.premium, gc.events_channel, gc.notifications_channel, gr.members
         FROM guild_settings gs
         JOIN guild_channels gc ON gs.guild_id = gc.guild_id
+        LEFT JOIN guild_roles gr ON gs.guild_id = gr.guild_id
         """
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
@@ -47,7 +48,8 @@ class GuildAttendance(commands.Cog):
                     "guild_lang": row[1] or "en-US",
                     "premium": row[2],
                     "events_channel": row[3],
-                    "notifications_channel": row[4]
+                    "notifications_channel": row[4],
+                    "members_role": row[5]
                 }
             logging.debug(f"[GuildAttendance] Guild settings loaded: {len(self.guild_settings)} guilds")
         except Exception as e:
@@ -129,6 +131,11 @@ class GuildAttendance(commands.Cog):
     async def process_event_registrations(self, guild_id: int, event_id: int, event_data: Dict) -> None:
         logging.info(f"[GuildAttendance] Processing registrations for event {event_id} in guild {guild_id}")
         
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            logging.error(f"[GuildAttendance] Guild {guild_id} not found")
+            return
+        
         if guild_id not in self.guild_settings:
             logging.debug(f"[GuildAttendance] Guild {guild_id} settings not found in cache ({len(self.guild_settings)} guilds loaded), refreshing...")
             await self.load_guild_settings()
@@ -152,7 +159,8 @@ class GuildAttendance(commands.Cog):
 
         if guild_id in self.guild_members_cache:
             for member_id, member_data in self.guild_members_cache[guild_id].items():
-                member_data["nb_events"] += 1
+                if await self._member_has_members_role(guild, member_id):
+                    member_data["nb_events"] += 1
                 updates_to_batch.append((
                     member_data["DKP"],
                     member_data["nb_events"], 
@@ -167,12 +175,13 @@ class GuildAttendance(commands.Cog):
                 self.guild_members_cache[guild_id] = {}
             
             if member_id not in self.guild_members_cache[guild_id]:
+                initial_nb_events = 1 if await self._member_has_members_role(guild, member_id) else 0
                 self.guild_members_cache[guild_id][member_id] = {
                     "class": "Unknown",
                     "GS": 0,
                     "weapons": "",
                     "DKP": 0,
-                    "nb_events": 1,
+                    "nb_events": initial_nb_events,
                     "registrations": 0,
                     "attendances": 0
                 }
@@ -383,6 +392,28 @@ class GuildAttendance(commands.Cog):
 
     def _was_recently_checked(self, event_data: Dict, now: datetime, threshold_minutes: int = 10) -> bool:
         return len(event_data.get("actual_presence", [])) > 0
+
+    async def _member_has_members_role(self, guild: discord.Guild, member_id: int) -> bool:
+        try:
+            if guild.id not in self.guild_settings:
+                return False
+            
+            members_role_id = self.guild_settings[guild.id].get("members_role")
+            if not members_role_id:
+                return False
+            
+            member = guild.get_member(member_id)
+            if not member:
+                return False
+            
+            members_role = guild.get_role(members_role_id)
+            if not members_role:
+                return False
+            
+            return members_role in member.roles
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error checking member role for {member_id}: {e}")
+            return False
 
     def _calculate_attendance_changes(self, voice_members: Set[int], presence_ids: Set[int], 
                                    tentative_ids: Set[int], absence_ids: Set[int], 
