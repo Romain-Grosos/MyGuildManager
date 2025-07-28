@@ -540,29 +540,33 @@ class GuildPTB(commands.Cog):
         try:
             ptb_guild_id = member.guild.id
             main_guild_id = None
-            
+
             for guild_id, settings in self.ptb_settings.items():
                 if settings["ptb_guild_id"] == ptb_guild_id:
                     main_guild_id = guild_id
                     break
             
-            if not main_guild_id or main_guild_id not in self.active_events:
+            if not main_guild_id:
+                logging.debug(f"[GuildPTB] Member {member.display_name} joined guild {ptb_guild_id} but it's not a configured PTB")
                 return
+            
+            logging.info(f"[GuildPTB] Member {member.display_name} joined PTB {ptb_guild_id} (main guild: {main_guild_id})")
 
-            for event_id, event_data in self.active_events[main_guild_id].items():
-                groups_data = event_data["groups_data"]
+            if main_guild_id in self.active_events:
+                for event_id, event_data in self.active_events[main_guild_id].items():
+                    groups_data = event_data["groups_data"]
 
-                for group_name, member_ids in groups_data.items():
-                    if member.id in member_ids:
-                        ptb_settings = self.ptb_settings[main_guild_id]
-                        if group_name in ptb_settings["groups"]:
-                            role_id = ptb_settings["groups"][group_name]["role_id"]
-                            role = member.guild.get_role(role_id)
-                            
-                            if role:
-                                await member.add_roles(role, reason=f"Auto-assignment for event {event_id}")
-                                logging.info(f"[GuildPTB] Auto-assigned role {group_name} to {member.display_name} for event {event_id}")
-                        break
+                    for group_name, member_ids in groups_data.items():
+                        if member.id in member_ids:
+                            ptb_settings = self.ptb_settings[main_guild_id]
+                            if group_name in ptb_settings["groups"]:
+                                role_id = ptb_settings["groups"][group_name]["role_id"]
+                                role = member.guild.get_role(role_id)
+                                
+                                if role:
+                                    await member.add_roles(role, reason=f"Auto-assignment for event {event_id}")
+                                    logging.info(f"[GuildPTB] Auto-assigned role {group_name} to {member.display_name} for event {event_id}")
+                            break
 
             await self._sync_nickname_from_main(member, main_guild_id)
                         
@@ -571,15 +575,20 @@ class GuildPTB(commands.Cog):
     
     async def _sync_nickname_from_main(self, ptb_member: discord.Member, main_guild_id: int):
         try:
+            logging.debug(f"[GuildPTB] Attempting to sync nickname for {ptb_member.display_name} ({ptb_member.id}) from main guild {main_guild_id}")
+            
             main_guild = self.bot.get_guild(main_guild_id)
             if not main_guild:
+                logging.warning(f"[GuildPTB] Main guild {main_guild_id} not found for nickname sync")
                 return
             
             main_member = main_guild.get_member(ptb_member.id)
             if not main_member:
+                logging.warning(f"[GuildPTB] Member {ptb_member.id} not found in main guild {main_guild_id} for nickname sync")
                 return
 
             main_display_name = main_member.display_name
+            logging.debug(f"[GuildPTB] Main guild nickname: '{main_display_name}', PTB nickname: '{ptb_member.display_name}'")
 
             if ptb_member.display_name != main_display_name:
                 try:
@@ -589,6 +598,8 @@ class GuildPTB(commands.Cog):
                     logging.warning(f"[GuildPTB] Cannot change nickname for {ptb_member.id} - insufficient permissions")
                 except Exception as e:
                     logging.error(f"[GuildPTB] Error changing nickname for {ptb_member.id}: {e}")
+            else:
+                logging.debug(f"[GuildPTB] Nickname already synchronized for {ptb_member.id}")
                     
         except Exception as e:
             logging.error(f"[GuildPTB] Error synchronizing nickname: {e}", exc_info=True)

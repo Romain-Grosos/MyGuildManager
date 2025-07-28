@@ -39,6 +39,21 @@ class Notification(commands.Cog):
         self.member_events[guild_id].append(now)
         return True
     
+    def is_ptb_guild(self, guild_id: int) -> bool:
+        try:
+            guild_ptb_cog = self.bot.get_cog("GuildPTB")
+            if not guild_ptb_cog:
+                return False
+
+            for main_guild_id, settings in guild_ptb_cog.ptb_settings.items():
+                if settings.get("ptb_guild_id") == guild_id:
+                    logging.debug(f"[NotificationManager] Guild {guild_id} identified as PTB for main guild {main_guild_id}")
+                    return True
+            return False
+        except Exception as e:
+            logging.error(f"[NotificationManager] Error checking if guild {guild_id} is PTB: {e}")
+            return False
+    
     async def get_safe_channel(self, channel_id: int):
         try:
             channel = self.bot.get_channel(channel_id)
@@ -104,6 +119,10 @@ class Notification(commands.Cog):
         guild = member.guild
         safe_user = self.get_safe_user_info(member)
         logging.debug(f"[NotificationManager] New member detected: {safe_user} in guild {guild.id}")
+
+        if self.is_ptb_guild(guild.id):
+            logging.debug(f"[NotificationManager] Skipping PTB guild {guild.id} - handled by GuildPTB")
+            return
         
         if guild.id not in self.notification_locks:
             self.notification_locks[guild.id] = asyncio.Lock()
@@ -161,6 +180,10 @@ class Notification(commands.Cog):
         guild = member.guild
         safe_user = self.get_safe_user_info(member)
         logging.debug(f"[NotificationManager] Departure detected: {safe_user} from guild {guild.id}")
+
+        if self.is_ptb_guild(guild.id):
+            logging.debug(f"[NotificationManager] Skipping PTB guild {guild.id} - handled by GuildPTB")
+            return
         
         if not self.check_event_rate_limit(guild.id):
             logging.warning(f"[NotificationManager] Rate limit exceeded for guild {guild.id}")
