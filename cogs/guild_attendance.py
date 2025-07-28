@@ -240,7 +240,7 @@ class GuildAttendance(commands.Cog):
                 
                 logging.info(f"[GuildAttendance] Updated registration stats for {len(updates_to_batch)} members in event {event_id}")
 
-                await self._send_registration_notification(guild_id, event_id, len(all_registered), len(presence_ids), len(tentative_ids), len(absence_ids))
+                await self._send_registration_notification(guild_id, event_id, len(all_registered), len(presence_ids), len(tentative_ids), len(absence_ids), dkp_registration)
                 
             except Exception as e:
                 logging.error(f"[GuildAttendance] Error updating registration stats: {e}", exc_info=True)
@@ -543,7 +543,7 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error updating actual presence for event {event_id}: {e}")
 
     async def _send_registration_notification(self, guild_id: int, event_id: int, total: int, 
-                                            present: int, tentative: int, absent: int) -> None:
+                                            present: int, tentative: int, absent: int, dkp_registration: int = 0) -> None:
         settings = self.guild_settings.get(guild_id)
         if not settings or not settings.get("notifications_channel"):
             return
@@ -575,13 +575,6 @@ class GuildAttendance(commands.Cog):
                 timestamp=datetime.now(tz)
             )
 
-            event_data = None
-            for key, event in self.events_data.items():
-                if event.get("event_id") == event_id and event.get("guild_id") == guild_id:
-                    event_data = event
-                    break
-            
-            dkp_registration = int(event_data.get("dkp_ins", 0)) if event_data else 0
             total_dkp_given = total * dkp_registration
 
             total_field = GUILD_ATTENDANCE["notifications"]["registration"]["total_registered"].get(
@@ -650,7 +643,7 @@ class GuildAttendance(commands.Cog):
                 color=0x0099ff,
                 timestamp=datetime.now(tz)
             )
-            
+
             dkp_total = sum(change["dkp_change"] for change in changes)
             attendance_total = sum(change["attendance_change"] for change in changes)
 
