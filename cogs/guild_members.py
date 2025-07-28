@@ -1206,6 +1206,43 @@ class GuildMembers(commands.Cog):
             logging.debug("[GuildMembers] Database info caching tasks launched from on_ready")
         except Exception as e:
             logging.exception(f"[GuildMembers] Error during on_ready initialization: {e}")
+    
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        try:
+            if before.display_name == after.display_name:
+                return
+
+            guild_ptb_cog = self.bot.get_cog("GuildPTB")
+            if not guild_ptb_cog:
+                return
+            
+            main_guild_id = after.guild.id
+            if main_guild_id not in guild_ptb_cog.guild_settings:
+                return
+            
+            ptb_guild_id = guild_ptb_cog.guild_settings[main_guild_id].get("ptb_guild_id")
+            if not ptb_guild_id:
+                return
+
+            ptb_guild = self.bot.get_guild(ptb_guild_id)
+            if not ptb_guild:
+                return
+
+            ptb_member = ptb_guild.get_member(after.id)
+            if not ptb_member:
+                return
+
+            try:
+                await ptb_member.edit(nick=after.display_name, reason="Synchronisation automatique depuis le Discord principal")
+                logging.info(f"[GuildMembers] Synchronized PTB nickname for {after.id}: '{before.display_name}' -> '{after.display_name}'")
+            except discord.Forbidden:
+                logging.warning(f"[GuildMembers] Cannot change PTB nickname for {after.id} - insufficient permissions")
+            except Exception as e:
+                logging.error(f"[GuildMembers] Error changing PTB nickname for {after.id}: {e}")
+                
+        except Exception as e:
+            logging.error(f"[GuildMembers] Error in on_member_update: {e}", exc_info=True)
 
 def setup(bot: discord.Bot):
     bot.add_cog(GuildMembers(bot))

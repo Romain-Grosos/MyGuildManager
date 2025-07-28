@@ -33,7 +33,6 @@ class GuildPTB(commands.Cog):
         query = """
         SELECT guild_id, guild_ptb, guild_lang, initialized
         FROM guild_settings
-        WHERE guild_ptb IS NOT NULL
         """
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
@@ -229,6 +228,15 @@ class GuildPTB(commands.Cog):
                 reason="PTB Info Channel"
             )
             logging.debug(f"[GuildPTB] Created info channel ({info_channel.id})")
+
+            try:
+                await ptb_guild.default_role.edit(
+                    permissions=ptb_guild.default_role.permissions.update(change_nickname=False),
+                    reason="PTB Configuration - Disable nickname changes for @everyone"
+                )
+                logging.debug("[GuildPTB] Removed change_nickname permission from @everyone")
+            except Exception as e:
+                logging.warning(f"[GuildPTB] Could not remove change_nickname permission: {e}")
 
             await self._save_ptb_settings(main_guild_id, ptb_guild.id, info_channel.id, roles, channels)
             
@@ -554,9 +562,35 @@ class GuildPTB(commands.Cog):
                                 await member.add_roles(role, reason=f"Auto-assignment for event {event_id}")
                                 logging.info(f"[GuildPTB] Auto-assigned role {group_name} to {member.display_name} for event {event_id}")
                         break
+
+            await self._sync_nickname_from_main(member, main_guild_id)
                         
         except Exception as e:
             logging.error(f"[GuildPTB] Error handling member join: {e}", exc_info=True)
+    
+    async def _sync_nickname_from_main(self, ptb_member: discord.Member, main_guild_id: int):
+        try:
+            main_guild = self.bot.get_guild(main_guild_id)
+            if not main_guild:
+                return
+            
+            main_member = main_guild.get_member(ptb_member.id)
+            if not main_member:
+                return
+
+            main_display_name = main_member.display_name
+
+            if ptb_member.display_name != main_display_name:
+                try:
+                    await ptb_member.edit(nick=main_display_name, reason="Synchronisation depuis le Discord principal")
+                    logging.info(f"[GuildPTB] Synchronized nickname for {ptb_member.id}: '{ptb_member.display_name}' -> '{main_display_name}'")
+                except discord.Forbidden:
+                    logging.warning(f"[GuildPTB] Cannot change nickname for {ptb_member.id} - insufficient permissions")
+                except Exception as e:
+                    logging.error(f"[GuildPTB] Error changing nickname for {ptb_member.id}: {e}")
+                    
+        except Exception as e:
+            logging.error(f"[GuildPTB] Error synchronizing nickname: {e}", exc_info=True)
     
     @discord.slash_command(
         name=GUILD_PTB["commands"]["ptb_init"]["name"]["en-US"],
@@ -651,7 +685,7 @@ class GuildPTB(commands.Cog):
                     guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["success"]["en-US"]
                 ).format(ptb_name=ctx.guild.name, main_guild_name=main_guild.name)
                 
-                await ctx.followup.send(success_msg)
+                await ctx.followup.send(success_msg, ephemeral=True)
                 logging.info(f"[GuildPTB] PTB configured via slash command by {ctx.author} - PTB: {ctx.guild.id}, Main: {main_guild_id_int}")
             else:
                 error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["error"].get(

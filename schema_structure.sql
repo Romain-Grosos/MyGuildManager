@@ -262,6 +262,49 @@ SET character_set_client = utf8mb4;
 SET character_set_client = @saved_cs_client;
 
 --
+-- Table structure for table `guild_ptb_settings`
+--
+
+DROP TABLE IF EXISTS `guild_ptb_settings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `guild_ptb_settings` (
+  `guild_id` bigint(20) NOT NULL COMMENT 'Discord main guild ID (FK to guild_settings)',
+  `ptb_guild_id` bigint(20) NOT NULL COMMENT 'Discord PTB guild ID',
+  `info_channel_id` bigint(20) NOT NULL COMMENT 'Info text channel ID in PTB',
+  `g1_role_id` bigint(20) DEFAULT NULL COMMENT 'G1 role ID in PTB',
+  `g1_channel_id` bigint(20) DEFAULT NULL COMMENT 'G1 voice channel ID in PTB',
+  `g2_role_id` bigint(20) DEFAULT NULL COMMENT 'G2 role ID in PTB',
+  `g2_channel_id` bigint(20) DEFAULT NULL COMMENT 'G2 voice channel ID in PTB',
+  `g3_role_id` bigint(20) DEFAULT NULL COMMENT 'G3 role ID in PTB',
+  `g3_channel_id` bigint(20) DEFAULT NULL COMMENT 'G3 voice channel ID in PTB',
+  `g4_role_id` bigint(20) DEFAULT NULL COMMENT 'G4 role ID in PTB',
+  `g4_channel_id` bigint(20) DEFAULT NULL COMMENT 'G4 voice channel ID in PTB',
+  `g5_role_id` bigint(20) DEFAULT NULL COMMENT 'G5 role ID in PTB',
+  `g5_channel_id` bigint(20) DEFAULT NULL COMMENT 'G5 voice channel ID in PTB',
+  `g6_role_id` bigint(20) DEFAULT NULL COMMENT 'G6 role ID in PTB',
+  `g6_channel_id` bigint(20) DEFAULT NULL COMMENT 'G6 voice channel ID in PTB',
+  `g7_role_id` bigint(20) DEFAULT NULL COMMENT 'G7 role ID in PTB',
+  `g7_channel_id` bigint(20) DEFAULT NULL COMMENT 'G7 voice channel ID in PTB',
+  `g8_role_id` bigint(20) DEFAULT NULL COMMENT 'G8 role ID in PTB',
+  `g8_channel_id` bigint(20) DEFAULT NULL COMMENT 'G8 voice channel ID in PTB',
+  `g9_role_id` bigint(20) DEFAULT NULL COMMENT 'G9 role ID in PTB',
+  `g9_channel_id` bigint(20) DEFAULT NULL COMMENT 'G9 voice channel ID in PTB',
+  `g10_role_id` bigint(20) DEFAULT NULL COMMENT 'G10 role ID in PTB',
+  `g10_channel_id` bigint(20) DEFAULT NULL COMMENT 'G10 voice channel ID in PTB',
+  `g11_role_id` bigint(20) DEFAULT NULL COMMENT 'G11 role ID in PTB',
+  `g11_channel_id` bigint(20) DEFAULT NULL COMMENT 'G11 voice channel ID in PTB',
+  `g12_role_id` bigint(20) DEFAULT NULL COMMENT 'G12 role ID in PTB',
+  `g12_channel_id` bigint(20) DEFAULT NULL COMMENT 'G12 voice channel ID in PTB',
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`guild_id`),
+  UNIQUE KEY `uk_ptb_guild` (`ptb_guild_id`),
+  CONSTRAINT `fk_guild_ptb_settings_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='PTB (Public Test Build) Discord server settings and channel/role mappings';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `guild_roles`
 --
 
@@ -330,7 +373,7 @@ CREATE TABLE `guild_static_groups` (
   KEY `idx_leader_id` (`leader_id`),
   KEY `idx_active` (`is_active`),
   CONSTRAINT `fk_static_groups_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -587,4 +630,4 @@ USE `DB_discordbot`;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-07-26 20:25:31
+-- Dump completed on 2025-07-28 15:30:41
