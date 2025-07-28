@@ -1442,7 +1442,7 @@
                     "de": "Bewerbung",
                     "it": "Candidatura"
                 },
-                "value": "postulation",
+                "value": "application",
                 "description": {
                     "en-US": "Apply to join the guild",
                     "fr": "Postuler à la guilde",
@@ -1459,7 +1459,7 @@
                     "de": "Mitglied",
                     "it": "Membro"
                 },
-                "value": "membre",
+                "value": "member",
                 "description": {
                     "en-US": "Already a member of the guild",
                     "fr": "Déjà membre de la guilde",
@@ -1476,7 +1476,7 @@
                     "de": "Diplomatie",
                     "it": "Diplomazia"
                 },
-                "value": "diplomate",
+                "value": "diplomat",
                 "description": {
                     "en-US": "Diplomat from another guild",
                     "fr": "Diplomate d’une autre guilde",
@@ -1510,7 +1510,7 @@
                     "de": "Freunde",
                     "it": "Amici"
                 },
-                "value": "amis",
+                "value": "friends",
                 "description": {
                     "en-US": "Friend of a member",
                     "fr": "Ami d’un membre",
