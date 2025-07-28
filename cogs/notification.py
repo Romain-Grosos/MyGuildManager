@@ -188,6 +188,25 @@ class Notification(commands.Cog):
         if not self.check_event_rate_limit(guild.id):
             logging.warning(f"[NotificationManager] Rate limit exceeded for guild {guild.id}")
             return
+
+        try:
+            guild_ptb_cog = self.bot.get_cog("GuildPTB")
+            if guild_ptb_cog and guild.id in guild_ptb_cog.guild_settings:
+                ptb_guild_id = guild_ptb_cog.guild_settings[guild.id].get("ptb_guild_id")
+                if ptb_guild_id:
+                    ptb_guild = self.bot.get_guild(ptb_guild_id)
+                    if ptb_guild:
+                        ptb_member = ptb_guild.get_member(member.id)
+                        if ptb_member:
+                            try:
+                                await ptb_member.kick(reason=f"Member left main Discord server ({guild.name})")
+                                logging.info(f"[NotificationManager] Auto-kicked {safe_user} from PTB guild after leaving main server")
+                            except discord.Forbidden:
+                                logging.warning(f"[NotificationManager] Cannot kick {safe_user} from PTB guild - insufficient permissions")
+                            except Exception as e:
+                                logging.error(f"[NotificationManager] Error kicking {safe_user} from PTB guild: {e}")
+        except Exception as e:
+            logging.error(f"[NotificationManager] Error in PTB auto-kick logic: {e}", exc_info=True)
         
         try:
             guild_lang = await self.get_guild_lang(guild)
