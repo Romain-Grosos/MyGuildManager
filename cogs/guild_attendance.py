@@ -345,11 +345,13 @@ class GuildAttendance(commands.Cog):
                 event_start = tz.localize(datetime.combine(event_date, event_time))
                 event_check_time = event_start + timedelta(minutes=5)
                 event_end = event_start + timedelta(minutes=int(event_data.get("duration", 60)))
+
+                event_check_end = event_end + timedelta(minutes=10)
                 
-                logging.debug(f"[GuildAttendance] Event {event_data['event_id']}: start={event_start}, check_time={event_check_time}, end={event_end}, now={now}")
-                logging.debug(f"[GuildAttendance] Event {event_data['event_id']}: condition {event_check_time} <= {now} <= {event_end} = {event_check_time <= now <= event_end}")
+                logging.debug(f"[GuildAttendance] Event {event_data['event_id']}: start={event_start}, check_time={event_check_time}, end={event_end}, check_end={event_check_end}, now={now}")
+                logging.debug(f"[GuildAttendance] Event {event_data['event_id']}: condition {event_check_time} <= {now} <= {event_check_end} = {event_check_time <= now <= event_check_end}")
                 
-                if event_check_time <= now <= event_end:
+                if event_check_time <= now <= event_check_end:
                     current_events.append(event_data)
                     logging.debug(f"[GuildAttendance] Event {event_data['event_id']} matches time window, added to current events")
                     
