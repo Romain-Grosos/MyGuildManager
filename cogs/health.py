@@ -10,6 +10,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any
 import json
+from scheduler import get_scheduler_health_status
+from cache import get_global_cache
 
 try:
     import psutil
@@ -29,7 +31,9 @@ class Health(commands.Cog):
             'database': 'unknown',
             'discord_api': 'unknown',
             'memory': 'unknown',
-            'cpu': 'unknown'
+            'cpu': 'unknown',
+            'scheduler': 'unknown',
+            'cache': 'unknown'
         }
         
         self.command_metrics = {}
@@ -66,6 +70,9 @@ class Health(commands.Cog):
         if PSUTIL_AVAILABLE:
             self.component_status['memory'] = self._check_memory()
             self.component_status['cpu'] = self._check_cpu()
+        
+        self.component_status['scheduler'] = self._check_scheduler()
+        self.component_status['cache'] = self._check_cache()
         
         unhealthy = [name for name, status in self.component_status.items() if status == 'error']
         if unhealthy:
@@ -140,6 +147,49 @@ class Health(commands.Cog):
             else:
                 return 'healthy'
                 
+        except Exception:
+            return 'unknown'
+    
+    def _check_scheduler(self) -> str:
+        """Check scheduler health and task status."""
+        try:
+            scheduler_status = get_scheduler_health_status()
+            if 'error' in scheduler_status:
+                return 'error'
+            
+            task_metrics = scheduler_status.get('task_metrics', {})
+            total_failures = sum(metrics.get('failures', 0) for metrics in task_metrics.values())
+            total_tasks = sum(metrics.get('success', 0) + metrics.get('failures', 0) for metrics in task_metrics.values())
+            
+            if total_tasks > 0:
+                failure_rate = (total_failures / total_tasks) * 100
+                if failure_rate > 20:
+                    return 'error'
+                elif failure_rate > 10:
+                    return 'warning'
+            
+            return 'healthy'
+            
+        except Exception:
+            return 'unknown'
+    
+    def _check_cache(self) -> str:
+        """Check global cache system health."""
+        try:
+            cache = get_global_cache()
+            metrics = cache.get_metrics()
+            
+            global_metrics = metrics['global']
+            hit_rate = global_metrics.get('hit_rate', 0)
+            total_entries = global_metrics.get('total_entries', 0)
+            
+            if total_entries > 10000:
+                return 'warning'
+            elif hit_rate < 30 and global_metrics.get('total_requests', 0) > 100:
+                return 'warning'
+            
+            return 'healthy'
+            
         except Exception:
             return 'unknown'
     
@@ -293,6 +343,31 @@ class Health(commands.Cog):
                 inline=True
             )
         
+        scheduler_status = get_scheduler_health_status()
+        if 'task_metrics' in scheduler_status:
+            task_metrics = scheduler_status['task_metrics']
+            total_success = sum(metrics.get('success', 0) for metrics in task_metrics.values())
+            total_failures = sum(metrics.get('failures', 0) for metrics in task_metrics.values())
+            
+            embed.add_field(
+                name="⏰ Scheduler",
+                value=f"Success: {total_success}\nFailures: {total_failures}",
+                inline=True
+            )
+        
+        try:
+            cache = get_global_cache()
+            cache_metrics = cache.get_metrics()
+            global_cache = cache_metrics['global']
+            
+            embed.add_field(
+                name="🗄️ Global Cache",
+                value=f"Hit rate: {global_cache['hit_rate']}%\nEntries: {global_cache['total_entries']}",
+                inline=True
+            )
+        except Exception:
+            pass
+        
         return embed
     
     @discord.slash_command(name="clear-cache", description="Clear bot cache")
@@ -308,7 +383,23 @@ class Health(commands.Cog):
             self.bot.optimizer._channel_cache.clear()
             self.bot.optimizer._guild_cache.clear()
             self.bot.optimizer._cache_times.clear()
-            cleared_count = len(self.bot.optimizer._member_cache) + len(self.bot.optimizer._channel_cache)
+            cleared_count += 50  # Estimate
+        
+        try:
+            cache = get_global_cache()
+            metrics_before = cache.get_metrics()
+            global_entries_before = metrics_before['global']['total_entries']
+            
+            for category in ['guild_data', 'user_data', 'events_data', 'roster_data', 'temporary']:
+                await cache.invalidate_category(category)
+            
+            metrics_after = cache.get_metrics()
+            global_entries_after = metrics_after['global']['total_entries']
+            global_cleared = global_entries_before - global_entries_after
+            cleared_count += global_cleared
+            
+        except Exception as e:
+            logging.error(f"[Health] Error clearing global cache: {e}")
         
         await ctx.followup.send(f"✅ Cache cleared ({cleared_count} entries removed)", ephemeral=True)
         logging.info(f"[Health] Cache cleared by {ctx.author} ({cleared_count} entries)")

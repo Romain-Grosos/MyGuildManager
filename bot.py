@@ -13,6 +13,8 @@ import time
 from discord.ext import commands
 from collections import defaultdict, deque
 from functools import wraps
+from scheduler import setup_task_scheduler
+from cache import get_global_cache, start_cache_maintenance_task
 try:
     import psutil
     PSUTIL_AVAILABLE = True
@@ -277,6 +279,9 @@ bot.run_db_query = lambda *args, **kwargs: optimized_run_db_query(
 bot.get_member_optimized = bot.optimizer.get_member_optimized
 bot.get_channel_optimized = bot.optimizer.get_channel_optimized
 
+bot.scheduler = setup_task_scheduler(bot)
+bot.cache = get_global_cache()
+
 EXTENSIONS: Final[list[str]] = [
     "cogs.core",
     "cogs.llm",
@@ -291,7 +296,6 @@ EXTENSIONS: Final[list[str]] = [
     "cogs.guild_attendance",
     "cogs.guild_ptb",
     "cogs.autorole",
-    "cogs.cron",
     "cogs.health"
 ]
 
@@ -356,7 +360,8 @@ async def on_ready() -> None:
                 bot.optimizer.cleanup_cache()
         
         asyncio.create_task(cache_cleanup_task())
-        logging.info("[BotOptimizer] Optimization setup completed - cache cleanup task started")
+        await start_cache_maintenance_task()
+        logging.info("[BotOptimizer] Optimization setup completed - cache systems started")
 
 
 @bot.slash_command(name="perf", description="Show bot performance stats")
