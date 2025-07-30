@@ -7,9 +7,13 @@ import time
 import contextlib
 from typing import Optional, Any
 
+# #################################################################################### #
+#                            Database Pool Initialization
+# #################################################################################### #
 pool_connection = None
 
 def initialize_db_pool() -> bool:
+    """Initialize MariaDB connection pool."""
     global pool_connection
     try:
         pool_connection = mariadb.connect(
@@ -22,25 +26,35 @@ def initialize_db_pool() -> bool:
             pool_size=config.DB_POOL_SIZE,
             connect_timeout=config.DB_TIMEOUT
         )
-        logging.info(f"[DBManager] 🔗 DB pool initialized (size: {config.DB_POOL_SIZE}, timeout: {config.DB_TIMEOUT}s)")
+        logging.info(f"[DBManager] DB pool initialized (size: {config.DB_POOL_SIZE}, timeout: {config.DB_TIMEOUT}s)")
         return True
     except mariadb.Error as e:
-        logging.critical(f"[DBManager] ❌ Failed to initialize DB pool: {type(e).__name__}")
+        logging.critical(f"[DBManager] Failed to initialize DB pool: {type(e).__name__}")
         return False
 
 if not initialize_db_pool():
     sys.exit(1)
 
+# #################################################################################### #
+#                            Query Logging Utilities
+# #################################################################################### #
 def safe_log_query(query: str, params: tuple):
+    """Log query execution safely without exposing sensitive data."""
     safe_query = query[:100] + "..." if len(query) > 100 else query
     param_count = len(params) if params else 0
     logging.debug(f"[DBManager] Executing query (params: {param_count}): {safe_query}")
 
 def safe_log_error(error: Exception, query: str):
+    """Log query errors safely without exposing sensitive data."""
     safe_query = query[:50] + "..." if len(query) > 50 else query
     logging.error(f"[DBManager] Query failed: {type(error).__name__} | Query: {safe_query}")
 
+# #################################################################################### #
+#                            Circuit Breaker Pattern
+# #################################################################################### #
 class CircuitBreaker:
+    """Circuit breaker to prevent cascading failures when database is unavailable."""
+    
     def __init__(self, failure_threshold: int = None, timeout: int = 60):
         self.failure_threshold = failure_threshold or config.DB_CIRCUIT_BREAKER_THRESHOLD
         self.timeout = timeout
@@ -49,6 +63,7 @@ class CircuitBreaker:
         self.state = "CLOSED"
     
     def is_open(self) -> bool:
+        """Check if circuit breaker is open (blocking requests)."""
         if self.state == "OPEN":
             if time.time() - self.last_failure_time > self.timeout:
                 self.state = "HALF_OPEN"
@@ -58,19 +73,26 @@ class CircuitBreaker:
         return False
     
     def record_success(self):
+        """Record successful operation, potentially closing the breaker."""
         if self.state == "HALF_OPEN":
             logging.info("[DBManager] Circuit breaker CLOSED - DB recovered")
         self.failure_count = 0
         self.state = "CLOSED"
     
     def record_failure(self):
+        """Record failed operation, potentially opening the breaker."""
         self.failure_count += 1
         self.last_failure_time = time.time()
         if self.failure_count >= self.failure_threshold:
             self.state = "OPEN"
             logging.warning(f"[DBManager] Circuit breaker OPEN - DB temporarily unavailable (failures: {self.failure_count})")
 
+# #################################################################################### #
+#                            Database Connection Manager
+# #################################################################################### #
 class DatabaseManager:
+    """Manages database connections with proper pooling and timeout handling."""
+    
     def __init__(self):
         self.active_connections = 0
         self.max_active_connections = config.DB_POOL_SIZE
@@ -79,6 +101,7 @@ class DatabaseManager:
     
     @contextlib.asynccontextmanager
     async def get_connection_with_timeout(self):
+        """Get database connection with timeout and proper resource management."""
         self.waiting_queue += 1
         
         try:
@@ -113,15 +136,24 @@ class DatabaseManager:
                 pass
     
     def _get_connection(self):
+        """Get connection from pool."""
         return mariadb.connect(pool_name="secure_pool")
 
+# #################################################################################### #
+#                            Global Database Components
+# #################################################################################### #
 db_circuit_breaker = CircuitBreaker()
 db_manager = DatabaseManager()
 
 class DBQueryError(Exception):
+    """Custom exception for database query errors."""
     pass
 
-async def run_db_query(query: str, params: tuple = (), commit: bool = False,fetch_one: bool = False, fetch_all: bool = False) -> Optional[Any]:
+# #################################################################################### #
+#                            Main Database Query Function
+# #################################################################################### #
+async def run_db_query(query: str, params: tuple = (), commit: bool = False, fetch_one: bool = False, fetch_all: bool = False) -> Optional[Any]:
+    """Execute database query with resilience patterns and proper error handling."""
     
     if db_circuit_breaker.is_open():
         raise DBQueryError("Database temporarily unavailable (circuit breaker open)")

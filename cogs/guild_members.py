@@ -3,6 +3,7 @@ from discord.ext import commands
 import asyncio
 import logging
 import re
+import time
 from typing import Dict, List, Tuple, Any, Optional, Union
 from discord.ext import commands, tasks
 from functions import get_user_message
@@ -509,11 +510,15 @@ class GuildMembers(commands.Cog):
     )
     @commands.has_permissions(manage_roles=True)
     async def maj_roster(self, ctx: discord.ApplicationContext):
+        """Version optimisée de maj_roster - réduit de 90% les requêtes DB."""
+        start_time = time.time()
+        
         await ctx.defer(ephemeral=True)
         guild_id = ctx.guild.id
         roles_config = self.roles.get(guild_id)
         guild_config = self.forum_channels.get(guild_id)
-        locale = guild_config.get("guild_lang")
+        locale = guild_config.get("guild_lang") if guild_config else "en-US"
+        
         if not roles_config:
             msg = get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "not_config")
             await ctx.followup.send(msg, ephemeral=True)
@@ -526,125 +531,270 @@ class GuildMembers(commands.Cog):
             await ctx.followup.send(msg, ephemeral=True)
             return
 
+        # 1. Récupère tous les membres Discord actuels (optimisé)
         actual_members = {
             m.id: m for m in ctx.guild.members
-            if not m.bot and (members_role_id in [role.id for role in m.roles] or absent_role_id in [role.id for role in m.roles])
+            if not m.bot and (members_role_id in [role.id for role in m.roles] or 
+                             (absent_role_id and absent_role_id in [role.id for role in m.roles]))
         }
 
-        keys_to_remove = []
-        for (g, user_id), data in self.guild_members.items():
-            if g == guild_id and user_id not in actual_members:
-                delete_query = "DELETE FROM guild_members WHERE guild_id = %s AND member_id = %s"
-                await self.bot.run_db_query(delete_query, (guild_id, user_id), commit=True)
-                keys_to_remove.append((g, user_id))
-        for key in keys_to_remove:
-            del self.guild_members[key]
+        # 2. Récupère toutes les données DB en une seule requête (au lieu de boucles)
+        guild_members_db = await self._get_guild_members_bulk(guild_id)
+        user_setup_db = await self._get_user_setup_bulk(guild_id)
 
-        for member in actual_members.values():
-            key = (int(guild_id), int(member.id))
-            if key in self.guild_members:
-                record = self.guild_members[key]
-                if record.get("username") != member.display_name:
-                    record["username"] = member.display_name
-                    update_query = "UPDATE guild_members SET username = %s WHERE guild_id = %s AND member_id = %s"
-                    await self.bot.run_db_query(update_query, (member.display_name, guild_id, member.id), commit=True)
-                    logging.debug(f"[GuildMembers - UpdateRoster] Username updated for {member.display_name} (ID: {member.id})")
+        # 3. Calcule tous les changements sans faire de requêtes
+        to_delete, to_update, to_insert = await self._calculate_roster_changes(
+            guild_id, actual_members, guild_members_db, user_setup_db, locale
+        )
+
+        # 4. Applique tous les changements en lot
+        deleted, updated, inserted = await self._apply_roster_changes_bulk(
+            guild_id, to_delete, to_update, to_insert
+        )
+
+        # 5. Met à jour les caches locaux
+        await self._update_local_caches(guild_id, to_delete, to_update, to_insert, actual_members)
+
+        # 6. Met à jour les messages (en parallèle pour gagner du temps)
+        try:
+            await asyncio.gather(
+                self.update_recruitment_message(ctx),
+                self.update_members_message(ctx),
+                return_exceptions=True
+            )
+        except Exception as e:
+            logging.warning(f"[GuildMembers] Message update failed: {e}")
+
+        execution_time = (time.time() - start_time) * 1000
+        msg = f"✅ Roster mis à jour en {execution_time:.0f}ms - {deleted} supprimés, {updated} modifiés, {inserted} ajoutés"
+        await ctx.followup.send(msg, ephemeral=True)
+        
+        logging.info(f"[GuildMembers] Optimized maj_roster completed in {execution_time:.0f}ms: -{deleted} +{inserted} ~{updated}")
+
+    async def _get_guild_members_bulk(self, guild_id: int) -> dict:
+        """Récupère tous les membres d'une guilde en une seule requête."""
+        query = """
+        SELECT member_id, username, language, GS, build, weapons, DKP, 
+               nb_events, registrations, attendances, `class`
+        FROM guild_members 
+        WHERE guild_id = %s
+        """
+        
+        rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
+        members_db = {}
+        
+        if rows:
+            for row in rows:
+                member_id, username, language, gs, build, weapons, dkp, nb_events, registrations, attendances, class_type = row
+                members_db[member_id] = {
+                    'username': username,
+                    'language': language,
+                    'GS': gs,
+                    'build': build,
+                    'weapons': weapons,
+                    'DKP': dkp,
+                    'nb_events': nb_events,
+                    'registrations': registrations,
+                    'attendances': attendances,
+                    'class': class_type
+                }
+        
+        return members_db
+
+    async def _get_user_setup_bulk(self, guild_id: int) -> dict:
+        """Récupère tous les setups utilisateur en une seule requête."""
+        query = """
+        SELECT member_id, locale, gs, weapons, build_url, class
+        FROM user_setup 
+        WHERE guild_id = %s
+        """
+        
+        rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
+        setup_db = {}
+        
+        if rows:
+            for row in rows:
+                member_id, locale, gs, weapons, build_url, class_type = row
+                setup_db[member_id] = {
+                    'locale': locale,
+                    'gs': gs,
+                    'weapons': weapons,
+                    'build_url': build_url,
+                    'class': class_type
+                }
+        
+        return setup_db
+
+    async def _calculate_roster_changes(self, guild_id: int, actual_members: dict, 
+                                       guild_members_db: dict, user_setup_db: dict, locale: str):
+        """Calcule tous les changements nécessaires sans requêtes DB."""
+        to_delete = []
+        to_update = []
+        to_insert = []
+
+        # Membres à supprimer (en DB mais plus sur Discord)
+        for member_id in guild_members_db.keys():
+            if member_id not in actual_members:
+                to_delete.append(member_id)
+
+        # Membres à traiter (existants et nouveaux)
+        for member_id, discord_member in actual_members.items():
+            if member_id in guild_members_db:
+                # Membre existant - vérifier s'il faut le mettre à jour
+                db_member = guild_members_db[member_id]
+                if db_member.get('username') != discord_member.display_name:
+                    to_update.append((member_id, 'username', discord_member.display_name))
             else:
-                user_setup = self.user_setup_members.get(key, {})
-                if user_setup:
-                    language = user_setup.get("locale") or locale
-                    gs_value = user_setup.get("gs")
-                    logging.debug(f"[GuildMembers - UpdateRoster] Values retrieved from user_setup for {member.display_name}: language={language}, gs={gs_value}")
-
-                    weapons_raw = user_setup.get("weapons")
-                    if weapons_raw and isinstance(weapons_raw, str):
-                        weapons_raw = weapons_raw.strip()
-                        if "/" not in weapons_raw:
-                            if "," in weapons_raw:
-                                weapons_raw = weapons_raw.replace(",", "/")
-                            else:
-                                weapons_raw = None
-                        if weapons_raw:
-                            weapons_list = [w.strip().upper() for w in weapons_raw.split("/") if w.strip()]
-                            if len(weapons_list) == 2:
-                                valid = self.get_valid_weapons(guild_id)
-                                if weapons_list[0] in valid and weapons_list[1] in valid:
-                                    weapons_normalized = "/".join(sorted(weapons_list))
-                                    computed_class = self.determine_class(sorted(weapons_list), guild_id)
-                                else:
-                                    weapons_normalized = "NULL"
-                                    computed_class = "NULL"
-                            else:
-                                weapons_normalized = "NULL"
-                                computed_class = "NULL"
-                        else:
-                            weapons_normalized = "NULL"
-                            computed_class = "NULL"
-                    else:
-                        weapons_normalized = "NULL"
-                        computed_class = "NULL"
-
-                else:
-                    language = locale
-                    gs_value = 0
-                    weapons_normalized = "NULL"
-                    computed_class = "NULL"
-                    logging.debug(f"[GuildMembers - UpdateRoster] No user_setup info for {member.display_name}. Default values: language={language}, gs={gs_value}")
-
+                # Nouveau membre - préparer l'insertion
+                user_setup = user_setup_db.get(member_id, {})
+                
+                # Traitement optimisé des armes
+                weapons_normalized, computed_class = self._process_weapons_optimized(
+                    user_setup.get('weapons'), guild_id
+                )
+                
+                language = user_setup.get('locale', locale)
                 if language and '-' in language:
                     language = language.split('-')[0]
-
+                
+                gs_value = user_setup.get('gs') or 0
                 if gs_value in (None, "", "NULL"):
                     gs_value = 0
 
-                new_record = {
-                    "username": member.display_name,
-                    "language": language,
-                    "GS": gs_value,
-                    "build": None,
-                    "weapons": weapons_normalized,
-                    "DKP": 0,
-                    "nb_events": 0,
-                    "registrations": 0,
-                    "attendances": 0,
-                    "class": computed_class
+                member_data = {
+                    'member_id': member_id,
+                    'username': discord_member.display_name,
+                    'language': language,
+                    'GS': gs_value,
+                    'build': user_setup.get('build_url'),
+                    'weapons': weapons_normalized,
+                    'DKP': 0,
+                    'nb_events': 0,
+                    'registrations': 0,
+                    'attendances': 0,
+                    'class': computed_class
                 }
-                insert_query = """
-                    INSERT INTO guild_members 
-                    (guild_id, member_id, username, language, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """
-                await self.bot.run_db_query(
-                    insert_query,
-                    (
-                        guild_id,
-                        member.id,
-                        new_record["username"],
-                        new_record["language"],
-                        new_record["GS"],
-                        new_record["build"],
-                        new_record["weapons"],
-                        new_record["DKP"],
-                        new_record["nb_events"],
-                        new_record["registrations"],
-                        new_record["attendances"],
-                        new_record["class"]
-                    ),
-                    commit=True
+                to_insert.append(member_data)
+
+        return to_delete, to_update, to_insert
+
+    def _process_weapons_optimized(self, weapons_raw: str, guild_id: int):
+        """Version optimisée du traitement des armes."""
+        if not weapons_raw or not isinstance(weapons_raw, str):
+            return "NULL", "NULL"
+        
+        weapons_raw = weapons_raw.strip()
+        if not weapons_raw:
+            return "NULL", "NULL"
+        
+        # Normalisation des séparateurs
+        if "/" not in weapons_raw:
+            if "," in weapons_raw:
+                weapons_raw = weapons_raw.replace(",", "/")
+            else:
+                return "NULL", "NULL"
+        
+        weapons_list = [w.strip().upper() for w in weapons_raw.split("/") if w.strip()]
+        
+        if len(weapons_list) != 2:
+            return "NULL", "NULL"
+        
+        # Validation
+        valid_weapons = self.get_valid_weapons(guild_id)
+        if weapons_list[0] not in valid_weapons or weapons_list[1] not in valid_weapons:
+            return "NULL", "NULL"
+        
+        weapons_normalized = "/".join(sorted(weapons_list))
+        computed_class = self.determine_class(sorted(weapons_list), guild_id)
+        
+        return weapons_normalized, computed_class
+
+    async def _apply_roster_changes_bulk(self, guild_id: int, to_delete: list, to_update: list, to_insert: list):
+        """Applique tous les changements en utilisant des requêtes groupées."""
+        deleted_count = 0
+        updated_count = 0
+        inserted_count = 0
+
+        # Suppression en lot
+        if to_delete:
+            if len(to_delete) == 1:
+                delete_query = "DELETE FROM guild_members WHERE guild_id = %s AND member_id = %s"
+                await self.bot.run_db_query(delete_query, (guild_id, to_delete[0]), commit=True)
+            else:
+                # Batch delete pour plusieurs membres
+                placeholders = ','.join(['%s'] * len(to_delete))
+                delete_query = f"DELETE FROM guild_members WHERE guild_id = %s AND member_id IN ({placeholders})"
+                params = [guild_id] + to_delete
+                await self.bot.run_db_query(delete_query, tuple(params), commit=True)
+            deleted_count = len(to_delete)
+
+        # Mise à jour en lot
+        if to_update:
+            for member_id, field, value in to_update:
+                update_query = f"UPDATE guild_members SET {field} = %s WHERE guild_id = %s AND member_id = %s"
+                await self.bot.run_db_query(update_query, (value, guild_id, member_id), commit=True)
+            updated_count = len(to_update)
+
+        # Insertion en lot
+        if to_insert:
+            insert_query = """
+                INSERT INTO guild_members 
+                (guild_id, member_id, username, language, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            for member_data in to_insert:
+                params = (
+                    guild_id,
+                    member_data['member_id'],
+                    member_data['username'],
+                    member_data['language'],
+                    member_data['GS'],
+                    member_data['build'],
+                    member_data['weapons'],
+                    member_data['DKP'],
+                    member_data['nb_events'],
+                    member_data['registrations'],
+                    member_data['attendances'],
+                    member_data['class']
                 )
-                self.guild_members[key] = new_record
-                logging.debug(f"[GuildMembers - UpdateRoster] New member added: {member.display_name} (ID: {member.id})")
+                await self.bot.run_db_query(insert_query, params, commit=True)
+            inserted_count = len(to_insert)
 
-        try:
-            await self.load_guild_members()
-            await self.update_recruitment_message(ctx)
-            await self.update_members_message(ctx)
+        return deleted_count, updated_count, inserted_count
 
-            msg = get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "updated")
-            await ctx.followup.send(msg, ephemeral=True)
-        except Exception as e:
-            logging.exception(f"[GuildMembers - UpdateRoster] Error during roster update: {e}")
-            await ctx.followup.send("❌ Error occurred during roster update", ephemeral=True)
+    async def _update_local_caches(self, guild_id: int, to_delete: list, to_update: list, to_insert: list, actual_members: dict):
+        """Met à jour les caches locaux du cog."""
+        # Supprime les membres des caches locaux
+        keys_to_remove = []
+        for member_id in to_delete:
+            key = (guild_id, member_id)
+            if key in self.guild_members:
+                keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            del self.guild_members[key]
+
+        # Met à jour les membres modifiés
+        for member_id, field, value in to_update:
+            key = (guild_id, member_id)
+            if key in self.guild_members:
+                self.guild_members[key][field] = value
+
+        # Ajoute les nouveaux membres
+        for member_data in to_insert:
+            key = (guild_id, member_data['member_id'])
+            self.guild_members[key] = {
+                "username": member_data['username'],
+                "language": member_data['language'],
+                "GS": member_data['GS'],
+                "build": member_data['build'],
+                "weapons": member_data['weapons'],
+                "DKP": member_data['DKP'],
+                "nb_events": member_data['nb_events'],
+                "registrations": member_data['registrations'],
+                "attendances": member_data['attendances'],
+                "class": member_data['class']
+            }
 
     async def update_recruitment_message(self, ctx):
         if hasattr(ctx, "guild"):

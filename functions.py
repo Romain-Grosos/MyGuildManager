@@ -1,7 +1,11 @@
 import logging
 import re
 
+# #################################################################################### #
+#                            Translation System Utilities
+# #################################################################################### #
 def sanitize_kwargs(**kwargs):
+    """Sanitize kwargs for safe string formatting in translations."""
     safe_kwargs = {}
     for k, v in kwargs.items():
         if isinstance(k, str) and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', k):
@@ -14,6 +18,7 @@ def sanitize_kwargs(**kwargs):
     return safe_kwargs
 
 def get_nested_value(data, keys, max_depth=5):
+    """Safely navigate nested dictionary structure with depth protection."""
     if len(keys) > max_depth:
         logging.warning(f"[Translation] Key depth exceeds limit: {'.'.join(keys)}")
         return None
@@ -31,7 +36,11 @@ def get_nested_value(data, keys, max_depth=5):
     
     return entry
 
+# #################################################################################### #
+#                            Main Translation Function
+# #################################################################################### #
 def get_user_message(ctx, translations, key, **kwargs):
+    """Get localized message from translations with safe formatting and fallbacks."""
     if not translations or not isinstance(translations, dict):
         logging.error("[Translation] Invalid translations dictionary")
         return ""

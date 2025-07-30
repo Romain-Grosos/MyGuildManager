@@ -7,10 +7,12 @@ from db import run_db_query
 import asyncio
 import signal
 import sys
-from typing import Final
+from typing import Final, Dict, Any, Optional
 import aiohttp
 import time
 from discord.ext import commands
+from collections import defaultdict, deque
+from functools import wraps
 try:
     import psutil
     PSUTIL_AVAILABLE = True
@@ -47,9 +49,197 @@ logging.captureWarnings(True)
 logging.debug("[Bot] ✅ Log initialization with daily rotation.")
 
 # #################################################################################### #
+#                            Bot Optimization Classes
+# #################################################################################### #
+class BotOptimizer:
+    """Integrated optimizer for the main bot."""
+    
+    def __init__(self, bot):
+        self.bot = bot
+        
+        self._member_cache = {}
+        self._channel_cache = {}
+        self._guild_cache = {}
+        self._cache_ttl = 300
+        self._cache_times = {}
+        
+        self.metrics = {
+            'commands_executed': 0,
+            'api_calls_cached': 0,
+            'api_calls_total': 0,
+            'db_queries_count': 0,
+            'cache_hits': 0,
+            'cache_misses': 0
+        }
+        
+        self._rate_limits = defaultdict(lambda: deque(maxlen=100))
+        
+        logging.info("[BotOptimizer] Initialized with Discord API caching and metrics")
+    
+    def is_cache_valid(self, key: str) -> bool:
+        """Check if cache entry is still valid."""
+        if key not in self._cache_times:
+            return False
+        return time.time() - self._cache_times[key] < self._cache_ttl
+    
+    def set_cache(self, cache_dict: dict, key: str, value: Any):
+        """Store value in cache with timestamp."""
+        cache_dict[key] = value
+        self._cache_times[key] = time.time()
+    
+    def get_cached_member(self, guild_id: int, member_id: int) -> Optional:
+        """Get member from cache or return None."""
+        key = f"member_{guild_id}_{member_id}"
+        if key in self._member_cache and self.is_cache_valid(key):
+            self.metrics['cache_hits'] += 1
+            return self._member_cache[key]
+        self.metrics['cache_misses'] += 1
+        return None
+    
+    async def get_member_optimized(self, guild, member_id: int):
+        """Optimized get_member with caching."""
+        cached = self.get_cached_member(guild.id, member_id)
+        if cached:
+            return cached
+        
+        try:
+            member = guild.get_member(member_id)
+            if member is None:
+                member = await guild.fetch_member(member_id)
+            
+            if member:
+                key = f"member_{guild.id}_{member_id}"
+                self.set_cache(self._member_cache, key, member)
+                self.metrics['api_calls_cached'] += 1
+            
+            self.metrics['api_calls_total'] += 1
+            return member
+            
+        except Exception as e:
+            logging.warning(f"[BotOptimizer] Failed to fetch member {member_id}: {e}")
+            return None
+    
+    async def get_channel_optimized(self, channel_id: int):
+        """Optimized get_channel with caching."""
+        key = f"channel_{channel_id}"
+        
+        if key in self._channel_cache and self.is_cache_valid(key):
+            self.metrics['cache_hits'] += 1
+            return self._channel_cache[key]
+        
+        try:
+            channel = self.bot.get_channel(channel_id)
+            if channel is None:
+                channel = await self.bot.fetch_channel(channel_id)
+            
+            if channel:
+                self.set_cache(self._channel_cache, key, channel)
+                self.metrics['api_calls_cached'] += 1
+            
+            self.metrics['api_calls_total'] += 1
+            self.metrics['cache_misses'] += 1
+            return channel
+            
+        except Exception as e:
+            logging.warning(f"[BotOptimizer] Failed to fetch channel {channel_id}: {e}")
+            return None
+    
+    def track_command_execution(self, command_name: str, execution_time: float):
+        """Track command execution."""
+        self.metrics['commands_executed'] += 1
+        
+        if execution_time > 5000:
+            logging.warning(f"[BotOptimizer] Slow command detected: {command_name} took {execution_time:.0f}ms")
+    
+    def track_db_query(self):
+        """Track database query."""
+        self.metrics['db_queries_count'] += 1
+    
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Get performance statistics."""
+        total_api_calls = self.metrics['api_calls_total']
+        cache_hit_rate = 0
+        if total_api_calls > 0:
+            cache_hit_rate = (self.metrics['cache_hits'] / (self.metrics['cache_hits'] + self.metrics['cache_misses'])) * 100
+        
+        return {
+            'commands_executed': self.metrics['commands_executed'],
+            'api_calls_total': total_api_calls,
+            'api_calls_cached': self.metrics['api_calls_cached'],
+            'db_queries_count': self.metrics['db_queries_count'],
+            'cache_hit_rate': round(cache_hit_rate, 2),
+            'cache_size': len(self._member_cache) + len(self._channel_cache),
+            'uptime_hours': (time.time() - getattr(self.bot, '_start_time', time.time())) / 3600
+        }
+    
+    def cleanup_cache(self):
+        """Clean expired cache entries."""
+        current_time = time.time()
+        expired_keys = []
+        
+        for key, timestamp in self._cache_times.items():
+            if current_time - timestamp > self._cache_ttl:
+                expired_keys.append(key)
+        
+        for key in expired_keys:
+            self._member_cache.pop(key, None)
+            self._channel_cache.pop(key, None)
+            self._guild_cache.pop(key, None)
+            del self._cache_times[key]
+        
+        if expired_keys:
+            logging.debug(f"[BotOptimizer] Cleaned {len(expired_keys)} expired cache entries")
+
+
+def optimize_command(func):
+    """Decorator that automatically adds metrics to commands."""
+    @wraps(func)
+    async def wrapper(self, ctx, *args, **kwargs):
+        if not hasattr(self.bot, 'optimizer'):
+            return await func(self, ctx, *args, **kwargs)
+        
+        start_time = time.time()
+        command_name = func.__name__
+        
+        try:
+            result = await func(self, ctx, *args, **kwargs)
+            execution_time = (time.time() - start_time) * 1000
+            self.bot.optimizer.track_command_execution(command_name, execution_time)
+            return result
+            
+        except Exception as e:
+            execution_time = (time.time() - start_time) * 1000
+            self.bot.optimizer.track_command_execution(f"{command_name}_ERROR", execution_time)
+            raise
+    
+    return wrapper
+
+
+async def optimized_run_db_query(original_func, bot, query: str, params: tuple = (), **kwargs):
+    """Optimized wrapper for run_db_query with metrics."""
+    if hasattr(bot, 'optimizer'):
+        bot.optimizer.track_db_query()
+    
+    start_time = time.time()
+    
+    try:
+        result = await original_func(query, params, **kwargs)
+        execution_time = (time.time() - start_time) * 1000
+        
+        if execution_time > 100:
+            query_preview = query[:100] + "..." if len(query) > 100 else query
+            logging.warning(f"[DB] Slow query ({execution_time:.0f}ms): {query_preview}")
+        
+        return result
+        
+    except Exception as e:
+        execution_time = (time.time() - start_time) * 1000
+        logging.error(f"[DB] Query failed after {execution_time:.0f}ms: {str(e)}")
+        raise
+
+# #################################################################################### #
 #                            Discord Bot Startup
 # #################################################################################### #
-
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
@@ -73,9 +263,19 @@ def validate_token():
 
 bot = discord.Bot(intents=intents, loop=loop)
 bot.translations = translations
-bot.run_db_query = run_db_query
 bot.global_command_cooldown = set()
 bot.max_commands_per_minute = 100
+
+bot.optimizer = BotOptimizer(bot)
+bot._start_time = time.time()
+
+original_run_db_query = run_db_query
+bot.run_db_query = lambda *args, **kwargs: optimized_run_db_query(
+    original_run_db_query, bot, *args, **kwargs
+)
+
+bot.get_member_optimized = bot.optimizer.get_member_optimized
+bot.get_channel_optimized = bot.optimizer.get_channel_optimized
 
 EXTENSIONS: Final[list[str]] = [
     "cogs.core",
@@ -91,7 +291,8 @@ EXTENSIONS: Final[list[str]] = [
     "cogs.guild_attendance",
     "cogs.guild_ptb",
     "cogs.autorole",
-    "cogs.cron"
+    "cogs.cron",
+    "cogs.health"
 ]
 
 def load_extensions():
@@ -145,11 +346,74 @@ async def on_ready() -> None:
     if PSUTIL_AVAILABLE:
         asyncio.create_task(monitor_resources())
         logging.debug("[Bot] Resource monitoring started")
+    
+    if not hasattr(bot, '_optimization_setup_done'):
+        bot._optimization_setup_done = True
+        
+        async def cache_cleanup_task():
+            while True:
+                await asyncio.sleep(600)
+                bot.optimizer.cleanup_cache()
+        
+        asyncio.create_task(cache_cleanup_task())
+        logging.info("[BotOptimizer] Optimization setup completed - cache cleanup task started")
+
+
+@bot.slash_command(name="perf", description="Show bot performance stats")
+@discord.default_permissions(administrator=True)
+async def performance_stats(ctx):
+    """Simple command to view performance stats."""
+    await ctx.defer(ephemeral=True)
+    
+    stats = bot.optimizer.get_performance_stats()
+    
+    embed = discord.Embed(
+        title="📊 Bot Performance",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="🎯 Commands",
+        value=f"{stats['commands_executed']} executed",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="🌐 Discord API",
+        value=f"{stats['api_calls_total']} calls\n{stats['api_calls_cached']} cached",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="💾 Cache",
+        value=f"{stats['cache_hit_rate']}% hit rate\n{stats['cache_size']} entries",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="🗄️ Database",
+        value=f"{stats['db_queries_count']} queries",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="⏱️ Uptime",
+        value=f"{stats['uptime_hours']:.1f} hours",
+        inline=True
+    )
+    
+    performance_score = "Excellent" if stats['cache_hit_rate'] > 70 else "Good" if stats['cache_hit_rate'] > 50 else "Needs improvement"
+    embed.add_field(
+        name="🏆 Overall Score",
+        value=performance_score,
+        inline=True
+    )
+    
+    await ctx.followup.send(embed=embed, ephemeral=True)
 
 # #################################################################################### #
 #                            Resource Monitoring
 # #################################################################################### #
-
 async def monitor_resources():
     while True:
         try:
@@ -174,7 +438,6 @@ async def monitor_resources():
 # #################################################################################### #
 #                            Resilient runner
 # #################################################################################### #
-
 async def run_bot():
     load_extensions()
     max_retries = config.MAX_RECONNECT_ATTEMPTS
