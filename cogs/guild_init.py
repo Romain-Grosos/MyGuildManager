@@ -1,15 +1,24 @@
+"""
+Guild Init Cog - Manages Discord server initialization and setup processes.
+"""
+
 import discord
 from discord.ext import commands
 import logging
 from typing import Any, Dict, Tuple
 from functions import get_user_message
 from translation import translations as global_translations
+from rate_limiter import admin_rate_limit
+from reliability import discord_resilient
 import asyncio
 
 GUILD_INIT_DATA = global_translations.get("guild_init", {})
 
 class GuildInit(commands.Cog):
+    """Cog for managing Discord server initialization and setup processes."""
+    
     def __init__(self, bot: discord.Bot):
+        """Initialize the GuildInit cog."""
         self.bot = bot
         self.translations = bot.translations
 
@@ -20,6 +29,8 @@ class GuildInit(commands.Cog):
         description_localizations=GUILD_INIT_DATA["description"]
     )
     @commands.has_permissions(administrator=True)
+    @admin_rate_limit(cooldown_seconds=600)
+    @discord_resilient(service_name='discord_api', max_retries=3)
     async def discord_setup(
         self,
         ctx: discord.ApplicationContext,
@@ -32,6 +43,7 @@ class GuildInit(commands.Cog):
             ]
         )
     ):
+        """Initialize Discord server with roles and channels."""
         await ctx.defer(ephemeral=True)
         guild = ctx.guild
         guild_id = guild.id if guild else None
@@ -51,7 +63,7 @@ class GuildInit(commands.Cog):
                 return await ctx.followup.send(response, ephemeral=True)
         except Exception as e:
             logging.error("[GuildInit] DB check failed for guild %s: %s", guild_id, e)
-            response = get_user_message(ctx, self.translations, "guild_init.messages.error", error=e)
+            response = get_user_message(ctx, self.translations, "guild_init.messages.error", error="Database error")
             return await ctx.followup.send(response, ephemeral=True)
 
         community_mode = "COMMUNITY" in guild.features
@@ -64,7 +76,6 @@ class GuildInit(commands.Cog):
             ###########################################################################
             ###########################################################################
             ###########################################################################
-            # TO BE DONE
             roles = ctx.guild.roles
             channels = ctx.guild.channels
 
@@ -138,6 +149,21 @@ class GuildInit(commands.Cog):
                 """
 
                 await self.bot.run_db_query(role_query, role_values, commit=True)
+                
+                roles_data = {
+                    "guild_master": created_roles.get("guild_master"),
+                    "officer": created_roles.get("officer"),
+                    "guardian": created_roles.get("guardian"),
+                    "members": created_roles.get("members"),
+                    "absent_members": created_roles.get("absent_members"),
+                    "allies": created_roles.get("allies"),
+                    "diplomats": created_roles.get("diplomats"),
+                    "friends": created_roles.get("friends"),
+                    "applicant": created_roles.get("applicant"),
+                    "config_ok": created_roles.get("config_ok"),
+                    "rules_ok": created_roles.get("rules_ok")
+                }
+                await self.bot.cache.set_guild_data(guild_id, 'roles', roles_data)
 
                 channel_names = GUILD_INIT_DATA.get("channel_names", {})
 
@@ -211,7 +237,7 @@ class GuildInit(commands.Cog):
                         logging.info("[GuildInit] Set server to community mode")
                     except Exception as e:
                         logging.error("[GuildInit] Failed to enable community mode: %s", e)
-                        response = get_user_message(ctx, self.translations,"guild_init.messages.error", error=e)
+                        response = get_user_message(ctx, self.translations,"guild_init.messages.error", error="Discord configuration error")
                         return await ctx.followup.send(response, ephemeral=True)
 
                 war_conf = await guild.create_voice_channel("⚔️ WAR",type=discord.ChannelType.stage_voice,category=guild_cat)
@@ -325,6 +351,39 @@ class GuildInit(commands.Cog):
                 """
 
                 await self.bot.run_db_query(insert_query, channels_values, commit=True)
+                
+                channels_data = {
+                    "rules_channel": rules_channel.id,
+                    "rules_message": rules_msg.id,
+                    "announcements_channel": announce_ch.id,
+                    "voice_tavern_channel": voice_tavern.id,
+                    "voice_war_channel": war_conf.id,
+                    "create_room_channel": create_room.id,
+                    "events_channel": events.id,
+                    "members_channel": members_ch.id,
+                    "members_m1": m_ids[0],
+                    "members_m2": m_ids[1],
+                    "members_m3": m_ids[2],
+                    "members_m4": m_ids[3],
+                    "members_m5": m_ids[4],
+                    "groups_channel": groups.id,
+                    "statics_channel": statics_ch.id,
+                    "statics_message": statics_msg.id,
+                    "abs_channel": abs_ch.id,
+                    "loot_channel": loot.id,
+                    "tutorial_channel": tutorial_channel.id,
+                    "forum_allies_channel": forum_ids[0],
+                    "forum_friends_channel": forum_ids[1],
+                    "forum_diplomats_channel": forum_ids[2],
+                    "forum_recruitment_channel": forum_ids[3],
+                    "forum_members_channel": forum_ids[4],
+                    "notifications_channel": notif_ch.id,
+                    "external_recruitment_channel": ext_recruitment.id,
+                    "external_recruitment_message": ext_msg.id,
+                    "category_diplomat": diplomat_cat.id
+                }
+                for key, value in channels_data.items():
+                    await self.bot.cache.set_guild_data(guild_id, key, value)
 
                 await rules_channel.set_permissions(
                     guild.default_role,
@@ -337,28 +396,19 @@ class GuildInit(commands.Cog):
                     add_reactions=True
                 )
 
-                for cog_name, methods in {
-                    "Notification": ["load_notification_channels"],
-                    "AutoRole": ["load_rules_messages", "load_rules_ok_roles", "load_guild_lang"],
-                    "GuildMembers": ["load_forum_channels"],
-                    "ProfileSetup": ["load_roles", "load_forum_channels"],
-                    "DynamicVoice": ["load_create_room_channels"],
-                    "AbsenceManager": ["load_absence_channels"],
-                }.items():
-                    cog = self.bot.get_cog(cog_name)
-                    if cog:
-                        for m in methods:
-                            try:
-                                await getattr(cog, m)()
-                            except Exception as e:
-                                logging.error(
-                                    "[GuildInit] %s.%s failed: %s", cog_name, m, e
-                                )
+                try:
+                    await self.bot.cache.invalidate_guild(guild_id)
+                    await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+                    await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+                    await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+                    logging.info("[GuildInit] Cache invalidated and reloaded for guild %s", guild_id)
+                except Exception as e:
+                    logging.error("[GuildInit] Error reloading caches: %s", e)
 
                 response = get_user_message(ctx, self.translations, "guild_init.messages.setup_complete")
             except Exception as e:
                 logging.error("[GuildInit] Error during complete config for guild %s: %s",guild_id,e)
-                response = get_user_message(ctx, self.translations, "guild_init.messages.error", error=e)
+                response = get_user_message(ctx, self.translations, "guild_init.messages.error", error="Configuration error")
         else:
             logging.warning("[GuildInit] Unknown config mode '%s' for guild %s",config_mode,guild_id,)
             response = get_user_message(ctx, self.translations, "guild_init.messages.unknown_mode")
@@ -366,4 +416,5 @@ class GuildInit(commands.Cog):
         await ctx.followup.send(response, ephemeral=True)
 
 def setup(bot: discord.Bot):
+    """Setup function for the cog."""
     bot.add_cog(GuildInit(bot))

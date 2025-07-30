@@ -15,6 +15,11 @@ from collections import defaultdict, deque
 from functools import wraps
 from scheduler import setup_task_scheduler
 from cache import get_global_cache, start_cache_maintenance_task
+from cache_loader import get_cache_loader
+from rate_limiter import start_cleanup_task
+# Performance optimization now integrated in cache.py
+from performance_profiler import get_profiler
+from reliability import setup_reliability_system
 try:
     import psutil
     PSUTIL_AVAILABLE = True
@@ -269,6 +274,9 @@ bot.global_command_cooldown = set()
 bot.max_commands_per_minute = 100
 
 bot.optimizer = BotOptimizer(bot)
+bot.profiler = get_profiler()
+bot.reliability_system = setup_reliability_system(bot)
+# Performance optimization and smart cache now integrated in cache.py
 bot._start_time = time.time()
 
 original_run_db_query = run_db_query
@@ -280,7 +288,8 @@ bot.get_member_optimized = bot.optimizer.get_member_optimized
 bot.get_channel_optimized = bot.optimizer.get_channel_optimized
 
 bot.scheduler = setup_task_scheduler(bot)
-bot.cache = get_global_cache()
+bot.cache = get_global_cache(bot)  # Pass bot reference for smart features
+bot.cache_loader = get_cache_loader(bot)
 
 EXTENSIONS: Final[list[str]] = [
     "cogs.core",
@@ -296,7 +305,9 @@ EXTENSIONS: Final[list[str]] = [
     "cogs.guild_attendance",
     "cogs.guild_ptb",
     "cogs.autorole",
-    "cogs.health"
+    "cogs.health",
+    "cogs.performance_monitor",
+    "cogs.reliability_monitor"
 ]
 
 def load_extensions():
@@ -361,7 +372,12 @@ async def on_ready() -> None:
         
         asyncio.create_task(cache_cleanup_task())
         await start_cache_maintenance_task()
-        logging.info("[BotOptimizer] Optimization setup completed - cache systems started")
+        await start_cleanup_task()
+        # Smart cache maintenance now handled in cache.py
+        
+        # Load shared data into cache
+        await bot.cache_loader.load_all_shared_data()
+        logging.info("[BotOptimizer] Optimization setup completed - intelligent cache system with smart features started")
 
 
 @bot.slash_command(name="perf", description="Show bot performance stats")
@@ -371,6 +387,7 @@ async def performance_stats(ctx):
     await ctx.defer(ephemeral=True)
     
     stats = bot.optimizer.get_performance_stats()
+    smart_cache_stats = bot.cache.get_smart_stats() if hasattr(bot.cache, 'get_smart_stats') else {}
     
     embed = discord.Embed(
         title="📊 Bot Performance",
@@ -388,6 +405,19 @@ async def performance_stats(ctx):
         value=f"{stats['api_calls_total']} calls\n{stats['api_calls_cached']} cached",
         inline=True
     )
+    
+    # Smart cache stats from consolidated system
+    if smart_cache_stats:
+        embed.add_field(
+            name="🧠 Smart Cache", 
+            value=f"Size: {smart_cache_stats.get('cache_size', 0)}\nHit Rate: {smart_cache_stats.get('hit_rate', 0):.1f}%\nHot Keys: {smart_cache_stats.get('hot_keys', 0)}", 
+            inline=True
+        )
+        embed.add_field(
+            name="🔮 Predictions", 
+            value=f"Accuracy: {smart_cache_stats.get('prediction_accuracy', 0):.1f}%\nPreload Efficiency: {smart_cache_stats.get('preload_efficiency', 0):.1f}%\nActive Tasks: {smart_cache_stats.get('active_preload_tasks', 0)}", 
+            inline=True
+        )
     
     embed.add_field(
         name="💾 Cache",

@@ -1,3 +1,7 @@
+"""
+Notification Manager Cog - Manages member join/leave notifications and welcome message handling.
+"""
+
 import discord
 import logging
 from discord.ext import commands
@@ -5,41 +9,47 @@ from typing import Any
 import asyncio
 import time
 import re
+from reliability import discord_resilient
 
 def create_embed(title: str, description: str, color: discord.Color, member: discord.Member) -> discord.Embed:
+    """Create a Discord embed with member information."""
     embed = discord.Embed(title=title, description=description, color=color)
     if member.avatar:
         embed.set_thumbnail(url=member.avatar.url)
     return embed
 
 class Notification(commands.Cog):
+    """Cog for managing member join/leave notifications and welcome message handling."""
+    
     def __init__(self, bot: commands.Bot) -> None:
+        """Initialize the Notification cog."""
         self.bot = bot
-        self.notify_channels = {}
-        self.member_events = {}
         self.max_events_per_minute = 10
-        self.notification_locks = {}
     
     def get_safe_user_info(self, member):
+        """Get safe user information for logging purposes."""
         return f"User{member.id}"
     
     def sanitize_user_data(self, name: str) -> str:
+        """Sanitize user data by removing potentially harmful characters."""
         return re.sub(r'[@#`]', '', name[:100])
     
-    def check_event_rate_limit(self, guild_id: int) -> bool:
+    async def check_event_rate_limit(self, guild_id: int) -> bool:
+        """Check if guild has exceeded the event rate limit."""
         now = time.time()
-        if guild_id not in self.member_events:
-            self.member_events[guild_id] = []
+        member_events = await self.bot.cache.get('temporary', f'member_events_{guild_id}') or []
+
+        member_events = [t for t in member_events if now - t < 60]
         
-        self.member_events[guild_id] = [t for t in self.member_events[guild_id] if now - t < 60]
-        
-        if len(self.member_events[guild_id]) >= self.max_events_per_minute:
+        if len(member_events) >= self.max_events_per_minute:
             return False
         
-        self.member_events[guild_id].append(now)
+        member_events.append(now)
+        await self.bot.cache.set('temporary', f'member_events_{guild_id}', member_events)
         return True
     
     def is_ptb_guild(self, guild_id: int) -> bool:
+        """Check if guild is a PTB (Public Test Branch) guild."""
         try:
             guild_ptb_cog = self.bot.get_cog("GuildPTB")
             if not guild_ptb_cog:
@@ -55,6 +65,7 @@ class Notification(commands.Cog):
             return False
     
     async def get_safe_channel(self, channel_id: int):
+        """Safely retrieve a Discord channel by ID with error handling."""
         try:
             channel = self.bot.get_channel(channel_id)
             if not channel:
@@ -70,7 +81,9 @@ class Notification(commands.Cog):
             logging.error(f"[NotificationManager] Error fetching channel {channel_id}: {e}")
             return None
     
+    @discord_resilient(service_name='discord_api', max_retries=2)
     async def safe_send_notification(self, channel, embed):
+        """Safely send a notification embed to a channel with timeout and error handling."""
         try:
             return await asyncio.wait_for(channel.send(embed=embed), timeout=10.0)
         except asyncio.TimeoutError:
@@ -85,37 +98,30 @@ class Notification(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        asyncio.create_task(self.load_notification_channels())
-        logging.debug("[NotificationManager] load_notification_channels task started from on_ready")
+        """Initialize notification data on bot ready."""
+        asyncio.create_task(self.load_notification_data())
+        logging.debug("[NotificationManager] Notification data loading tasks started in on_ready.")
 
-    async def load_notification_channels(self) -> None:
-        logging.debug("[NotificationManager] Loading notification information from DB")
-        query = """
-            SELECT gc.guild_id, gc.notifications_channel, gs.guild_lang
-            FROM guild_channels gc
-            JOIN guild_settings gs ON gc.guild_id = gs.guild_id;
-        """
-        try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.notify_channels = {}
-            for row in rows:
-                guild_id, notif_channel_id, guild_lang = row
-                self.notify_channels[guild_id] = {
-                    "notif_channel": notif_channel_id,
-                    "guild_lang": guild_lang
-                }
-            logging.debug(f"[NotificationManager] Notification information loaded: {self.notify_channels}")
-        except Exception as e:
-            logging.error(f"[NotificationManager] Error loading notification information: {e}")
+    async def load_notification_data(self) -> None:
+        """Ensure all required data is loaded via centralized cache loader."""
+        logging.debug("[NotificationManager] Loading notification data")
+        
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        
+        logging.debug("[NotificationManager] Notification data loading completed")
 
     async def get_guild_lang(self, guild: discord.Guild) -> str:
-        info = self.notify_channels.get(guild.id)
-        if info and info.get("guild_lang"):
-            return info["guild_lang"]
-        return "en-US"
+        """Get guild language from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        
+        guild_lang = await self.bot.cache.get_guild_data(guild.id, 'guild_lang')
+        return guild_lang or "en-US"
 
     @commands.Cog.listener()
+    @discord_resilient(service_name='discord_api', max_retries=2)
     async def on_member_join(self, member: discord.Member) -> None:
+        """Handle member join events with notification and welcome message creation."""
         guild = member.guild
         safe_user = self.get_safe_user_info(member)
         logging.debug(f"[NotificationManager] New member detected: {safe_user} in guild {guild.id}")
@@ -123,19 +129,24 @@ class Notification(commands.Cog):
         if self.is_ptb_guild(guild.id):
             logging.debug(f"[NotificationManager] Skipping PTB guild {guild.id} - handled by GuildPTB")
             return
+
+        lock_key = f'notification_lock_{guild.id}'
+        lock = await self.bot.cache.get('temporary', lock_key)
+        if not lock:
+            lock = asyncio.Lock()
+            await self.bot.cache.set('temporary', lock_key, lock)
         
-        if guild.id not in self.notification_locks:
-            self.notification_locks[guild.id] = asyncio.Lock()
-        
-        async with self.notification_locks[guild.id]:
-            if not self.check_event_rate_limit(guild.id):
+        async with lock:
+            if not await self.check_event_rate_limit(guild.id):
                 logging.warning(f"[NotificationManager] Rate limit exceeded for guild {guild.id}")
                 return
             
             try:
-                info = self.notify_channels.get(guild.id)
-                if info and info.get("notif_channel"):
-                    channel = await self.get_safe_channel(info["notif_channel"])
+                await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+                notif_channel_id = await self.bot.cache.get_guild_data(guild.id, 'notifications_channel')
+                
+                if notif_channel_id:
+                    channel = await self.get_safe_channel(notif_channel_id)
                     if not channel:
                         logging.warning(f"[NotificationManager] Unable to access notification channel for guild {guild.id}")
                         return
@@ -177,6 +188,7 @@ class Notification(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
+        """Handle member leave events with PTB auto-kick and leave notifications."""
         guild = member.guild
         safe_user = self.get_safe_user_info(member)
         logging.debug(f"[NotificationManager] Departure detected: {safe_user} from guild {guild.id}")
@@ -185,7 +197,7 @@ class Notification(commands.Cog):
             logging.debug(f"[NotificationManager] Skipping PTB guild {guild.id} - handled by GuildPTB")
             return
         
-        if not self.check_event_rate_limit(guild.id):
+        if not await self.check_event_rate_limit(guild.id):
             logging.warning(f"[NotificationManager] Rate limit exceeded for guild {guild.id}")
             return
 
@@ -243,16 +255,20 @@ class Notification(commands.Cog):
                         logging.error(f"[NotificationManager] Error replying to welcome message for {safe_user}: {e}", exc_info=True)
                 
                 try:
-                    delete_query = "DELETE FROM welcome_messages WHERE guild_id = %s AND member_id = %s"
-                    await self.bot.run_db_query(delete_query, (guild.id, member.id), commit=True)
-                    delete_query = "DELETE FROM user_setup WHERE guild_id = %s AND user_id = %s"
-                    await self.bot.run_db_query(delete_query, (guild.id, member.id), commit=True)
+                    from db import run_db_transaction
+                    cleanup_queries = [
+                        ("DELETE FROM welcome_messages WHERE guild_id = %s AND member_id = %s", (guild.id, member.id)),
+                        ("DELETE FROM user_setup WHERE guild_id = %s AND user_id = %s", (guild.id, member.id))
+                    ]
+                    await run_db_transaction(cleanup_queries)
                 except Exception as e:
                     logging.error(f"[NotificationManager] Error cleaning up DB records for {safe_user}: {e}", exc_info=True)
             else:
-                info = self.notify_channels.get(guild.id)
-                if info and info.get("notif_channel"):
-                    channel = await self.get_safe_channel(info["notif_channel"])
+                await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+                notif_channel_id = await self.bot.cache.get_guild_data(guild.id, 'notifications_channel')
+                
+                if notif_channel_id:
+                    channel = await self.get_safe_channel(notif_channel_id)
                     if channel:
                         notif_trans = self.bot.translations["notification"]["member_leave"]
                         title = notif_trans["title"][guild_lang]
@@ -269,4 +285,5 @@ class Notification(commands.Cog):
             logging.error(f"[NotificationManager] Error in on_member_remove for {safe_user}: {e}", exc_info=True)
 
 def setup(bot: discord.Bot):
+    """Setup function for the cog."""
     bot.add_cog(Notification(bot))

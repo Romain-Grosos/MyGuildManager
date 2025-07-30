@@ -12,6 +12,7 @@ from typing import Dict, Any
 import json
 from scheduler import get_scheduler_health_status
 from cache import get_global_cache
+from rate_limiter import admin_rate_limit
 
 try:
     import psutil
@@ -24,16 +25,20 @@ class Health(commands.Cog):
     """Cog for monitoring bot health and performance metrics."""
     
     def __init__(self, bot):
+        """Initialize the Health cog."""
         self.bot = bot
         self.start_time = time.time()
         
         self.component_status = {
             'database': 'unknown',
             'discord_api': 'unknown',
-            'memory': 'unknown',
+            'memory': 'unknown',  
             'cpu': 'unknown',
             'scheduler': 'unknown',
-            'cache': 'unknown'
+            'cache': 'unknown',
+            'reliability_system': 'unknown',
+            'circuit_breakers': 'unknown',
+            'backup_system': 'unknown'
         }
         
         self.command_metrics = {}
@@ -73,6 +78,9 @@ class Health(commands.Cog):
         
         self.component_status['scheduler'] = self._check_scheduler()
         self.component_status['cache'] = self._check_cache()
+        self.component_status['reliability_system'] = self._check_reliability_system()
+        self.component_status['circuit_breakers'] = self._check_circuit_breakers()
+        self.component_status['backup_system'] = self._check_backup_system()
         
         unhealthy = [name for name, status in self.component_status.items() if status == 'error']
         if unhealthy:
@@ -193,6 +201,88 @@ class Health(commands.Cog):
         except Exception:
             return 'unknown'
     
+    def _check_reliability_system(self) -> str:
+        """Check reliability system health and status."""
+        try:
+            from reliability import ServiceCircuitBreaker, RetryManager, GracefulDegradation, DataBackupManager
+            
+            reliability_health = []
+            
+            try:
+                circuit_breaker = ServiceCircuitBreaker()
+                if hasattr(circuit_breaker, 'failure_count'):
+                    if circuit_breaker.failure_count > 5:
+                        reliability_health.append('warning')
+                    else:
+                        reliability_health.append('healthy')
+                else:
+                    reliability_health.append('healthy')
+            except Exception:
+                reliability_health.append('error')
+            
+            try:
+                retry_manager = RetryManager()
+                if hasattr(retry_manager, 'active_retries'):
+                    if retry_manager.active_retries > 10:
+                        reliability_health.append('warning')
+                    else:
+                        reliability_health.append('healthy')
+                else:
+                    reliability_health.append('healthy')
+            except Exception:
+                reliability_health.append('error')
+            
+            if 'error' in reliability_health:
+                return 'error'
+            elif 'warning' in reliability_health:
+                return 'warning'
+            else:
+                return 'healthy'
+                
+        except ImportError:
+            return 'error'
+        except Exception:
+            return 'unknown'
+    
+    def _check_circuit_breakers(self) -> str:
+        """Check circuit breaker system health."""
+        try:
+            from db import db_circuit_breaker
+            
+            if db_circuit_breaker.state == "OPEN":
+                return 'error'
+            elif db_circuit_breaker.failure_count > 3:
+                return 'warning'
+            else:
+                return 'healthy'
+                
+        except ImportError:
+            return 'error'
+        except Exception:
+            return 'unknown'
+    
+    def _check_backup_system(self) -> str:
+        """Check backup system health and status."""
+        try:
+            from reliability import DataBackupManager
+            
+            backup_manager = DataBackupManager()
+            
+            if hasattr(backup_manager, 'last_backup_status'):
+                if backup_manager.last_backup_status == 'failed':
+                    return 'error'
+                elif backup_manager.last_backup_status == 'partial':
+                    return 'warning'
+                else:
+                    return 'healthy'
+            else:
+                return 'healthy'
+                
+        except ImportError:
+            return 'error'
+        except Exception:
+            return 'unknown'
+    
     def record_command_execution(self, command_name: str, execution_time: float, success: bool = True):
         """Record command execution metrics."""
         if command_name not in self.command_metrics:
@@ -207,6 +297,7 @@ class Health(commands.Cog):
     
     @discord.slash_command(name="health", description="Display bot health status")
     @commands.has_permissions(administrator=True)
+    @admin_rate_limit(cooldown_seconds=60)
     async def health_command(self, ctx: discord.ApplicationContext):
         """Command to display health status."""
         await ctx.defer(ephemeral=True)
@@ -218,6 +309,7 @@ class Health(commands.Cog):
     
     @discord.slash_command(name="metrics", description="Display detailed performance metrics")
     @commands.has_permissions(administrator=True)
+    @admin_rate_limit(cooldown_seconds=60)
     async def metrics_command(self, ctx: discord.ApplicationContext):
         """Command to display detailed metrics."""
         await ctx.defer(ephemeral=True)
@@ -368,10 +460,33 @@ class Health(commands.Cog):
         except Exception:
             pass
         
+        try:
+            from db import db_manager
+            db_metrics = db_manager.get_performance_metrics()
+            
+            total_queries = sum(m['count'] for m in db_metrics['query_metrics'].values())
+            slow_queries = sum(m['slow_queries'] for m in db_metrics['query_metrics'].values())
+            avg_time = sum(m['avg_time'] * m['count'] for m in db_metrics['query_metrics'].values()) / max(total_queries, 1)
+            
+            embed.add_field(
+                name="🗃️ Database",
+                value=f"Queries: {total_queries}\nSlow queries: {slow_queries}\nAvg time: {avg_time:.3f}s",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🔌 DB Pool",
+                value=f"Active: {db_metrics['active_connections']}\nQueue: {db_metrics['waiting_queue']}\nCircuit: {db_metrics['circuit_breaker_state']}",
+                inline=True
+            )
+        except Exception:
+            pass
+        
         return embed
     
     @discord.slash_command(name="clear-cache", description="Clear bot cache")
     @commands.has_permissions(administrator=True)
+    @admin_rate_limit(cooldown_seconds=300)
     async def clear_cache_command(self, ctx: discord.ApplicationContext):
         """Command to clear bot cache."""
         await ctx.defer(ephemeral=True)

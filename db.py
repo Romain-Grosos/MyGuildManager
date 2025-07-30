@@ -98,6 +98,8 @@ class DatabaseManager:
         self.max_active_connections = config.DB_POOL_SIZE
         self.connection_semaphore = asyncio.Semaphore(config.DB_POOL_SIZE)
         self.waiting_queue = 0
+        self.query_metrics = {}
+        self.slow_query_threshold = 2.0
     
     @contextlib.asynccontextmanager
     async def get_connection_with_timeout(self):
@@ -138,6 +140,38 @@ class DatabaseManager:
     def _get_connection(self):
         """Get connection from pool."""
         return mariadb.connect(pool_name="secure_pool")
+    
+    def log_query_metrics(self, query: str, execution_time: float):
+        """Log query execution metrics and detect slow queries."""
+        query_type = query.strip().split()[0].upper()
+        
+        if query_type not in self.query_metrics:
+            self.query_metrics[query_type] = {
+                'count': 0,
+                'total_time': 0,
+                'avg_time': 0,
+                'slow_queries': 0
+            }
+        
+        metrics = self.query_metrics[query_type]
+        metrics['count'] += 1
+        metrics['total_time'] += execution_time
+        metrics['avg_time'] = metrics['total_time'] / metrics['count']
+        
+        if execution_time > self.slow_query_threshold:
+            metrics['slow_queries'] += 1
+            safe_query = query[:100] + "..." if len(query) > 100 else query
+            logging.warning(f"[DBManager] Slow query detected ({execution_time:.2f}s): {safe_query}")
+    
+    def get_performance_metrics(self) -> dict:
+        """Get database performance metrics."""
+        return {
+            'active_connections': self.active_connections,
+            'waiting_queue': self.waiting_queue,
+            'query_metrics': self.query_metrics.copy(),
+            'circuit_breaker_state': db_circuit_breaker.state,
+            'circuit_breaker_failures': db_circuit_breaker.failure_count
+        }
 
 # #################################################################################### #
 #                            Global Database Components
@@ -156,11 +190,13 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
     """Execute database query with resilience patterns and proper error handling."""
     
     if db_circuit_breaker.is_open():
+        logging.warning("[DBManager] Database circuit breaker is open - query blocked")
         raise DBQueryError("Database temporarily unavailable (circuit breaker open)")
     
     safe_log_query(query, params)
     
     async def _execute():
+        start_time = time.time()
         async with db_manager.get_connection_with_timeout() as conn:
             cursor = conn.cursor()
             try:
@@ -174,6 +210,8 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
                 elif fetch_all:
                     result = cursor.fetchall()
                 
+                execution_time = time.time() - start_time
+                db_manager.log_query_metrics(query, execution_time)
                 db_circuit_breaker.record_success()
                 return result
                 
@@ -223,4 +261,92 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
             if attempt == max_attempts - 1:
                 db_circuit_breaker.record_failure()
                 raise DBQueryError(f"Unexpected database error: {type(e).__name__}")
+
+async def run_db_transaction(queries_and_params: list, max_attempts: int = 3) -> bool:
+    """Execute multiple queries in a single transaction with rollback support.
+    
+    Args:
+        queries_and_params: List of tuples (query, params)
+        max_attempts: Maximum retry attempts
+        
+    Returns:
+        bool: True if transaction succeeded, False otherwise
+        
+    Raises:
+        DBQueryError: If transaction fails after all attempts
+    """
+    if db_circuit_breaker.is_open():
+        raise DBQueryError("Database temporarily unavailable (circuit breaker open)")
+    
+    for attempt in range(max_attempts):
+        try:
+            async def _execute_transaction():
+                async with db_manager.get_connection_with_timeout() as conn:
+                    cursor = conn.cursor()
+                    try:
+                        # Begin transaction (autocommit is disabled by default)
+                        conn.autocommit = False
+                        
+                        # Execute all queries
+                        for query, params in queries_and_params:
+                            safe_log_query(query, params)
+                            cursor.execute(query, params)
+                        
+                        # Commit all changes
+                        conn.commit()
+                        db_circuit_breaker.record_success()
+                        logging.info(f"[DBManager] Transaction completed successfully ({len(queries_and_params)} queries)")
+                        return True
+                        
+                    except Exception as e:
+                        # Rollback on any error
+                        try:
+                            conn.rollback()
+                            logging.warning(f"[DBManager] Transaction rolled back due to error: {type(e).__name__}")
+                        except Exception as rollback_error:
+                            logging.error(f"[DBManager] Failed to rollback transaction: {rollback_error}")
+                        
+                        # Re-raise the original error
+                        if isinstance(e, (mariadb.DataError, mariadb.IntegrityError)):
+                            safe_log_error(e, "TRANSACTION")
+                            db_circuit_breaker.record_failure()
+                            raise DBQueryError(f"Transaction constraint error: {type(e).__name__}")
+                        elif isinstance(e, mariadb.OperationalError):
+                            safe_log_error(e, "TRANSACTION")
+                            db_circuit_breaker.record_failure()
+                            raise DBQueryError(f"Transaction operational error: {type(e).__name__}")
+                        else:
+                            raise
+                    finally:
+                        # Ensure autocommit is restored
+                        conn.autocommit = True
+            
+            return await asyncio.wait_for(_execute_transaction(), timeout=config.DB_TIMEOUT * 2)
+            
+        except asyncio.TimeoutError:
+            logging.warning(f"[DBManager] Transaction timeout (attempt {attempt+1}/{max_attempts})")
+            if attempt == max_attempts - 1:
+                db_circuit_breaker.record_failure()
+                raise DBQueryError("Transaction timeout after multiple attempts")
+            await asyncio.sleep(1.0 * (attempt + 1))
+        except DBQueryError as e:
+            error_msg = str(e).lower()
+            if "constraint error" in error_msg or "operational error" in error_msg:
+                raise  # Don't retry constraint/operational errors
+            elif "pool exhausted" in error_msg:
+                if attempt == max_attempts - 1:
+                    raise
+                wait_time = min(2.0 * (attempt + 1), 5.0)
+                logging.warning(f"[DBManager] Pool exhausted during transaction, retrying in {wait_time}s")
+                await asyncio.sleep(wait_time)
+                continue
+            else:
+                raise
+        except Exception as e:
+            safe_log_error(e, "TRANSACTION")
+            if attempt == max_attempts - 1:
+                db_circuit_breaker.record_failure()
+                raise DBQueryError(f"Unexpected transaction error: {type(e).__name__}")
             await asyncio.sleep(0.5 * (attempt + 1))
+    
+    return False

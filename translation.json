@@ -1387,6 +1387,27 @@
                     "es-ES": "✅ Contrato eliminado.",
                     "de": "✅ Gildenvertrag gelöscht.",
                     "it": "✅ Contratto della gilda eliminato."
+                },
+                "contract_already_deleted": {
+                    "en-US": "Contract already deleted.",
+                    "fr": "Contrat déjà supprimé.",
+                    "es-ES": "Contrato ya eliminado.",
+                    "de": "Vertrag bereits gelöscht.",
+                    "it": "Contratto già eliminato."
+                },
+                "no_contract_to_delete": {
+                    "en-US": "No contract to delete.",
+                    "fr": "Aucun contrat à supprimer.",
+                    "es-ES": "No hay contrato para eliminar.",
+                    "de": "Kein Vertrag zum Löschen.",
+                    "it": "Nessun contratto da eliminare."
+                },
+                "delete_error": {
+                    "en-US": "An error occurred while deleting the contract.",
+                    "fr": "Une erreur s'est produite lors de la suppression du contrat.",
+                    "es-ES": "Ocurrió un error al eliminar el contrato.",
+                    "de": "Beim Löschen des Vertrags ist ein Fehler aufgetreten.",
+                    "it": "Si è verificato un errore durante l'eliminazione del contratto."
                 }
             }
         },
@@ -2872,6 +2893,13 @@
             "es-ES": "Se produjo un error durante la generación de la respuesta: {error}",
             "de": "Bei der Generierung der Antwort ist ein Fehler aufgetreten: {error}",
             "it": "Si è verificato un errore durante la generazione della risposta: {error}"
+        },
+        "rate_limit": {
+            "en-US": "⚠️ Too many requests. Please wait before asking again.",
+            "fr": "⚠️ Trop de requêtes. Veuillez patienter avant de redemander.",
+            "es-ES": "⚠️ Demasiadas solicitudes. Espere antes de preguntar de nuevo.",
+            "de": "⚠️ Zu viele Anfragen. Bitte warten Sie, bevor Sie erneut fragen.",
+            "it": "⚠️ Troppe richieste. Attendere prima di chiedere di nuovo."
         }
     },
     "static_groups": {
