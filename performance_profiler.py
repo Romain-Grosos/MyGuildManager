@@ -1,5 +1,5 @@
 """
-Performance Profiler - Profile les fonctions les plus lentes du bot Discord.
+Performance Profiler - Profiles the slowest functions of the Discord bot.
 """
 
 import asyncio
@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import inspect
 
 class PerformanceProfiler:
-    """Profiler de performances pour fonctions async et sync."""
+    """Performance profiler for async and sync functions."""
     
     def __init__(self, max_entries: int = 1000):
         self.max_entries = max_entries
@@ -25,12 +25,12 @@ class PerformanceProfiler:
             'errors': 0,
             'last_called': None
         })
-        self._slow_calls = deque(maxlen=100)  # Garde les 100 appels les plus lents
-        self._active_calls = {}  # call_id -> (function_name, start_time)
+        self._slow_calls = deque(maxlen=100)
+        self._active_calls = {}
         self._call_counter = 0
         
     def profile_function(self, threshold_ms: float = 10.0):
-        """Décorateur pour profiler une fonction."""
+        """Decorator to profile a function."""
         def decorator(func: Callable) -> Callable:
             func_name = f"{func.__module__}.{func.__name__}" if hasattr(func, '__module__') else func.__name__
             
@@ -48,7 +48,7 @@ class PerformanceProfiler:
         return decorator
     
     async def _profile_async_call(self, func: Callable, func_name: str, threshold_ms: float, *args, **kwargs):
-        """Profile un appel de fonction asynchrone."""
+        """Profile an asynchronous function call."""
         call_id = self._call_counter
         self._call_counter += 1
         
@@ -56,14 +56,11 @@ class PerformanceProfiler:
         self._active_calls[call_id] = (func_name, start_time)
         
         try:
-            # Exécute la fonction
             result = await func(*args, **kwargs)
-            
-            # Calcule le temps d'exécution
+
             end_time = time.time()
-            execution_time = (end_time - start_time) * 1000  # en ms
-            
-            # Enregistre les statistiques
+            execution_time = (end_time - start_time) * 1000
+
             self._record_call(func_name, execution_time, threshold_ms, success=True)
             
             return result
@@ -80,7 +77,7 @@ class PerformanceProfiler:
                 del self._active_calls[call_id]
     
     def _profile_sync_call(self, func: Callable, func_name: str, threshold_ms: float, *args, **kwargs):
-        """Profile un appel de fonction synchrone."""
+        """Profile a synchronous function call."""
         call_id = self._call_counter
         self._call_counter += 1
         
@@ -88,14 +85,11 @@ class PerformanceProfiler:
         self._active_calls[call_id] = (func_name, start_time)
         
         try:
-            # Exécute la fonction
             result = func(*args, **kwargs)
-            
-            # Calcule le temps d'exécution
+
             end_time = time.time()
-            execution_time = (end_time - start_time) * 1000  # en ms
-            
-            # Enregistre les statistiques
+            execution_time = (end_time - start_time) * 1000
+
             self._record_call(func_name, execution_time, threshold_ms, success=True)
             
             return result
@@ -112,7 +106,7 @@ class PerformanceProfiler:
                 del self._active_calls[call_id]
     
     def _record_call(self, func_name: str, execution_time: float, threshold_ms: float, success: bool = True, error: str = None):
-        """Enregistre les statistiques d'un appel de fonction."""
+        """Records statistics for a function call."""
         stats = self._function_stats[func_name]
         stats['calls'] += 1
         stats['total_time'] += execution_time
@@ -123,8 +117,7 @@ class PerformanceProfiler:
         
         if not success:
             stats['errors'] += 1
-        
-        # Enregistre les appels lents
+
         if execution_time > threshold_ms:
             slow_call = {
                 'function': func_name,
@@ -134,13 +127,12 @@ class PerformanceProfiler:
                 'error': error
             }
             self._slow_calls.append(slow_call)
-            
-            # Log si très lent
-            if execution_time > 1000:  # > 1 seconde
+
+            if execution_time > 1000:
                 logging.warning(f"[PerformanceProfiler] Very slow call: {func_name} took {execution_time:.1f}ms")
     
     def get_function_stats(self, top_n: int = 20) -> List[Dict[str, Any]]:
-        """Retourne les statistiques des fonctions les plus lentes."""
+        """Returns statistics for the slowest functions."""
         stats_list = []
         
         for func_name, stats in self._function_stats.items():
@@ -162,17 +154,16 @@ class PerformanceProfiler:
                 'error_rate': (stats['errors'] / stats['calls'] * 100) if stats['calls'] > 0 else 0,
                 'last_called': stats['last_called']
             })
-        
-        # Trie par temps total décroissant
+
         stats_list.sort(key=lambda x: x['total_time_ms'], reverse=True)
         return stats_list[:top_n]
     
     def get_slow_calls(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Retourne les appels les plus lents récents."""
+        """Returns recent slowest calls."""
         return list(self._slow_calls)[-limit:]
     
     def get_active_calls(self) -> List[Dict[str, Any]]:
-        """Retourne les appels actuellement en cours."""
+        """Returns currently active calls."""
         current_time = time.time()
         active = []
         
@@ -189,7 +180,7 @@ class PerformanceProfiler:
         return active
     
     def get_summary_stats(self) -> Dict[str, Any]:
-        """Retourne un résumé des statistiques de performance."""
+        """Returns a summary of performance statistics."""
         total_calls = sum(stats['calls'] for stats in self._function_stats.values())
         total_time = sum(stats['total_time'] for stats in self._function_stats.values())
         total_errors = sum(stats['errors'] for stats in self._function_stats.values())
@@ -213,7 +204,7 @@ class PerformanceProfiler:
         }
     
     def reset_stats(self):
-        """Remet à zéro toutes les statistiques."""
+        """Resets all statistics to zero."""
         self._function_stats.clear()
         self._slow_calls.clear()
         self._active_calls.clear()
@@ -221,7 +212,7 @@ class PerformanceProfiler:
         logging.info("[PerformanceProfiler] Statistics reset")
     
     def get_recommendations(self) -> List[str]:
-        """Génère des recommandations d'optimisation."""
+        """Generates optimization recommendations."""
         recommendations = []
         stats_list = self.get_function_stats(10)
         
@@ -230,37 +221,34 @@ class PerformanceProfiler:
             avg_time = stat['avg_time_ms']
             calls = stat['calls']
             error_rate = stat['error_rate']
+
+            if avg_time > 500:
+                recommendations.append(f"🐌 {func_name}: Very slow ({avg_time:.1f}ms avg) - Consider optimization")
             
-            # Recommandations basées sur les métriques
-            if avg_time > 500:  # > 500ms en moyenne
-                recommendations.append(f"🐌 {func_name}: Très lent ({avg_time:.1f}ms avg) - Considérer l'optimisation")
+            elif avg_time > 100 and calls > 50:
+                recommendations.append(f"⚡ {func_name}: Optimization recommended ({calls} calls, {avg_time:.1f}ms avg)")
             
-            elif avg_time > 100 and calls > 50:  # Appelé souvent et relativement lent
-                recommendations.append(f"⚡ {func_name}: Optimisation recommandée ({calls} calls, {avg_time:.1f}ms avg)")
+            if error_rate > 10:
+                recommendations.append(f"❌ {func_name}: High error rate ({error_rate:.1f}%) - Check logic")
             
-            if error_rate > 10:  # > 10% d'erreurs
-                recommendations.append(f"❌ {func_name}: Taux d'erreur élevé ({error_rate:.1f}%) - Vérifier la logique")
-            
-            if stat['max_time_ms'] > stat['avg_time_ms'] * 5:  # Variance élevée
-                recommendations.append(f"📊 {func_name}: Performance inconsistante - Analyser les cas extrêmes")
-        
-        # Recommandations générales
+            if stat['max_time_ms'] > stat['avg_time_ms'] * 5:
+                recommendations.append(f"📊 {func_name}: Inconsistent performance - Analyze edge cases")
+
         summary = self.get_summary_stats()
         if summary['error_rate'] > 5:
-            recommendations.append(f"🔧 Taux d'erreur global élevé ({summary['error_rate']:.1f}%) - Améliorer la gestion d'erreurs")
+            recommendations.append(f"🔧 High global error rate ({summary['error_rate']:.1f}%) - Improve error handling")
         
         if summary['very_slow_calls_count'] > 10:
-            recommendations.append(f"🚨 {summary['very_slow_calls_count']} appels très lents détectés - Investigation requise")
+            recommendations.append(f"🚨 {summary['very_slow_calls_count']} very slow calls detected - Investigation required")
         
-        return recommendations[:10]  # Limite à 10 recommandations
+        return recommendations[:10]
 
-# Instance globale du profiler
 global_profiler = PerformanceProfiler()
 
 def profile_performance(threshold_ms: float = 10.0):
-    """Décorateur simple pour profiler une fonction."""
+    """Simple decorator to profile a function."""
     return global_profiler.profile_function(threshold_ms)
 
 def get_profiler() -> PerformanceProfiler:
-    """Retourne l'instance globale du profiler."""
+    """Returns the global profiler instance."""
     return global_profiler

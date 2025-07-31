@@ -15,9 +15,9 @@ class RateLimiter:
     """Thread-safe rate limiter with per-user and per-guild tracking."""
     
     def __init__(self):
-        self.user_limits: Dict[str, Dict[int, float]] = {}  # command -> {user_id: last_used}
-        self.guild_limits: Dict[str, Dict[int, float]] = {}  # command -> {guild_id: last_used}
-        self.global_limits: Dict[str, float] = {}  # command -> last_used
+        self.user_limits: Dict[str, Dict[int, float]] = {}
+        self.guild_limits: Dict[str, Dict[int, float]] = {}
+        self.global_limits: Dict[str, float] = {}
         self._lock = asyncio.Lock()
     
     async def is_rate_limited(self, command_name: str, user_id: int = None, guild_id: int = None, 
@@ -76,8 +76,7 @@ class RateLimiter:
         """Clean up old rate limit entries to prevent memory leaks."""
         async with self._lock:
             cutoff_time = time.time() - (max_age_hours * 3600)
-            
-            # Clean user limits
+
             for command_name in list(self.user_limits.keys()):
                 users_to_remove = [
                     user_id for user_id, last_used in self.user_limits[command_name].items()
@@ -88,8 +87,7 @@ class RateLimiter:
                 
                 if not self.user_limits[command_name]:
                     del self.user_limits[command_name]
-            
-            # Clean guild limits
+
             for command_name in list(self.guild_limits.keys()):
                 guilds_to_remove = [
                     guild_id for guild_id, last_used in self.guild_limits[command_name].items()
@@ -100,8 +98,7 @@ class RateLimiter:
                 
                 if not self.guild_limits[command_name]:
                     del self.guild_limits[command_name]
-            
-            # Clean global limits
+
             commands_to_remove = [
                 command for command, last_used in self.global_limits.items()
                 if last_used < cutoff_time
@@ -111,7 +108,6 @@ class RateLimiter:
             
             logging.debug(f"[RateLimiter] Cleaned up old entries: {len(users_to_remove)} users, {len(guilds_to_remove)} guilds, {len(commands_to_remove)} global")
 
-# Global rate limiter instance
 rate_limiter = RateLimiter()
 
 def rate_limit(cooldown_seconds: int = 60, scope: str = "user", error_message: str = None):
@@ -125,7 +121,6 @@ def rate_limit(cooldown_seconds: int = 60, scope: str = "user", error_message: s
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # Extract context from arguments
             ctx = None
             for arg in args:
                 if isinstance(arg, (discord.ApplicationContext, commands.Context)):
@@ -139,17 +134,14 @@ def rate_limit(cooldown_seconds: int = 60, scope: str = "user", error_message: s
             user_id = ctx.author.id if hasattr(ctx, 'author') and ctx.author else None
             guild_id = ctx.guild.id if hasattr(ctx, 'guild') and ctx.guild else None
             command_name = func.__name__
-            
-            # Check rate limit
+
             is_limited, remaining_time = await rate_limiter.is_rate_limited(
                 command_name, user_id, guild_id, cooldown_seconds, scope
             )
             
             if is_limited:
-                # Security: Log rate limit violations for monitoring
                 logging.warning(f"[RateLimiter] Rate limit hit: user={user_id}, guild={guild_id}, command={command_name}, remaining={remaining_time:.1f}s")
-                
-                # Send rate limit message
+
                 if error_message:
                     message = error_message.format(remaining_time=int(remaining_time) + 1)
                 else:
@@ -161,8 +153,7 @@ def rate_limit(cooldown_seconds: int = 60, scope: str = "user", error_message: s
                     await ctx.send(message)
                 
                 return
-            
-            # Execute the original function
+
             return await func(*args, **kwargs)
         
         return wrapper
@@ -197,7 +188,7 @@ async def start_cleanup_task():
     async def cleanup_loop():
         while True:
             try:
-                await asyncio.sleep(3600)  # Clean up every hour
+                await asyncio.sleep(3600)
                 await rate_limiter.cleanup_old_entries()
             except Exception as e:
                 logging.error(f"[RateLimiter] Error in cleanup task: {e}")

@@ -1,5 +1,5 @@
 """
-Performance Monitor Cog - Commands pour monitorer les performances.
+Performance Monitor Cog - Commands to monitor performance.
 """
 
 import discord
@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 
 class PerformanceMonitor(commands.Cog):
-    """Cog pour monitorer et analyser les performances du bot."""
+    """Cog to monitor and analyze bot performance."""
     
     def __init__(self, bot):
         self.bot = bot
@@ -21,7 +21,7 @@ class PerformanceMonitor(commands.Cog):
                                choices=["summary", "functions", "slow", "active", "recommendations"],
                                default="summary"
                            )):
-        """Affiche les statistiques de profiling de performance."""
+        """Displays performance profiling statistics."""
         await ctx.defer(ephemeral=True)
         
         if not hasattr(self.bot, 'profiler'):
@@ -51,7 +51,7 @@ class PerformanceMonitor(commands.Cog):
             await ctx.followup.send(f"❌ Error retrieving profile stats: {e}", ephemeral=True)
     
     async def _create_summary_embed(self, profiler) -> discord.Embed:
-        """Crée l'embed de résumé des performances."""
+        """Creates the performance summary embed."""
         summary = profiler.get_summary_stats()
         
         embed = discord.Embed(
@@ -93,7 +93,7 @@ class PerformanceMonitor(commands.Cog):
         return embed
     
     async def _create_functions_embed(self, profiler) -> discord.Embed:
-        """Crée l'embed des statistiques de fonctions."""
+        """Creates the function statistics embed."""
         stats = profiler.get_function_stats(10)
         
         embed = discord.Embed(
@@ -122,7 +122,7 @@ class PerformanceMonitor(commands.Cog):
         return embed
     
     async def _create_slow_calls_embed(self, profiler) -> discord.Embed:
-        """Crée l'embed des appels lents."""
+        """Creates the slow calls embed."""
         slow_calls = profiler.get_slow_calls(15)
         
         embed = discord.Embed(
@@ -136,7 +136,7 @@ class PerformanceMonitor(commands.Cog):
             return embed
         
         description_parts = []
-        for call in slow_calls[-15:]:  # 15 plus récents
+        for call in slow_calls[-15:]:  # 15 most recent
             func_name = call['function'].split('.')[-1]
             status = "✅" if call['success'] else "❌"
             time_str = call['timestamp'].strftime("%H:%M:%S")
@@ -148,7 +148,7 @@ class PerformanceMonitor(commands.Cog):
         return embed
     
     async def _create_active_calls_embed(self, profiler) -> discord.Embed:
-        """Crée l'embed des appels actifs."""
+        """Creates the active calls embed."""
         active_calls = profiler.get_active_calls()
         
         embed = discord.Embed(
@@ -162,7 +162,7 @@ class PerformanceMonitor(commands.Cog):
             return embed
         
         description_parts = []
-        for call in active_calls[:15]:  # Limite à 15
+        for call in active_calls[:15]:  # Limit to 15
             func_name = call['function'].split('.')[-1]
             started = call['started_at'].strftime("%H:%M:%S")
             description_parts.append(
@@ -173,7 +173,7 @@ class PerformanceMonitor(commands.Cog):
         return embed
     
     async def _create_recommendations_embed(self, profiler) -> discord.Embed:
-        """Crée l'embed des recommandations d'optimisation."""
+        """Creates the optimization recommendations embed."""
         recommendations = profiler.get_recommendations()
         
         embed = discord.Embed(
@@ -197,7 +197,7 @@ class PerformanceMonitor(commands.Cog):
                                      choices=["cache-clear", "profile-reset", "preload-guild"],
                                      default="cache-clear"
                                  )):
-        """Exécute des optimisations de performance."""
+        """Executes performance optimizations."""
         await ctx.defer(ephemeral=True)
         
         try:

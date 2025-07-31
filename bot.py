@@ -17,7 +17,6 @@ from scheduler import setup_task_scheduler
 from cache import get_global_cache, start_cache_maintenance_task
 from cache_loader import get_cache_loader
 from rate_limiter import start_cleanup_task
-# Performance optimization now integrated in cache.py
 from performance_profiler import get_profiler
 from reliability import setup_reliability_system
 try:
@@ -276,7 +275,6 @@ bot.max_commands_per_minute = 100
 bot.optimizer = BotOptimizer(bot)
 bot.profiler = get_profiler()
 bot.reliability_system = setup_reliability_system(bot)
-# Performance optimization and smart cache now integrated in cache.py
 bot._start_time = time.time()
 
 original_run_db_query = run_db_query
@@ -288,7 +286,7 @@ bot.get_member_optimized = bot.optimizer.get_member_optimized
 bot.get_channel_optimized = bot.optimizer.get_channel_optimized
 
 bot.scheduler = setup_task_scheduler(bot)
-bot.cache = get_global_cache(bot)  # Pass bot reference for smart features
+bot.cache = get_global_cache(bot)
 bot.cache_loader = get_cache_loader(bot)
 
 EXTENSIONS: Final[list[str]] = [
@@ -373,9 +371,7 @@ async def on_ready() -> None:
         asyncio.create_task(cache_cleanup_task())
         await start_cache_maintenance_task()
         await start_cleanup_task()
-        # Smart cache maintenance now handled in cache.py
-        
-        # Load shared data into cache
+
         await bot.cache_loader.load_all_shared_data()
         logging.info("[BotOptimizer] Optimization setup completed - intelligent cache system with smart features started")
 
@@ -405,8 +401,7 @@ async def performance_stats(ctx):
         value=f"{stats['api_calls_total']} calls\n{stats['api_calls_cached']} cached",
         inline=True
     )
-    
-    # Smart cache stats from consolidated system
+
     if smart_cache_stats:
         embed.add_field(
             name="🧠 Smart Cache", 

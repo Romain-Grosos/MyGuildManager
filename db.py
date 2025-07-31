@@ -284,29 +284,24 @@ async def run_db_transaction(queries_and_params: list, max_attempts: int = 3) ->
                 async with db_manager.get_connection_with_timeout() as conn:
                     cursor = conn.cursor()
                     try:
-                        # Begin transaction (autocommit is disabled by default)
                         conn.autocommit = False
-                        
-                        # Execute all queries
+
                         for query, params in queries_and_params:
                             safe_log_query(query, params)
                             cursor.execute(query, params)
-                        
-                        # Commit all changes
+
                         conn.commit()
                         db_circuit_breaker.record_success()
                         logging.info(f"[DBManager] Transaction completed successfully ({len(queries_and_params)} queries)")
                         return True
                         
                     except Exception as e:
-                        # Rollback on any error
                         try:
                             conn.rollback()
                             logging.warning(f"[DBManager] Transaction rolled back due to error: {type(e).__name__}")
                         except Exception as rollback_error:
                             logging.error(f"[DBManager] Failed to rollback transaction: {rollback_error}")
-                        
-                        # Re-raise the original error
+
                         if isinstance(e, (mariadb.DataError, mariadb.IntegrityError)):
                             safe_log_error(e, "TRANSACTION")
                             db_circuit_breaker.record_failure()
@@ -318,7 +313,6 @@ async def run_db_transaction(queries_and_params: list, max_attempts: int = 3) ->
                         else:
                             raise
                     finally:
-                        # Ensure autocommit is restored
                         conn.autocommit = True
             
             return await asyncio.wait_for(_execute_transaction(), timeout=config.DB_TIMEOUT * 2)
@@ -332,7 +326,7 @@ async def run_db_transaction(queries_and_params: list, max_attempts: int = 3) ->
         except DBQueryError as e:
             error_msg = str(e).lower()
             if "constraint error" in error_msg or "operational error" in error_msg:
-                raise  # Don't retry constraint/operational errors
+                raise
             elif "pool exhausted" in error_msg:
                 if attempt == max_attempts - 1:
                     raise

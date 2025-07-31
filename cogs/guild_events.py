@@ -1806,8 +1806,7 @@ class GuildEvents(commands.Cog):
 
         try:
             roster_data = {"members": {}}
-            
-            # Optimisation : utilise les données en cache au lieu d'itérer sur guild.members
+
             if hasattr(self.bot, 'cache') and hasattr(self.bot.cache, 'get_bulk_guild_members'):
                 members_data = await self.bot.cache.get_bulk_guild_members(guild_id)
                 for member_id, member_data in members_data.items():
@@ -1823,7 +1822,6 @@ class GuildEvents(commands.Cog):
                     except Exception:
                         continue
             else:
-                # Fallback vers l'ancien système
                 for member in guild.members:
                     md = self.guild_members_cache.get(guild_id, {}).get(member.id, {})
                     roster_data["members"][str(member.id)] = {

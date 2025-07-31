@@ -572,12 +572,10 @@ class GuildMembers(commands.Cog):
 
     @profile_performance(threshold_ms=50.0)
     async def _get_guild_members_bulk(self, guild_id: int) -> dict:
-        """Récupère tous les membres d'une guilde avec optimisation de performance."""
-        # Use the consolidated smart cache system
+        """Retrieves all guild members with performance optimization."""
         if hasattr(self.bot, 'cache') and hasattr(self.bot.cache, 'get_bulk_guild_members'):
             return await self.bot.cache.get_bulk_guild_members(guild_id)
-        
-        # Fallback vers l'ancien système si le cache intelligent n'est pas disponible
+
         query = """
         SELECT member_id, username, language, GS, build, weapons, DKP, 
                nb_events, registrations, attendances, `class`
@@ -607,7 +605,7 @@ class GuildMembers(commands.Cog):
         return members_db
 
     async def _get_user_setup_bulk(self, guild_id: int) -> dict:
-        """Récupère tous les setups utilisateur en une seule requête."""
+        """Retrieves all user setups in a single query."""
         query = """
         SELECT member_id, locale, gs, weapons, build_url, class
         FROM user_setup 
@@ -632,7 +630,7 @@ class GuildMembers(commands.Cog):
 
     async def _calculate_roster_changes(self, guild_id: int, actual_members: dict, 
                                        guild_members_db: dict, user_setup_db: dict, locale: str):
-        """Calcule tous les changements nécessaires sans requêtes DB."""
+        """Calculates all necessary changes without DB queries."""
         to_delete = []
         to_update = []
         to_insert = []
@@ -709,24 +707,19 @@ class GuildMembers(commands.Cog):
 
     @profile_performance(threshold_ms=100.0)
     async def _apply_roster_changes_bulk(self, guild_id: int, to_delete: list, to_update: list, to_insert: list):
-        """Applique tous les changements en utilisant une transaction sécurisée avec rollback automatique."""
+        """Applies all changes using a secure transaction with automatic rollback."""
         deleted_count = 0
         updated_count = 0
         inserted_count = 0
-        
-        # Security: Prepare all queries in a single transaction to ensure data consistency
+
         transaction_queries = []
         
         try:
-            # Security: Validate input sizes to prevent resource exhaustion
             total_operations = len(to_delete) + len(to_update) + len(to_insert)
-            if total_operations > 1000:  # Limit batch size for security
+            if total_operations > 1000:
                 logging.warning(f"[GuildMembers] Large batch operation detected: {total_operations} operations for guild {guild_id}")
-                # Could implement batching logic here if needed
-                
-            # Prepare DELETE queries
+
             if to_delete:
-                # Security: Validate all member IDs are integers
                 if not all(isinstance(mid, int) and mid > 0 for mid in to_delete):
                     raise ValueError("Invalid member ID format in deletion list")
                     
@@ -740,15 +733,12 @@ class GuildMembers(commands.Cog):
                     transaction_queries.append((delete_query, tuple(params)))
                 deleted_count = len(to_delete)
 
-            # Prepare UPDATE queries
             if to_update:
                 for member_id, field, value in to_update:
-                    # Security: Validate field name to prevent SQL injection (even with params)
                     allowed_fields = {'username', 'language', 'GS', 'build', 'weapons', 'DKP', 'nb_events', 'registrations', 'attendances', 'class'}
                     if field not in allowed_fields:
                         raise ValueError(f"Invalid field name for update: {field}")
-                    
-                    # Security: Validate member_id is positive integer
+
                     if not isinstance(member_id, int) or member_id <= 0:
                         raise ValueError(f"Invalid member ID format in update: {member_id}")
                         
@@ -756,7 +746,6 @@ class GuildMembers(commands.Cog):
                     transaction_queries.append((update_query, (value, guild_id, member_id)))
                 updated_count = len(to_update)
 
-            # Prepare INSERT queries
             if to_insert:
                 insert_query = """
                     INSERT INTO guild_members 
@@ -764,12 +753,10 @@ class GuildMembers(commands.Cog):
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 for member_data in to_insert:
-                    # Security: Validate required fields exist
                     required_fields = ['member_id', 'username', 'language', 'GS', 'build', 'weapons', 'DKP', 'nb_events', 'registrations', 'attendances', 'class']
                     if not all(field in member_data for field in required_fields):
                         raise ValueError("Missing required fields in member data")
-                    
-                    # Security: Validate member_id is positive integer
+
                     if not isinstance(member_data['member_id'], int) or member_data['member_id'] <= 0:
                         raise ValueError(f"Invalid member ID format in insert: {member_data['member_id']}")
                         
@@ -790,7 +777,6 @@ class GuildMembers(commands.Cog):
                     transaction_queries.append((insert_query, params))
                 inserted_count = len(to_insert)
 
-            # Security: Execute all queries in a single transaction with automatic rollback on failure
             if transaction_queries:
                 from db import run_db_transaction
                 success = await run_db_transaction(transaction_queries)
@@ -803,7 +789,6 @@ class GuildMembers(commands.Cog):
 
         except Exception as e:
             logging.error(f"[GuildMembers] Roster transaction failed for guild {guild_id}: {e}", exc_info=True)
-            # Return zero counts to indicate failure - caller should handle this
             return 0, 0, 0
 
         return deleted_count, updated_count, inserted_count

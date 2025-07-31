@@ -271,8 +271,7 @@ class GuildAttendance(commands.Cog):
             
             logging.debug("[GuildAttendance] Starting voice presence check")
             logging.debug("[GuildAttendance] Starting guild processing")
-            
-            # Optimisation : traitement en parallèle des guildes
+
             guild_tasks = []
             for guild in self.bot.guilds:
                 guild_id = guild.id
@@ -280,13 +279,7 @@ class GuildAttendance(commands.Cog):
             
             if guild_tasks:
                 await asyncio.gather(*guild_tasks, return_exceptions=True)
-                
-                for event_data in current_events:
-                    logging.info(f"[GuildAttendance] Processing voice attendance for event {event_data['event_id']} at {now}")
-                    try:
-                        await self._process_voice_attendance(guild, event_data, now)
-                    except Exception as e:
-                        logging.error(f"[GuildAttendance] Error processing voice attendance for event {event_data.get('event_id')}: {e}")
+                logging.debug(f"[GuildAttendance] Completed processing {len(guild_tasks)} guilds")
                         
         except Exception as e:
             logging.error(f"[GuildAttendance] Error in voice presence check: {e}", exc_info=True)
@@ -712,7 +705,7 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error sending attendance notification: {e}")
     
     async def _process_guild_attendance(self, guild: discord.Guild, now: datetime):
-        """Traite l'attendance d'une guilde de manière optimisée."""
+        """Process guild attendance in an optimized way."""
         try:
             guild_id = guild.id
             settings = await self.get_guild_settings(guild_id)
@@ -722,9 +715,15 @@ class GuildAttendance(commands.Cog):
             logging.debug(f"[GuildAttendance] Processing guild {guild_id} ({guild.name})")
             current_events = await self._get_current_events_for_guild(guild_id, now)
             logging.debug(f"[GuildAttendance] Found {len(current_events)} current events for guild {guild_id}")
+
+            for event_data in current_events:
+                logging.info(f"[GuildAttendance] Processing voice attendance for event {event_data['event_id']} at {now}")
+                try:
+                    await self._process_voice_attendance(guild, event_data, now)
+                except Exception as e:
+                    logging.error(f"[GuildAttendance] Error processing voice attendance for event {event_data.get('event_id')}: {e}")
             
-            # La logique de traitement des événements serait ici
-            # (extrait de la boucle principale pour optimisation)
+            logging.debug(f"[GuildAttendance] Completed processing {len(current_events)} events for guild {guild_id}")
                     
         except Exception as e:
             logging.error(f"[GuildAttendance] Error processing guild {guild.id}: {e}", exc_info=True)

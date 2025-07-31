@@ -61,42 +61,35 @@ class ProfileSetup(commands.Cog):
         """
         if not isinstance(text, str):
             return ""
-        
-        # Security: Remove potential prompt injection characters and sequences
+
         dangerous_patterns = [
-            # Command injection attempts
-            r'```.*?```',  # Code blocks
-            r'`[^`]*`',    # Inline code
-            r'\n\s*[Rr]esponse:',  # Response hijacking
-            r'\n\s*[Ii]nstruct(ion)?s?:',  # Instruction injection
-            r'\n\s*[Tt]ask:',  # Task redefinition
-            r'\n\s*[Ss]ystem:',  # System role injection
-            r'\n\s*[Aa]ssistant:',  # Assistant role injection
-            r'\n\s*[Uu]ser:',  # User role injection
-            # Special tokens that might confuse LLM
-            r'<\|.*?\|>',  # Special tokens
-            r'\[INST\].*?\[/INST\]',  # Instruction markers
-            r'###.*?###',  # Section markers
+            r'```.*?```',
+            r'`[^`]*`',
+            r'\n\s*[Rr]esponse:',
+            r'\n\s*[Ii]nstruct(ion)?s?:',
+            r'\n\s*[Tt]ask:',
+            r'\n\s*[Ss]ystem:',
+            r'\n\s*[Aa]ssistant:',
+            r'\n\s*[Uu]ser:',
+            r'<\|.*?\|>',
+            r'\[INST\].*?\[/INST\]',
+            r'###.*?###',
         ]
         
         sanitized = text
         for pattern in dangerous_patterns:
             sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE | re.DOTALL)
-        
-        # Security: Remove excessive whitespace and newlines
+
         sanitized = re.sub(r'\n+', ' ', sanitized)
         sanitized = re.sub(r'\s+', ' ', sanitized)
-        
-        # Security: Remove potentially malicious characters
+
         sanitized = re.sub(r'[<>"\'`\\]', '', sanitized)
-        
-        # Security: Limit length to prevent oversized prompts
+
         max_length = 100
         if len(sanitized) > max_length:
             sanitized = sanitized[:max_length].strip()
             logging.debug(f"[ProfileSetup] Truncated LLM input to {max_length} characters")
-        
-        # Security: Ensure result is not empty after sanitization
+
         sanitized = sanitized.strip()
         if not sanitized:
             logging.warning("[ProfileSetup] Input became empty after LLM sanitization")
@@ -118,45 +111,39 @@ class ProfileSetup(commands.Cog):
         if not isinstance(response, str):
             logging.warning("[ProfileSetup] LLM response is not a string")
             return original_input
-        
-        # Security: Clean the response
+
         cleaned_response = response.strip().strip('"').strip("'")
-        
-        # Security: Check response length - reject if too long (possible injection)
+
         if len(cleaned_response) > 200:
             logging.warning(f"[ProfileSetup] LLM response too long ({len(cleaned_response)} chars), rejecting")
             return original_input
-        
-        # Security: Check for potential injection patterns in response
+
         dangerous_patterns = [
-            r'```.*?```',  # Code blocks
-            r'<script',     # Script tags
-            r'javascript:',  # JavaScript protocol
-            r'data:',       # Data URLs
-            r'<.*?>',       # HTML tags
-            r'\n\s*[Ii]nstruct',  # Instruction attempts
-            r'\n\s*[Ss]ystem',    # System messages
+            r'```.*?```',
+            r'<script',
+            r'javascript:',
+            r'data:',
+            r'<.*?>',
+            r'\n\s*[Ii]nstruct',
+            r'\n\s*[Ss]ystem',
         ]
         
         for pattern in dangerous_patterns:
             if re.search(pattern, cleaned_response, re.IGNORECASE | re.DOTALL):
                 logging.warning(f"[ProfileSetup] LLM response contains dangerous pattern, rejecting")
                 return original_input
-        
-        # Security: Response must be either the original input or one of the valid options
+
         if cleaned_response == original_input:
             return cleaned_response
         
         if cleaned_response in valid_options:
             return cleaned_response
-        
-        # Security: Check for close matches (case-insensitive) to prevent case manipulation attacks
+
         cleaned_lower = cleaned_response.lower()
         for option in valid_options:
             if option.lower() == cleaned_lower:
-                return option  # Return the properly cased version
-        
-        # Security: If response doesn't match any valid option, reject it
+                return option
+
         logging.warning(f"[ProfileSetup] LLM response '{cleaned_response}' not in valid options, using original")
         return original_input
 
@@ -340,17 +327,14 @@ class ProfileSetup(commands.Cog):
             if not llm_cog:
                 logging.warning("[ProfileSetup] LLMInteraction cog not found for guild name validation")
                 return guild_name
-            
-            # Security: Sanitize guild name input to prevent prompt injection
+
             sanitized_guild_name = self._sanitize_llm_input(guild_name)
             sanitized_existing_names = [self._sanitize_llm_input(name) for name in existing_guild_names]
-            
-            # Security: Limit the number of existing guild names to prevent prompt size attacks
+
             if len(sanitized_existing_names) > 20:
                 sanitized_existing_names = sanitized_existing_names[:20]
-                logging.warning(f"[ProfileSetup] Truncated existing guild names list for LLM validation (guild: {guild_id})")
-            
-            # Security: Use structured prompt format to minimize injection risks
+                logging.warning(f"[ProfileSetup] Truncated existing guild names list for LLM validation (guild: {category_channel.guild.id})")
+
             prompt = f"""Task: Compare guild names for similarity detection.
             
 Input guild name: "{sanitized_guild_name}"
@@ -370,8 +354,7 @@ Response:"""
             
             try:
                 response = await llm_cog.safe_ai_query(prompt)
-                
-                # Security: Validate and sanitize LLM response
+
                 validated_name = self._validate_llm_response(response, guild_name, existing_guild_names)
                 
                 if validated_name in existing_guild_names:

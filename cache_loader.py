@@ -26,15 +26,13 @@ class CacheLoader:
             if rows:
                 for row in rows:
                     guild_id, guild_lang, guild_name, guild_game, guild_server, premium = row
-                    
-                    # Cache individual settings
+
                     await self.bot.cache.set_guild_data(guild_id, 'guild_lang', guild_lang)
                     await self.bot.cache.set_guild_data(guild_id, 'guild_name', guild_name)
                     await self.bot.cache.set_guild_data(guild_id, 'guild_game', guild_game)
                     await self.bot.cache.set_guild_data(guild_id, 'guild_server', guild_server)
                     await self.bot.cache.set_guild_data(guild_id, 'premium', premium)
-                    
-                    # Cache complete settings object for bulk access
+
                     await self.bot.cache.set_guild_data(guild_id, 'settings', {
                         'guild_lang': guild_lang,
                         'guild_name': guild_name,
@@ -63,16 +61,14 @@ class CacheLoader:
             if rows:
                 for row in rows:
                     guild_id, members_role, absent_members_role, rules_ok_role = row
-                    
-                    # Cache complete roles object
+
                     roles_data = {
                         'members': members_role,
                         'absent_members': absent_members_role,
                         'rules_ok': rules_ok_role
                     }
                     await self.bot.cache.set_guild_data(guild_id, 'roles', roles_data)
-                    
-                    # Cache individual roles for direct access
+
                     if members_role:
                         await self.bot.cache.set_guild_data(guild_id, 'members_role', members_role)
                     if absent_members_role:
@@ -104,8 +100,7 @@ class CacheLoader:
             if rows:
                 for row in rows:
                     guild_id, rules_channel, rules_message, abs_channel, forum_members_channel, events_channel, statics_channel, statics_message, create_room_channel = row
-                    
-                    # Cache complete channels object
+
                     channels_data = {
                         'rules_channel': rules_channel,
                         'rules_message': rules_message,
@@ -117,8 +112,7 @@ class CacheLoader:
                         'create_room_channel': create_room_channel
                     }
                     await self.bot.cache.set_guild_data(guild_id, 'channels', channels_data)
-                    
-                    # Cache specific channel configs used by individual cogs
+
                     if rules_channel and rules_message:
                         await self.bot.cache.set_guild_data(guild_id, 'rules_message', {
                             'channel': rules_channel,
@@ -165,7 +159,7 @@ class CacheLoader:
                 self._loaded_categories.add('welcome_messages')
             else:
                 logging.warning("[CacheLoader] No welcome messages found in database")
-                self._loaded_categories.add('welcome_messages')  # Mark as loaded even if empty
+                self._loaded_categories.add('welcome_messages')
         except Exception as e:
             logging.error(f"[CacheLoader] Error loading welcome messages: {e}", exc_info=True)
     
@@ -175,7 +169,7 @@ class CacheLoader:
             return
             
         logging.debug("[CacheLoader] Absence messages will be managed directly via DB (high frequency data)")
-        self._loaded_categories.add('absence_messages')  # Mark as "handled"
+        self._loaded_categories.add('absence_messages')
 
     async def load_all_shared_data(self) -> None:
         """Load all shared data categories in parallel."""
@@ -221,7 +215,9 @@ class CacheLoader:
         """Get list of loaded categories."""
         return self._loaded_categories.copy()
 
-# Global cache loader instance
+# #################################################################################### #
+#                            Global Cache Loader Instance
+# #################################################################################### #
 _cache_loader = None
 
 def get_cache_loader(bot=None):

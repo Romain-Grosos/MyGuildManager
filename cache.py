@@ -33,8 +33,7 @@ class CacheEntry:
         self.category = category
         self.access_count = 1
         self.last_accessed = time.time()
-        # Smart cache features
-        self.access_times = deque(maxlen=20)  # Last 20 accesses
+        self.access_times = deque(maxlen=20)
         self.access_times.append(time.time())
         self.predicted_next_access = None
         self.is_hot = False
@@ -49,12 +48,10 @@ class CacheEntry:
         current_time = time.time()
         self.last_accessed = current_time
         self.access_times.append(current_time)
-        
-        # Update prediction if we have enough data
+
         if len(self.access_times) >= 3:
             self._update_prediction(current_time)
-        
-        # Mark as hot if accessed frequently
+
         if self.access_count > 5:
             self.is_hot = True
             
@@ -64,8 +61,7 @@ class CacheEntry:
         """Update prediction of next access time."""
         if len(self.access_times) < 3:
             return
-            
-        # Calculate average interval between accesses
+
         intervals = []
         for i in range(1, len(self.access_times)):
             intervals.append(self.access_times[i] - self.access_times[i-1])
@@ -85,8 +81,7 @@ class CacheEntry:
         
         current_time = time.time()
         time_until_prediction = self.predicted_next_access - current_time
-        
-        # Preload if prediction is within 20% of expiration and entry is hot
+
         return 0 < time_until_prediction < (self.ttl * 0.2)
 
 # #################################################################################### #
@@ -114,8 +109,7 @@ class GlobalCacheSystem:
             for category in CACHE_CATEGORIES.keys()
         }
         self._invalidation_rules: Dict[str, Set[str]] = {}
-        
-        # Smart cache features
+
         self.bot = bot
         self._hot_keys: Set[str] = set()
         self._preload_tasks: Dict[str, asyncio.Task] = {}
@@ -400,7 +394,7 @@ class GlobalCacheSystem:
         
         await self.set('roster_data', cache_key, members_data, ttl=600)
         
-        if query_time > 0.1:  # Log slow queries
+        if query_time > 0.1:
             logging.warning(f"[Cache] Slow bulk guild members query: {query_time:.3f}s, {len(members_data)} members")
         
         return members_data
@@ -446,22 +440,19 @@ class GlobalCacheSystem:
             return set()
         
         member_ids = {member.id for member in role.members}
-        await self.set('discord_entities', cache_key, member_ids, ttl=120)  # 2 minutes
+        await self.set('discord_entities', cache_key, member_ids, ttl=120)
         
         return member_ids
     
     async def _smart_maintenance(self):
         """Smart cache maintenance with predictions and preloading."""
         try:
-            # Identify entries that should be preloaded
             for key, entry in list(self._cache.items()):
                 if entry.should_preload() and key not in self._preload_tasks:
                     await self._schedule_preload(key, entry)
-            
-            # Update hot keys
+
             await self._update_hot_keys()
-            
-            # Optimize for active guilds if bot is available
+
             if self.bot:
                 await self._optimize_active_guilds()
                 
@@ -472,13 +463,11 @@ class GlobalCacheSystem:
         """Schedule preloading of an entry."""
         async def preload_task():
             try:
-                # Wait until close to expiration
                 if entry.predicted_next_access:
                     delay = entry.predicted_next_access - time.time() - (entry.ttl * 0.1)
                     if delay > 0:
                         await asyncio.sleep(delay)
-                
-                # Attempt to preload
+
                 if await self._preload_entry(key, entry):
                     self._metrics['preloads_successful'] += 1
                 else:
@@ -517,43 +506,37 @@ class GlobalCacheSystem:
     
     async def _update_hot_keys(self):
         """Update the list of hot keys."""
-        # Get keys with high access counts
         hot_candidates = []
         for key, entry in self._cache.items():
-            if entry.access_count > 3:  # Minimum threshold
+            if entry.access_count > 3:
                 hot_candidates.append((key, entry.access_count, entry.get_age()))
-        
-        # Sort by access frequency and recency
+
         hot_candidates.sort(key=lambda x: (x[1] / max(x[2], 1)), reverse=True)
-        
-        # Keep top hot keys
+
         self._hot_keys = {key for key, _, _ in hot_candidates[:50]}
     
     async def _optimize_active_guilds(self):
         """Optimize cache for the most active guilds."""
         if not self.bot:
             return
-        
-        # Analyze guild activity from cache access patterns
+
         guild_activity = Counter()
         current_time = time.time()
         
         for key, entry in self._cache.items():
-            if '_' in key and entry.last_accessed > current_time - 3600:  # Last hour
+            if '_' in key and entry.last_accessed > current_time - 3600:
                 parts = key.split('_')
                 if len(parts) >= 2 and parts[-1].isdigit():
                     guild_id = int(parts[-1])
                     guild_activity[guild_id] += entry.access_count
-        
-        # Preload data for top 3 most active guilds
+
         for guild_id, activity in guild_activity.most_common(3):
             await self._preload_guild_data(guild_id)
     
     async def _preload_guild_data(self, guild_id: int):
         """Preload commonly used guild data."""
         preload_tasks = []
-        
-        # Common data patterns to preload
+ 
         common_keys = [
             f'bulk_guild_members_{guild_id}',
             f'guild_roles_{guild_id}'
@@ -603,7 +586,7 @@ def get_global_cache(bot=None) -> GlobalCacheSystem:
         _global_cache = GlobalCacheSystem(bot)
         setup_invalidation_rules(_global_cache)
     elif bot and not _global_cache.bot:
-        _global_cache.bot = bot  # Set bot reference if not already set
+        _global_cache.bot = bot
     return _global_cache
 
 def setup_invalidation_rules(cache: GlobalCacheSystem):

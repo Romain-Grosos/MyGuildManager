@@ -144,7 +144,6 @@ class GuildPTB(commands.Cog):
     async def initialize_ptb_server(self, main_guild_id: int, authorized_user_id: int = None) -> bool:
         """Initialize a new PTB server for a main guild."""
         try:
-            # Security: Require authorized user ID for PTB server creation
             if not authorized_user_id:
                 logging.error(f"[GuildPTB] PTB server creation requires authorized user ID for guild {main_guild_id}")
                 return False
@@ -159,13 +158,11 @@ class GuildPTB(commands.Cog):
                 logging.error(f"[GuildPTB] Bot lacks administrator permissions in main guild {main_guild_id}")
                 return False
 
-            # Security: Strict authorization check - only owner or manage_guild with additional validation
             authorized_member = main_guild.get_member(authorized_user_id)
             if not authorized_member:
                 logging.error(f"[GuildPTB] Authorized user {authorized_user_id} not found in guild {main_guild_id}")
                 return False
-                
-            # Security: Only guild owner or members with manage_guild AND administrator permissions
+
             is_owner = authorized_member.id == main_guild.owner_id
             has_admin_perms = authorized_member.guild_permissions.administrator
             has_manage_guild = authorized_member.guild_permissions.manage_guild
@@ -173,8 +170,7 @@ class GuildPTB(commands.Cog):
             if not (is_owner or (has_manage_guild and has_admin_perms)):
                 logging.error(f"[GuildPTB] User {authorized_user_id} insufficient permissions for PTB creation in guild {main_guild_id}")
                 return False
-                
-            # Security: Check if PTB already exists to prevent duplicates
+
             existing_ptb = await self.bot.cache.get_guild_data(main_guild_id, 'ptb_guild_id')
             if existing_ptb:
                 logging.warning(f"[GuildPTB] PTB server already exists for guild {main_guild_id}")

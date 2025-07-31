@@ -498,7 +498,7 @@ class Health(commands.Cog):
             self.bot.optimizer._channel_cache.clear()
             self.bot.optimizer._guild_cache.clear()
             self.bot.optimizer._cache_times.clear()
-            cleared_count += 50  # Estimate
+            cleared_count += 50
         
         try:
             cache = get_global_cache()
