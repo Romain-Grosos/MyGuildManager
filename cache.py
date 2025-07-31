@@ -362,9 +362,9 @@ class GlobalCacheSystem:
         query = """
         SELECT gm.member_id, gm.username, gm.language, gm.GS, gm.build, gm.weapons, 
                gm.DKP, gm.nb_events, gm.registrations, gm.attendances, gm.class,
-               us.locale, us.build_url
+               us.locale
         FROM guild_members gm
-        LEFT JOIN user_setup us ON gm.guild_id = us.guild_id AND gm.member_id = us.member_id
+        LEFT JOIN user_setup us ON gm.guild_id = us.guild_id AND gm.member_id = us.user_id
         WHERE gm.guild_id = %s
         ORDER BY gm.class, gm.GS DESC
         """
@@ -376,7 +376,7 @@ class GlobalCacheSystem:
         members_data = {}
         if rows:
             for row in rows:
-                member_id, username, language, gs, build, weapons, dkp, nb_events, registrations, attendances, class_type, locale, build_url = row
+                member_id, username, language, gs, build, weapons, dkp, nb_events, registrations, attendances, class_type, locale = row
                 members_data[member_id] = {
                     'username': username,
                     'language': language,
@@ -388,8 +388,7 @@ class GlobalCacheSystem:
                     'registrations': registrations,
                     'attendances': attendances,
                     'class': class_type,
-                    'locale': locale,
-                    'build_url': build_url
+                    'locale': locale
                 }
         
         await self.set('roster_data', cache_key, members_data, ttl=600)

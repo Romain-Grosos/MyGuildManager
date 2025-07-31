@@ -190,18 +190,15 @@ class GuildEvents(commands.Cog):
         return member_data or {}
 
     async def get_static_groups_data(self, guild_id: int) -> Dict:
-        """Get static groups data from centralized cache."""
-        await self.bot.cache_loader.ensure_category_loaded('static_data')
-        
-        groups_data = await self.bot.cache.get_guild_data(guild_id, 'static_groups')
-        return groups_data or {}
+        """Get static groups data from internal cache."""
+        return self.static_groups_cache.get(guild_id, {})
 
     async def get_ideal_staff_data(self, guild_id: int) -> Dict:
         """Get ideal staff data from centralized cache."""
-        await self.bot.cache_loader.ensure_category_loaded('static_data')
+        await self.bot.cache_loader.ensure_category_loaded('guild_ideal_staff')
         
-        staff_data = await self.bot.cache.get_guild_data(guild_id, 'ideal_staff')
-        return staff_data or {}
+        staff_data = await self.bot.cache.get('guild_data', 'ideal_staff')
+        return staff_data.get(guild_id, {}) if staff_data else {}
 
 
 

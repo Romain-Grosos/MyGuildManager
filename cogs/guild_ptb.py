@@ -171,7 +171,7 @@ class GuildPTB(commands.Cog):
                 logging.error(f"[GuildPTB] User {authorized_user_id} insufficient permissions for PTB creation in guild {main_guild_id}")
                 return False
 
-            existing_ptb = await self.bot.cache.get_guild_data(main_guild_id, 'ptb_guild_id')
+            existing_ptb = await self.bot.cache.get_guild_data(main_guild_id, 'guild_ptb')
             if existing_ptb:
                 logging.warning(f"[GuildPTB] PTB server already exists for guild {main_guild_id}")
                 return False

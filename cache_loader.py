@@ -19,25 +19,29 @@ class CacheLoader:
             return
             
         logging.debug("[CacheLoader] Loading guild settings for all guilds")
-        query = "SELECT guild_id, guild_lang, guild_name, guild_game, guild_server, premium FROM guild_settings"
+        query = "SELECT guild_id, guild_ptb, guild_lang, guild_name, guild_game, guild_server, initialized, premium FROM guild_settings"
         
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             if rows:
                 for row in rows:
-                    guild_id, guild_lang, guild_name, guild_game, guild_server, premium = row
+                    guild_id, guild_ptb, guild_lang, guild_name, guild_game, guild_server, initialized, premium = row
 
+                    await self.bot.cache.set_guild_data(guild_id, 'guild_ptb', guild_ptb)
                     await self.bot.cache.set_guild_data(guild_id, 'guild_lang', guild_lang)
                     await self.bot.cache.set_guild_data(guild_id, 'guild_name', guild_name)
                     await self.bot.cache.set_guild_data(guild_id, 'guild_game', guild_game)
                     await self.bot.cache.set_guild_data(guild_id, 'guild_server', guild_server)
+                    await self.bot.cache.set_guild_data(guild_id, 'initialized', initialized)
                     await self.bot.cache.set_guild_data(guild_id, 'premium', premium)
 
                     await self.bot.cache.set_guild_data(guild_id, 'settings', {
+                        'guild_ptb': guild_ptb,
                         'guild_lang': guild_lang,
                         'guild_name': guild_name,
                         'guild_game': guild_game,
                         'guild_server': guild_server,
+                        'initialized': initialized,
                         'premium': premium
                     })
                     
@@ -54,27 +58,35 @@ class CacheLoader:
             return
             
         logging.debug("[CacheLoader] Loading guild roles for all guilds")
-        query = "SELECT guild_id, members, absent_members, rules_ok FROM guild_roles"
+        query = "SELECT guild_id, guild_master, officer, guardian, members, absent_members, allies, diplomats, friends, applicant, config_ok, rules_ok FROM guild_roles"
         
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             if rows:
                 for row in rows:
-                    guild_id, members_role, absent_members_role, rules_ok_role = row
+                    guild_id, guild_master, officer, guardian, members, absent_members, allies, diplomats, friends, applicant, config_ok, rules_ok = row
 
                     roles_data = {
-                        'members': members_role,
-                        'absent_members': absent_members_role,
-                        'rules_ok': rules_ok_role
+                        'guild_master': guild_master,
+                        'officer': officer,
+                        'guardian': guardian,
+                        'members': members,
+                        'absent_members': absent_members,
+                        'allies': allies,
+                        'diplomats': diplomats,
+                        'friends': friends,
+                        'applicant': applicant,
+                        'config_ok': config_ok,
+                        'rules_ok': rules_ok
                     }
                     await self.bot.cache.set_guild_data(guild_id, 'roles', roles_data)
 
-                    if members_role:
-                        await self.bot.cache.set_guild_data(guild_id, 'members_role', members_role)
-                    if absent_members_role:
-                        await self.bot.cache.set_guild_data(guild_id, 'absent_members_role', absent_members_role)
-                    if rules_ok_role:
-                        await self.bot.cache.set_guild_data(guild_id, 'rules_ok_role', rules_ok_role)
+                    if members:
+                        await self.bot.cache.set_guild_data(guild_id, 'members_role', members)
+                    if absent_members:
+                        await self.bot.cache.set_guild_data(guild_id, 'absent_members_role', absent_members)
+                    if rules_ok:
+                        await self.bot.cache.set_guild_data(guild_id, 'rules_ok_role', rules_ok)
                     
                 logging.info(f"[CacheLoader] Loaded roles for {len(rows)} guilds")
                 self._loaded_categories.add('guild_roles')
@@ -90,8 +102,14 @@ class CacheLoader:
             
         logging.debug("[CacheLoader] Loading guild channels for all guilds")
         query = """
-            SELECT guild_id, rules_channel, rules_message, abs_channel, forum_members_channel,
-                   events_channel, statics_channel, statics_message, create_room_channel
+            SELECT guild_id, rules_channel, rules_message, announcements_channel, voice_tavern_channel, 
+                   voice_war_channel, create_room_channel, events_channel, members_channel, 
+                   members_m1, members_m2, members_m3, members_m4, members_m5, groups_channel,
+                   statics_channel, statics_message, abs_channel, loot_channel, tuto_channel,
+                   forum_allies_channel, forum_friends_channel, forum_diplomats_channel,
+                   forum_recruitment_channel, forum_members_channel, notifications_channel,
+                   external_recruitment_cat, category_diplomat, external_recruitment_channel, 
+                   external_recruitment_message
             FROM guild_channels
         """
         
@@ -99,19 +117,52 @@ class CacheLoader:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             if rows:
                 for row in rows:
-                    guild_id, rules_channel, rules_message, abs_channel, forum_members_channel, events_channel, statics_channel, statics_message, create_room_channel = row
+                    guild_id, rules_channel, rules_message, announcements_channel, voice_tavern_channel, voice_war_channel, create_room_channel, events_channel, members_channel, members_m1, members_m2, members_m3, members_m4, members_m5, groups_channel, statics_channel, statics_message, abs_channel, loot_channel, tuto_channel, forum_allies_channel, forum_friends_channel, forum_diplomats_channel, forum_recruitment_channel, forum_members_channel, notifications_channel, external_recruitment_cat, category_diplomat, external_recruitment_channel, external_recruitment_message = row
 
                     channels_data = {
                         'rules_channel': rules_channel,
                         'rules_message': rules_message,
-                        'abs_channel': abs_channel,
-                        'forum_members_channel': forum_members_channel,
+                        'announcements_channel': announcements_channel,
+                        'voice_tavern_channel': voice_tavern_channel,
+                        'voice_war_channel': voice_war_channel,
+                        'create_room_channel': create_room_channel,
                         'events_channel': events_channel,
+                        'members_channel': members_channel,
+                        'members_m1': members_m1,
+                        'members_m2': members_m2,
+                        'members_m3': members_m3,
+                        'members_m4': members_m4,
+                        'members_m5': members_m5,
+                        'groups_channel': groups_channel,
                         'statics_channel': statics_channel,
                         'statics_message': statics_message,
-                        'create_room_channel': create_room_channel
+                        'abs_channel': abs_channel,
+                        'loot_channel': loot_channel,
+                        'tuto_channel': tuto_channel,
+                        'forum_allies_channel': forum_allies_channel,
+                        'forum_friends_channel': forum_friends_channel,
+                        'forum_diplomats_channel': forum_diplomats_channel,
+                        'forum_recruitment_channel': forum_recruitment_channel,
+                        'forum_members_channel': forum_members_channel,
+                        'notifications_channel': notifications_channel,
+                        'external_recruitment_cat': external_recruitment_cat,
+                        'category_diplomat': category_diplomat,
+                        'external_recruitment_channel': external_recruitment_channel,
+                        'external_recruitment_message': external_recruitment_message
                     }
                     await self.bot.cache.set_guild_data(guild_id, 'channels', channels_data)
+                    
+                    if members_channel:
+                        await self.bot.cache.set_guild_data(guild_id, 'members_channel', members_channel)
+                        await self.bot.cache.set_guild_data(guild_id, 'members_m1', members_m1)
+                        await self.bot.cache.set_guild_data(guild_id, 'members_m2', members_m2)
+                        await self.bot.cache.set_guild_data(guild_id, 'members_m3', members_m3)
+                        await self.bot.cache.set_guild_data(guild_id, 'members_m4', members_m4)
+                        await self.bot.cache.set_guild_data(guild_id, 'members_m5', members_m5)
+                    
+                    if external_recruitment_channel:
+                        await self.bot.cache.set_guild_data(guild_id, 'external_recruitment_channel', external_recruitment_channel)
+                        await self.bot.cache.set_guild_data(guild_id, 'external_recruitment_message', external_recruitment_message)
 
                     if rules_channel and rules_message:
                         await self.bot.cache.set_guild_data(guild_id, 'rules_message', {
@@ -177,30 +228,39 @@ class CacheLoader:
             return
             
         logging.debug("[CacheLoader] Loading guild members for all guilds")
-        query = "SELECT guild_id, member_id, class, GS, weapons, DKP, nb_events, registrations, attendances FROM guild_members"
+        query = "SELECT guild_id, member_id, username, language, class, GS, build, weapons, DKP, nb_events, registrations, attendances FROM guild_members"
         
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             if rows:
+                guild_members_cache = {}
                 for row in rows:
-                    guild_id, member_id, member_class, gs, weapons, dkp, nb_events, registrations, attendances = row
+                    guild_id, member_id, username, language, member_class, gs, build, weapons, dkp, nb_events, registrations, attendances = row
                     
                     member_data = {
+                        'username': username,
+                        'language': language,
                         'class': member_class,
                         'GS': gs,
+                        'build': build,
                         'weapons': weapons,
                         'DKP': dkp or 0,
                         'nb_events': nb_events or 0,
                         'registrations': registrations or 0,
                         'attendances': attendances or 0
                     }
-                    
-                    await self.bot.cache.set_guild_data(guild_id, f'member_{member_id}', member_data)
+
+                    key = (guild_id, member_id)
+                    guild_members_cache[key] = member_data
+
+                await self.bot.cache.set('roster_data', 'guild_members', guild_members_cache)
                     
                 logging.info(f"[CacheLoader] Loaded guild members: {len(rows)} members")
                 self._loaded_categories.add('guild_members')
             else:
                 logging.warning("[CacheLoader] No guild members found in database")
+                await self.bot.cache.set('roster_data', 'guild_members', {})
+                self._loaded_categories.add('guild_members')
         except Exception as e:
             logging.error(f"[CacheLoader] Error loading guild members: {e}", exc_info=True)
     
@@ -261,6 +321,163 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading static groups: {e}", exc_info=True)
 
         self._loaded_categories.add('static_data')
+    
+    async def ensure_user_setup_loaded(self) -> None:
+        """Load user setup data for all users."""
+        if 'user_setup' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading user setup data for all users")
+        query = "SELECT guild_id, user_id, locale, gs, weapons FROM user_setup"
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                for row in rows:
+                    guild_id, user_id, locale, gs, weapons = row
+                    
+                    setup_data = {
+                        'locale': locale,
+                        'gs': gs,
+                        'weapons': weapons
+                    }
+                    
+                    await self.bot.cache.set_user_data(guild_id, user_id, 'setup', setup_data)
+                    
+                logging.info(f"[CacheLoader] Loaded user setup data: {len(rows)} users")
+                self._loaded_categories.add('user_setup')
+            else:
+                logging.warning("[CacheLoader] No user setup data found in database")
+                self._loaded_categories.add('user_setup')
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading user setup data: {e}", exc_info=True)
+    
+    async def ensure_weapons_loaded(self) -> None:
+        """Load weapons data for all games."""
+        if 'weapons' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading weapons data for all games")
+        query = "SELECT game_id, code, name FROM weapons ORDER BY game_id"
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                weapons_by_game = {}
+                for row in rows:
+                    game_id, code, name = row
+                    
+                    if game_id not in weapons_by_game:
+                        weapons_by_game[game_id] = {}
+                    
+                    weapons_by_game[game_id][code] = name
+                
+                await self.bot.cache.set_static_data('weapons', weapons_by_game)
+                    
+                logging.info(f"[CacheLoader] Loaded weapons data: {len(rows)} weapons for {len(weapons_by_game)} games")
+                self._loaded_categories.add('weapons')
+            else:
+                logging.warning("[CacheLoader] No weapons data found in database")
+                await self.bot.cache.set_static_data('weapons', {})
+                self._loaded_categories.add('weapons')
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading weapons data: {e}", exc_info=True)
+    
+    async def ensure_weapons_combinations_loaded(self) -> None:
+        """Load weapons combinations data for all games."""
+        if 'weapons_combinations' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading weapons combinations data for all games")
+        query = "SELECT game_id, role, weapon1, weapon2 FROM weapons_combinations ORDER BY game_id"
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                combinations_by_game = {}
+                for row in rows:
+                    game_id, role, weapon1, weapon2 = row
+                    
+                    if game_id not in combinations_by_game:
+                        combinations_by_game[game_id] = []
+                    
+                    combinations_by_game[game_id].append({
+                        'role': role,
+                        'weapon1': weapon1.upper(),
+                        'weapon2': weapon2.upper()
+                    })
+                
+                await self.bot.cache.set_static_data('weapons_combinations', combinations_by_game)
+                    
+                logging.info(f"[CacheLoader] Loaded weapons combinations: {len(rows)} combinations for {len(combinations_by_game)} games")
+                self._loaded_categories.add('weapons_combinations')
+            else:
+                logging.warning("[CacheLoader] No weapons combinations found in database")
+                await self.bot.cache.set_static_data('weapons_combinations', {})
+                self._loaded_categories.add('weapons_combinations')
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading weapons combinations: {e}", exc_info=True)
+    
+    async def ensure_guild_ideal_staff_loaded(self) -> None:
+        """Load guild ideal staff data for all guilds."""
+        if 'guild_ideal_staff' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading guild ideal staff data for all guilds")
+        query = "SELECT guild_id, class_name, ideal_count FROM guild_ideal_staff"
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                ideal_staff = {}
+                for row in rows:
+                    guild_id, class_name, ideal_count = row
+                    
+                    if guild_id not in ideal_staff:
+                        ideal_staff[guild_id] = {}
+                    ideal_staff[guild_id][class_name] = ideal_count
+                
+                await self.bot.cache.set('guild_data', 'ideal_staff', ideal_staff)
+                    
+                logging.info(f"[CacheLoader] Loaded guild ideal staff: {len(rows)} class configurations for {len(ideal_staff)} guilds")
+                self._loaded_categories.add('guild_ideal_staff')
+            else:
+                logging.warning("[CacheLoader] No guild ideal staff data found in database")
+                await self.bot.cache.set('guild_data', 'ideal_staff', {})
+                self._loaded_categories.add('guild_ideal_staff')
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading guild ideal staff: {e}", exc_info=True)
+    
+    async def ensure_games_list_loaded(self) -> None:
+        """Load games list data for all games."""
+        if 'games_list' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading games list data")
+        query = "SELECT id, game_name, max_members FROM games_list"
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                games_data = {}
+                for row in rows:
+                    game_id, game_name, max_members = row
+                    
+                    games_data[game_id] = {
+                        'game_name': game_name,
+                        'max_members': max_members
+                    }
+                
+                await self.bot.cache.set_static_data('games_list', games_data)
+                    
+                logging.info(f"[CacheLoader] Loaded games list: {len(rows)} games")
+                self._loaded_categories.add('games_list')
+            else:
+                logging.warning("[CacheLoader] No games list data found in database")
+                await self.bot.cache.set_static_data('games_list', {})
+                self._loaded_categories.add('games_list')
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading games list: {e}", exc_info=True)
 
     async def load_all_shared_data(self) -> None:
         """Load all shared data categories in parallel."""
@@ -275,6 +492,11 @@ class CacheLoader:
             self.ensure_guild_members_loaded(),
             self.ensure_events_data_loaded(),
             self.ensure_static_data_loaded(),
+            self.ensure_user_setup_loaded(),
+            self.ensure_weapons_loaded(),
+            self.ensure_weapons_combinations_loaded(),
+            self.ensure_guild_ideal_staff_loaded(),
+            self.ensure_games_list_loaded(),
             return_exceptions=True
         )
         
@@ -298,6 +520,16 @@ class CacheLoader:
             await self.ensure_events_data_loaded()
         elif category == 'static_data':
             await self.ensure_static_data_loaded()
+        elif category == 'user_setup':
+            await self.ensure_user_setup_loaded()
+        elif category == 'weapons':
+            await self.ensure_weapons_loaded()
+        elif category == 'weapons_combinations':
+            await self.ensure_weapons_combinations_loaded()
+        elif category == 'guild_ideal_staff':
+            await self.ensure_guild_ideal_staff_loaded()
+        elif category == 'games_list':
+            await self.ensure_games_list_loaded()
         else:
             logging.warning(f"[CacheLoader] Unknown category: {category}")
     

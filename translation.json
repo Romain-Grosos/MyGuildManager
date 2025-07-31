@@ -2139,11 +2139,11 @@
                 "it": ["Soprannome", "Lingua", "GS", "Build", "Armi", "Classe", "DKP", "%Iscr", "%Pres"]
             },
             "footer": {
-                "en-US": "Number of members: {count}\\n{stats}\\nUpdated {date}",
-                "fr": "Nombre de membres : {count}\\n{stats}\\nMis à jour le {date}",
-                "es-ES": "Número de miembros: {count}\\n{stats}\\nActualizado el {date}",
-                "de": "Anzahl der Mitglieder: {count}\\n{stats}\\nAktualisiert am {date}",
-                "it": "Numero di membri: {count}\\n{stats}\\nAggiornato il {date}"
+                "en-US": "## Number of members: {count}\\n \\n{stats}\\n \\n*Updated {date}*",
+                "fr": "## Nombre de membres : {count}\\n \\n{stats}\\n \\n*Mis à jour le {date}*",
+                "es-ES": "## Número de miembros: {count}\\n \\n{stats}\\n \\n*Actualizado el {date}*",
+                "de": "## Anzahl der Mitglieder: {count}\\n \\n{stats}\\n \\n*Aktualisiert am {date}*",
+                "it": "## Numero di membri: {count}\\n \\n{stats}\\n \\n*Aggiornato il {date}*"
             },
             "role_stats": {
                 "en-US": ["Tank", "Melee DPS", "Ranged DPS", "Healer", "Flanker"],
