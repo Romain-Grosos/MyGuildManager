@@ -795,10 +795,12 @@ class GuildEvents(commands.Cog):
             return
 
         events_channel_id = settings.get("events_channel")
-        if payload.channel_id != events_channel_id:
-            logging.debug("[GuildEvents - on_raw_reaction_add] Channel ID does not match events channel.")
-            return
+        if payload.channel_id == events_channel_id:
+            # Only process if this is the events channel
+            await self._handle_event_reaction(payload, guild, settings)
 
+    async def _handle_event_reaction(self, payload: discord.RawReactionActionEvent, guild: discord.Guild, settings: dict) -> None:
+        """Handle reaction additions for event registration."""
         valid_emojis = [
             "<:_yes_:1340109996666388570>",
             "<:_attempt_:1340110058692018248>",
@@ -1436,13 +1438,18 @@ class GuildEvents(commands.Cog):
             pass
         return 0
 
-    def _format_static_group_members(self, member_ids: List[int], guild_obj, absent_text: str) -> List[str]:
+    async def _format_static_group_members(self, member_ids: List[int], guild_obj, absent_text: str) -> List[str]:
         """Internal method: Format static group members."""
         member_info_list = []
+        
+        # Get guild members data from global cache
+        guild_members_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
 
         for member_id in member_ids:
             member = guild_obj.get_member(member_id) if guild_obj else None
-            member_data = self.guild_members_cache.get(guild_obj.id, {}).get(member_id, {}) if guild_obj else {}
+            
+            # Access member data from global cache using (guild_id, member_id) key
+            member_data = guild_members_cache.get((guild_obj.id, member_id), {}) if guild_obj else {}
             
             member_info = {
                 "member": member,
@@ -2673,7 +2680,7 @@ class GuildEvents(commands.Cog):
                     leader = guild_obj.get_member(leader_id) if guild_obj else None
                     leader_mention = leader.mention if leader else f"<@{leader_id}> ({absent_text})"
 
-                    formatted_members = self._format_static_group_members(member_ids, guild_obj, absent_text)
+                    formatted_members = await self._format_static_group_members(member_ids, guild_obj, absent_text)
                     
                     members_count = members_count_template.format(count=member_count)
                     description = f"{leader_label} {leader_mention}\n{members_count}\n\n"

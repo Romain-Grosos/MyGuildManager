@@ -10,6 +10,7 @@ import asyncio
 import time
 import re
 from reliability import discord_resilient
+from translation import translations as global_translations
 
 def create_embed(title: str, description: str, color: discord.Color, member: discord.Member) -> discord.Embed:
     """Create a Discord embed with member information."""
@@ -127,7 +128,9 @@ class Notification(commands.Cog):
         safe_user = self.get_safe_user_info(member)
         logging.debug(f"[NotificationManager] New member detected: {safe_user} in guild {guild.id}")
 
-        if self.is_ptb_guild(guild.id):
+        is_ptb = await self.is_ptb_guild(guild.id)
+        logging.debug(f"[NotificationManager] PTB check for guild {guild.id}: {is_ptb}")
+        if is_ptb:
             logging.debug(f"[NotificationManager] Skipping PTB guild {guild.id} - handled by GuildPTB")
             return
 
@@ -144,8 +147,11 @@ class Notification(commands.Cog):
             
             try:
                 await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-                notif_channel_id = await self.bot.cache.get_guild_data(guild.id, 'notifications_channel')
+                channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
+                logging.debug(f"[NotificationManager] Channels data for guild {guild.id}: {channels_data}")
+                notif_channel_id = channels_data.get('notifications_channel') if channels_data else None
                 
+                logging.debug(f"[NotificationManager] Notification channel ID for guild {guild.id}: {notif_channel_id}")
                 if notif_channel_id:
                     channel = await self.get_safe_channel(notif_channel_id)
                     if not channel:
@@ -153,7 +159,7 @@ class Notification(commands.Cog):
                         return
                     
                     guild_lang = await self.get_guild_lang(guild)
-                    notif_trans = self.bot.translations["notification"]["member_join"]
+                    notif_trans = global_translations["notification"]["member_join"]
                     title = notif_trans["title"][guild_lang]
                     
                     safe_name = self.sanitize_user_data(member.name)
@@ -170,14 +176,12 @@ class Notification(commands.Cog):
                         try:
                             insert_query = "INSERT INTO welcome_messages (guild_id, member_id, channel_id, message_id) VALUES (%s, %s, %s, %s)"
                             await self.bot.run_db_query(insert_query, (guild.id, member.id, channel.id, msg.id), commit=True)
+
+                            await self.bot.cache.set_user_data(guild.id, member.id, 'welcome_message', {
+                                "channel": channel.id,
+                                "message": msg.id
+                            })
                             logging.debug(f"[NotificationManager] Welcome message saved for {safe_user} (ID: {msg.id})")
-                            
-                            auto_role_cog = self.bot.get_cog("AutoRole")
-                            if auto_role_cog:
-                                await auto_role_cog.load_welcome_messages_cache()
-                            profile_setup_cog = self.bot.get_cog("ProfileSetup")
-                            if profile_setup_cog:
-                                await profile_setup_cog.load_welcome_messages_cache()
                         except Exception as e:
                             logging.error(f"[NotificationManager] Error saving welcome message to DB: {e}", exc_info=True)
                     else:
@@ -194,7 +198,9 @@ class Notification(commands.Cog):
         safe_user = self.get_safe_user_info(member)
         logging.debug(f"[NotificationManager] Departure detected: {safe_user} from guild {guild.id}")
 
-        if self.is_ptb_guild(guild.id):
+        is_ptb = await self.is_ptb_guild(guild.id)
+        logging.debug(f"[NotificationManager] PTB check for guild {guild.id}: {is_ptb}")
+        if is_ptb:
             logging.debug(f"[NotificationManager] Skipping PTB guild {guild.id} - handled by GuildPTB")
             return
         
@@ -235,7 +241,7 @@ class Notification(commands.Cog):
                         original_message = await asyncio.wait_for(
                             channel.fetch_message(message_id), timeout=10.0
                         )
-                        notif_trans = self.bot.translations["notification"]["member_leave"]
+                        notif_trans = global_translations["notification"]["member_leave"]
                         title = notif_trans["title"][guild_lang]
                         
                         safe_name = self.sanitize_user_data(member.name)
@@ -256,22 +262,36 @@ class Notification(commands.Cog):
                         logging.error(f"[NotificationManager] Error replying to welcome message for {safe_user}: {e}", exc_info=True)
                 
                 try:
-                    from db import run_db_transaction
-                    cleanup_queries = [
-                        ("DELETE FROM welcome_messages WHERE guild_id = %s AND member_id = %s", (guild.id, member.id)),
-                        ("DELETE FROM user_setup WHERE guild_id = %s AND user_id = %s", (guild.id, member.id))
-                    ]
-                    await run_db_transaction(cleanup_queries)
+                    await self.bot.run_db_query(
+                        "DELETE FROM welcome_messages WHERE guild_id = %s AND member_id = %s", 
+                        (guild.id, member.id), commit=True
+                    )
+                    await self.bot.run_db_query(
+                        "DELETE FROM user_setup WHERE guild_id = %s AND user_id = %s", 
+                        (guild.id, member.id), commit=True
+                    )
+                    await self.bot.run_db_query(
+                        "DELETE FROM guild_members WHERE guild_id = %s AND member_id = %s", 
+                        (guild.id, member.id), commit=True
+                    )
+
+                    await self.bot.cache.delete('user_data', guild.id, member.id, 'welcome_message')
+                    await self.bot.cache.delete('user_data', guild.id, member.id, 'setup')
+
+                    await self.bot.cache.invalidate_category('roster_data')
+                    logging.debug(f"[NotificationManager] Invalidated roster_data cache after removing member {safe_user}")
                 except Exception as e:
                     logging.error(f"[NotificationManager] Error cleaning up DB records for {safe_user}: {e}", exc_info=True)
             else:
                 await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-                notif_channel_id = await self.bot.cache.get_guild_data(guild.id, 'notifications_channel')
+                channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
+                notif_channel_id = channels_data.get('notifications_channel') if channels_data else None
                 
+                logging.debug(f"[NotificationManager] Notification channel ID for guild {guild.id}: {notif_channel_id}")
                 if notif_channel_id:
                     channel = await self.get_safe_channel(notif_channel_id)
                     if channel:
-                        notif_trans = self.bot.translations["notification"]["member_leave"]
+                        notif_trans = global_translations["notification"]["member_leave"]
                         title = notif_trans["title"][guild_lang]
                         
                         safe_name = self.sanitize_user_data(member.name)

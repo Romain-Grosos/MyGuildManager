@@ -171,7 +171,7 @@ class AutoRole(commands.Cog):
                         return
                         
                     lang = await self.bot.cache.get_guild_data(guild.id, 'guild_lang') or "en-US"
-                    embed = update_welcome_embed(message.embeds[0], lang, self.bot.translations)
+                    embed = update_welcome_embed(message.embeds[0], lang, global_translations)
                     await message.edit(embed=embed)
                     logging.debug(f"[AutoRole] Welcome message updated for {member.name} (ID: {member.id}).")
                 except discord.Forbidden:
@@ -181,15 +181,13 @@ class AutoRole(commands.Cog):
             else:
                 logging.debug(f"[AutoRole] No welcome message in cache for member {member.id} in guild {guild.id}.")
 
-            query = "SELECT user_id FROM user_setup WHERE guild_id = %s AND user_id = %s"
             try:
-                result = await self.bot.run_db_query(query, (guild.id, member.id), fetch_one=True)
+                user_setup = await self.bot.cache.get_user_data(guild.id, member.id, 'setup')
+                if user_setup is not None:
+                    logging.debug(f"[AutoRole] Profile already exists for {guild.id}_{member.id}; no DM sent for registration.")
+                    return
             except Exception as e:
                 logging.error(f"[AutoRole] Error checking user profile for {guild.id}_{member.id}: {e}", exc_info=True)
-                return
-
-            if result is not None:
-                logging.debug(f"[AutoRole] Profile already exists for {guild.id}_{member.id}; no DM sent for registration.")
                 return
 
             profile_setup_cog = self._get_profile_setup_cog()

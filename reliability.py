@@ -176,7 +176,12 @@ class GracefulDegradation:
             return await self.fallback_handlers[service_name](*args, **kwargs)
         
         try:
-            result = await primary_func(*args, **kwargs) if asyncio.iscoroutinefunction(primary_func) else primary_func(*args, **kwargs)
+            if asyncio.iscoroutinefunction(primary_func):
+                result = await primary_func(*args, **kwargs)
+            else:
+                result = primary_func(*args, **kwargs)
+                if asyncio.iscoroutine(result):
+                    result = await result
             return result
         except Exception as e:
             if service_name in self.fallback_handlers:
@@ -384,7 +389,8 @@ class ReliabilitySystem:
         
         return await self.graceful_degradation.execute_with_fallback(
             service_name, 
-            lambda: self.retry_manager.retry_with_backoff(monitored_execution, max_attempts=3)
+            lambda: self.retry_manager.retry_with_backoff(monitored_execution, max_attempts=3),
+            *args, **kwargs
         )
     
     def get_system_status(self) -> Dict[str, Any]:

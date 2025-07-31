@@ -1242,12 +1242,21 @@ class GuildMembers(commands.Cog):
 
         incomplete_members = []
         guild_members = await self.get_guild_members()
+        logging.debug(f"[GuildMembers] notify_incomplete_profiles: Found {len(guild_members)} total members in cache")
+        
+        guild_member_count = 0
         for (g, member_id), data in guild_members.items():
             if g == guild_id:
+                guild_member_count += 1
                 gs = data.get("GS", 0)
                 weapons = data.get("weapons", "NULL")
-                if gs in (0, "0", 0.0) or weapons == "NULL":
+                logging.debug(f"[GuildMembers] Member {member_id}: GS={gs}, weapons={weapons}")
+                if gs in (0, "0", 0.0, None) or weapons in ("NULL", None, ""):
                     incomplete_members.append(member_id)
+                    logging.debug(f"[GuildMembers] Member {member_id} has incomplete profile")
+        
+        logging.debug(f"[GuildMembers] notify_incomplete_profiles: Found {guild_member_count} members for guild {guild_id}")
+        logging.debug(f"[GuildMembers] notify_incomplete_profiles: Found {len(incomplete_members)} incomplete members")
 
         if not incomplete_members:
             msg = get_user_message(ctx, GUILD_MEMBERS["notify_profile"], "no_inc_profiles")
@@ -1352,8 +1361,8 @@ class GuildMembers(commands.Cog):
                 """
                 await self.bot.run_db_query(query, (guild_id, class_name, count), commit=True)
             
-            await self.bot.cache.invalidate_guild(guild_id, 'ideal_staff')
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+            # Reload ideal staff data after update
+            await self.bot.cache_loader.reload_category('guild_ideal_staff')
             
             await self.update_recruitment_message(ctx)
             
