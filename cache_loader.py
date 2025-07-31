@@ -253,13 +253,13 @@ class CacheLoader:
                     key = (guild_id, member_id)
                     guild_members_cache[key] = member_data
 
-                await self.bot.cache.set('roster_data', 'guild_members', guild_members_cache)
+                await self.bot.cache.set('roster_data', guild_members_cache, 'guild_members')
                     
                 logging.info(f"[CacheLoader] Loaded guild members: {len(rows)} members")
                 self._loaded_categories.add('guild_members')
             else:
                 logging.warning("[CacheLoader] No guild members found in database")
-                await self.bot.cache.set('roster_data', 'guild_members', {})
+                await self.bot.cache.set('roster_data', {}, 'guild_members')
                 self._loaded_categories.add('guild_members')
         except Exception as e:
             logging.error(f"[CacheLoader] Error loading guild members: {e}", exc_info=True)
@@ -437,13 +437,13 @@ class CacheLoader:
                         ideal_staff[guild_id] = {}
                     ideal_staff[guild_id][class_name] = ideal_count
                 
-                await self.bot.cache.set('guild_data', 'ideal_staff', ideal_staff)
+                await self.bot.cache.set('guild_data', ideal_staff, 'ideal_staff')
                     
                 logging.info(f"[CacheLoader] Loaded guild ideal staff: {len(rows)} class configurations for {len(ideal_staff)} guilds")
                 self._loaded_categories.add('guild_ideal_staff')
             else:
                 logging.warning("[CacheLoader] No guild ideal staff data found in database")
-                await self.bot.cache.set('guild_data', 'ideal_staff', {})
+                await self.bot.cache.set('guild_data', {}, 'ideal_staff')
                 self._loaded_categories.add('guild_ideal_staff')
         except Exception as e:
             logging.error(f"[CacheLoader] Error loading guild ideal staff: {e}", exc_info=True)

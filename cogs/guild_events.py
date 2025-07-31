@@ -49,7 +49,6 @@ class GuildEvents(commands.Cog):
         self.json_lock = asyncio.Lock()
         self.ignore_removals = {}
         self.guild_settings = {}
-        self.events_data = {}
         self.static_groups_cache = {}
         self.guild_members_cache = {}
 
@@ -71,6 +70,73 @@ class GuildEvents(commands.Cog):
         await self.bot.cache_loader.ensure_category_loaded('static_data')
         
         logging.debug("[GuildEvents] Events data loading completed")
+
+    async def get_event_from_cache(self, guild_id: int, event_id: int) -> Optional[Dict]:
+        """Get event data from global cache."""
+        try:
+            event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
+            if event_data:
+                # Ensure guild_id is included for compatibility
+                event_data['guild_id'] = guild_id
+                # Ensure default values for registrations and actual_presence
+                if not event_data.get('registrations'):
+                    event_data['registrations'] = '{"presence":[],"tentative":[],"absence":[]}'
+                if not event_data.get('actual_presence'):
+                    event_data['actual_presence'] = '[]'
+            return event_data
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error retrieving event {event_id} for guild {guild_id}: {e}", exc_info=True)
+            return None
+
+    async def set_event_in_cache(self, guild_id: int, event_id: int, event_data: Dict) -> None:
+        """Set event data in global cache."""
+        try:
+            # Remove guild_id from data if present (it's implicit in the cache key structure)
+            cache_data = event_data.copy()
+            cache_data.pop('guild_id', None)
+            await self.bot.cache.set_guild_data(guild_id, f'event_{event_id}', cache_data)
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error storing event {event_id} for guild {guild_id}: {e}", exc_info=True)
+
+    async def delete_event_from_cache(self, guild_id: int, event_id: int) -> None:
+        """Delete event data from global cache."""
+        try:
+            await self.bot.cache.delete_guild_data(guild_id, f'event_{event_id}')
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error deleting event {event_id} for guild {guild_id}: {e}", exc_info=True)
+
+    async def get_all_guild_events(self, guild_id: int) -> List[Dict]:
+        """Get all events for a specific guild from global cache."""
+        try:
+            # Since we need to get all events for a guild, we'll need to query the database
+            # The global cache stores events individually by event_id
+            query = """
+                SELECT event_id, name, event_date, event_time, duration, 
+                       dkp_value, status, registrations, actual_presence
+                FROM events_data WHERE guild_id = ?
+            """
+            rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
+            events = []
+            if rows:
+                for row in rows:
+                    event_id, name, event_date, event_time, duration, dkp_value, status, registrations, actual_presence = row
+                    event_data = {
+                        'guild_id': guild_id,
+                        'event_id': event_id,
+                        'name': name,
+                        'event_date': event_date,
+                        'event_time': event_time,
+                        'duration': duration,
+                        'dkp_value': dkp_value,
+                        'status': status,
+                        'registrations': registrations if registrations else '{"presence":[],"tentative":[],"absence":[]}',
+                        'actual_presence': actual_presence if actual_presence else '[]'
+                    }
+                    events.append(event_data)
+            return events
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error retrieving all events for guild {guild_id}: {e}", exc_info=True)
+            return []
 
     async def load_static_groups_cache(self) -> None:
         """Load static groups data from database into cache."""
@@ -273,10 +339,6 @@ class GuildEvents(commands.Cog):
                     logging.error(f"❌ [GuildEvents] Guild {guild_id} not found.")
         await self.load_events_data()
 
-        attendance_cog = self.bot.get_cog("GuildAttendance")
-        if attendance_cog:
-            await attendance_cog.reload_events_cache_all_guilds()
-            logging.debug("[GuildEvents] Reloaded events cache in attendance cog after bulk creation")
 
     @profile_performance(threshold_ms=200.0)
     @discord_resilient(service_name='discord_api', max_retries=2)
@@ -529,11 +591,7 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-        target_event = None
-        for key, ev in self.events_data.items():
-            if ev.get("event_id") == event_id_int:
-                target_event = ev
-                break
+        target_event = await self.get_event_from_cache(guild.id, event_id_int)
         if not target_event:
             follow_message = GUILD_EVENTS["event_confirm"]["no_events"].get(user_locale,GUILD_EVENTS["event_confirm"]["no_events"].get("en-US")).format(event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
@@ -543,12 +601,9 @@ class GuildEvents(commands.Cog):
         try:
             await self.bot.run_db_query(query, ("Confirmed", guild.id, event_id), commit=True)
             target_event["status"] = "Confirmed"
+            await self.set_event_in_cache(guild.id, event_id_int, target_event)
             logging.info(f"[GuildEvents] Event {event_id} status updated to 'Confirmed' for guild {guild.id}.")
 
-            attendance_cog = self.bot.get_cog("GuildAttendance")
-            if attendance_cog:
-                await attendance_cog.reload_events_cache_for_guild(guild.id)
-                logging.debug(f"[GuildEvents] Reloaded events cache for guild {guild.id} in attendance cog")
                 
         except Exception as e:
             logging.error(f"[GuildEvents] Error updating event {event_id} status for guild {guild.id}: {e}", exc_info=True)
@@ -639,11 +694,7 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-        target_event = None
-        for key, ev in self.events_data.items():
-            if ev.get("event_id") == event_id_int:
-                target_event = ev
-                break
+        target_event = await self.get_event_from_cache(guild.id, event_id_int)
         if not target_event:
             follow_message = GUILD_EVENTS["event_cancel"]["no_events"].get(user_locale,GUILD_EVENTS["event_cancel"]["no_events"].get("en-US")).format(event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
@@ -653,12 +704,9 @@ class GuildEvents(commands.Cog):
         try:
             await self.bot.run_db_query(query, ("Canceled", guild.id, event_id_int), commit=True)
             target_event["status"] = "Canceled"
+            await self.set_event_in_cache(guild.id, event_id_int, target_event)
             logging.info(f"[GuildEvents] Event {event_id_int} status updated to 'Canceled' for guild {guild.id}.")
 
-            attendance_cog = self.bot.get_cog("GuildAttendance")
-            if attendance_cog:
-                await attendance_cog.reload_events_cache_for_guild(guild.id)
-                logging.debug(f"[GuildEvents] Reloaded events cache for guild {guild.id} in attendance cog")
                 
         except Exception as e:
             logging.error(f"[GuildEvents] Error updating status for event {event_id_int} in guild {guild.id}: {e}", exc_info=True)
@@ -782,11 +830,7 @@ class GuildEvents(commands.Cog):
                     logging.error(f"[GuildEvents - on_raw_reaction_add] Error removing reaction {emoji} for {member}: {e}")
 
         async with self.json_lock:
-            target_event = None
-            for ev in self.events_data.values():
-                if ev.get("event_id") == message.id:
-                    target_event = ev
-                    break
+            target_event = await self.get_event_from_cache(guild.id, message.id)
             if not target_event:
                 logging.debug("[GuildEvents - on_raw_reaction_add] No event found for this message.")
                 return
@@ -814,6 +858,9 @@ class GuildEvents(commands.Cog):
                 target_event["registrations"]["absence"].append(payload.user_id)
 
             logging.debug(f"[GuildEvents - on_raw_reaction_add] Registrations AFTER update: {target_event['registrations']}")
+            
+            # Update the cache with the modified event
+            await self.set_event_in_cache(guild.id, message.id, target_event)
 
         try:
             new_registrations = json.dumps(target_event["registrations"])
@@ -854,11 +901,7 @@ class GuildEvents(commands.Cog):
             return
 
         async with self.json_lock:
-            target_event = None
-            for ev in self.events_data.values():
-                if ev.get("event_id") == message.id:
-                    target_event = ev
-                    break
+            target_event = await self.get_event_from_cache(guild.id, message.id)
             if not target_event:
                 return
             if target_event.get("status", "").strip().lower() == "closed":
@@ -868,6 +911,9 @@ class GuildEvents(commands.Cog):
             for key in ["presence", "tentative", "absence"]:
                 if payload.user_id in target_event["registrations"].get(key, []):
                     target_event["registrations"][key].remove(payload.user_id)
+                    
+            # Update the cache with the modified event
+            await self.set_event_in_cache(guild.id, message.id, target_event)
 
         await self.update_event_embed(message, target_event)
 
@@ -959,10 +1005,9 @@ class GuildEvents(commands.Cog):
                 logging.error(f"[GuildEvents CRON] Events channel not found for guild {guild_id}.")
                 continue
 
-            guild_events_keys = [key for key, ev in list(self.events_data.items())if ev["guild_id"] == guild_id]
+            guild_events = await self.get_all_guild_events(guild_id)
 
-            for key in guild_events_keys:
-                ev = self.events_data.get(key)
+            for ev in guild_events:
                 try:
                     if isinstance(ev["event_date"], str):
                         event_date = datetime.strptime(ev["event_date"], "%Y-%m-%d").date()
@@ -1003,7 +1048,7 @@ class GuildEvents(commands.Cog):
                         continue
 
                     total_deleted += 1
-                    del self.events_data[key]
+                    await self.delete_event_from_cache(ev["guild_id"], ev["event_id"])
 
                     if str(ev.get("status", "")).lower() == "canceled":
                         canceled_events_to_delete.append((ev["guild_id"], ev["event_id"]))
@@ -1044,7 +1089,7 @@ class GuildEvents(commands.Cog):
                 logging.error(f"[GuildEvents] Events or notifications channel not found for guild {guild.name}.")
                 continue
 
-            guild_events = [ev for ev in self.events_data.values() if ev["guild_id"] == guild_id]
+            guild_events = await self.get_all_guild_events(guild_id)
             for ev in guild_events:
                 logging.debug(f"[GuildEvents - event_reminder_cron] Comparing event {ev['event_id']}: event_date={repr(ev.get('event_date'))} (type {type(ev.get('event_date'))}), "
                             f"today_str={repr(today_str)}, status={repr(ev.get('status', ''))} (lowercased: {repr(ev.get('status', '').strip().lower())})")
@@ -1172,9 +1217,8 @@ class GuildEvents(commands.Cog):
 
             guild_lang = settings.get("guild_lang") or "en-US"
 
-            guild_events_keys = [key for key, ev in self.events_data.items() if ev["guild_id"] == guild_id]
-            for key in guild_events_keys:
-                ev = self.events_data[key]
+            guild_events = await self.get_all_guild_events(guild_id)
+            for ev in guild_events:
                 try:
                     if isinstance(ev["event_date"], str):
                         event_date = datetime.strptime(ev["event_date"], "%Y-%m-%d").date()
@@ -1260,10 +1304,6 @@ class GuildEvents(commands.Cog):
                     await self.bot.run_db_query(update_query, params, commit=True)
                     logging.debug(f"[GuildEvents CRON] Batch updated {len(closed_events_to_update)} events to Closed status for guild {guild_id}")
 
-                    attendance_cog = self.bot.get_cog("GuildAttendance")
-                    if attendance_cog:
-                        await attendance_cog.reload_events_cache_for_guild(guild_id)
-                        logging.debug(f"[GuildEvents CRON] Reloaded events cache for guild {guild_id} in attendance cog")
                         
                 except Exception as e:
                     logging.error(f"[GuildEvents CRON] Error batch updating event statuses for guild {guild_id}: {e}", exc_info=True)
@@ -1848,8 +1888,7 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvent - Cron Create_Groups] Channels not found (groups/events) for guild {guild_id}")
             return
 
-        key = f"{guild_id}_{event_id}"
-        event = self.events_data.get(key)
+        event = await self.get_event_from_cache(guild_id, event_id)
         if not event:
             logging.error(f"[GuildEvent - Cron Create_Groups] Event not found for guild {guild_id} and event {event_id}")
             return
@@ -2210,13 +2249,9 @@ class GuildEvents(commands.Cog):
         """
         try:
             await self.bot.run_db_query(query, record, commit=True)
-            self.events_data[f"{guild.id}_{announcement.id}"] = record
+            await self.set_event_in_cache(guild.id, announcement.id, record)
             logging.info(f"[GuildEvents - event_create] Event saved in DB successfully: {announcement.id}")
 
-            attendance_cog = self.bot.get_cog("GuildAttendance")
-            if attendance_cog:
-                await attendance_cog.reload_events_cache_for_guild(guild.id)
-                logging.debug(f"[GuildEvents - event_create] Reloaded events cache for guild {guild.id} in attendance cog")
             
             follow_message = GUILD_EVENTS["event_create"]["events_created"].get(user_locale,GUILD_EVENTS["event_create"]["events_created"].get("en-US")).format(event_id=announcement.id)
             await ctx.followup.send(follow_message, ephemeral=True)
@@ -2453,8 +2488,7 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(error_msg, ephemeral=True)
             return
 
-        key = f"{guild_id}_{event_id_int}"
-        event = self.events_data.get(key)
+        event = await self.get_event_from_cache(guild_id, event_id_int)
         if not event:
             error_msg = STATIC_GROUPS["preview_groups"]["messages"]["event_not_found"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["event_not_found"].get("en-US"))
             await ctx.followup.send(error_msg, ephemeral=True)
@@ -2477,9 +2511,14 @@ class GuildEvents(commands.Cog):
             return
 
         try:
+            guild_members_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+            logging.debug(f"[GuildEvents] preview_groups: Guild members cache contains {len(guild_members_cache)} entries")
+            
             roster_data = {"members": {}}
             for member in ctx.guild.members:
-                md = self.guild_members_cache.get(guild_id, {}).get(member.id, {})
+                key = (guild_id, member.id)
+                md = guild_members_cache.get(key, {})
+                logging.debug(f"[GuildEvents] preview_groups: Member {member.id} data: {md}")
                 roster_data["members"][str(member.id)] = {
                     "pseudo": member.display_name,
                     "GS": md.get("GS", "N/A"),
@@ -2771,10 +2810,9 @@ class GuildEvents(commands.Cog):
     async def _schedule_ptb_cleanup(self, guild_id: int, event_id: int) -> None:
         """Internal method: Schedule ptb cleanup."""
         try:
-            key = f"{guild_id}_{event_id}"
-            event_data = self.events_data.get(key)
+            event_data = await self.get_event_from_cache(guild_id, event_id)
             if not event_data:
-                logging.error(f"[GuildEvents] Event data not found for PTB cleanup scheduling: {key}")
+                logging.error(f"[GuildEvents] Event data not found for PTB cleanup scheduling: guild {guild_id}, event {event_id}")
                 return
 
             event_date = event_data["event_date"]

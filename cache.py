@@ -225,6 +225,10 @@ class GlobalCacheSystem:
         """Set guild-specific data."""
         await self.set('guild_data', value, guild_id, data_type)
     
+    async def delete_guild_data(self, guild_id: int, data_type: str) -> bool:
+        """Delete guild-specific data."""
+        return await self.delete('guild_data', guild_id, data_type)
+    
     async def get_user_data(self, guild_id: int, user_id: int, data_type: str) -> Optional[Any]:
         """Get user-specific data."""
         return await self.get('user_data', guild_id, user_id, data_type)

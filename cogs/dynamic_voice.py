@@ -53,7 +53,7 @@ class DynamicVoice(commands.Cog):
             for row in rows:
                 channel_id = row[0]
                 dynamic_channels.add(channel_id)
-            await self.bot.cache.set('temporary', 'dynamic_voice_channels', dynamic_channels)
+            await self.bot.cache.set('temporary', dynamic_channels, 'dynamic_voice_channels')
             logging.debug(f"[DynamicVoice] Persistent dynamic channels loaded from DB: {dynamic_channels}")
         except Exception as e:
             logging.error(f"[DynamicVoice] Error loading persistent channels: {e}", exc_info=True)
@@ -137,7 +137,7 @@ class DynamicVoice(commands.Cog):
                     logging.error(f"[DynamicVoice] Unexpected error moving {safe_name}: {e}", exc_info=True)
                 dynamic_channels = await self.bot.cache.get('temporary', 'dynamic_voice_channels') or set()
                 dynamic_channels.add(new_channel.id)
-                await self.bot.cache.set('temporary', 'dynamic_voice_channels', dynamic_channels)
+                await self.bot.cache.set('temporary', dynamic_channels, 'dynamic_voice_channels')
 
                 user_channels = await self.bot.cache.get('temporary', f'user_channels_{member.id}') or []
                 user_channels.append(new_channel.id)
@@ -161,7 +161,7 @@ class DynamicVoice(commands.Cog):
                     await channel.delete()
                     if channel.id in dynamic_channels:
                         dynamic_channels.remove(channel.id)
-                        await self.bot.cache.set('temporary', 'dynamic_voice_channels', dynamic_channels)
+                        await self.bot.cache.set('temporary', dynamic_channels, 'dynamic_voice_channels')
 
                     for guild_member in guild.members:
                         user_channels = await self.bot.cache.get('temporary', f'user_channels_{guild_member.id}') or []

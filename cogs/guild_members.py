@@ -122,7 +122,7 @@ class GuildMembers(commands.Cog):
                     "gs": gs,
                     "weapons": weapons
                 }
-            await self.bot.cache.set('user_data', 'user_setup_members', user_setup_members)
+            await self.bot.cache.set('user_data', user_setup_members, 'user_setup_members')
             logging.debug(f"[GuildMembers] User setup members loaded: {len(user_setup_members)} entries")
         except Exception as e:
             logging.error(f"[GuildMembers] Error loading user setup members: {e}", exc_info=True)
@@ -144,6 +144,13 @@ class GuildMembers(commands.Cog):
     async def get_guild_members(self) -> Dict[Tuple[int, int], Dict[str, Any]]:
         """Get all guild members from cache."""
         guild_members = await self.bot.cache.get('roster_data', 'guild_members')
+        if guild_members is None:
+            logging.warning("[GuildMembers] guild_members cache returned None, checking raw cache...")
+            try:
+                raw_cache = await self.bot.cache.get('roster_data', 'guild_members')
+                logging.debug(f"[GuildMembers] Raw cache check result: {type(raw_cache)} - {raw_cache is None}")
+            except Exception as e:
+                logging.error(f"[GuildMembers] Error accessing raw cache: {e}")
         return guild_members or {}
 
     async def get_user_setup_members(self) -> Dict[Tuple[int, int], Dict[str, Any]]:
@@ -162,7 +169,7 @@ class GuildMembers(commands.Cog):
         key = (guild_id, member_id)
         if key in guild_members:
             guild_members[key][field] = value
-            await self.bot.cache.set('roster_data', 'guild_members', guild_members)
+            await self.bot.cache.set('roster_data', guild_members, 'guild_members')
 
     async def determine_class(self, weapons_list: list, guild_id: int) -> str:
         """Determine class based on weapon combination."""
@@ -243,14 +250,16 @@ class GuildMembers(commands.Cog):
             return
         
         guild_members = await self.get_guild_members()
+        logging.debug(f"[GuildMembers - GS] Guild members cache contains {len(guild_members)} entries")
         if key not in guild_members:
             logging.debug(f"[GuildMembers - GS] Profile not found in guild_members cache for key {key}, trying database fallback...")
             try:
-                # Fallback: check if user exists in user_setup and create guild_members entry
+                await self._load_user_setup_members()
+
                 user_setup_members = await self.get_user_setup_members()
+                logging.debug(f"[GuildMembers - GS] User setup cache contains {len(user_setup_members)} entries")
                 if key in user_setup_members:
                     logging.info(f"[GuildMembers - GS] User found in user_setup, creating guild_members entry for {key}")
-                    # Create entry in guild_members from user_setup data
                     user_setup_data = user_setup_members[key]
                     guild_member_data = {
                         "username": user_setup_data.get("username", ctx.author.display_name),
@@ -264,10 +273,9 @@ class GuildMembers(commands.Cog):
                         "attendances": 0,
                         "class": "NULL"
                     }
-                    # Update cache
                     current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
                     current_cache[key] = guild_member_data
-                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    await self.bot.cache.set('roster_data', current_cache, 'guild_members')
                     guild_members[key] = guild_member_data
                     logging.info(f"[GuildMembers - GS] Created guild_members cache entry for {key}")
                 else:
@@ -323,14 +331,16 @@ class GuildMembers(commands.Cog):
         key = (guild_id, member_id)
         
         guild_members = await self.get_guild_members()
+        logging.debug(f"[GuildMembers - Weapons] Guild members cache contains {len(guild_members)} entries")
         if key not in guild_members:
             logging.debug(f"[GuildMembers - Weapons] Profile not found in guild_members cache for key {key}, trying database fallback...")
             try:
-                # Fallback: check if user exists in user_setup and create guild_members entry
+                await self._load_user_setup_members()
+
                 user_setup_members = await self.get_user_setup_members()
+                logging.debug(f"[GuildMembers - Weapons] User setup cache contains {len(user_setup_members)} entries")
                 if key in user_setup_members:
                     logging.info(f"[GuildMembers - Weapons] User found in user_setup, creating guild_members entry for {key}")
-                    # Create entry in guild_members from user_setup data
                     user_setup_data = user_setup_members[key]
                     guild_member_data = {
                         "username": user_setup_data.get("username", ctx.author.display_name),
@@ -344,10 +354,9 @@ class GuildMembers(commands.Cog):
                         "attendances": 0,
                         "class": "NULL"
                     }
-                    # Update cache
                     current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
                     current_cache[key] = guild_member_data
-                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    await self.bot.cache.set('roster_data', current_cache, 'guild_members')
                     guild_members[key] = guild_member_data
                     logging.info(f"[GuildMembers - Weapons] Created guild_members cache entry for {key}")
                 else:
@@ -453,7 +462,7 @@ class GuildMembers(commands.Cog):
                     # Update cache
                     current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
                     current_cache[key] = guild_member_data
-                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    await self.bot.cache.set('roster_data', current_cache, 'guild_members')
                     guild_members[key] = guild_member_data
                     logging.info(f"[GuildMembers - Build] Created guild_members cache entry for {key}")
                 else:
@@ -529,7 +538,7 @@ class GuildMembers(commands.Cog):
                     # Update cache
                     current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
                     current_cache[key] = guild_member_data
-                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    await self.bot.cache.set('roster_data', current_cache, 'guild_members')
                     guild_members[key] = guild_member_data
                     logging.info(f"[GuildMembers - Username] Created guild_members cache entry for {key}")
                 else:
@@ -924,7 +933,7 @@ class GuildMembers(commands.Cog):
                     for member_id, data in guild_members_db.items():
                         key = (guild_id, member_id)
                         current_cache[key] = data
-                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    await self.bot.cache.set('roster_data', current_cache, 'guild_members')
                     members_in_roster = list(guild_members_db.values())
                     total_members = len(members_in_roster)
                     logging.info(f"[GuildMembers] Updated global cache for recruitment and found {total_members} members")
@@ -1032,7 +1041,7 @@ class GuildMembers(commands.Cog):
                     for member_id, data in guild_members_db.items():
                         key = (guild_id, member_id)
                         current_cache[key] = data
-                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    await self.bot.cache.set('roster_data', current_cache, 'guild_members')
                     members_in_roster = list(guild_members_db.values())
                     logging.info(f"[GuildMembers] Updated global cache and found {len(members_in_roster)} members")
             except Exception as e:
@@ -1414,7 +1423,7 @@ class GuildMembers(commands.Cog):
                     # Update cache
                     current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
                     current_cache[key] = guild_member_data
-                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    await self.bot.cache.set('roster_data', current_cache, 'guild_members')
                     guild_members[key] = guild_member_data
                     logging.info(f"[GuildMembers - ChangeLanguage] Created guild_members cache entry for {key}")
                 else:

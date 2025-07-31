@@ -193,7 +193,7 @@ class ProfileSetup(commands.Cog):
                 guild_id, member_id, channel_id, message_id = row
                 key = f"{guild_id}_{member_id}"
                 welcome_messages[key] = {"channel": channel_id, "message": message_id}
-            await self.bot.cache.set('temporary', 'welcome_messages', welcome_messages)
+            await self.bot.cache.set('temporary', welcome_messages, 'welcome_messages')
             logging.debug(f"[ProfileSetup] Welcome messages loaded: {len(welcome_messages)} entries")
         except Exception as e:
             logging.error(f"[ProfileSetup] Error loading welcome messages: {e}", exc_info=True)
@@ -220,7 +220,7 @@ class ProfileSetup(commands.Cog):
                     "message_id": message_id,
                     "created_at": created_at
                 }
-            await self.bot.cache.set('temporary', 'pending_validations', pending_validations)
+            await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
             logging.debug(f"[ProfileSetup] Pending validations loaded: {len(pending_validations)} entries")
         except Exception as e:
             logging.error(f"[ProfileSetup] Error loading pending validations: {e}", exc_info=True)
@@ -1395,7 +1395,7 @@ Response:"""
                         key = f"{self.member.guild.id}_{self.member.id}_{self.guild_name}"
                         if key in pending_validations:
                             del pending_validations[key]
-                            await bot.cache.set('temporary', 'pending_validations', pending_validations)
+                            await bot.cache.set('temporary', pending_validations, 'pending_validations')
                 
                 if self.original_message:
                     try:

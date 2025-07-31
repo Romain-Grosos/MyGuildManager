@@ -23,7 +23,6 @@ class GuildAttendance(commands.Cog):
         """Initialize the GuildAttendance cog."""
         self.bot = bot
         self.guild_settings = {}
-        self.events_data = {}
         self.guild_members_cache = {}
 
     async def cog_load(self):
@@ -51,6 +50,76 @@ class GuildAttendance(commands.Cog):
         await self.bot.cache_loader.ensure_category_loaded('events_data')
         
         logging.debug("[GuildAttendance] Attendance data loading completed")
+
+    async def get_event_from_cache(self, guild_id: int, event_id: int) -> Optional[Dict]:
+        """Get event data from global cache."""
+        try:
+            event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
+            if event_data:
+                # Ensure guild_id is included for compatibility
+                event_data['guild_id'] = guild_id
+                # Ensure default values for registrations and actual_presence
+                if not event_data.get('registrations'):
+                    event_data['registrations'] = {"presence":[],"tentative":[],"absence":[]}
+                elif isinstance(event_data['registrations'], str):
+                    try:
+                        event_data['registrations'] = json.loads(event_data['registrations'])
+                    except:
+                        event_data['registrations'] = {"presence":[],"tentative":[],"absence":[]}
+                        
+                if not event_data.get('actual_presence'):
+                    event_data['actual_presence'] = []
+                elif isinstance(event_data['actual_presence'], str):
+                    try:
+                        event_data['actual_presence'] = json.loads(event_data['actual_presence'])
+                    except:
+                        event_data['actual_presence'] = []
+            return event_data
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error retrieving event {event_id} for guild {guild_id}: {e}", exc_info=True)
+            return None
+
+    async def set_event_in_cache(self, guild_id: int, event_id: int, event_data: Dict) -> None:
+        """Set event data in global cache."""
+        try:
+            # Remove guild_id from data if present (it's implicit in the cache key structure)
+            cache_data = event_data.copy()
+            cache_data.pop('guild_id', None)
+            await self.bot.cache.set_guild_data(guild_id, f'event_{event_id}', cache_data)
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error storing event {event_id} for guild {guild_id}: {e}", exc_info=True)
+
+    async def get_closed_events_for_guild(self, guild_id: int) -> List[Dict]:
+        """Get all closed events for a specific guild from global cache."""
+        try:
+            # Query database for closed events since we need to filter by status
+            query = """
+                SELECT event_id, name, event_date, event_time, duration, 
+                       dkp_value, status, registrations, actual_presence
+                FROM events_data WHERE guild_id = ? AND status = 'Closed'
+            """
+            rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
+            events = []
+            if rows:
+                for row in rows:
+                    event_id, name, event_date, event_time, duration, dkp_value, status, registrations, actual_presence = row
+                    event_data = {
+                        'guild_id': guild_id,
+                        'event_id': event_id,
+                        'name': name,
+                        'event_date': event_date,
+                        'event_time': event_time,
+                        'duration': duration,
+                        'dkp_value': dkp_value,
+                        'status': status,
+                        'registrations': json.loads(registrations) if registrations else {"presence":[],"tentative":[],"absence":[]},
+                        'actual_presence': json.loads(actual_presence) if actual_presence else []
+                    }
+                    events.append(event_data)
+            return events
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error retrieving closed events for guild {guild_id}: {e}", exc_info=True)
+            return []
 
     async def load_guild_settings(self) -> None:
         """Method: Load guild settings."""
@@ -114,51 +183,6 @@ class GuildAttendance(commands.Cog):
         except Exception as e:
             logging.error(f"[GuildAttendance] Error loading guild members: {e}", exc_info=True)
 
-    async def reload_events_cache_for_guild(self, guild_id: int) -> None:
-        """Method: Reload events cache for guild."""
-        query = """
-        SELECT guild_id, event_id, name, event_date, event_time, duration, 
-               dkp_value, status, registrations, actual_presence
-        FROM events_data 
-        WHERE guild_id = %s AND status = 'Closed'
-        """
-        try:
-            rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
-
-            keys_to_remove = [key for key in self.events_data.keys() if key.startswith(f"{guild_id}_")]
-            for key in keys_to_remove:
-                del self.events_data[key]
-
-            for row in rows:
-                try:
-                    event_guild_id, event_id = int(row[0]), int(row[1])
-                    key = f"{event_guild_id}_{event_id}"
-                    
-                    self.events_data[key] = {
-                        "guild_id": event_guild_id,
-                        "event_id": event_id,
-                        "name": row[2],
-                        "event_date": row[3],
-                        "event_time": row[4],
-                        "duration": row[5],
-                        "dkp_value": row[6],
-                        "status": row[7],
-                        "registrations": json.loads(row[8]) if row[8] else {},
-                        "actual_presence": json.loads(row[9]) if row[9] else []
-                    }
-                except (ValueError, TypeError, json.JSONDecodeError) as e:
-                    logging.warning(f"[GuildAttendance] Invalid event data for {row[0]}_{row[1]}: {e}")
-                    continue
-            
-            logging.debug(f"[GuildAttendance] Reloaded events cache for guild {guild_id}: {len(rows)} events")
-                    
-        except Exception as e:
-            logging.error(f"[GuildAttendance] Error reloading events cache for guild {guild_id}: {e}", exc_info=True)
-
-    async def reload_events_cache_all_guilds(self) -> None:
-        """Method: Reload events cache all guilds."""
-        await self._load_current_events()
-        logging.debug(f"[GuildAttendance] Reloaded events cache for all guilds: {len(self.events_data)} events")
 
     async def process_event_registrations(self, guild_id: int, event_id: int, event_data: Dict) -> None:
         """Method: Process event registrations."""
@@ -561,9 +585,11 @@ class GuildAttendance(commands.Cog):
             update_query = "UPDATE events_data SET actual_presence = %s WHERE guild_id = %s AND event_id = %s"
             await self.bot.run_db_query(update_query, (actual_presence_json, guild_id, event_id), commit=True)
 
-            key = f"{guild_id}_{event_id}"
-            if key in self.events_data:
-                self.events_data[key]["actual_presence"] = voice_members
+            # Update global cache
+            event_data = await self.get_event_from_cache(guild_id, event_id)
+            if event_data:
+                event_data["actual_presence"] = voice_members
+                await self.set_event_in_cache(guild_id, event_id, event_data)
                 
         except Exception as e:
             logging.error(f"[GuildAttendance] Error updating actual presence for event {event_id}: {e}")

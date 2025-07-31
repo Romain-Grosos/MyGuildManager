@@ -78,7 +78,7 @@ class GuildPTB(commands.Cog):
                             "channel_id": int(row[channel_idx])
                         }
 
-            await self.bot.cache.set('guild_data', 'ptb_settings', ptb_settings)
+            await self.bot.cache.set('guild_data', ptb_settings, 'ptb_settings')
             logging.debug(f"[GuildPTB] PTB settings loaded: {len(ptb_settings)} configurations")
         except Exception as e:
             logging.error(f"[GuildPTB] Error loading PTB settings: {e}", exc_info=True)
@@ -100,7 +100,7 @@ class GuildPTB(commands.Cog):
     
     async def set_active_events(self, active_events: Dict) -> None:
         """Set active events in temporary cache."""
-        await self.bot.cache.set('temporary', 'ptb_active_events', active_events)
+        await self.bot.cache.set('temporary', active_events, 'ptb_active_events')
     
     async def _verify_ptb_ownership(self, main_guild_id: int, ptb_guild_id: int) -> bool:
         """Verify PTB guild ownership and permissions."""
@@ -335,7 +335,7 @@ class GuildPTB(commands.Cog):
                     "channel_id": channels[group_key].id
                 }
             
-            await self.bot.cache.set('guild_data', 'ptb_settings', ptb_settings)
+            await self.bot.cache.set('guild_data', ptb_settings, 'ptb_settings')
             
             logging.info(f"[GuildPTB] Saved PTB settings for guild {main_guild_id}")
             

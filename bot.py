@@ -358,6 +358,14 @@ async def on_ready() -> None:
 
     if not hasattr(bot, '_background_tasks'):
         bot._background_tasks = []
+
+    if not hasattr(bot, '_cache_loaded'):
+        bot._cache_loaded = True
+        try:
+            await bot.cache_loader.load_all_shared_data()
+            logging.info("[Bot] Cache loader: shared data loaded successfully")
+        except Exception as e:
+            logging.error(f"[Bot] Error loading shared cache data: {e}", exc_info=True)
     
     if PSUTIL_AVAILABLE and not hasattr(bot, '_monitor_task'):
         bot._monitor_task = asyncio.create_task(monitor_resources())
