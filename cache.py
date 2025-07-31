@@ -620,18 +620,26 @@ def cache_method(category: str, key_generator: Optional[Callable] = None, ttl: O
         return wrapper
     return decorator
 
-async def start_cache_maintenance_task():
+async def start_cache_maintenance_task(bot=None):
     """Start background cache maintenance task."""
     cache = get_global_cache()
     
     async def maintenance_loop():
-        while True:
-            try:
-                await asyncio.sleep(300)
-                await cache.cleanup_expired()
-                await cache._smart_maintenance()
-            except Exception as e:
-                logging.error(f"[Cache] Maintenance task error: {e}")
+        try:
+            while True:
+                try:
+                    await asyncio.sleep(300)
+                    await cache.cleanup_expired()
+                    await cache._smart_maintenance()
+                except Exception as e:
+                    logging.error(f"[Cache] Maintenance task error: {e}")
+        except asyncio.CancelledError:
+            logging.debug("[Cache] Maintenance task cancelled")
+            raise
     
-    asyncio.create_task(maintenance_loop())
+    task = asyncio.create_task(maintenance_loop())
+
+    if bot and hasattr(bot, '_background_tasks'):
+        bot._background_tasks.append(task)
+    
     logging.info("[Cache] Cache maintenance task started")

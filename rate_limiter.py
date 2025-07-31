@@ -183,15 +183,23 @@ def global_rate_limit(cooldown_seconds: int = 60):
         error_message="🌍 Global command cooldown: Please wait {remaining_time} more seconds."
     )
 
-async def start_cleanup_task():
+async def start_cleanup_task(bot=None):
     """Start the cleanup task for rate limiter."""
     async def cleanup_loop():
-        while True:
-            try:
-                await asyncio.sleep(3600)
-                await rate_limiter.cleanup_old_entries()
-            except Exception as e:
-                logging.error(f"[RateLimiter] Error in cleanup task: {e}")
+        try:
+            while True:
+                try:
+                    await asyncio.sleep(3600)
+                    await rate_limiter.cleanup_old_entries()
+                except Exception as e:
+                    logging.error(f"[RateLimiter] Error in cleanup task: {e}")
+        except asyncio.CancelledError:
+            logging.debug("[RateLimiter] Cleanup task cancelled")
+            raise
     
-    asyncio.create_task(cleanup_loop())
+    task = asyncio.create_task(cleanup_loop())
+
+    if bot and hasattr(bot, '_background_tasks'):
+        bot._background_tasks.append(task)
+    
     logging.info("[RateLimiter] Rate limiter cleanup task started")

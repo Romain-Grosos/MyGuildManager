@@ -233,6 +233,9 @@ def setup_task_scheduler(bot):
             logging.warning("[Scheduler] Scheduled tasks stopped unexpectedly")
     
     _scheduled_task = scheduled_tasks
+
+    if hasattr(bot, '_background_tasks'):
+        bot._scheduler_loop = scheduled_tasks
     
     try:
         scheduled_tasks.start()

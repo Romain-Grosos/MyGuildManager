@@ -355,22 +355,32 @@ async def global_rate_limit(ctx):
 @bot.event
 async def on_ready() -> None:
     logging.info("[Discord] Connected as %s (%s)", bot.user, bot.user.id)
+
+    if not hasattr(bot, '_background_tasks'):
+        bot._background_tasks = []
     
-    if PSUTIL_AVAILABLE:
-        asyncio.create_task(monitor_resources())
+    if PSUTIL_AVAILABLE and not hasattr(bot, '_monitor_task'):
+        bot._monitor_task = asyncio.create_task(monitor_resources())
+        bot._background_tasks.append(bot._monitor_task)
         logging.debug("[Bot] Resource monitoring started")
     
     if not hasattr(bot, '_optimization_setup_done'):
         bot._optimization_setup_done = True
         
         async def cache_cleanup_task():
-            while True:
-                await asyncio.sleep(600)
-                bot.optimizer.cleanup_cache()
+            try:
+                while True:
+                    await asyncio.sleep(600)
+                    bot.optimizer.cleanup_cache()
+            except asyncio.CancelledError:
+                logging.debug("[Bot] Cache cleanup task cancelled")
+                raise
         
-        asyncio.create_task(cache_cleanup_task())
-        await start_cache_maintenance_task()
-        await start_cleanup_task()
+        cleanup_task = asyncio.create_task(cache_cleanup_task())
+        bot._background_tasks.append(cleanup_task)
+        
+        await start_cache_maintenance_task(bot)
+        await start_cleanup_task(bot)
 
         await bot.cache_loader.load_all_shared_data()
         logging.info("[BotOptimizer] Optimization setup completed - intelligent cache system with smart features started")
@@ -445,25 +455,29 @@ async def performance_stats(ctx):
 #                            Resource Monitoring
 # #################################################################################### #
 async def monitor_resources():
-    while True:
-        try:
-            if PSUTIL_AVAILABLE:
-                process = psutil.Process()
-                memory_mb = process.memory_info().rss / 1024 / 1024
-                cpu_percent = process.cpu_percent()
-                
-                if memory_mb > config.MAX_MEMORY_MB:
-                    logging.warning(f"[Bot] High memory usage: {memory_mb:.1f}MB (limit: {config.MAX_MEMORY_MB}MB)")
-                if cpu_percent > config.MAX_CPU_PERCENT:
-                    logging.warning(f"[Bot] High CPU usage: {cpu_percent:.1f}% (limit: {config.MAX_CPU_PERCENT}%)")
+    try:
+        while True:
+            try:
+                if PSUTIL_AVAILABLE:
+                    process = psutil.Process()
+                    memory_mb = process.memory_info().rss / 1024 / 1024
+                    cpu_percent = process.cpu_percent()
                     
-                if int(time.time()) % 3600 == 0:
-                    logging.info(f"[Bot] Resource usage - Memory: {memory_mb:.1f}MB, CPU: {cpu_percent:.1f}%")
-                    
-            await asyncio.sleep(300)
-        except Exception as e:
-            logging.error(f"[Bot] Resource monitoring error: {e}")
-            await asyncio.sleep(300)
+                    if memory_mb > config.MAX_MEMORY_MB:
+                        logging.warning(f"[Bot] High memory usage: {memory_mb:.1f}MB (limit: {config.MAX_MEMORY_MB}MB)")
+                    if cpu_percent > config.MAX_CPU_PERCENT:
+                        logging.warning(f"[Bot] High CPU usage: {cpu_percent:.1f}% (limit: {config.MAX_CPU_PERCENT}%)")
+                        
+                    if int(time.time()) % 3600 == 0:
+                        logging.info(f"[Bot] Resource usage - Memory: {memory_mb:.1f}MB, CPU: {cpu_percent:.1f}%")
+                        
+                await asyncio.sleep(300)
+            except Exception as e:
+                logging.error(f"[Bot] Resource monitoring error: {e}")
+                await asyncio.sleep(300)
+    except asyncio.CancelledError:
+        logging.debug("[Bot] Resource monitoring task cancelled")
+        raise
 
 # #################################################################################### #
 #                            Resilient runner
@@ -490,10 +504,37 @@ async def run_bot():
         else:
             break
 
+async def cleanup_background_tasks():
+    """Cancel all background tasks properly."""
+    if hasattr(bot, '_scheduler_loop') and bot._scheduler_loop:
+        if bot._scheduler_loop.is_running():
+            logging.debug("[Bot] Stopping scheduler loop")
+            bot._scheduler_loop.cancel()
+        bot._scheduler_loop = None
+
+    if hasattr(bot, '_background_tasks'):
+        logging.debug(f"[Bot] Cancelling {len(bot._background_tasks)} background tasks")
+        for task in bot._background_tasks:
+            if not task.done():
+                task.cancel()
+
+        if bot._background_tasks:
+            await asyncio.gather(*bot._background_tasks, return_exceptions=True)
+        bot._background_tasks.clear()
+        logging.debug("[Bot] Background tasks cleanup completed")
+
 def _graceful_exit(sig_name):
     logging.warning("[Bot] Signal %s received - closing the bot", sig_name)
-    coroutine = bot.close()
-    asyncio.create_task(coroutine)
+    
+    async def shutdown():
+        await cleanup_background_tasks()
+        await bot.close()
+
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(shutdown())
+    except RuntimeError:
+        asyncio.run(shutdown())
 
 if __name__ == "__main__":
     for sig in (signal.SIGTERM, signal.SIGINT):
