@@ -53,7 +53,7 @@ sys.excepthook = _global_exception_hook
 logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 logging.captureWarnings(True)
 
-logging.debug("[Bot] ✅ Log initialization with daily rotation.")
+logging.debug("[Bot] Log initialization with daily rotation.")
 
 # #################################################################################### #
 #                            Bot Optimization Classes
@@ -315,10 +315,10 @@ def load_extensions():
     for ext in EXTENSIONS:
         try:
             bot.load_extension(ext)
-            logging.debug(f"[Bot] ✅ Extension loaded: {ext}")
+            logging.debug(f"[Bot] Extension loaded: {ext}")
         except Exception as e:
             failed_extensions.append(ext)
-            logging.exception(f"[Bot] ❌ Failed to load extension {ext}")
+            logging.exception(f"[Bot] Failed to load extension {ext}")
     
     if failed_extensions:
         logging.warning(f"[Bot] {len(failed_extensions)} extensions failed to load: {failed_extensions}")
@@ -483,7 +483,7 @@ async def run_bot():
             await bot.start(validate_token())
         except aiohttp.ClientError as e:
             retry_count += 1
-            logging.exception(f"Network error (attempt {retry_count}/{max_retries}) — retrying in 15s")
+            logging.exception(f"Network error (attempt {retry_count}/{max_retries}) - retrying in 15s")
             if retry_count >= max_retries:
                 logging.critical("[Bot] Max retries reached. Shutting down.")
                 break
@@ -496,7 +496,7 @@ async def run_bot():
             break
 
 def _graceful_exit(sig_name):
-    logging.warning("[Bot] Signal %s received — closing the bot", sig_name)
+    logging.warning("[Bot] Signal %s received - closing the bot", sig_name)
     coroutine = bot.close()
     asyncio.create_task(coroutine)
 

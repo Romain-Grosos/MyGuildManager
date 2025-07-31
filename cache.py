@@ -34,7 +34,7 @@ class CacheEntry:
         self.access_count = 1
         self.last_accessed = time.time()
         # Smart cache features
-        self.access_times = deque(maxlen=20)  # Derniers 20 accès
+        self.access_times = deque(maxlen=20)  # Last 20 accesses
         self.access_times.append(time.time())
         self.predicted_next_access = None
         self.is_hot = False
@@ -354,7 +354,7 @@ class GlobalCacheSystem:
     # ==================================================================================== #
     
     async def get_bulk_guild_members(self, guild_id: int, force_refresh: bool = False) -> Dict[int, Dict]:
-        """Récupère tous les membres d'une guilde avec cache optimisé et prédiction."""
+        """Get all guild members with optimized cache and prediction."""
         cache_key = f"bulk_guild_members_{guild_id}"
         
         if not force_refresh:
@@ -406,7 +406,7 @@ class GlobalCacheSystem:
         return members_data
     
     async def get_cached_guild_roles(self, guild_id: int, force_refresh: bool = False) -> Dict[int, Any]:
-        """Récupère les rôles d'une guilde avec cache."""
+        """Get guild roles with cache."""
         cache_key = f"guild_roles_{guild_id}"
         
         if not force_refresh:
@@ -427,7 +427,7 @@ class GlobalCacheSystem:
         return roles_dict
     
     async def get_role_members_optimized(self, guild_id: int, role_id: int) -> Set[int]:
-        """Récupère les membres d'un rôle de manière optimisée."""
+        """Get role members in an optimized way."""
         cache_key = f"role_members_{guild_id}_{role_id}"
         
         cached_result = await self.get('discord_entities', cache_key)
@@ -451,7 +451,7 @@ class GlobalCacheSystem:
         return member_ids
     
     async def _smart_maintenance(self):
-        """Maintenance intelligente du cache avec prédictions et préchargement."""
+        """Smart cache maintenance with predictions and preloading."""
         try:
             # Identify entries that should be preloaded
             for key, entry in list(self._cache.items()):
@@ -469,7 +469,7 @@ class GlobalCacheSystem:
             logging.error(f"[Cache] Smart maintenance error: {e}")
     
     async def _schedule_preload(self, key: str, entry: CacheEntry):
-        """Planifie le préchargement d'une entrée."""
+        """Schedule preloading of an entry."""
         async def preload_task():
             try:
                 # Wait until close to expiration
@@ -495,7 +495,7 @@ class GlobalCacheSystem:
         self._preload_tasks[key] = asyncio.create_task(preload_task())
     
     async def _preload_entry(self, key: str, entry: CacheEntry) -> bool:
-        """Précharge une entrée spécifique."""
+        """Preload a specific entry."""
         try:
             category = entry.category
             
@@ -516,7 +516,7 @@ class GlobalCacheSystem:
             return False
     
     async def _update_hot_keys(self):
-        """Met à jour la liste des clés chaudes."""
+        """Update the list of hot keys."""
         # Get keys with high access counts
         hot_candidates = []
         for key, entry in self._cache.items():
@@ -530,7 +530,7 @@ class GlobalCacheSystem:
         self._hot_keys = {key for key, _, _ in hot_candidates[:50]}
     
     async def _optimize_active_guilds(self):
-        """Optimise le cache pour les guildes les plus actives."""
+        """Optimize cache for the most active guilds."""
         if not self.bot:
             return
         
@@ -550,7 +550,7 @@ class GlobalCacheSystem:
             await self._preload_guild_data(guild_id)
     
     async def _preload_guild_data(self, guild_id: int):
-        """Précharge les données couramment utilisées d'une guilde."""
+        """Preload commonly used guild data."""
         preload_tasks = []
         
         # Common data patterns to preload
@@ -570,7 +570,7 @@ class GlobalCacheSystem:
             await asyncio.gather(*preload_tasks, return_exceptions=True)
     
     def get_smart_stats(self) -> Dict[str, Any]:
-        """Retourne les statistiques du cache intelligent."""
+        """Return smart cache statistics."""
         total_requests = self._metrics['hits'] + self._metrics['misses']
         hit_rate = (self._metrics['hits'] / total_requests * 100) if total_requests > 0 else 0
         
