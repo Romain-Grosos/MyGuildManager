@@ -8,7 +8,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, time as dt_time
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple, Optional, Any
 import pytz
 
 from translation import translations as global_translations
@@ -22,6 +22,7 @@ class GuildAttendance(commands.Cog):
     def __init__(self, bot):
         """Initialize the GuildAttendance cog."""
         self.bot = bot
+        self.guild_settings = {}
 
     async def cog_load(self):
         """Handle cog loading event."""
@@ -72,6 +73,14 @@ class GuildAttendance(commands.Cog):
             logging.debug(f"[GuildAttendance] Guild settings loaded: {len(self.guild_settings)} guilds")
         except Exception as e:
             logging.error(f"[GuildAttendance] Error loading guild settings: {e}", exc_info=True)
+
+    async def get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
+        """Get guild settings from local cache."""
+        if hasattr(self, 'guild_settings') and guild_id in self.guild_settings:
+            return self.guild_settings[guild_id]
+        else:
+            await self.load_guild_settings()
+            return self.guild_settings.get(guild_id, {})
 
     async def load_guild_members(self) -> None:
         """Method: Load guild members."""

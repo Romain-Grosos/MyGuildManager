@@ -11,7 +11,7 @@ from discord.ext import commands, tasks
 from datetime import datetime, timedelta, time as dt_time
 import time
 from translation import translations as global_translations
-from typing import Optional, List, Dict, Set, Tuple
+from typing import Optional, List, Dict, Set, Tuple, Any
 import json
 from performance_profiler import profile_performance
 from reliability import discord_resilient
@@ -48,6 +48,7 @@ class GuildEvents(commands.Cog):
         self.bot = bot
         self.json_lock = asyncio.Lock()
         self.ignore_removals = {}
+        self.guild_settings = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -93,6 +94,39 @@ class GuildEvents(commands.Cog):
             "premium": premium,
             "war_channel": war_channel
         }
+
+    async def load_guild_settings(self) -> None:
+        """Load guild settings into local cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+        
+        query = """
+        SELECT gs.guild_id, gs.guild_lang, gs.guild_game, gs.premium, 
+               gc.events_channel, gc.notifications_channel, gc.groups_channel,
+               gr.members, gc.voice_war_channel
+        FROM guild_settings gs
+        JOIN guild_channels gc ON gs.guild_id = gc.guild_id
+        LEFT JOIN guild_roles gr ON gs.guild_id = gr.guild_id
+        """
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            self.guild_settings = {}
+            for row in rows:
+                guild_id = int(row[0])
+                self.guild_settings[guild_id] = {
+                    "guild_lang": row[1] or "en-US",
+                    "guild_game": row[2],
+                    "premium": row[3],
+                    "events_channel": row[4],
+                    "notifications_channel": row[5],
+                    "groups_channel": row[6],
+                    "members_role": row[7],
+                    "war_channel": row[8]
+                }
+            logging.debug(f"[GuildEvents] Guild settings loaded: {len(self.guild_settings)} guilds")
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error loading guild settings: {e}", exc_info=True)
 
     async def get_events_calendar_data(self, game_id: int) -> Dict:
         """Get events calendar data from centralized cache."""
