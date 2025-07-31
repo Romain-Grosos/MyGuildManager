@@ -204,44 +204,33 @@ class Health(commands.Cog):
     def _check_reliability_system(self) -> str:
         """Check reliability system health and status."""
         try:
-            from reliability import ServiceCircuitBreaker, RetryManager, GracefulDegradation, DataBackupManager
-            
-            reliability_health = []
-            
-            try:
-                circuit_breaker = ServiceCircuitBreaker()
-                if hasattr(circuit_breaker, 'failure_count'):
-                    if circuit_breaker.failure_count > 5:
-                        reliability_health.append('warning')
-                    else:
-                        reliability_health.append('healthy')
-                else:
-                    reliability_health.append('healthy')
-            except Exception:
-                reliability_health.append('error')
-            
-            try:
-                retry_manager = RetryManager()
-                if hasattr(retry_manager, 'active_retries'):
-                    if retry_manager.active_retries > 10:
-                        reliability_health.append('warning')
-                    else:
-                        reliability_health.append('healthy')
-                else:
-                    reliability_health.append('healthy')
-            except Exception:
-                reliability_health.append('error')
-            
-            if 'error' in reliability_health:
+            if not hasattr(self.bot, 'reliability_system'):
                 return 'error'
-            elif 'warning' in reliability_health:
-                return 'warning'
-            else:
-                return 'healthy'
+            
+            reliability_system = self.bot.reliability_system
+
+            try:
+                if hasattr(reliability_system, 'circuit_breakers'):
+                    open_breakers = 0
+                    for cb in reliability_system.circuit_breakers.values():
+                        if hasattr(cb, 'state') and cb.state == 'OPEN':
+                            open_breakers += 1
+                    
+                    if open_breakers > 2:
+                        return 'warning'
+                    elif open_breakers > 0:
+                        return 'warning'
+                    else:
+                        return 'healthy'
+                else:
+                    return 'healthy'
+            except Exception:
+                return 'error'
                 
         except ImportError:
             return 'error'
-        except Exception:
+        except Exception as e:
+            logging.error(f"[Health] Error checking reliability system: {e}")
             return 'unknown'
     
     def _check_circuit_breakers(self) -> str:

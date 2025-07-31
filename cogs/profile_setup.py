@@ -28,6 +28,7 @@ class ProfileSetup(commands.Cog):
         self.bot = bot
         self.sessions: Dict[str, Dict[str, Any]] = {}
         self.session_locks: Dict[str, asyncio.Lock] = {}
+        self.pending_validations: Dict[str, Dict[str, Any]] = {}
 
     async def load_session(self, guild_id: int, user_id: int) -> Dict[str, Any]:
         """Load or create a user session for profile setup."""
@@ -37,6 +38,40 @@ class ProfileSetup(commands.Cog):
         if key not in self.session_locks:
             self.session_locks[key] = asyncio.Lock()
         return self.sessions[key]
+    
+    async def get_guild_lang(self, guild_id: int) -> str:
+        """Get guild language from cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
+        return guild_lang or "en-US"
+    
+    async def get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
+        """Get guild settings from cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
+        return settings or {}
+    
+    async def get_guild_roles(self, guild_id: int) -> Dict[str, Any]:
+        """Get guild roles from cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+        roles = await self.bot.cache.get_guild_data(guild_id, 'roles')
+        return roles or {}
+    
+    async def get_guild_channels(self, guild_id: int) -> Dict[str, Any]:
+        """Get guild channels from cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        channels = await self.bot.cache.get_guild_data(guild_id, 'channels')
+        return channels or {}
+    
+    async def get_welcome_messages(self) -> Dict[str, Dict[str, Any]]:
+        """Get welcome messages from cache."""
+        messages = await self.bot.cache.get('temporary', 'welcome_messages')
+        return messages or {}
+    
+    async def get_pending_validations(self) -> Dict[str, Dict[str, Any]]:
+        """Get pending validations from cache."""
+        validations = await self.bot.cache.get('temporary', 'pending_validations')
+        return validations or {}
     
     async def load_profile_setup_data(self) -> None:
         """Ensure all required data is loaded via centralized cache loader."""
@@ -221,6 +256,8 @@ class ProfileSetup(commands.Cog):
         logging.debug("[ProfileSetup] Restoring pending validation views")
         
         await asyncio.sleep(2)
+
+        await self.load_pending_validations_cache()
         
         for key, validation_data in self.pending_validations.items():
             try:
@@ -252,7 +289,7 @@ class ProfileSetup(commands.Cog):
                     await self.remove_pending_validation(guild_id, member_id, guild_name)
                     continue
                 
-                guild_lang = self.forum_channels.get(guild_id, {}).get("guild_lang", "en-US")
+                guild_lang = await self.get_guild_lang(guild_id)
                 view = self.DiplomatValidationView(member, channel, guild_lang, guild_name)
                 view.original_message = message
                 
@@ -377,8 +414,21 @@ Response:"""
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize profile setup data on bot ready."""
-        asyncio.create_task(self.load_profile_setup_data())
-        asyncio.create_task(self.restore_pending_validation_views())
+        
+        async def safe_load_profile_setup_data():
+            try:
+                await self.load_profile_setup_data()
+            except Exception as e:
+                logging.error(f"[ProfileSetup] Error loading profile setup data: {e}", exc_info=True)
+        
+        async def safe_restore_pending_validation_views():
+            try:
+                await self.restore_pending_validation_views()
+            except Exception as e:
+                logging.error(f"[ProfileSetup] Error restoring pending validation views: {e}", exc_info=True)
+        
+        asyncio.create_task(safe_load_profile_setup_data())
+        asyncio.create_task(safe_restore_pending_validation_views())
         logging.debug("[ProfileSetup] Cache loading tasks started from on_ready")
 
     async def finalize_profile(self, guild_id: int, user_id: int) -> None:

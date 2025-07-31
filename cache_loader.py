@@ -171,6 +171,111 @@ class CacheLoader:
         logging.debug("[CacheLoader] Absence messages will be managed directly via DB (high frequency data)")
         self._loaded_categories.add('absence_messages')
 
+    async def ensure_guild_members_loaded(self) -> None:
+        """Load guild members data for all guilds."""
+        if 'guild_members' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading guild members for all guilds")
+        query = "SELECT guild_id, member_id, class, GS, weapons, DKP, nb_events, registrations, attendances FROM guild_members"
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                for row in rows:
+                    guild_id, member_id, member_class, gs, weapons, dkp, nb_events, registrations, attendances = row
+                    
+                    member_data = {
+                        'class': member_class,
+                        'GS': gs,
+                        'weapons': weapons,
+                        'DKP': dkp or 0,
+                        'nb_events': nb_events or 0,
+                        'registrations': registrations or 0,
+                        'attendances': attendances or 0
+                    }
+                    
+                    await self.bot.cache.set_guild_data(guild_id, f'member_{member_id}', member_data)
+                    
+                logging.info(f"[CacheLoader] Loaded guild members: {len(rows)} members")
+                self._loaded_categories.add('guild_members')
+            else:
+                logging.warning("[CacheLoader] No guild members found in database")
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading guild members: {e}", exc_info=True)
+    
+    async def ensure_events_data_loaded(self) -> None:
+        """Load events data for all guilds."""
+        if 'events_data' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading events data for all guilds")
+        query = """
+            SELECT guild_id, event_id, name, event_date, event_time, duration, 
+                   dkp_value, status, registrations, actual_presence
+            FROM events_data
+        """
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                for row in rows:
+                    guild_id, event_id, name, event_date, event_time, duration, dkp_value, status, registrations, actual_presence = row
+                    
+                    event_data = {
+                        'event_id': event_id,
+                        'name': name,
+                        'event_date': event_date,
+                        'event_time': event_time,
+                        'duration': duration,
+                        'dkp_value': dkp_value,
+                        'status': status,
+                        'registrations': registrations,
+                        'actual_presence': actual_presence
+                    }
+                    
+                    await self.bot.cache.set_guild_data(guild_id, f'event_{event_id}', event_data)
+                    
+                logging.info(f"[CacheLoader] Loaded events data: {len(rows)} events")
+                self._loaded_categories.add('events_data')
+            else:
+                logging.warning("[CacheLoader] No events data found in database")
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading events data: {e}", exc_info=True)
+    
+    async def ensure_static_data_loaded(self) -> None:
+        """Load static data (messages) for all guilds."""
+        if 'static_data' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading static data for all guilds")
+        query = "SELECT guild_id, channel_id, message_id, created_at FROM static_messages"
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                for row in rows:
+                    guild_id, channel_id, message_id, created_at = row
+                    
+                    static_data = {
+                        'channel_id': channel_id,
+                        'message_id': message_id,
+                        'created_at': created_at
+                    }
+                    
+                    await self.bot.cache.set_guild_data(guild_id, f'static_{message_id}', static_data)
+                    
+                logging.info(f"[CacheLoader] Loaded static data: {len(rows)} static messages")
+            else:
+                logging.warning("[CacheLoader] No static data found in database")
+            self._loaded_categories.add('static_data')
+        except Exception as e:
+            if "doesn't exist" in str(e) or "Table" in str(e):
+                logging.warning("[CacheLoader] Static messages table doesn't exist - skipping static data loading")
+                self._loaded_categories.add('static_data')
+            else:
+                logging.error(f"[CacheLoader] Error loading static data: {e}", exc_info=True)
+
     async def load_all_shared_data(self) -> None:
         """Load all shared data categories in parallel."""
         logging.info("[CacheLoader] Loading all shared data categories")
@@ -181,6 +286,9 @@ class CacheLoader:
             self.ensure_guild_channels_loaded(),
             self.ensure_welcome_messages_loaded(),
             self.ensure_absence_messages_loaded(),
+            self.ensure_guild_members_loaded(),
+            self.ensure_events_data_loaded(),
+            self.ensure_static_data_loaded(),
             return_exceptions=True
         )
         
@@ -198,6 +306,12 @@ class CacheLoader:
             await self.ensure_welcome_messages_loaded()
         elif category == 'absence_messages':
             await self.ensure_absence_messages_loaded()
+        elif category == 'guild_members':
+            await self.ensure_guild_members_loaded()
+        elif category == 'events_data':
+            await self.ensure_events_data_loaded()
+        elif category == 'static_data':
+            await self.ensure_static_data_loaded()
         else:
             logging.warning(f"[CacheLoader] Unknown category: {category}")
     
