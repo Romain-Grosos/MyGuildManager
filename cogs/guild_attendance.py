@@ -22,8 +22,6 @@ class GuildAttendance(commands.Cog):
     def __init__(self, bot):
         """Initialize the GuildAttendance cog."""
         self.bot = bot
-        self.guild_settings = {}
-        self.guild_members_cache = {}
 
     async def cog_load(self):
         """Handle cog loading event."""
@@ -121,67 +119,64 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error retrieving closed events for guild {guild_id}: {e}", exc_info=True)
             return []
 
-    async def load_guild_settings(self) -> None:
-        """Method: Load guild settings."""
-        query = """
-        SELECT gs.guild_id, gs.guild_lang, gs.premium, gc.events_channel, gc.notifications_channel, gr.members
-        FROM guild_settings gs
-        JOIN guild_channels gc ON gs.guild_id = gc.guild_id
-        LEFT JOIN guild_roles gr ON gs.guild_id = gr.guild_id
-        """
-        try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.guild_settings = {}
-            for row in rows:
-                guild_id = int(row[0])
-                self.guild_settings[guild_id] = {
-                    "guild_lang": row[1] or "en-US",
-                    "premium": row[2],
-                    "events_channel": row[3],
-                    "notifications_channel": row[4],
-                    "members_role": row[5]
-                }
-            logging.debug(f"[GuildAttendance] Guild settings loaded: {len(self.guild_settings)} guilds")
-        except Exception as e:
-            logging.error(f"[GuildAttendance] Error loading guild settings: {e}", exc_info=True)
-
     async def get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
-        """Get guild settings from local cache."""
-        if hasattr(self, 'guild_settings') and guild_id in self.guild_settings:
-            return self.guild_settings[guild_id]
-        else:
-            await self.load_guild_settings()
-            return self.guild_settings.get(guild_id, {})
-
-    async def load_guild_members(self) -> None:
-        """Method: Load guild members."""
-        query = "SELECT guild_id, member_id, class, GS, weapons, DKP, nb_events, registrations, attendances FROM guild_members"
+        """Get guild settings from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+        
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.guild_members_cache = {}
-            for row in rows:
-                try:
-                    guild_id = int(row[0])
-                    member_id = int(row[1])
-                    
-                    if guild_id not in self.guild_members_cache:
-                        self.guild_members_cache[guild_id] = {}
-                    
-                    self.guild_members_cache[guild_id][member_id] = {
-                        "class": row[2],
-                        "GS": row[3],
-                        "weapons": row[4],
-                        "DKP": int(row[5]) if row[5] is not None else 0,
-                        "nb_events": int(row[6]) if row[6] is not None else 0,
-                        "registrations": int(row[7]) if row[7] is not None else 0,
-                        "attendances": int(row[8]) if row[8] is not None else 0
-                    }
-                except (ValueError, TypeError) as e:
-                    logging.warning(f"[GuildAttendance] Invalid member data for guild {guild_id}, member {member_id}: {e}")
-                    continue
-            logging.debug(f"[GuildAttendance] Guild members loaded: {len(self.guild_members_cache)} guilds")
+            guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
+            premium = await self.bot.cache.get_guild_data(guild_id, 'premium')
+            
+            channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+            events_channel = channels_data.get('events_channel') if channels_data else None
+            notifications_channel = channels_data.get('notifications_channel') if channels_data else None
+            
+            roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
+            members_role = roles_data.get('members') if roles_data else None
+            
+            return {
+                "guild_lang": guild_lang,
+                "premium": premium,
+                "events_channel": events_channel,
+                "notifications_channel": notifications_channel,
+                "members_role": members_role
+            }
         except Exception as e:
-            logging.error(f"[GuildAttendance] Error loading guild members: {e}", exc_info=True)
+            logging.error(f"[GuildAttendance] Error getting guild settings for {guild_id}: {e}", exc_info=True)
+            return {}
+
+    async def get_guild_members(self, guild_id: int) -> Dict[int, Dict[str, Any]]:
+        """Get guild members from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_members')
+        
+        try:
+            guild_members_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+            guild_specific_members = {}
+            
+            for (g_id, member_id), member_data in guild_members_cache.items():
+                if g_id == guild_id:
+                    guild_specific_members[member_id] = member_data
+                    
+            return guild_specific_members
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error getting guild members for {guild_id}: {e}", exc_info=True)
+            return {}
+
+    async def _update_centralized_cache(self, guild_id: int, guild_members: Dict[int, Dict[str, Any]]) -> None:
+        """Update the centralized cache with modified guild members."""
+        try:
+            current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+            
+            for member_id, member_data in guild_members.items():
+                key = (guild_id, member_id)
+                current_cache[key] = member_data
+            
+            await self.bot.cache.set('roster_data', current_cache, 'guild_members')
+            logging.debug(f"[GuildAttendance] Updated centralized cache for {len(guild_members)} members in guild {guild_id}")
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error updating centralized cache: {e}", exc_info=True)
 
 
     async def process_event_registrations(self, guild_id: int, event_id: int, event_data: Dict) -> None:
@@ -219,27 +214,24 @@ class GuildAttendance(commands.Cog):
         all_registered = presence_ids | tentative_ids | absence_ids
 
         updates_to_batch = []
+        guild_members = await self.get_guild_members(guild_id)
 
-        if guild_id in self.guild_members_cache:
-            for member_id, member_data in self.guild_members_cache[guild_id].items():
-                if await self._member_has_members_role(guild, member_id):
-                    member_data["nb_events"] += 1
-                updates_to_batch.append((
-                    member_data["DKP"],
-                    member_data["nb_events"], 
-                    member_data["registrations"],
-                    member_data["attendances"],
-                    guild_id,
-                    member_id
-                ))
+        for member_id, member_data in guild_members.items():
+            if await self._member_has_members_role(guild, member_id):
+                member_data["nb_events"] += 1
+            updates_to_batch.append((
+                member_data["DKP"],
+                member_data["nb_events"], 
+                member_data["registrations"],
+                member_data["attendances"],
+                guild_id,
+                member_id
+            ))
 
         for member_id in all_registered:
-            if guild_id not in self.guild_members_cache:
-                self.guild_members_cache[guild_id] = {}
-            
-            if member_id not in self.guild_members_cache[guild_id]:
+            if member_id not in guild_members:
                 initial_nb_events = 1 if await self._member_has_members_role(guild, member_id) else 0
-                self.guild_members_cache[guild_id][member_id] = {
+                guild_members[member_id] = {
                     "class": "Unknown",
                     "GS": 0,
                     "weapons": "",
@@ -249,7 +241,7 @@ class GuildAttendance(commands.Cog):
                     "attendances": 0
                 }
             
-            member_data = self.guild_members_cache[guild_id][member_id]
+            member_data = guild_members[member_id]
 
             member_data["registrations"] += 1
 
@@ -292,6 +284,9 @@ class GuildAttendance(commands.Cog):
                     await self.bot.run_db_query(update_query, update_data, commit=True)
                 
                 logging.info(f"[GuildAttendance] Updated registration stats for {len(updates_to_batch)} members in event {event_id}")
+
+                # Update centralized cache
+                await self._update_centralized_cache(guild_id, guild_members)
 
                 await self._send_registration_notification(guild_id, event_id, len(all_registered), len(presence_ids), len(tentative_ids), len(absence_ids), dkp_registration)
                 
@@ -549,14 +544,15 @@ class GuildAttendance(commands.Cog):
             return
             
         updates_to_batch = []
+        guild_members = await self.get_guild_members(guild_id)
         
         for change in changes:
             member_id = change["member_id"]
             dkp_change = change["dkp_change"]
             attendance_change = change["attendance_change"]
 
-            if guild_id in self.guild_members_cache and member_id in self.guild_members_cache[guild_id]:
-                member_data = self.guild_members_cache[guild_id][member_id]
+            if member_id in guild_members:
+                member_data = guild_members[member_id]
                 member_data["DKP"] += dkp_change
                 member_data["attendances"] += attendance_change
                 
@@ -574,6 +570,9 @@ class GuildAttendance(commands.Cog):
                     await self.bot.run_db_query(update_query, update_data, commit=True)
                 
                 logging.info(f"[GuildAttendance] Applied attendance changes for {len(updates_to_batch)} members in event {event_id}")
+                
+                # Update centralized cache
+                await self._update_centralized_cache(guild_id, guild_members)
                 
             except Exception as e:
                 logging.error(f"[GuildAttendance] Error applying attendance changes: {e}", exc_info=True)

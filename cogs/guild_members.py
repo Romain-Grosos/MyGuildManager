@@ -551,7 +551,6 @@ class GuildMembers(commands.Cog):
                 msg = get_user_message(ctx, GUILD_MEMBERS["username"], "not_registered")
                 await ctx.followup.send(msg, ephemeral=True)
                 return
-            return
 
         new_username = self._sanitize_string(new_name, self.max_username_length)
         if not new_username or len(new_username.strip()) == 0:

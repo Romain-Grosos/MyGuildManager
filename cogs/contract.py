@@ -14,7 +14,8 @@ CONTRACT_DATA = translations.get("contract", {})
 
 async def get_guild_event_channel(bot, guild_id):
     """Get event channel ID for a guild from cache."""
-    return await bot.cache.get_guild_data(guild_id, 'events_channel')
+    channels_data = await bot.cache.get_guild_data(guild_id, 'channels')
+    return channels_data.get('events_channel') if channels_data else None
 
 
 async def save_contract_message(bot, guild_id, message_id):
@@ -317,7 +318,8 @@ class Contract(commands.Cog):
         await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         
-        events_channel = await self.bot.cache.get_guild_data(guild_id, 'events_channel')
+        channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+        events_channel = channels_data.get('events_channel') if channels_data else None
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
         
         return {

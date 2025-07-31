@@ -28,7 +28,6 @@ class ProfileSetup(commands.Cog):
         self.bot = bot
         self.sessions: Dict[str, Dict[str, Any]] = {}
         self.session_locks: Dict[str, asyncio.Lock] = {}
-        self.pending_validations: Dict[str, Dict[str, Any]] = {}
 
     async def load_session(self, guild_id: int, user_id: int) -> Dict[str, Any]:
         """Load or create a user session for profile setup."""
@@ -48,7 +47,7 @@ class ProfileSetup(commands.Cog):
     async def get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
         """Get guild settings from cache."""
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
+        settings = await self.bot.cache.get_guild_data(guild_id, 'guild_settings')
         return settings or {}
     
     async def get_guild_roles(self, guild_id: int) -> Dict[str, Any]:
@@ -225,31 +224,6 @@ class ProfileSetup(commands.Cog):
         except Exception as e:
             logging.error(f"[ProfileSetup] Error loading pending validations: {e}", exc_info=True)
 
-    async def load_pending_validations_cache(self) -> None:
-        """Method: Load pending validations cache."""
-        logging.debug("[ProfileSetup] Loading pending validations from DB")
-        query = """
-            SELECT guild_id, member_id, guild_name, channel_id, message_id, created_at 
-            FROM pending_diplomat_validations 
-            WHERE status = 'pending'
-        """
-        try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.pending_validations = {}
-            for row in rows:
-                guild_id, member_id, guild_name, channel_id, message_id, created_at = row
-                key = f"{guild_id}_{member_id}_{guild_name}"
-                self.pending_validations[key] = {
-                    "guild_id": guild_id,
-                    "member_id": member_id,
-                    "guild_name": guild_name,
-                    "channel_id": channel_id,
-                    "message_id": message_id,
-                    "created_at": created_at
-                }
-            logging.debug(f"[ProfileSetup] Pending validations loaded: {self.pending_validations}")
-        except Exception as e:
-            logging.error(f"[ProfileSetup] Error while loading pending validations: {e}")
 
     async def restore_pending_validation_views(self) -> None:
         """Method: Restore pending validation views."""
@@ -257,9 +231,10 @@ class ProfileSetup(commands.Cog):
         
         await asyncio.sleep(2)
 
-        await self.load_pending_validations_cache()
+        await self._load_pending_validations()
         
-        for key, validation_data in self.pending_validations.items():
+        pending_validations = await self.get_pending_validations()
+        for key, validation_data in pending_validations.items():
             try:
                 guild_id = validation_data["guild_id"]
                 member_id = validation_data["member_id"]
@@ -290,7 +265,7 @@ class ProfileSetup(commands.Cog):
                     continue
                 
                 guild_lang = await self.get_guild_lang(guild_id)
-                view = self.DiplomatValidationView(member, channel, guild_lang, guild_name)
+                view = self.DiplomatValidationView(member, channel, guild_lang, guild_name, self.bot)
                 view.original_message = message
                 
                 self.bot.add_view(view, message_id=message_id)
@@ -311,7 +286,8 @@ class ProfileSetup(commands.Cog):
             await self.bot.run_db_query(query, (guild_id, member_id, guild_name, channel_id, message_id), commit=True)
             
             key = f"{guild_id}_{member_id}_{guild_name}"
-            self.pending_validations[key] = {
+            pending_validations = await self.get_pending_validations()
+            pending_validations[key] = {
                 "guild_id": guild_id,
                 "member_id": member_id,
                 "guild_name": guild_name,
@@ -319,6 +295,7 @@ class ProfileSetup(commands.Cog):
                 "message_id": message_id,
                 "created_at": "now"
             }
+            await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
             logging.debug(f"[ProfileSetup] Saved pending validation for {member_id} in guild '{guild_name}'")
         except Exception as e:
             error_msg = str(e).lower()
@@ -341,8 +318,10 @@ class ProfileSetup(commands.Cog):
             await self.bot.run_db_query(query, (guild_id, member_id, guild_name), commit=True)
             
             key = f"{guild_id}_{member_id}_{guild_name}"
-            if key in self.pending_validations:
-                del self.pending_validations[key]
+            pending_validations = await self.get_pending_validations()
+            if key in pending_validations:
+                del pending_validations[key]
+                await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
                 
             logging.debug(f"[ProfileSetup] Removed pending validation for {member_id} in guild '{guild_name}'")
         except Exception as e:
@@ -363,6 +342,10 @@ class ProfileSetup(commands.Cog):
             llm_cog = self.bot.get_cog("LLMInteraction")
             if not llm_cog:
                 logging.warning("[ProfileSetup] LLMInteraction cog not found for guild name validation")
+                return guild_name
+            
+            if not hasattr(llm_cog, 'safe_ai_query'):
+                logging.warning("[ProfileSetup] LLMInteraction cog missing safe_ai_query method")
                 return guild_name
 
             sanitized_guild_name = self._sanitize_llm_input(guild_name)
@@ -391,6 +374,9 @@ Response:"""
             
             try:
                 response = await llm_cog.safe_ai_query(prompt)
+                if not response:
+                    logging.warning("[ProfileSetup] LLM returned empty response, using original guild name")
+                    return guild_name
 
                 validated_name = self._validate_llm_response(response, guild_name, existing_guild_names)
                 
@@ -490,7 +476,7 @@ Response:"""
             
         logging.debug(f"[ProfileSetup] Session saved for key {key}: {self.sessions.get(key)}")
 
-        self.locale = session.get("locale")
+        locale = session.get("locale")
 
         try:
             guild = self.bot.get_guild(guild_id)
@@ -597,20 +583,20 @@ Response:"""
             
             embed = discord.Embed(
                 title=PROFILE_SETUP_DATA["notification"]["title"].get(
-                    self.locale, PROFILE_SETUP_DATA["notification"]["title"].get("en-US")
+                    locale, PROFILE_SETUP_DATA["notification"]["title"].get("en-US")
                 ),
                 color=embed_color,
             )
             embed.add_field(
                 name=PROFILE_SETUP_DATA["notification"]["fields"]["user"].get(
-                    self.locale, PROFILE_SETUP_DATA["notification"]["fields"]["user"].get("en-US")
+                    locale, PROFILE_SETUP_DATA["notification"]["fields"]["user"].get("en-US")
                 ),
                 value=f"<@{user_id}>",
                 inline=False,
             )
             embed.add_field(
                 name=PROFILE_SETUP_DATA["notification"]["fields"]["discord_name"].get(
-                    self.locale,
+                    locale,
                     PROFILE_SETUP_DATA["notification"]["fields"]["discord_name"].get("en-US"),
                 ),
                 value=f"`{session.get('nickname', 'Unknown')}`",
@@ -618,7 +604,7 @@ Response:"""
             )
             embed.set_footer(
                 text=PROFILE_SETUP_DATA["footer"].get(
-                    self.locale, PROFILE_SETUP_DATA["footer"].get("en-US")
+                    locale, PROFILE_SETUP_DATA["footer"].get("en-US")
                 )
             )
 
@@ -627,7 +613,7 @@ Response:"""
                 gs = session.get("gs", "N/A")
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get(
-                        self.locale,
+                        locale,
                         PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get("en-US"),
                     ),
                     value=f"`{weapons}`",
@@ -635,7 +621,7 @@ Response:"""
                 )
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get(
-                        self.locale, PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get("en-US")
+                        locale, PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get("en-US")
                     ),
                     value=f"`{gs}`",
                     inline=True,
@@ -647,7 +633,7 @@ Response:"""
                 game_mode = session.get("game_mode", "N/A")
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get(
-                        self.locale,
+                        locale,
                         PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get("en-US"),
                     ),
                     value=f"`{weapons}`",
@@ -655,14 +641,14 @@ Response:"""
                 )
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get(
-                        self.locale, PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get("en-US")
+                        locale, PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get("en-US")
                     ),
                     value=f"`{gs}`",
                     inline=True,
                 )
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["playtime"].get(
-                        self.locale,
+                        locale,
                         PROFILE_SETUP_DATA["notification"]["fields"]["playtime"].get("en-US"),
                     ),
                     value=f"`{playtime}`",
@@ -670,7 +656,7 @@ Response:"""
                 )
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["game_mode"].get(
-                        self.locale,
+                        locale,
                         PROFILE_SETUP_DATA["notification"]["fields"]["game_mode"].get("en-US"),
                     ),
                     value=f"`{game_mode}`",
@@ -682,7 +668,7 @@ Response:"""
                 guild_acronym = session.get("guild_acronym", "N/A")
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["guild"].get(
-                        self.locale, PROFILE_SETUP_DATA["notification"]["fields"]["guild"].get("en-US")
+                        locale, PROFILE_SETUP_DATA["notification"]["fields"]["guild"].get("en-US")
                     ),
                     value=f"`{guild_name}` ({guild_acronym})",
                     inline=False,
@@ -692,7 +678,7 @@ Response:"""
                 guild_acronym = session.get("guild_acronym", "N/A")
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["allied_guild"].get(
-                        self.locale,
+                        locale,
                         PROFILE_SETUP_DATA["notification"]["fields"]["allied_guild"].get("en-US"),
                     ),
                     value=f"`{guild_name}` ({guild_acronym})",
@@ -702,7 +688,7 @@ Response:"""
                 friend_pseudo = session.get("friend_pseudo", "N/A")
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["friend"].get(
-                        self.locale,
+                        locale,
                         PROFILE_SETUP_DATA["notification"]["fields"]["friend"].get("en-US"),
                     ),
                     value=f"`{friend_pseudo}`",
@@ -900,7 +886,7 @@ Response:"""
                             
                             diplomat_embed = embed.copy()
                             
-                            view = self.DiplomatValidationView(member, existing_channel, guild_lang, guild_name)
+                            view = self.DiplomatValidationView(member, existing_channel, guild_lang, guild_name, self.bot)
                             message = await existing_channel.send(
                                 f"@everyone\n\n{alert_text}",
                                 embed=diplomat_embed,
@@ -1001,7 +987,7 @@ Response:"""
                                 f"[ProfileSetup] Error creating diplomat channel for guild '{guild_name}': {e}"
                             )
 
-        await self.bot.cache.invalidate('user_data', 'user_setup_members')
+        await self.bot.cache.invalidate_category('user_data')
 
     class LangButton(discord.ui.Button):
         """Button for language selection."""
@@ -1186,10 +1172,14 @@ Response:"""
                     weapons_input = self.weapons.value
                     llm_cog = interaction.client.get_cog("LLMInteraction")
                     try:
-                        weapons_clean = (
-                            await llm_cog.normalize_weapons(weapons_input) if llm_cog else weapons_input
-                        )
-                    except Exception:
+                        if llm_cog:
+                            weapons_clean = await llm_cog.normalize_weapons(weapons_input)
+                            if not weapons_clean:
+                                weapons_clean = weapons_input
+                        else:
+                            weapons_clean = weapons_input
+                    except Exception as e:
+                        logging.warning(f"[ProfileSetup] LLM weapons normalization failed: {e}")
                         weapons_clean = weapons_input
                     session["weapons"] = weapons_clean[:32]
                     session["gs"] = self.gs.value
@@ -1359,7 +1349,7 @@ Response:"""
     class DiplomatValidationView(discord.ui.View):
         """View for diplomat validation buttons."""
         
-        def __init__(self, member: discord.Member, channel: discord.TextChannel, guild_lang: str, guild_name: str = "Unknown"):
+        def __init__(self, member: discord.Member, channel: discord.TextChannel, guild_lang: str, guild_name: str = "Unknown", bot=None):
             """Initialize diplomat validation view."""
             super().__init__(timeout=86400)
             self.member = member
@@ -1367,6 +1357,7 @@ Response:"""
             self.guild_lang = guild_lang
             self.guild_name = guild_name
             self.original_message = None
+            self.bot = bot
             self.add_item(ProfileSetup.DiplomatValidationButton(member, channel, guild_lang, guild_name))
         
         async def on_timeout(self):
@@ -1379,23 +1370,21 @@ Response:"""
             )
             
             try:
-                from discord.ext import commands
-                bot = commands.Bot.get_bot()
-                if bot:
-                    cog = bot.get_cog("ProfileSetup")
+                if self.bot:
+                    cog = self.bot.get_cog("ProfileSetup")
                     if cog:
                         query = """
                             UPDATE pending_diplomat_validations 
                             SET status = 'expired', completed_at = NOW()
                             WHERE guild_id = %s AND member_id = %s AND guild_name = %s AND status = 'pending'
                         """
-                        await bot.run_db_query(query, (self.member.guild.id, self.member.id, self.guild_name), commit=True)
+                        await self.bot.run_db_query(query, (self.member.guild.id, self.member.id, self.guild_name), commit=True)
                         
                         pending_validations = await cog.get_pending_validations()
                         key = f"{self.member.guild.id}_{self.member.id}_{self.guild_name}"
                         if key in pending_validations:
                             del pending_validations[key]
-                            await bot.cache.set('temporary', pending_validations, 'pending_validations')
+                            await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
                 
                 if self.original_message:
                     try:

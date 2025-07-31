@@ -208,7 +208,7 @@ class LLMInteraction(commands.Cog):
         for attempt in range(max_retries):
             try:
                 return await asyncio.wait_for(
-                    self.bot.loop.run_in_executor(None, query_AI, prompt),
+                    self.bot.loop.run_in_executor(None, query_ai, prompt),
                     timeout=30.0
                 )
             except asyncio.TimeoutError:

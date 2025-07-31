@@ -8,6 +8,7 @@ from discord.ext import commands
 import asyncio
 import time
 import re
+from translation import translations as global_translations
 
 class DynamicVoice(commands.Cog):
     """Cog for managing dynamic temporary voice channels."""
@@ -15,8 +16,9 @@ class DynamicVoice(commands.Cog):
     def __init__(self, bot):
         """Initialize the DynamicVoice cog."""
         self.bot = bot
-        self.max_channels_per_user = 5
-        self.cool_down_seconds = 5
+        self.max_channels_per_user = 10
+        self.cool_down_seconds = 1
+        self.user_cool_downs = {}
 
     def sanitize_channel_name(self, name: str) -> str:
         """Sanitize channel name by removing invalid characters."""
@@ -62,40 +64,65 @@ class DynamicVoice(commands.Cog):
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         """Handle voice state updates for dynamic channel creation and cleanup."""
         guild = member.guild
-        create_room_channel = await self.bot.cache.get_guild_data(guild.id, 'create_room_channel')
+        channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
+        create_room_channel = channels_data.get('create_room_channel') if channels_data else None
         monitored_channels = {create_room_channel} if create_room_channel else set()
         safe_name = self.get_safe_username(member)
         logging.debug(f"[DynamicVoice] on_voice_state_update: {safe_name} - Before: {before.channel.id if before.channel else None}, After: {after.channel.id if after.channel else None}")
         logging.debug(f"[DynamicVoice] Monitored channels for guild {guild.id}: {monitored_channels}")
-        
+
         now = time.time()
-        self.user_cool_downs = {uid: ts for uid, ts in self.user_cool_downs.items() if now - ts < 3600}
+        if not hasattr(self, '_last_cleanup') or now - self._last_cleanup > 3600:
+            self._last_cleanup = now
+            logging.debug("[DynamicVoice] Cleaning up expired cooldowns")
 
         if after.channel and after.channel.id in monitored_channels:
             safe_name = self.get_safe_username(member)
             logging.debug(f"[DynamicVoice] {safe_name} joined monitored channel {after.channel.id}. Preparing to create a temporary channel.")
-            
+
             user_channels = await self.bot.cache.get('temporary', f'user_channels_{member.id}') or []
-            user_channel_count = len(user_channels)
+            valid_user_channels = []
+            for channel_id in user_channels:
+                channel = guild.get_channel(channel_id)
+                if channel:
+                    valid_user_channels.append(channel_id)
+            
+            if len(valid_user_channels) != len(user_channels):
+                if valid_user_channels:
+                    await self.bot.cache.set('temporary', valid_user_channels, f'user_channels_{member.id}')
+                else:
+                    await self.bot.cache.delete('temporary', f'user_channels_{member.id}')
+            
+            user_channel_count = len(valid_user_channels)
             if user_channel_count >= self.max_channels_per_user:
                 logging.warning(f"[DynamicVoice] {safe_name} reached max channels limit ({self.max_channels_per_user})")
                 return
             
             now = time.time()
             last_action = await self.bot.cache.get('temporary', f'cooldown_{member.id}') or 0
-            if now - last_action < self.cool_down_seconds:
-                logging.warning(f"[DynamicVoice] {safe_name} is on cool down")
+            
+            reduced_cooldown = False
+            if before.channel:
+                dynamic_channels = await self.bot.cache.get('temporary', 'dynamic_voice_channels') or set()
+                if before.channel.id in dynamic_channels and before.channel.id in valid_user_channels:
+                    reduced_cooldown = True
+                    logging.debug(f"[DynamicVoice] {safe_name} left their own channel, reducing cooldown")
+            
+            cooldown_time = 0 if reduced_cooldown else self.cool_down_seconds
+            if now - last_action < cooldown_time:
+                logging.warning(f"[DynamicVoice] {safe_name} is on cool down ({cooldown_time}s)")
                 return
-            await self.bot.cache.set('temporary', f'cooldown_{member.id}', now)
+            await self.bot.cache.set('temporary', now, f'cooldown_{member.id}')
 
             await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             await self.bot.cache_loader.ensure_category_loaded('guild_roles')
             
             guild_lang = await self.bot.cache.get_guild_data(guild.id, 'guild_lang') or "en-US"
-            role_members_id = await self.bot.cache.get_guild_data(guild.id, 'members_role')
-            role_absent_members_id = await self.bot.cache.get_guild_data(guild.id, 'absent_members_role')
+            roles_data = await self.bot.cache.get_guild_data(guild.id, 'roles')
+            role_members_id = roles_data.get('members') if roles_data else None
+            role_absent_members_id = roles_data.get('absent_members') if roles_data else None
             
-            room_name_template = self.bot.translations.get("dynamic_voice", {}).get(guild_lang, "Channel of {username}")
+            room_name_template = global_translations.get("dynamic_voice", {}).get(guild_lang, "Channel of {username}")
             try:
                 channel_name = room_name_template.format(username=member.display_name)
             except Exception as e:
@@ -141,7 +168,7 @@ class DynamicVoice(commands.Cog):
 
                 user_channels = await self.bot.cache.get('temporary', f'user_channels_{member.id}') or []
                 user_channels.append(new_channel.id)
-                await self.bot.cache.set('temporary', f'user_channels_{member.id}', user_channels)
+                await self.bot.cache.set('temporary', user_channels, f'user_channels_{member.id}')
                 try:
                     query_insert = "INSERT INTO dynamic_voice_channels (channel_id, guild_id) VALUES (%s, %s)"
                     await self.bot.run_db_query(query_insert, (new_channel.id, guild.id), commit=True)
@@ -168,7 +195,7 @@ class DynamicVoice(commands.Cog):
                         if channel.id in user_channels:
                             user_channels.remove(channel.id)
                             if user_channels:
-                                await self.bot.cache.set('temporary', f'user_channels_{guild_member.id}', user_channels)
+                                await self.bot.cache.set('temporary', user_channels, f'user_channels_{guild_member.id}')
                             else:
                                 await self.bot.cache.delete('temporary', f'user_channels_{guild_member.id}')
                     
