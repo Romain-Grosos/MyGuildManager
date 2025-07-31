@@ -103,8 +103,8 @@ class GuildMembers(commands.Cog):
         
         logging.debug("[GuildMembers] Weapons and combinations data loaded via cache loaders")
 
-    async def _load_members_data(self) -> None:
-        """Load member-specific data into cache."""
+    async def _load_user_setup_members(self) -> None:
+        """Load user setup members with specific motif filter."""
         user_setup_query = """
             SELECT guild_id, user_id, username, locale, gs, weapons
             FROM user_setup
@@ -127,6 +127,9 @@ class GuildMembers(commands.Cog):
         except Exception as e:
             logging.error(f"[GuildMembers] Error loading user setup members: {e}", exc_info=True)
 
+    async def _load_members_data(self) -> None:
+        """Load member-specific data into cache (legacy method for compatibility)."""
+        await self._load_user_setup_members()
         from cache_loader import get_cache_loader
         cache_loader = get_cache_loader(self.bot)
         await cache_loader.ensure_guild_members_loaded()
@@ -241,10 +244,42 @@ class GuildMembers(commands.Cog):
         
         guild_members = await self.get_guild_members()
         if key not in guild_members:
-            logging.debug(f"[GuildMembers - GS] Profile not found for key {key}")
-            msg = get_user_message(ctx, GUILD_MEMBERS["gs"], "not_registered")
-            await ctx.followup.send(msg, ephemeral=True)
-            return
+            logging.debug(f"[GuildMembers - GS] Profile not found in guild_members cache for key {key}, trying database fallback...")
+            try:
+                # Fallback: check if user exists in user_setup and create guild_members entry
+                user_setup_members = await self.get_user_setup_members()
+                if key in user_setup_members:
+                    logging.info(f"[GuildMembers - GS] User found in user_setup, creating guild_members entry for {key}")
+                    # Create entry in guild_members from user_setup data
+                    user_setup_data = user_setup_members[key]
+                    guild_member_data = {
+                        "username": user_setup_data.get("username", ctx.author.display_name),
+                        "language": user_setup_data.get("locale", "en-US"),
+                        "GS": user_setup_data.get("gs", 0),
+                        "build": "",
+                        "weapons": user_setup_data.get("weapons", ""),
+                        "DKP": 0,
+                        "nb_events": 0,
+                        "registrations": 0,
+                        "attendances": 0,
+                        "class": "NULL"
+                    }
+                    # Update cache
+                    current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+                    current_cache[key] = guild_member_data
+                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    guild_members[key] = guild_member_data
+                    logging.info(f"[GuildMembers - GS] Created guild_members cache entry for {key}")
+                else:
+                    logging.debug(f"[GuildMembers - GS] Profile not found anywhere for key {key}")
+                    msg = get_user_message(ctx, GUILD_MEMBERS["gs"], "not_registered")
+                    await ctx.followup.send(msg, ephemeral=True)
+                    return
+            except Exception as e:
+                logging.error(f"[GuildMembers - GS] Error in fallback logic: {e}")
+                msg = get_user_message(ctx, GUILD_MEMBERS["gs"], "not_registered")
+                await ctx.followup.send(msg, ephemeral=True)
+                return
 
         try: 
             query = "UPDATE guild_members SET GS = %s WHERE guild_id = %s AND member_id = %s"
@@ -289,9 +324,42 @@ class GuildMembers(commands.Cog):
         
         guild_members = await self.get_guild_members()
         if key not in guild_members:
-            msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_registered")
-            await ctx.followup.send(msg, ephemeral=True)
-            return
+            logging.debug(f"[GuildMembers - Weapons] Profile not found in guild_members cache for key {key}, trying database fallback...")
+            try:
+                # Fallback: check if user exists in user_setup and create guild_members entry
+                user_setup_members = await self.get_user_setup_members()
+                if key in user_setup_members:
+                    logging.info(f"[GuildMembers - Weapons] User found in user_setup, creating guild_members entry for {key}")
+                    # Create entry in guild_members from user_setup data
+                    user_setup_data = user_setup_members[key]
+                    guild_member_data = {
+                        "username": user_setup_data.get("username", ctx.author.display_name),
+                        "language": user_setup_data.get("locale", "en-US"),
+                        "GS": user_setup_data.get("gs", 0),
+                        "build": "",
+                        "weapons": user_setup_data.get("weapons", ""),
+                        "DKP": 0,
+                        "nb_events": 0,
+                        "registrations": 0,
+                        "attendances": 0,
+                        "class": "NULL"
+                    }
+                    # Update cache
+                    current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+                    current_cache[key] = guild_member_data
+                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    guild_members[key] = guild_member_data
+                    logging.info(f"[GuildMembers - Weapons] Created guild_members cache entry for {key}")
+                else:
+                    logging.debug(f"[GuildMembers - Weapons] Profile not found anywhere for key {key}")
+                    msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_registered")
+                    await ctx.followup.send(msg, ephemeral=True)
+                    return
+            except Exception as e:
+                logging.error(f"[GuildMembers - Weapons] Error in fallback logic: {e}")
+                msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_registered")
+                await ctx.followup.send(msg, ephemeral=True)
+                return
 
         weapon1_code = self._validate_weapon_code(weapon1)
         weapon2_code = self._validate_weapon_code(weapon2)
@@ -362,9 +430,42 @@ class GuildMembers(commands.Cog):
         
         guild_members = await self.get_guild_members()
         if key not in guild_members:
-            msg = get_user_message(ctx, GUILD_MEMBERS["build"], "not_registered")
-            await ctx.followup.send(msg, ephemeral=True)
-            return
+            logging.debug(f"[GuildMembers - Build] Profile not found in guild_members cache for key {key}, trying database fallback...")
+            try:
+                # Fallback: check if user exists in user_setup and create guild_members entry
+                user_setup_members = await self.get_user_setup_members()
+                if key in user_setup_members:
+                    logging.info(f"[GuildMembers - Build] User found in user_setup, creating guild_members entry for {key}")
+                    # Create entry in guild_members from user_setup data
+                    user_setup_data = user_setup_members[key]
+                    guild_member_data = {
+                        "username": user_setup_data.get("username", ctx.author.display_name),
+                        "language": user_setup_data.get("locale", "en-US"),
+                        "GS": user_setup_data.get("gs", 0),
+                        "build": "",
+                        "weapons": user_setup_data.get("weapons", ""),
+                        "DKP": 0,
+                        "nb_events": 0,
+                        "registrations": 0,
+                        "attendances": 0,
+                        "class": "NULL"
+                    }
+                    # Update cache
+                    current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+                    current_cache[key] = guild_member_data
+                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    guild_members[key] = guild_member_data
+                    logging.info(f"[GuildMembers - Build] Created guild_members cache entry for {key}")
+                else:
+                    logging.debug(f"[GuildMembers - Build] Profile not found anywhere for key {key}")
+                    msg = get_user_message(ctx, GUILD_MEMBERS["build"], "not_registered")
+                    await ctx.followup.send(msg, ephemeral=True)
+                    return
+            except Exception as e:
+                logging.error(f"[GuildMembers - Build] Error in fallback logic: {e}")
+                msg = get_user_message(ctx, GUILD_MEMBERS["build"], "not_registered")
+                await ctx.followup.send(msg, ephemeral=True)
+                return
 
         try:
             sanitized_url = self._sanitize_string(url.strip(), 500)
@@ -405,8 +506,42 @@ class GuildMembers(commands.Cog):
         
         guild_members = await self.get_guild_members()
         if key not in guild_members:
-            msg = get_user_message(ctx, GUILD_MEMBERS["username"], "not_registered")
-            await ctx.followup.send(msg, ephemeral=True)
+            logging.debug(f"[GuildMembers - Username] Profile not found in guild_members cache for key {key}, trying database fallback...")
+            try:
+                # Fallback: check if user exists in user_setup and create guild_members entry
+                user_setup_members = await self.get_user_setup_members()
+                if key in user_setup_members:
+                    logging.info(f"[GuildMembers - Username] User found in user_setup, creating guild_members entry for {key}")
+                    # Create entry in guild_members from user_setup data
+                    user_setup_data = user_setup_members[key]
+                    guild_member_data = {
+                        "username": user_setup_data.get("username", ctx.author.display_name),
+                        "language": user_setup_data.get("locale", "en-US"),
+                        "GS": user_setup_data.get("gs", 0),
+                        "build": "",
+                        "weapons": user_setup_data.get("weapons", ""),
+                        "DKP": 0,
+                        "nb_events": 0,
+                        "registrations": 0,
+                        "attendances": 0,
+                        "class": "NULL"
+                    }
+                    # Update cache
+                    current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+                    current_cache[key] = guild_member_data
+                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    guild_members[key] = guild_member_data
+                    logging.info(f"[GuildMembers - Username] Created guild_members cache entry for {key}")
+                else:
+                    logging.debug(f"[GuildMembers - Username] Profile not found anywhere for key {key}")
+                    msg = get_user_message(ctx, GUILD_MEMBERS["username"], "not_registered")
+                    await ctx.followup.send(msg, ephemeral=True)
+                    return
+            except Exception as e:
+                logging.error(f"[GuildMembers - Username] Error in fallback logic: {e}")
+                msg = get_user_message(ctx, GUILD_MEMBERS["username"], "not_registered")
+                await ctx.followup.send(msg, ephemeral=True)
+                return
             return
 
         new_username = self._sanitize_string(new_name, self.max_username_length)
@@ -490,9 +625,10 @@ class GuildMembers(commands.Cog):
             guild_id, to_delete, to_update, to_insert
         )
 
-        await self._load_members_data()
-        await self.bot.cache.invalidate_category('roster_data')
-        await self.bot.cache_loader.ensure_guild_members_loaded()
+        await self._load_user_setup_members()
+        from cache_loader import get_cache_loader
+        cache_loader = get_cache_loader(self.bot)
+        await cache_loader.reload_category('guild_members')
 
         try:
             await asyncio.gather(
@@ -776,6 +912,24 @@ class GuildMembers(commands.Cog):
         guild_members = await self.get_guild_members()
         members_in_roster = [v for (g, _), v in guild_members.items() if g == guild_id]
         total_members = len(members_in_roster)
+        logging.info(f"[GuildMembers] Recruitment message - Guild members cache contains {len(guild_members)} total entries, {len(members_in_roster)} for guild {guild_id}")
+        
+        if not members_in_roster:
+            logging.warning(f"[GuildMembers] No members found in roster for recruitment message in guild {guild_id}, checking database directly...")
+            try:
+                guild_members_db = await self._get_guild_members_bulk(guild_id)
+                logging.info(f"[GuildMembers] Database query for recruitment returned {len(guild_members_db)} members for guild {guild_id}")
+                if guild_members_db:
+                    current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+                    for member_id, data in guild_members_db.items():
+                        key = (guild_id, member_id)
+                        current_cache[key] = data
+                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    members_in_roster = list(guild_members_db.values())
+                    total_members = len(members_in_roster)
+                    logging.info(f"[GuildMembers] Updated global cache for recruitment and found {total_members} members")
+            except Exception as e:
+                logging.error(f"[GuildMembers] Error loading members for recruitment message: {e}", exc_info=True)
 
         game_id = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
         roster_size_max = None
@@ -1237,9 +1391,42 @@ class GuildMembers(commands.Cog):
         key = (guild_id, member_id)
         guild_members = await self.get_guild_members()
         if key not in guild_members:
-            not_registered_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.not_registered")
-            await ctx.followup.send(not_registered_msg, ephemeral=True)
-            return
+            logging.debug(f"[GuildMembers - ChangeLanguage] Profile not found in guild_members cache for key {key}, trying database fallback...")
+            try:
+                # Fallback: check if user exists in user_setup and create guild_members entry
+                user_setup_members = await self.get_user_setup_members()
+                if key in user_setup_members:
+                    logging.info(f"[GuildMembers - ChangeLanguage] User found in user_setup, creating guild_members entry for {key}")
+                    # Create entry in guild_members from user_setup data
+                    user_setup_data = user_setup_members[key]
+                    guild_member_data = {
+                        "username": user_setup_data.get("username", ctx.author.display_name),
+                        "language": user_setup_data.get("locale", "en-US"),
+                        "GS": user_setup_data.get("gs", 0),
+                        "build": "",
+                        "weapons": user_setup_data.get("weapons", ""),
+                        "DKP": 0,
+                        "nb_events": 0,
+                        "registrations": 0,
+                        "attendances": 0,
+                        "class": "NULL"
+                    }
+                    # Update cache
+                    current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+                    current_cache[key] = guild_member_data
+                    await self.bot.cache.set('roster_data', 'guild_members', current_cache)
+                    guild_members[key] = guild_member_data
+                    logging.info(f"[GuildMembers - ChangeLanguage] Created guild_members cache entry for {key}")
+                else:
+                    logging.debug(f"[GuildMembers - ChangeLanguage] Profile not found anywhere for key {key}")
+                    not_registered_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.not_registered")
+                    await ctx.followup.send(not_registered_msg, ephemeral=True)
+                    return
+            except Exception as e:
+                logging.error(f"[GuildMembers - ChangeLanguage] Error in fallback logic: {e}")
+                not_registered_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.not_registered")
+                await ctx.followup.send(not_registered_msg, ephemeral=True)
+                return
         
         try:
             short_language = language[:2] if len(language) >= 2 else language

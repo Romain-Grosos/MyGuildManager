@@ -48,14 +48,15 @@ class Notification(commands.Cog):
         await self.bot.cache.set('temporary', f'member_events_{guild_id}', member_events)
         return True
     
-    def is_ptb_guild(self, guild_id: int) -> bool:
+    async def is_ptb_guild(self, guild_id: int) -> bool:
         """Check if guild is a PTB (Public Test Branch) guild."""
         try:
             guild_ptb_cog = self.bot.get_cog("GuildPTB")
             if not guild_ptb_cog:
                 return False
 
-            for main_guild_id, settings in guild_ptb_cog.ptb_settings.items():
+            ptb_settings = await guild_ptb_cog.get_ptb_settings()
+            for main_guild_id, settings in ptb_settings.items():
                 if settings.get("ptb_guild_id") == guild_id:
                     logging.debug(f"[NotificationManager] Guild {guild_id} identified as PTB for main guild {main_guild_id}")
                     return True
@@ -203,8 +204,8 @@ class Notification(commands.Cog):
 
         try:
             guild_ptb_cog = self.bot.get_cog("GuildPTB")
-            if guild_ptb_cog and guild.id in guild_ptb_cog.guild_settings:
-                ptb_guild_id = guild_ptb_cog.guild_settings[guild.id].get("ptb_guild_id")
+            if guild_ptb_cog:
+                ptb_guild_id = await self.bot.cache.get_guild_data(guild.id, 'guild_ptb')
                 if ptb_guild_id:
                     ptb_guild = self.bot.get_guild(ptb_guild_id)
                     if ptb_guild:

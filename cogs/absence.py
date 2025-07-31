@@ -90,7 +90,8 @@ class AbsenceManager(commands.Cog):
                     except Exception as e:
                         logging.error("[AbsenceManager] Error saving absence message: %s", e)
 
-                    await self.notify_absence(member, "addition", channels.get("forum_members_channel"), channels.get("guild_lang"))
+                    guild_lang = await self.bot.cache.get_guild_data(guild.id, 'guild_lang') or "en-US"
+                    await self.notify_absence(member, "addition", channels.get("forum_members_channel"), guild_lang)
                 except Exception as e:
                     logging.error(f"[AbsenceManager] Error adding absent role to {member.name}: {e}")
 
@@ -161,7 +162,8 @@ class AbsenceManager(commands.Cog):
         if role_member and role_member not in member.roles:
             try:
                 await member.add_roles(role_member)
-                await self.notify_absence( member, "removal", cfg["forum_members_channel"], cfg["guild_lang"])
+                guild_lang = await self.bot.cache.get_guild_data(member.guild.id, 'guild_lang') or "en-US"
+                await self.notify_absence( member, "removal", cfg["forum_members_channel"], guild_lang)
             except Exception as e:
                 logging.error("[AbsenceManager] Error adding member role: %s", e)
 
@@ -203,9 +205,10 @@ class AbsenceManager(commands.Cog):
         if not cfg:
             logging.error("[AbsenceManager] Guild config not found for guild %s", guild.id)
             return
+        guild_lang = await self.bot.cache.get_guild_data(member.guild.id, 'guild_lang') or "en-US"
         await self.notify_absence(member, "addition",
                                 cfg["forum_members_channel"],
-                                cfg["guild_lang"])
+                                guild_lang)
 
     @commands.slash_command(
         name=ABSENCE_TRANSLATIONS.get("command", {}).get("name", {}).get("en-US", "absence_add"),
@@ -237,7 +240,7 @@ class AbsenceManager(commands.Cog):
             await ctx.respond(msg, ephemeral=True)
             return
         
-        lang = cfg.get("guild_lang") or "en-US"
+        lang = await self.bot.cache.get_guild_data(ctx.guild.id, 'guild_lang') or "en-US"
 
         reason_text = ABSENCE_TRANSLATIONS["away_ok"].get(lang, ABSENCE_TRANSLATIONS["away_ok"]["en-US"]).format(member=member.display_name)
         if return_date:

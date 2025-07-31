@@ -51,6 +51,7 @@ class GuildEvents(commands.Cog):
         self.guild_settings = {}
         self.events_data = {}
         self.static_groups_cache = {}
+        self.guild_members_cache = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
