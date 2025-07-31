@@ -23,6 +23,8 @@ class GuildAttendance(commands.Cog):
         """Initialize the GuildAttendance cog."""
         self.bot = bot
         self.guild_settings = {}
+        self.events_data = {}
+        self.guild_members_cache = {}
 
     async def cog_load(self):
         """Handle cog loading event."""

@@ -49,6 +49,8 @@ class GuildEvents(commands.Cog):
         self.json_lock = asyncio.Lock()
         self.ignore_removals = {}
         self.guild_settings = {}
+        self.events_data = {}
+        self.static_groups_cache = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -68,6 +70,44 @@ class GuildEvents(commands.Cog):
         await self.bot.cache_loader.ensure_category_loaded('static_data')
         
         logging.debug("[GuildEvents] Events data loading completed")
+
+    async def load_static_groups_cache(self) -> None:
+        """Load static groups data from database into cache."""
+        logging.debug("[GuildEvents] Loading static groups cache")
+        
+        query = """
+        SELECT group_id, guild_id, group_name, leader_id, is_active, 
+               member_count, member_ids, member_positions
+        FROM static_groups_with_members 
+        WHERE is_active = 1
+        """
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                for row in rows:
+                    group_id, guild_id, group_name, leader_id, is_active, member_count, member_ids_str, member_positions_str = row
+                    
+                    if guild_id not in self.static_groups_cache:
+                        self.static_groups_cache[guild_id] = {}
+                    
+                    member_ids = []
+                    if member_ids_str:
+                        member_ids = [int(mid) for mid in member_ids_str.split(',')]
+                    
+                    self.static_groups_cache[guild_id][group_name] = {
+                        "group_id": group_id,
+                        "leader_id": leader_id,
+                        "member_ids": member_ids,
+                        "member_count": member_count or 0,
+                        "is_active": is_active
+                    }
+                    
+                logging.info(f"[GuildEvents] Loaded static groups cache: {len(rows)} groups")
+            else:
+                logging.debug("[GuildEvents] No static groups found in database")
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error loading static groups cache: {e}", exc_info=True)
 
     async def get_guild_settings(self, guild_id: int) -> Dict:
         """Get guild settings from centralized cache."""

@@ -244,37 +244,23 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading events data: {e}", exc_info=True)
     
     async def ensure_static_data_loaded(self) -> None:
-        """Load static data (messages) for all guilds."""
+        """Load static groups data via GuildEvents cog and mark other static data as on-demand."""
         if 'static_data' in self._loaded_categories:
             return
             
-        logging.debug("[CacheLoader] Loading static data for all guilds")
-        query = "SELECT guild_id, channel_id, message_id, created_at FROM static_messages"
-        
+        logging.debug("[CacheLoader] Loading static groups and marking other static data as on-demand")
+
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            if rows:
-                for row in rows:
-                    guild_id, channel_id, message_id, created_at = row
-                    
-                    static_data = {
-                        'channel_id': channel_id,
-                        'message_id': message_id,
-                        'created_at': created_at
-                    }
-                    
-                    await self.bot.cache.set_guild_data(guild_id, f'static_{message_id}', static_data)
-                    
-                logging.info(f"[CacheLoader] Loaded static data: {len(rows)} static messages")
+            guild_events_cog = self.bot.get_cog('GuildEvents')
+            if guild_events_cog and hasattr(guild_events_cog, 'load_static_groups_cache'):
+                await guild_events_cog.load_static_groups_cache()
+                logging.debug("[CacheLoader] Static groups loaded via GuildEvents cog")
             else:
-                logging.warning("[CacheLoader] No static data found in database")
-            self._loaded_categories.add('static_data')
+                logging.warning("[CacheLoader] GuildEvents cog not found or missing load_static_groups_cache method")
         except Exception as e:
-            if "doesn't exist" in str(e) or "Table" in str(e):
-                logging.warning("[CacheLoader] Static messages table doesn't exist - skipping static data loading")
-                self._loaded_categories.add('static_data')
-            else:
-                logging.error(f"[CacheLoader] Error loading static data: {e}", exc_info=True)
+            logging.error(f"[CacheLoader] Error loading static groups: {e}", exc_info=True)
+
+        self._loaded_categories.add('static_data')
 
     async def load_all_shared_data(self) -> None:
         """Load all shared data categories in parallel."""
