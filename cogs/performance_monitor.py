@@ -10,8 +10,14 @@ from datetime import datetime
 class PerformanceMonitor(commands.Cog):
     """Cog to monitor and analyze bot performance."""
     
-    def __init__(self, bot):
+    def __init__(self, bot: discord.Bot) -> None:
+        """Initialize the PerformanceMonitor cog."""
         self.bot = bot
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Initialize performance monitoring on bot ready."""
+        logging.debug("[PerformanceMonitor] Bot ready event received")
     
     @discord.slash_command(name="profile", description="Show performance profiling stats")
     @commands.has_permissions(administrator=True)

@@ -12,11 +12,12 @@ from typing import Optional
 class ReliabilityMonitor(commands.Cog):
     """Cog for monitoring and managing system reliability."""
     
-    def __init__(self, bot):
+    def __init__(self, bot: discord.Bot) -> None:
+        """Initialize the ReliabilityMonitor cog."""
         self.bot = bot
         self.auto_backup_task.start()
         
-    def cog_unload(self):
+    def cog_unload(self) -> None:
         """Cleanup when cog is unloaded."""
         self.auto_backup_task.cancel()
     
@@ -41,6 +42,11 @@ class ReliabilityMonitor(commands.Cog):
     async def before_auto_backup(self):
         """Wait for bot to be ready before starting backup task."""
         await self.bot.wait_until_ready()
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Initialize reliability monitoring on bot ready."""
+        logging.debug("[ReliabilityMonitor] Bot ready event received")
     
     @discord.slash_command(name="reliability", description="Show system reliability status")
     @commands.has_permissions(administrator=True)
@@ -293,6 +299,6 @@ class ReliabilityMonitor(commands.Cog):
             logging.error(f"[ReliabilityMonitor] Error in emergency recovery: {e}")
             await ctx.followup.send(f"❌ Error during recovery operation: {e}", ephemeral=True)
 
-def setup(bot):
+def setup(bot: discord.Bot) -> None:
     """Setup function to add the ReliabilityMonitor cog to the bot."""
     bot.add_cog(ReliabilityMonitor(bot))

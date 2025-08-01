@@ -24,7 +24,7 @@ except ImportError:
 class Health(commands.Cog):
     """Cog for monitoring bot health and performance metrics."""
     
-    def __init__(self, bot):
+    def __init__(self, bot: discord.Bot) -> None:
         """Initialize the Health cog."""
         self.bot = bot
         self.start_time = time.time()
@@ -48,7 +48,7 @@ class Health(commands.Cog):
         
         logging.info("[Health] Health monitoring cog loaded")
     
-    def cog_unload(self):
+    def cog_unload(self) -> None:
         """Clean up tasks when unloading cog."""
         self.health_check_loop.cancel()
     
@@ -65,6 +65,11 @@ class Health(commands.Cog):
     async def before_health_check(self):
         """Wait for bot to be ready before starting health checks."""
         await self.bot.wait_until_ready()
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Initialize health monitoring on bot ready."""
+        logging.debug("[Health] Bot ready event received")
     
     async def _check_all_components(self):
         """Check health status of all system components."""
@@ -518,7 +523,7 @@ class Health(commands.Cog):
         return timedelta(seconds=int(time.time() - self.start_time))
 
 
-def setup(bot):
+def setup(bot: discord.Bot) -> None:
     """Setup function for the cog."""
     bot.add_cog(Health(bot))
     logging.info("[Health] Health monitoring cog setup completed")

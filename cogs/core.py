@@ -20,7 +20,7 @@ APP_RESET_DATA = global_translations.get("commands", {}).get("app_reset", {})
 class Core(commands.Cog):
     """Cog for managing core guild operations and bot initialization."""
     
-    def __init__(self, bot: discord.Bot):
+    def __init__(self, bot: discord.Bot) -> None:
         """Initialize the Core cog."""
         self.bot = bot
         self._sync_lock = asyncio.Lock()
@@ -77,10 +77,21 @@ class Core(commands.Cog):
                     logging.error(f"[CoreManager] Failed to sync slash commands: {e}")
         logging.info(f"[CoreManager] Bot is connected as {self.bot.user}")
 
+        asyncio.create_task(self.load_core_data())
+        logging.debug("[CoreManager] Cache loading tasks started in on_ready.")
+    
+    async def load_core_data(self) -> None:
+        """Ensure all required data is loaded via centralized cache loader."""
+        logging.debug("[CoreManager] Loading core data")
+        
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        
+        logging.debug("[CoreManager] Core data loading completed")
+
     @commands.Cog.listener()
     async def on_app_command_error(self, ctx: discord.ApplicationContext, error: Exception):
         """Handle global application command errors."""
-        response = get_user_message(ctx, self.bot.translations, "global_error", error=error)
+        response = get_user_message(ctx, global_translations, "global_error", error=error)
         try:
             if ctx.response.is_done():
                 await ctx.followup.send(response, ephemeral=True)
@@ -138,13 +149,12 @@ class Core(commands.Cog):
         guild_game_int = int(guild_game)
         
         try:
-            query = "SELECT COUNT(*) FROM guild_settings WHERE guild_id = %s"
-            result = await self.bot.run_db_query(query, (guild_id,), fetch_one=True)
-            count = result[0] if result else 0
+            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+            existing_settings = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
             
-            if count > 0:
+            if existing_settings:
                 logging.info(f"[CoreManager] Guild {guild_id} already exists in the database.")
-                response = get_user_message(ctx, self.bot.translations, "commands.app_initialize.messages.already_declared")
+                response = get_user_message(ctx, APP_INITIALIZE_DATA, "messages.already_declared")
             else:
                 insert_query = """
                     INSERT INTO guild_settings 
@@ -181,11 +191,11 @@ class Core(commands.Cog):
                 if not nickname_success:
                     logging.warning(f"[CoreManager] Could not change nickname for guild {guild_id}, but initialization succeeded")
 
-                response = get_user_message(ctx, self.bot.translations, "commands.app_initialize.messages.success")
+                response = get_user_message(ctx, APP_INITIALIZE_DATA, "messages.success")
 
         except Exception as e:
             logging.error("[CoreManager] Error during guild initialization: %s", e, exc_info=True)
-            response = get_user_message(ctx, self.bot.translations, "commands.app_initialize.messages.error", error="Database error")
+            response = get_user_message(ctx, APP_INITIALIZE_DATA, "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
     @discord.slash_command(
@@ -241,14 +251,15 @@ class Core(commands.Cog):
         guild_id = ctx.guild.id
         
         try:
-            query = "SELECT guild_name, guild_lang, guild_game, guild_server FROM guild_settings WHERE guild_id = %s"
-            result = await self.bot.run_db_query(query, (guild_id,), fetch_one=True)
+            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+            current_guild_name = await self.bot.cache.get_guild_data(guild_id, 'guild_name')
+            current_guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
+            current_guild_game = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
+            current_guild_server = await self.bot.cache.get_guild_data(guild_id, 'guild_server')
             
-            if not result:
-                response = get_user_message(ctx, self.bot.translations, "commands.app_modify.messages.need_init")
+            if not current_guild_lang:
+                response = get_user_message(ctx, APP_MODIFICATION_DATA, "messages.need_init")
                 return await ctx.respond(response, ephemeral=True)
-
-            current_guild_name, current_guild_lang, current_guild_game, current_guild_server = result
             
             new_guild_name = guild_name.strip() if guild_name is not None else current_guild_name
             new_guild_lang = guild_lang if guild_lang is not None else current_guild_lang
@@ -288,11 +299,11 @@ class Core(commands.Cog):
             if not nickname_success:
                 logging.warning(f"[CoreManager] Could not change nickname for guild {guild_id}, but modification succeeded")
 
-            response = get_user_message(ctx, self.bot.translations, "commands.app_modify.messages.success")
+            response = get_user_message(ctx, APP_MODIFICATION_DATA, "messages.success")
             
         except Exception as e:
             logging.error(f"[CoreManager] Error during guild modification: {e}", exc_info=True)
-            response = get_user_message(ctx, self.bot.translations, "commands.app_modify.messages.error", error="Database error")
+            response = get_user_message(ctx, APP_MODIFICATION_DATA, "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
     @discord.slash_command(
@@ -315,16 +326,15 @@ class Core(commands.Cog):
         guild_id = ctx.guild.id
 
         if confirmation != "DELETE":
-            response = get_user_message(ctx, self.bot.translations, "commands.app_reset.messages.bad_parameter")
+            response = get_user_message(ctx, APP_RESET_DATA, "messages.bad_parameter")
             return await ctx.respond(response, ephemeral=True)
 
         try:
-            select_query = "SELECT COUNT(*) FROM guild_settings WHERE guild_id = %s"
-            result = await self.bot.run_db_query(select_query, (guild_id,), fetch_one=True)
-            count = result[0] if result else 0
+            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+            existing_settings = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
             
-            if count == 0:
-                response = get_user_message(ctx, self.bot.translations, "commands.app_reset.messages.need_init")
+            if not existing_settings:
+                response = get_user_message(ctx, APP_RESET_DATA, "messages.need_init")
                 return await ctx.respond(response, ephemeral=True)
 
             success = await self._delete_guild_data_atomic(guild_id)
@@ -350,13 +360,13 @@ class Core(commands.Cog):
                 await self._safe_edit_nickname(ctx.guild, "My Guild Manager")
                 
                 logging.info(f"[CoreManager] Guild {guild_id} data has been deleted from the database.")
-                response = get_user_message(ctx, self.bot.translations, "commands.app_reset.messages.success")
+                response = get_user_message(ctx, APP_RESET_DATA, "messages.success")
             else:
-                response = get_user_message(ctx, self.bot.translations, "commands.app_reset.messages.error", error="Database deletion failed")
+                response = get_user_message(ctx, APP_RESET_DATA, "messages.error", error="Database deletion failed")
                 
         except Exception as e:
             logging.error("[CoreManager] Error during guild reset: %s", e, exc_info=True)
-            response = get_user_message(ctx, self.bot.translations, "commands.app_reset.messages.error", error="Database error")
+            response = get_user_message(ctx, APP_RESET_DATA, "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
     async def _delete_guild_data_atomic(self, guild_id: int) -> bool:
@@ -416,6 +426,6 @@ class Core(commands.Cog):
         else:
             logging.error(f"[CoreManager] Failed to completely delete data for guild {guild_id}")
 
-def setup(bot: discord.Bot):
+def setup(bot: discord.Bot) -> None:
     """Setup function to add the Core cog to the bot."""
     bot.add_cog(Core(bot))

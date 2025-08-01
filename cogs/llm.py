@@ -13,7 +13,7 @@ import asyncio
 import time
 from translation import translations as global_translations
 
-GUILD_MEMBERS = global_translations.get("llm", {})
+LLM_DATA = global_translations.get("llm", {})
 
 load_dotenv()
 
@@ -145,7 +145,7 @@ def split_message(text: str, max_length: int = 2000) -> list[str]:
 class LLMInteraction(commands.Cog):
     """Cog for managing AI-powered chat interactions and weapon name normalization."""
     
-    def __init__(self, bot: discord.Bot):
+    def __init__(self, bot: discord.Bot) -> None:
         """Initialize the LLMInteraction cog."""
         self.bot = bot
         self.user_requests = {}
@@ -250,7 +250,7 @@ class LLMInteraction(commands.Cog):
             if not self.check_rate_limit(message.author.id):
                 logging.warning(f"[LLMInteraction] Rate limit exceeded for {safe_user}")
                 locale = message.guild.preferred_locale or "en-US"
-                rate_limit_msg = GUILD_MEMBERS.get("rate_limit", {}).get(locale, GUILD_MEMBERS.get("rate_limit", {}).get("en-US", "⚠️ Too many requests. Please wait before asking again."))
+                rate_limit_msg = LLM_DATA.get("rate_limit", {}).get(locale, LLM_DATA.get("rate_limit", {}).get("en-US", "⚠️ Too many requests. Please wait before asking again."))
                 await message.reply(rate_limit_msg)
                 return
             
@@ -259,12 +259,12 @@ class LLMInteraction(commands.Cog):
                 is_premium = await self.get_guild_premium_status(message.guild.id)
             except Exception as e:
                 logging.error(f"[LLMInteraction] Error checking premium status for guild {message.guild.id}: {e}", exc_info=True)
-                error_msg = GUILD_MEMBERS.get("error_check_premium", {}).get(locale,GUILD_MEMBERS.get("error_check_premium", {}).get("en-US"))
+                error_msg = LLM_DATA.get("error_check_premium", {}).get(locale,LLM_DATA.get("error_check_premium", {}).get("en-US"))
                 await message.reply(error_msg.format(error="Cache error"))
                 return
 
             if not is_premium:
-                not_premium = GUILD_MEMBERS.get("not_premium", {}).get(locale, GUILD_MEMBERS.get("not_premium", {}).get("en-US"))
+                not_premium = LLM_DATA.get("not_premium", {}).get(locale, LLM_DATA.get("not_premium", {}).get("en-US"))
                 await message.reply(not_premium)
                 return
 
@@ -289,9 +289,9 @@ class LLMInteraction(commands.Cog):
                 logging.debug(f"[LLMInteraction] Response sent to {safe_user}")
             except Exception as e:
                 logging.error(f"[LLMInteraction] Error generating AI response for {safe_user}: {e}", exc_info=True)
-                error_gen = GUILD_MEMBERS.get("error_generation", {}).get(locale, GUILD_MEMBERS.get("error_generation", {}).get("en-US"))
+                error_gen = LLM_DATA.get("error_generation", {}).get(locale, LLM_DATA.get("error_generation", {}).get("en-US"))
                 await message.reply(error_gen.format(error="Service temporarily unavailable"))
 
-def setup(bot: discord.Bot):
+def setup(bot: discord.Bot) -> None:
     """Setup function to add the LLMInteraction cog to the bot."""
     bot.add_cog(LLMInteraction(bot))
