@@ -14,8 +14,8 @@ class TestEnvironmentValidation:
     
     def test_validate_env_var_success(self):
         """Test successful environment variable validation."""
-        # We need to import here to avoid issues with module loading
-        with patch.dict('sys.modules', {'config': MagicMock()}):
+        # Mock load_dotenv to avoid import issues
+        with patch('config.load_dotenv'):
             from config import validate_env_var
             
             result = validate_env_var("TEST_VAR", "test_value")
@@ -23,7 +23,7 @@ class TestEnvironmentValidation:
     
     def test_validate_env_var_missing_required(self):
         """Test validation failure for missing required variable."""
-        with patch.dict('sys.modules', {'config': MagicMock()}):
+        with patch('config.load_dotenv'):
             from config import validate_env_var
             
             with pytest.raises(ValueError, match="Missing required environment variable: TEST_VAR"):
@@ -31,7 +31,7 @@ class TestEnvironmentValidation:
     
     def test_validate_env_var_missing_optional(self):
         """Test validation success for missing optional variable."""
-        with patch.dict('sys.modules', {'config': MagicMock()}):
+        with patch('config.load_dotenv'):
             from config import validate_env_var
             
             result = validate_env_var("TEST_VAR", "", required=False)
@@ -39,7 +39,7 @@ class TestEnvironmentValidation:
     
     def test_validate_int_env_var_success(self):
         """Test successful integer environment variable validation."""
-        with patch.dict('sys.modules', {'config': MagicMock()}):
+        with patch('config.load_dotenv'):
             from config import validate_int_env_var
             
             result = validate_int_env_var("TEST_INT", "42")
@@ -47,7 +47,7 @@ class TestEnvironmentValidation:
     
     def test_validate_int_env_var_with_default(self):
         """Test integer validation with default value."""
-        with patch.dict('sys.modules', {'config': MagicMock()}):
+        with patch('config.load_dotenv'):
             from config import validate_int_env_var
             
             result = validate_int_env_var("TEST_INT", "", default=100)
@@ -55,7 +55,7 @@ class TestEnvironmentValidation:
     
     def test_validate_int_env_var_invalid(self):
         """Test integer validation with invalid value."""
-        with patch.dict('sys.modules', {'config': MagicMock()}):
+        with patch('config.load_dotenv'):
             from config import validate_int_env_var
             
             with pytest.raises(ValueError, match="Invalid integer value for TEST_INT: not_a_number"):
@@ -63,7 +63,7 @@ class TestEnvironmentValidation:
     
     def test_validate_int_env_var_missing_no_default(self):
         """Test integer validation missing value without default."""
-        with patch.dict('sys.modules', {'config': MagicMock()}):
+        with patch('config.load_dotenv'):
             from config import validate_int_env_var
             
             with pytest.raises(ValueError, match="Missing required integer environment variable: TEST_INT"):
@@ -73,54 +73,14 @@ class TestEnvironmentValidation:
 class TestLogDirectoryCreation:
     """Test log directory creation and validation."""
     
-    @patch('os.path.exists')
-    @patch('os.makedirs')
-    def test_log_directory_creation_success(self, mock_makedirs, mock_exists):
+    def test_log_directory_creation_success(self):
         """Test successful log directory creation."""
-        mock_exists.return_value = False
-        
-        # Mock the module to avoid actual directory creation
-        with patch.dict('sys.modules'):
-            # Remove config from modules if it exists
-            if 'config' in sys.modules:
-                del sys.modules['config']
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('os.getenv') as mock_getenv, \
+             patch('dotenv.load_dotenv'), \
+             patch('builtins.open', mock_open()):
             
-            # Mock os.getenv calls
-            with patch('os.getenv') as mock_getenv:
-                mock_getenv.side_effect = lambda key, default=None: {
-                    'DEBUG': 'False',
-                    'DISCORD_TOKEN': 'test_token_' + 'x' * 50,
-                    'DB_USER': 'test_user',
-                    'DB_PASS': 'test_pass',
-                    'DB_HOST': 'localhost',
-                    'DB_PORT': '3306',
-                    'DB_NAME': 'test_db'
-                }.get(key, default)
-                
-                # Mock file operations
-                with patch('builtins.open', mock_open()) as mock_file:
-                    mock_file.return_value.__enter__.return_value.write = MagicMock()
-                    
-                    # Import config module (this will execute the module)
-                    import config
-                    
-                    mock_makedirs.assert_called_once_with('logs', mode=0o750)
-    
-    @patch('os.path.exists')
-    @patch('os.makedirs')
-    @patch('builtins.print')
-    @patch('sys.exit')
-    def test_log_directory_creation_failure(self, mock_exit, mock_print, mock_makedirs, mock_exists):
-        """Test log directory creation failure."""
-        mock_exists.return_value = False
-        mock_makedirs.side_effect = OSError("Permission denied")
-        
-        # Remove config from modules if it exists to force re-import
-        if 'config' in sys.modules:
-            del sys.modules['config']
-        
-        # Mock environment variables
-        with patch('os.getenv') as mock_getenv:
             mock_getenv.side_effect = lambda key, default=None: {
                 'DEBUG': 'False',
                 'DISCORD_TOKEN': 'test_token_' + 'x' * 50,
@@ -131,8 +91,38 @@ class TestLogDirectoryCreation:
                 'DB_NAME': 'test_db'
             }.get(key, default)
             
+            # Force reimport of config module
+            import importlib
+            import config
+            importlib.reload(config)
+            
+            mock_makedirs.assert_called_once_with('logs', mode=0o750)
+    
+    def test_log_directory_creation_failure(self):
+        """Test log directory creation failure."""
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs', side_effect=OSError("Permission denied")), \
+             patch('builtins.print') as mock_print, \
+             patch('sys.exit') as mock_exit, \
+             patch('os.getenv') as mock_getenv, \
+             patch('dotenv.load_dotenv'), \
+             patch('builtins.open', mock_open()):
+            
+            mock_getenv.side_effect = lambda key, default=None: {
+                'DEBUG': 'False',
+                'DISCORD_TOKEN': 'test_token_' + 'x' * 50,
+                'DB_USER': 'test_user',
+                'DB_PASS': 'test_pass',
+                'DB_HOST': 'localhost',
+                'DB_PORT': '3306',
+                'DB_NAME': 'test_db'
+            }.get(key, default)
+            
+            # Force reimport of config module
+            import importlib
             try:
                 import config
+                importlib.reload(config)
             except SystemExit:
                 pass  # Expected due to mocked sys.exit
             

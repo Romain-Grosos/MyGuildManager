@@ -46,6 +46,10 @@ class TaskScheduler:
     
     async def _execute_with_monitoring(self, task_name: str, coroutine, *args, **kwargs):
         """Execute task with performance monitoring and error handling."""
+        # Ensure metrics exist for this task
+        if task_name not in self._task_metrics:
+            self._task_metrics[task_name] = {'success': 0, 'failures': 0, 'total_time': 0}
+        
         start_time = time.time()
         try:
             await coroutine(*args, **kwargs)

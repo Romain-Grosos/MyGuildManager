@@ -1,5 +1,5 @@
 """
-Pytest configuration and fixtures for Discord Bot tests - Simplified approach.
+Pytest configuration and fixtures for Discord Bot tests.
 """
 
 import pytest
@@ -46,41 +46,11 @@ from discord.ext import commands
 
 discord.Bot = commands.Bot
 
-# Mock db module and its exceptions
-class MockDBQueryError(Exception):
-    """Mock DB Query Error for testing."""
-    pass
-
-# Add db module mock before any imports that might need it
-import types
-db_module = types.ModuleType('db')
-db_module.DBQueryError = MockDBQueryError
-sys.modules['db'] = db_module
-
-# Mock pytz module for profile_setup.py
-class MockTimezone:
-    """Mock timezone class."""
-    def __init__(self, name):
-        self.zone = name
-    
-    def localize(self, dt):
-        return dt
-    
-    def normalize(self, dt):
-        return dt
-
-pytz_module = types.ModuleType('pytz')
-pytz_module.timezone = lambda name: MockTimezone(name)
-pytz_module.UTC = MockTimezone('UTC')
-sys.modules['pytz'] = pytz_module
-
 # Mock discord.slash_command and other py-cord specific decorators
 def mock_slash_command(*args, **kwargs):
     """Mock slash command decorator."""
     def decorator(func):
         func.slash_command_kwargs = kwargs
-        # Add error handler attribute
-        func.error = lambda error_func: error_func
         return func
     return decorator
 
@@ -88,15 +58,12 @@ def mock_bridge_command(*args, **kwargs):
     """Mock bridge command decorator."""
     def decorator(func):
         func.bridge_command_kwargs = kwargs
-        # Add error handler attribute
-        func.error = lambda error_func: error_func
         return func
     return decorator
 
 discord.slash_command = mock_slash_command
 discord.bridge_command = mock_bridge_command
 commands.bridge_command = mock_bridge_command
-commands.slash_command = mock_slash_command
 
 # Mock discord.Option and other py-cord specific classes
 class MockOption:
@@ -178,34 +145,22 @@ discord.Permissions = MockPermissions
 
 # Create a flexible mock translation structure that responds to any key
 class FlexibleDict(dict):
-    """A dictionary that returns a flexible structure for any missing key."""
+    """A dictionary that returns a default structure for any missing key."""
     def __getitem__(self, key):
         try:
             return super().__getitem__(key)
         except KeyError:
-            # Return a completely flexible structure that handles all common patterns
+            # Return a nested structure that can handle further key access
             result = FlexibleDict()
-            # Pre-populate with all common translation patterns used in cogs
-            common_fields = [
-                'name', 'description', 'title', 'message', 'options', 'commands', 'choices',
-                'name_localizations', 'description_localizations', 'value', 'footer',
-                'members_count', 'dm_message', 'value_comment', 'not_positive', 'not_registered',
-                'updated', 'event_recap', 'invitation', 'success', 'error', 'warning',
-                'info', 'help', 'usage', 'example', 'note', 'tip', 'required', 'optional'
-            ]
-            
-            for field in common_fields:
-                if field in ['options', 'commands', 'choices', 'event_recap', 'invitation']:
-                    result[field] = FlexibleDict()
-                elif field in ['name_localizations', 'description_localizations']:
-                    result[field] = FlexibleDict({'en-US': f'{key}'})
-                else:
-                    result[field] = FlexibleDict({'en-US': f'{key} {field}'})
-                    
-            # Direct locale access
-            result['en-US'] = f'{key}'
-            result['fr-FR'] = f'{key} fr'
-            
+            result.update({
+                'name': {'en-US': f'{key}'},
+                'description': {'en-US': f'{key} description'},
+                'title': {'en-US': f'{key} title'},
+                'message': {'en-US': f'{key} message'},
+                'options': FlexibleDict(),
+                'commands': FlexibleDict(),
+                'en-US': f'{key}' # Direct locale access
+            })
             self[key] = result
             return result
     
@@ -213,27 +168,10 @@ class FlexibleDict(dict):
         try:
             return self[key]
         except:
-            # Always return FlexibleDict for missing keys, ignoring the default
-            return FlexibleDict()
-    
-    def values(self):
-        """Return flexible values that support iteration."""
-        vals = list(super().values())
-        if not vals:  # If no values, create a mock structure for iteration
-            vals = [FlexibleDict({
-                'name_localizations': FlexibleDict({'en-US': 'mock'}),
-                'value': 'mock'
-            })]
-        return vals
+            return default if default is not None else FlexibleDict()
 
-# Use FlexibleDict for all translations - this will handle any structure dynamically
-mock_translations = FlexibleDict()
-
-# Create a fake translation file with actual content for testing
-import tempfile
-
-# Add comprehensive base translations to the FlexibleDict
-base_translations = {
+# Patch translation loading before any imports  
+mock_translations = FlexibleDict({
     'commands': {
         'app_initialize': {'name': {'en-US': 'Initialize'}, 'description': {'en-US': 'Initialize guild'}},
         'app_modify': {'name': {'en-US': 'Modify'}, 'description': {'en-US': 'Modify guild'}},
@@ -247,13 +185,17 @@ base_translations = {
             'config_mode': {
                 'description': {'en-US': 'Configuration mode'},
                 'choices': {
-                    'minimal': {'name_localizations': {'en-US': 'Minimal'}, 'value': 'minimal'},
-                    'complete': {'name_localizations': {'en-US': 'Complete'}, 'value': 'complete'}
+                    'minimal': {
+                        'name_localizations': {'en-US': 'Minimal'},
+                        'value': 'minimal'
+                    },
+                    'complete': {
+                        'name_localizations': {'en-US': 'Complete'},
+                        'value': 'complete'
+                    }
                 }
             }
-        },
-        'role_names': {},
-        'channel_names': {}
+        }
     },
     'guild_ptb': {
         'name': {'en-US': 'guild-ptb'},
@@ -261,13 +203,8 @@ base_translations = {
         'sync': {'en-US': 'Synchronization'},
         'commands': {
             'ptb_init': {
-                'name': {'en-US': 'ptb-init'}, 
-                'description': {'en-US': 'Initialize PTB server'},
-                'options': {
-                    'main_guild_id': {
-                        'description': {'en-US': 'Main guild ID to link PTB server'}
-                    }
-                }
+                'name': {'en-US': 'ptb-init'},
+                'description': {'en-US': 'Initialize PTB server'}
             }
         },
         'event_recap': {
@@ -276,95 +213,93 @@ base_translations = {
             'footer': {'en-US': 'PTB Event System'},
             'members_count': {'en-US': 'Members: {count}'}
         },
-        'invitation': {'dm_message': {'en-US': 'Join the PTB server: {invite_url}'}}
+        'invitation': {
+            'dm_message': {'en-US': 'Join the PTB server: {invite_url}'}
+        }
     },
     'guild_members': {
-        'name': {'en-US': 'guild-members'}, 
-        'description': {'en-US': 'Member management'}, 
-        'profile': {'en-US': 'Profile'},
-        'gs': {
-            'name': {'en-US': 'gs'},
-            'description': {'en-US': 'Update your gear score'},
-            'value_comment': {'en-US': 'Your gear score value'},
-            'not_positive': {'en-US': 'Gear score must be positive'},
-            'not_registered': {'en-US': 'You are not registered'},
-            'updated': {'en-US': '{username} updated gear score to {value}'}
-        },
-        'weapons': {
-            'name': {'en-US': 'weapons'},
-            'description': {'en-US': 'Update your weapons'},
-            'value_comment': {'en-US': 'Your weapon codes (e.g., GS, SNS)'},
-            'updated': {'en-US': 'Weapons updated'}
-        },
-        'username': {
-            'name': {'en-US': 'username'},
-            'description': {'en-US': 'Update username'},
-            'value_comment': {'en-US': 'Your in-game username'},
-            'updated': {'en-US': 'Username updated'}
-        },
-        'character_class': {
-            'name': {'en-US': 'class'},
-            'description': {'en-US': 'Update character class'},
-            'value_comment': {'en-US': 'Your character class'},
-            'updated': {'en-US': 'Class updated'}
-        },
-        'build': {
-            'name': {'en-US': 'build'},
-            'description': {'en-US': 'Update build URL'},
-            'value_comment': {'en-US': 'Build URL (questlog.gg or maxroll.gg)'},
-            'updated': {'en-US': 'Build updated'}
-        }
+        'name': {'en-US': 'guild-members'},
+        'description': {'en-US': 'Member management'},
+        'profile': {'en-US': 'Profile'}
     },
-    'guild_events': {'name': {'en-US': 'guild-events'}, 'description': {'en-US': 'Event management'}, 'event': {'en-US': 'Event'}},
-    'guild_attendance': {'name': {'en-US': 'guild-attendance'}, 'description': {'en-US': 'Attendance tracking'}, 'attendance': {'en-US': 'Attendance'}},
-    'llm': {'name': {'en-US': 'llm'}, 'description': {'en-US': 'AI interactions'}, 'chat': {'en-US': 'Chat'}},
-    'core': {'name': {'en-US': 'core'}, 'description': {'en-US': 'Core functions'}, 'initialize': {'en-US': 'Initialize'}},
-    'health': {'name': {'en-US': 'health'}, 'description': {'en-US': 'Health monitoring'}, 'status': {'en-US': 'Status'}},
-    'absence': {'name': {'en-US': 'absence'}, 'description': {'en-US': 'Absence management'}},
-    'autorole': {'name': {'en-US': 'autorole'}, 'description': {'en-US': 'Automatic role assignment'}},
-    'notification': {'name': {'en-US': 'notification'}, 'description': {'en-US': 'Notification management'}},
-    'contract': {'name': {'en-US': 'contract'}, 'description': {'en-US': 'Contract management'}},
-    'dynamic_voice': {'name': {'en-US': 'dynamic-voice'}, 'description': {'en-US': 'Dynamic voice channels'}},
-    'profile_setup': {'name': {'en-US': 'profile-setup'}, 'description': {'en-US': 'Profile setup'}},
-    'static_groups': {
-        'channel': {
-            'name': {'en-US': 'static-groups'},
-            'placeholder': {
-                'title': {'en-US': 'Static Groups'},
-                'description': {'en-US': 'Static group management'}
-            }
-        }
+    'guild_events': {
+        'name': {'en-US': 'guild-events'},
+        'description': {'en-US': 'Event management'},  
+        'event': {'en-US': 'Event'}
+    },
+    'guild_attendance': {
+        'name': {'en-US': 'guild-attendance'},
+        'description': {'en-US': 'Attendance tracking'},
+        'attendance': {'en-US': 'Attendance'}
+    },
+    'llm': {
+        'name': {'en-US': 'llm'},
+        'description': {'en-US': 'AI interactions'},
+        'chat': {'en-US': 'Chat'}
+    },
+    'core': {
+        'name': {'en-US': 'core'},
+        'description': {'en-US': 'Core functions'},
+        'initialize': {'en-US': 'Initialize'}
+    },
+    'health': {
+        'name': {'en-US': 'health'},
+        'description': {'en-US': 'Health monitoring'},
+        'status': {'en-US': 'Status'}
+    },
+    'absence': {
+        'name': {'en-US': 'absence'},
+        'description': {'en-US': 'Absence management'}
+    },
+    'autorole': {
+        'name': {'en-US': 'autorole'},
+        'description': {'en-US': 'Automatic role assignment'}
+    },
+    'notification': {
+        'name': {'en-US': 'notification'},
+        'description': {'en-US': 'Notification management'}
+    },
+    'contract': {
+        'name': {'en-US': 'contract'},
+        'description': {'en-US': 'Contract management'}
+    },
+    'dynamic_voice': {
+        'name': {'en-US': 'dynamic-voice'},
+        'description': {'en-US': 'Dynamic voice channels'}
+    },
+    'profile_setup': {
+        'name': {'en-US': 'profile-setup'},
+        'description': {'en-US': 'Profile setup'}
     }
 }
 
-# Convert all nested dicts to FlexibleDict and update mock_translations
-def make_flexible(obj):
-    """Convert nested dict structures to FlexibleDict recursively."""
-    if isinstance(obj, dict):
-        result = FlexibleDict()
-        for k, v in obj.items():
-            result[k] = make_flexible(v)
-        return result
-    return obj
-
-flexible_base = make_flexible(base_translations)
-mock_translations.update(flexible_base)
-
-# Mock the translation module directly in sys.modules BEFORE any imports
-import types
-translation_module = types.ModuleType('translation')
-translation_module.translations = mock_translations
-translation_module.load_translations = lambda: None
-sys.modules['translation'] = translation_module
-
+# Create a fake translation file for testing
+import tempfile
 temp_translation_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
-json.dump(base_translations, temp_translation_file)
+json.dump(mock_translations, temp_translation_file)
 temp_translation_file.close()
 os.environ['TRANSLATION_FILE'] = temp_translation_file.name
+
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_translation_loading():
     """Mock translation loading during module import."""
+    mock_translations = {
+        'commands': {
+            'app_initialize': {'name': 'Initialize', 'description': 'Initialize guild'},
+            'app_modify': {'name': 'Modify', 'description': 'Modify guild'},
+            'app_reset': {'name': 'Reset', 'description': 'Reset guild'},
+            'config_roster': {'name': 'Config Roster', 'description': 'Configure roster'}
+        },
+        'guild_ptb': {'sync': 'Synchronization'},
+        'guild_members': {'profile': 'Profile'},
+        'guild_events': {'event': 'Event'},
+        'guild_attendance': {'attendance': 'Attendance'},
+        'llm': {'chat': 'Chat'},
+        'core': {'initialize': 'Initialize'},
+        'health': {'status': 'Status'}
+    }
+    
     # Mock the entire translation loading process
     with patch('translation.load_translations') as mock_load:
         with patch('translation.translations', mock_translations):
@@ -381,6 +316,8 @@ def event_loop():
 @pytest.fixture
 def mock_bot():
     """Create mock Discord bot instance."""
+    import discord
+    
     bot = Mock(spec=discord.Bot)
     bot.user = Mock(id=123456789)
     bot.guilds = []
@@ -452,6 +389,8 @@ def mock_bot():
 @pytest.fixture
 def mock_guild():
     """Create mock Discord guild."""
+    import discord
+    
     guild = Mock(spec=discord.Guild)
     guild.id = 123456789
     guild.name = "Test Guild"
@@ -464,6 +403,8 @@ def mock_guild():
 @pytest.fixture
 def mock_member():
     """Create mock Discord member."""
+    import discord
+    
     member = Mock(spec=discord.Member)
     member.id = 987654321
     member.name = "TestUser"
@@ -478,6 +419,8 @@ def mock_member():
 @pytest.fixture
 def mock_user():
     """Create mock Discord user."""
+    import discord
+    
     user = Mock(spec=discord.User)
     user.id = 987654321
     user.name = "TestUser"
@@ -488,6 +431,8 @@ def mock_user():
 @pytest.fixture
 def mock_channel():
     """Create mock Discord channel."""
+    import discord
+    
     channel = Mock(spec=discord.TextChannel)
     channel.id = 555666777
     channel.name = "test-channel"

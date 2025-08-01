@@ -190,7 +190,8 @@ class GlobalCacheSystem:
                 if key in self._cache:
                     del self._cache[key]
         
-        self._category_metrics[category]['size'] = 0
+        if category in self._category_metrics:
+            self._category_metrics[category]['size'] = 0
         logging.info(f"[Cache] Invalidated {len(keys_to_remove)} entries in category {category}")
         return len(keys_to_remove)
 

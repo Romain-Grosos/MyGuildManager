@@ -405,13 +405,19 @@ class TestCacheEntryAdvanced:
         """Test hot key detection thresholds."""
         entry = CacheEntry("test_value", 300, "test_category")
         
-        # Access 5 times (should not be hot yet)
-        for _ in range(5):
-            entry.access()
+        # Initial access count is 1
+        assert entry.access_count == 1
         assert not entry.is_hot
         
-        # Access one more time (should become hot)
+        # Access 4 times (total 5, should not be hot yet)
+        for _ in range(4):
+            entry.access()
+        assert entry.access_count == 5
+        assert not entry.is_hot
+        
+        # Access one more time (total 6, should become hot)
         entry.access()
+        assert entry.access_count == 6
         assert entry.is_hot
     
     def test_cache_entry_preload_conditions(self):

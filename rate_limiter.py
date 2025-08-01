@@ -106,7 +106,7 @@ class RateLimiter:
             for command in commands_to_remove:
                 del self.global_limits[command]
             
-            logging.debug(f"[RateLimiter] Cleaned up old entries: {len(users_to_remove)} users, {len(guilds_to_remove)} guilds, {len(commands_to_remove)} global")
+            logging.debug(f"[RateLimiter] Cleaned up old entries - global commands: {len(commands_to_remove)}")
 
 rate_limiter = RateLimiter()
 
