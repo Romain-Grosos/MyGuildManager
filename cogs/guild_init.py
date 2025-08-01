@@ -17,10 +17,9 @@ GUILD_INIT_DATA = global_translations.get("guild_init", {})
 class GuildInit(commands.Cog):
     """Cog for managing Discord server initialization and setup processes."""
     
-    def __init__(self, bot: discord.Bot):
+    def __init__(self, bot: discord.Bot) -> None:
         """Initialize the GuildInit cog."""
         self.bot = bot
-        self.translations = bot.translations
 
     @discord.slash_command(
         name=GUILD_INIT_DATA["name"]["en-US"],
@@ -51,19 +50,19 @@ class GuildInit(commands.Cog):
         if not guild_id:
             logging.error("[GuildInit] No guild context available")
             msg = get_user_message(
-                ctx, self.translations, "guild_init.messages.error_no_guild"
+                ctx, GUILD_INIT_DATA, "messages.error_no_guild"
             )
             return await ctx.followup.send(msg, ephemeral=True)
 
         try:
-            query = "SELECT COUNT(*) FROM guild_settings WHERE guild_id = %s"
-            result = await self.bot.run_db_query(query, (guild_id,), fetch_one=True)
-            if not result or result[0] == 0:
-                response = get_user_message(ctx, self.translations, "guild_init.messages.not_initialized")
+            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+            guild_settings = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
+            if not guild_settings:
+                response = get_user_message(ctx, GUILD_INIT_DATA, "messages.not_initialized")
                 return await ctx.followup.send(response, ephemeral=True)
         except Exception as e:
-            logging.error("[GuildInit] DB check failed for guild %s: %s", guild_id, e)
-            response = get_user_message(ctx, self.translations, "guild_init.messages.error", error="Database error")
+            logging.error("[GuildInit] Cache check failed for guild %s: %s", guild_id, e)
+            response = get_user_message(ctx, GUILD_INIT_DATA, "messages.error", error="Database error")
             return await ctx.followup.send(response, ephemeral=True)
 
         community_mode = "COMMUNITY" in guild.features
@@ -79,13 +78,12 @@ class GuildInit(commands.Cog):
             roles = ctx.guild.roles
             channels = ctx.guild.channels
 
-            response = get_user_message(ctx, self.bot.translations, "guild_init.messages.setup_existing")
+            response = get_user_message(ctx, GUILD_INIT_DATA, "messages.setup_existing")
 
         elif config_mode == "complete":
             try:
-                lang_query = ("SELECT guild_lang FROM guild_settings WHERE guild_id = %s")
-                lang_res = await self.bot.run_db_query(lang_query, (guild_id,), fetch_one=True)
-                guild_lang = lang_res[0] if lang_res and lang_res[0] else "en-US"
+                await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+                guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
                 everyone = guild.default_role
                 perms = everyone.permissions
@@ -224,7 +222,7 @@ class GuildInit(commands.Cog):
                 await guild.create_voice_channel(name=channel_names["ami_tavern_voc"].get(guild_lang),category=ami_cat)
 
                 if not community_mode:
-                    await ctx.followup.send(get_user_message(ctx, self.translations,"guild_init.messages.community_required"))
+                    await ctx.followup.send(get_user_message(ctx, GUILD_INIT_DATA,"messages.community_required"))
                     try:
                         await guild.edit(
                             community=True,
@@ -237,7 +235,7 @@ class GuildInit(commands.Cog):
                         logging.info("[GuildInit] Set server to community mode")
                     except Exception as e:
                         logging.error("[GuildInit] Failed to enable community mode: %s", e)
-                        response = get_user_message(ctx, self.translations,"guild_init.messages.error", error="Discord configuration error")
+                        response = get_user_message(ctx, GUILD_INIT_DATA,"messages.error", error="Discord configuration error")
                         return await ctx.followup.send(response, ephemeral=True)
 
                 war_conf = await guild.create_voice_channel("⚔️ WAR",type=discord.ChannelType.stage_voice,category=guild_cat)
@@ -405,16 +403,32 @@ class GuildInit(commands.Cog):
                 except Exception as e:
                     logging.error("[GuildInit] Error reloading caches: %s", e)
 
-                response = get_user_message(ctx, self.translations, "guild_init.messages.setup_complete")
+                response = get_user_message(ctx, GUILD_INIT_DATA, "messages.setup_complete")
             except Exception as e:
                 logging.error("[GuildInit] Error during complete config for guild %s: %s",guild_id,e)
-                response = get_user_message(ctx, self.translations, "guild_init.messages.error", error="Configuration error")
+                response = get_user_message(ctx, GUILD_INIT_DATA, "messages.error", error="Configuration error")
         else:
             logging.warning("[GuildInit] Unknown config mode '%s' for guild %s",config_mode,guild_id,)
-            response = get_user_message(ctx, self.translations, "guild_init.messages.unknown_mode")
+            response = get_user_message(ctx, GUILD_INIT_DATA, "messages.unknown_mode")
 
         await ctx.followup.send(response, ephemeral=True)
 
-def setup(bot: discord.Bot):
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Initialize guild init data on bot ready."""
+        asyncio.create_task(self.load_guild_init_data())
+        logging.debug("[GuildInit] Cache loading tasks started in on_ready.")
+
+    async def load_guild_init_data(self) -> None:
+        """Ensure all required data is loaded via centralized cache loader."""
+        logging.debug("[GuildInit] Loading guild init data")
+        
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+        
+        logging.debug("[GuildInit] Guild init data loading completed")
+
+def setup(bot: discord.Bot) -> None:
     """Setup function for the cog."""
     bot.add_cog(GuildInit(bot))

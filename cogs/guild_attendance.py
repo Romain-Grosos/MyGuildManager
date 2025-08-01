@@ -19,17 +19,10 @@ GUILD_ATTENDANCE = global_translations.get("guild_attendance", {})
 class GuildAttendance(commands.Cog):
     """Cog for managing event attendance tracking and DKP distribution."""
     
-    def __init__(self, bot):
+    def __init__(self, bot: discord.Bot) -> None:
         """Initialize the GuildAttendance cog."""
         self.bot = bot
 
-    async def cog_load(self):
-        """Handle cog loading event."""
-        logging.info("[GuildAttendance] Cog loaded successfully. Caches will be loaded on bot ready.")
-    
-    async def cog_unload(self):
-        """Handle cog unloading event."""
-        logging.info("[GuildAttendance] Cog unloaded.")
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -764,6 +757,6 @@ class GuildAttendance(commands.Cog):
         except Exception as e:
             logging.error(f"[GuildAttendance] Error processing guild {guild.id}: {e}", exc_info=True)
 
-def setup(bot):
+def setup(bot: discord.Bot):
     """Setup function for the cog."""
     bot.add_cog(GuildAttendance(bot))

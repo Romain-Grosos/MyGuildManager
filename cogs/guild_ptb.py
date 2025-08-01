@@ -9,7 +9,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set
 import pytz
-
 from translation import translations as global_translations
 from reliability import discord_resilient
 
@@ -18,18 +17,10 @@ GUILD_PTB = global_translations.get("guild_ptb", {})
 class GuildPTB(commands.Cog):
     """Cog for managing Public Test Branch servers for guild event coordination."""
     
-    def __init__(self, bot):
+    def __init__(self, bot: discord.Bot) -> None:
         """Initialize the GuildPTB cog."""
         self.bot = bot
-        
-    async def cog_load(self):
-        """Handle cog loading event."""
-        logging.info("[GuildPTB] Cog loaded successfully. Caches will be loaded on bot ready.")
-    
-    async def cog_unload(self):
-        """Handle cog unloading event."""
-        logging.info("[GuildPTB] Cog unloaded.")
-    
+
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize PTB data on bot ready."""
@@ -78,14 +69,14 @@ class GuildPTB(commands.Cog):
                             "channel_id": int(row[channel_idx])
                         }
 
-            await self.bot.cache.set('guild_data', ptb_settings, 'ptb_settings')
+            await self.bot.cache.set('temporary', ptb_settings, 'ptb_settings')
             logging.debug(f"[GuildPTB] PTB settings loaded: {len(ptb_settings)} configurations")
         except Exception as e:
             logging.error(f"[GuildPTB] Error loading PTB settings: {e}", exc_info=True)
     
     async def get_ptb_settings(self) -> Dict:
         """Get PTB settings from centralized cache."""
-        ptb_settings = await self.bot.cache.get('guild_data', 'ptb_settings')
+        ptb_settings = await self.bot.cache.get('temporary', 'ptb_settings')
         return ptb_settings or {}
     
     async def get_guild_ptb_settings(self, guild_id: int) -> Dict:
@@ -105,6 +96,7 @@ class GuildPTB(commands.Cog):
     async def _verify_ptb_ownership(self, main_guild_id: int, ptb_guild_id: int) -> bool:
         """Verify PTB guild ownership and permissions."""
         try:
+            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             ptb_guild = self.bot.get_guild(ptb_guild_id)
             if not ptb_guild:
                 logging.error(f"[GuildPTB] PTB guild {ptb_guild_id} not found or bot has no access")
@@ -171,10 +163,6 @@ class GuildPTB(commands.Cog):
                 logging.error(f"[GuildPTB] User {authorized_user_id} insufficient permissions for PTB creation in guild {main_guild_id}")
                 return False
 
-            existing_ptb = await self.bot.cache.get_guild_data(main_guild_id, 'guild_ptb')
-            if existing_ptb:
-                logging.warning(f"[GuildPTB] PTB server already exists for guild {main_guild_id}")
-                return False
 
             await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             initialized = await self.bot.cache.get_guild_data(main_guild_id, 'initialized')
@@ -335,7 +323,7 @@ class GuildPTB(commands.Cog):
                     "channel_id": channels[group_key].id
                 }
             
-            await self.bot.cache.set('guild_data', ptb_settings, 'ptb_settings')
+            await self.bot.cache.set('temporary', ptb_settings, 'ptb_settings')
             
             logging.info(f"[GuildPTB] Saved PTB settings for guild {main_guild_id}")
             
@@ -415,6 +403,7 @@ class GuildPTB(commands.Cog):
     async def _send_event_recap(self, ptb_guild: discord.Guild, info_channel_id: int, event_id: int, groups_data: Dict) -> None:
         """Send event recap to PTB info channel."""
         try:
+            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             info_channel = ptb_guild.get_channel(info_channel_id)
             if not info_channel:
                 logging.error(f"[GuildPTB] Info channel not found: {info_channel_id}")
@@ -480,6 +469,7 @@ class GuildPTB(commands.Cog):
     async def _send_invitations_to_missing_members(self, main_guild_id: int, ptb_guild: discord.Guild, groups_data: Dict) -> None:
         """Send invitations to members who are not yet in the PTB guild."""
         try:
+            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             main_guild = self.bot.get_guild(main_guild_id)
             if not main_guild:
                 return
@@ -629,6 +619,7 @@ class GuildPTB(commands.Cog):
     async def _sync_nickname_from_main(self, ptb_member: discord.Member, main_guild_id: int):
         """Synchronize nickname from main guild to PTB guild."""
         try:
+            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             logging.debug(f"[GuildPTB] Attempting to sync nickname for {ptb_member.display_name} ({ptb_member.id}) from main guild {main_guild_id}")
             
             main_guild = self.bot.get_guild(main_guild_id)
@@ -646,7 +637,7 @@ class GuildPTB(commands.Cog):
 
             if ptb_member.display_name != main_display_name:
                 try:
-                    await ptb_member.edit(nick=main_display_name, reason="Synchronisation depuis le Discord principal")
+                    await ptb_member.edit(nick=main_display_name, reason="Synchronization from the main Discord")
                     logging.info(f"[GuildPTB] Synchronized nickname for {ptb_member.id}: '{ptb_member.display_name}' -> '{main_display_name}'")
                 except discord.Forbidden:
                     logging.warning(f"[GuildPTB] Cannot change nickname for {ptb_member.id} - insufficient permissions")
@@ -841,6 +832,6 @@ class GuildPTB(commands.Cog):
         
         return audit_report
 
-def setup(bot):
+def setup(bot: discord.Bot):
     """Setup function for the cog."""
     bot.add_cog(GuildPTB(bot))

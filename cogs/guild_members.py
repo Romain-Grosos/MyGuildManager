@@ -23,7 +23,7 @@ CONFIG_ROSTER_DATA = global_translations.get("commands", {}).get("config_roster"
 class GuildMembers(commands.Cog):
     """Cog for managing guild member profiles, roster updates, and member data."""
     
-    def __init__(self, bot):
+    def __init__(self, bot: discord.Bot) -> None:
         """Initialize the GuildMembers cog."""
         self.bot = bot
         
