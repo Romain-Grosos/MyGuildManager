@@ -32,57 +32,30 @@ class GuildPTB(commands.Cog):
         logging.debug("[GuildPTB] Loading PTB data")
         
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self._load_ptb_settings()
+        await self.bot.cache_loader.ensure_category_loaded('guild_ptb_settings')
         
         logging.debug("[GuildPTB] PTB data loading completed")
     
-    async def _load_ptb_settings(self) -> None:
-        """Load PTB settings from database into cache."""
-        query = """
-        SELECT guild_id, ptb_guild_id, info_channel_id,
-               g1_role_id, g1_channel_id, g2_role_id, g2_channel_id,
-               g3_role_id, g3_channel_id, g4_role_id, g4_channel_id,
-               g5_role_id, g5_channel_id, g6_role_id, g6_channel_id,
-               g7_role_id, g7_channel_id, g8_role_id, g8_channel_id,
-               g9_role_id, g9_channel_id, g10_role_id, g10_channel_id,
-               g11_role_id, g11_channel_id, g12_role_id, g12_channel_id
-        FROM guild_ptb_settings
-        """
-        try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            ptb_settings = {}
-            for row in rows:
-                guild_id = int(row[0])
-                ptb_settings[guild_id] = {
-                    "ptb_guild_id": int(row[1]),
-                    "info_channel_id": int(row[2]),
-                    "groups": {}
-                }
-                
-                for i in range(1, 13):
-                    role_idx = 2 + (i-1) * 2 + 1
-                    channel_idx = role_idx + 1
-                    
-                    if row[role_idx] and row[channel_idx]:
-                        ptb_settings[guild_id]["groups"][f"G{i}"] = {
-                            "role_id": int(row[role_idx]),
-                            "channel_id": int(row[channel_idx])
-                        }
-
-            await self.bot.cache.set('temporary', ptb_settings, 'ptb_settings')
-            logging.debug(f"[GuildPTB] PTB settings loaded: {len(ptb_settings)} configurations")
-        except Exception as e:
-            logging.error(f"[GuildPTB] Error loading PTB settings: {e}", exc_info=True)
     
     async def get_ptb_settings(self) -> Dict:
-        """Get PTB settings from centralized cache."""
-        ptb_settings = await self.bot.cache.get('temporary', 'ptb_settings')
-        return ptb_settings or {}
+        """Get PTB settings for all guilds from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_ptb_settings')
+
+        all_ptb_settings = {}
+        for guild in self.bot.guilds:
+            guild_ptb_settings = await self.bot.cache.get_guild_data(guild.id, 'ptb_settings')
+            if guild_ptb_settings:
+                all_ptb_settings[guild.id] = guild_ptb_settings
+        
+        return all_ptb_settings
     
     async def get_guild_ptb_settings(self, guild_id: int) -> Dict:
-        """Get PTB settings for a specific guild."""
-        ptb_settings = await self.get_ptb_settings()
-        return ptb_settings.get(guild_id, {})
+        """Get PTB settings for a specific guild from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_ptb_settings')
+        result = await self.bot.cache.get_guild_data(guild_id, 'ptb_settings')
+        if not result:
+            logging.debug(f"[GuildPTB] No PTB settings found for guild {guild_id} in cache")
+        return result or {}
     
     async def get_active_events(self) -> Dict:
         """Get active events from temporary cache."""
@@ -309,21 +282,8 @@ class GuildPTB(commands.Cog):
             
             await self.bot.run_db_query(query, data, commit=True)
 
-            ptb_settings = await self.get_ptb_settings()
-            ptb_settings[main_guild_id] = {
-                "ptb_guild_id": ptb_guild_id,
-                "info_channel_id": info_channel_id,
-                "groups": {}
-            }
-            
-            for i in range(1, 13):
-                group_key = f"G{i}"
-                ptb_settings[main_guild_id]["groups"][group_key] = {
-                    "role_id": roles[group_key].id,
-                    "channel_id": channels[group_key].id
-                }
-            
-            await self.bot.cache.set('temporary', ptb_settings, 'ptb_settings')
+            await self.bot.cache.invalidate_guild_data(main_guild_id, 'ptb_settings')
+            await self.bot.cache_loader.reload_category('guild_ptb_settings')
             
             logging.info(f"[GuildPTB] Saved PTB settings for guild {main_guild_id}")
             

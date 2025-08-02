@@ -171,7 +171,7 @@ class TaskScheduler:
 
     async def _process_roster_updates_parallel(self, guild_members_cog):
         """Process roster updates for all guilds in parallel with rate limiting."""
-        guild_ids = list(guild_members_cog.forum_channels.keys())
+        guild_ids = [guild.id for guild in self.bot.guilds]
         if not guild_ids:
             logging.info("[Scheduler] No guilds found for roster update")
             return

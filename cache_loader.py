@@ -304,23 +304,63 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading events data: {e}", exc_info=True)
     
     async def ensure_static_data_loaded(self) -> None:
-        """Load static groups data via GuildEvents cog and mark other static data as on-demand."""
+        """Load static groups data and mark other static data as on-demand."""
         if 'static_data' in self._loaded_categories:
             return
             
-        logging.debug("[CacheLoader] Loading static groups and marking other static data as on-demand")
+        logging.debug("[CacheLoader] Loading static groups via centralized loader")
 
         try:
-            guild_events_cog = self.bot.get_cog('GuildEvents')
-            if guild_events_cog and hasattr(guild_events_cog, 'load_static_groups_cache'):
-                await guild_events_cog.load_static_groups_cache()
-                logging.debug("[CacheLoader] Static groups loaded via GuildEvents cog")
-            else:
-                logging.warning("[CacheLoader] GuildEvents cog not found or missing load_static_groups_cache method")
+            await self.ensure_static_groups_loaded()
+            logging.debug("[CacheLoader] Static groups loaded via centralized cache loader")
         except Exception as e:
             logging.error(f"[CacheLoader] Error loading static groups: {e}", exc_info=True)
 
         self._loaded_categories.add('static_data')
+    
+    async def ensure_static_groups_loaded(self) -> None:
+        """Load static groups data for all guilds."""
+        if 'static_groups' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading static groups from database")
+        
+        query = """
+            SELECT g.guild_id, g.group_name, g.leader_id, 
+                   GROUP_CONCAT(m.member_id ORDER BY m.position_order) as member_ids
+            FROM guild_static_groups g
+            LEFT JOIN guild_static_members m ON g.id = m.group_id
+            WHERE g.is_active = TRUE
+            GROUP BY g.guild_id, g.group_name, g.leader_id
+        """
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+
+            guild_static_groups = {}
+            for row in rows:
+                guild_id, group_name, leader_id, member_ids_str = row
+
+                member_ids = []
+                if member_ids_str:
+                    member_ids = [int(mid) for mid in member_ids_str.split(',') if mid.strip()]
+
+                if guild_id not in guild_static_groups:
+                    guild_static_groups[guild_id] = {}
+
+                guild_static_groups[guild_id][group_name] = {
+                    "leader_id": leader_id,
+                    "member_ids": member_ids
+                }
+
+            for guild_id, groups_data in guild_static_groups.items():
+                await self.bot.cache.set_guild_data(guild_id, 'static_groups', groups_data)
+            
+            logging.info(f"[CacheLoader] Loaded static groups for {len(guild_static_groups)} guilds")
+            self._loaded_categories.add('static_groups')
+            
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading static groups: {e}", exc_info=True)
     
     async def ensure_user_setup_loaded(self) -> None:
         """Load user setup data for all users."""
@@ -520,6 +560,8 @@ class CacheLoader:
             await self.ensure_events_data_loaded()
         elif category == 'static_data':
             await self.ensure_static_data_loaded()
+        elif category == 'static_groups':
+            await self.ensure_static_groups_loaded()
         elif category == 'user_setup':
             await self.ensure_user_setup_loaded()
         elif category == 'weapons':
@@ -530,6 +572,8 @@ class CacheLoader:
             await self.ensure_guild_ideal_staff_loaded()
         elif category == 'games_list':
             await self.ensure_games_list_loaded()
+        elif category == 'guild_ptb_settings':
+            await self.ensure_guild_ptb_settings_loaded()
         else:
             logging.warning(f"[CacheLoader] Unknown category: {category}")
     
@@ -546,6 +590,49 @@ class CacheLoader:
     def get_loaded_categories(self) -> set:
         """Get list of loaded categories."""
         return self._loaded_categories.copy()
+
+    async def ensure_guild_ptb_settings_loaded(self) -> None:
+        """Ensure guild PTB settings are loaded."""
+        if 'guild_ptb_settings' in self._loaded_categories:
+            return
+        
+        query = """
+        SELECT guild_id, ptb_guild_id, info_channel_id,
+               g1_role_id, g1_channel_id, g2_role_id, g2_channel_id,
+               g3_role_id, g3_channel_id, g4_role_id, g4_channel_id,
+               g5_role_id, g5_channel_id, g6_role_id, g6_channel_id,
+               g7_role_id, g7_channel_id, g8_role_id, g8_channel_id,
+               g9_role_id, g9_channel_id, g10_role_id, g10_channel_id,
+               g11_role_id, g11_channel_id, g12_role_id, g12_channel_id
+        FROM guild_ptb_settings
+        """
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            for row in rows:
+                guild_id = int(row[0])
+                ptb_settings = {
+                    "ptb_guild_id": int(row[1]),
+                    "info_channel_id": int(row[2]),
+                    "groups": {}
+                }
+                
+                # Process groups G1-G12
+                for i in range(1, 13):
+                    role_idx = 2 + (i-1) * 2 + 1
+                    channel_idx = role_idx + 1
+                    
+                    if row[role_idx] and row[channel_idx]:
+                        ptb_settings["groups"][f"G{i}"] = {
+                            "role_id": int(row[role_idx]),
+                            "channel_id": int(row[channel_idx])
+                        }
+
+                await self.bot.cache.set_guild_data(guild_id, 'ptb_settings', ptb_settings)
+            
+            self._loaded_categories.add('guild_ptb_settings')
+            logging.debug(f"[CacheLoader] PTB settings loaded for {len(rows) if rows else 0} guilds")
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading guild PTB settings: {e}", exc_info=True)
 
 # #################################################################################### #
 #                            Global Cache Loader Instance

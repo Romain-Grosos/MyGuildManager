@@ -177,7 +177,7 @@ class TestScheduledTaskExecution:
             if cog_name == 'Contract':
                 cog_mock.contract_delete_cron = AsyncMock()
             elif cog_name == 'GuildMembers':
-                cog_mock.forum_channels = {123: 'channel1', 456: 'channel2'}
+                cog_mock.run_maj_roster = AsyncMock()
             elif cog_name == 'GuildEvents':
                 cog_mock.create_events_for_all_premium_guilds = AsyncMock()
                 cog_mock.event_reminder_cron = AsyncMock()
@@ -352,12 +352,20 @@ class TestRosterUpdateParallel:
         
         # Mock guild members cog
         mock_guild_members = Mock()
-        mock_guild_members.forum_channels = {123: 'channel1', 456: 'channel2', 789: 'channel3'}
         mock_guild_members.run_maj_roster = AsyncMock()
         
         # Mock guild events cog
         mock_guild_events = Mock()
         mock_guild_events.update_static_groups_message_for_cron = AsyncMock()
+        
+        # Mock guilds in bot
+        mock_guild1 = Mock()
+        mock_guild1.id = 123
+        mock_guild2 = Mock()
+        mock_guild2.id = 456
+        mock_guild3 = Mock()
+        mock_guild3.id = 789
+        bot.guilds = [mock_guild1, mock_guild2, mock_guild3]
         
         bot.get_cog.side_effect = lambda name: {
             'GuildEvents': mock_guild_events
@@ -385,7 +393,7 @@ class TestRosterUpdateParallel:
     async def test_roster_update_parallel_no_guilds(self, scheduler_with_roster_mocks):
         """Test roster update with no guilds."""
         scheduler, mock_guild_members, mock_guild_events = scheduler_with_roster_mocks
-        mock_guild_members.forum_channels = {}  # No guilds
+        scheduler.bot.guilds = []  # No guilds
         
         with patch('scheduler.logging.info') as mock_info:
             await scheduler._process_roster_updates_parallel(mock_guild_members)

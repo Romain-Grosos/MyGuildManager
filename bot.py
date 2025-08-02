@@ -302,10 +302,7 @@ EXTENSIONS: Final[list[str]] = [
     "cogs.guild_events",
     "cogs.guild_attendance",
     "cogs.guild_ptb",
-    "cogs.autorole",
-    "cogs.health",
-    "cogs.performance_monitor",
-    "cogs.reliability_monitor"
+    "cogs.autorole"
 ]
 
 def load_extensions():

@@ -95,11 +95,8 @@ class GuildMembers(commands.Cog):
         """Load weapons and combinations data using centralized cache loaders."""
         logging.debug("[GuildMembers] Loading weapons data via cache loaders")
         
-        from cache_loader import get_cache_loader
-        cache_loader = get_cache_loader(self.bot)
-        
-        await cache_loader.ensure_weapons_loaded()
-        await cache_loader.ensure_weapons_combinations_loaded()
+        await self.bot.cache_loader.ensure_weapons_loaded()
+        await self.bot.cache_loader.ensure_weapons_combinations_loaded()
         
         logging.debug("[GuildMembers] Weapons and combinations data loaded via cache loaders")
 
@@ -130,10 +127,8 @@ class GuildMembers(commands.Cog):
     async def _load_members_data(self) -> None:
         """Load member-specific data into cache (legacy method for compatibility)."""
         await self._load_user_setup_members()
-        from cache_loader import get_cache_loader
-        cache_loader = get_cache_loader(self.bot)
-        await cache_loader.ensure_guild_members_loaded()
-        await cache_loader.ensure_guild_ideal_staff_loaded()
+        await self.bot.cache_loader.ensure_guild_members_loaded()
+        await self.bot.cache_loader.ensure_guild_ideal_staff_loaded()
         logging.debug("[GuildMembers] Guild members and ideal staff data loaded via cache loaders")
 
     async def get_weapons_combinations(self, game_id: int) -> List[Dict[str, str]]:
@@ -634,9 +629,7 @@ class GuildMembers(commands.Cog):
         )
 
         await self._load_user_setup_members()
-        from cache_loader import get_cache_loader
-        cache_loader = get_cache_loader(self.bot)
-        await cache_loader.reload_category('guild_members')
+        await self.bot.cache_loader.reload_category('guild_members')
 
         try:
             await asyncio.gather(
@@ -765,7 +758,7 @@ class GuildMembers(commands.Cog):
                     'username': discord_member.display_name,
                     'language': language,
                     'GS': gs_value,
-                    'build': user_setup.get('build_url'),
+                    'build': user_setup.get('build', ''),
                     'weapons': weapons_normalized,
                     'DKP': 0,
                     'nb_events': 0,
@@ -942,9 +935,7 @@ class GuildMembers(commands.Cog):
         game_id = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
         roster_size_max = None
         if game_id:
-            from cache_loader import get_cache_loader
-            cache_loader = get_cache_loader(self.bot)
-            await cache_loader.ensure_games_list_loaded()
+            await self.bot.cache_loader.ensure_games_list_loaded()
             games_data = await self.bot.cache.get_static_data('games_list')
             if games_data and game_id in games_data:
                 roster_size_max = games_data[game_id].get('max_members')
@@ -1088,7 +1079,8 @@ class GuildMembers(commands.Cog):
             username = m.get("username", "")[:username_width].ljust(username_width)
             language_text = str(m.get("language", "en-US"))[:language_width].center(language_width)
             gs = str(m.get("GS", "NULL")).center(gs_width)
-            build_flag = "Y" if m.get("build", "NULL") != "NULL" else " "
+            build_value = m.get("build")
+            build_flag = "Y" if build_value and build_value not in ("NULL", None, "", "None") else " "
             build_flag = build_flag.center(build_width)
             weapons = m.get("weapons", "NULL")
             if isinstance(weapons, str) and weapons != "NULL":
@@ -1201,6 +1193,9 @@ class GuildMembers(commands.Cog):
             return
         
         guild_id = ctx.guild.id
+        
+        # Ensure guild members data is loaded
+        await self.bot.cache_loader.ensure_guild_members_loaded()
         guild_members = await self.get_guild_members()
         matching = [m for (g, _), m in guild_members.items() 
                    if g == guild_id and m.get("username", "").lower().startswith(sanitized_username.lower())]
@@ -1211,8 +1206,8 @@ class GuildMembers(commands.Cog):
             return
 
         member_data = matching[0]
-        build_url = member_data.get("build", "NULL")
-        if build_url == "NULL":
+        build_url = member_data.get("build")
+        if not build_url or build_url in ("NULL", None, "", "None"):
             msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "no_build", username=username)
             await ctx.followup.send(msg, ephemeral=True)
             return
@@ -1239,6 +1234,8 @@ class GuildMembers(commands.Cog):
         guild = ctx.guild
         guild_id = guild.id
 
+        await self.bot.cache_loader.ensure_guild_members_loaded()
+        
         incomplete_members = []
         guild_members = await self.get_guild_members()
         logging.debug(f"[GuildMembers] notify_incomplete_profiles: Found {len(guild_members)} total members in cache")
@@ -1359,8 +1356,7 @@ class GuildMembers(commands.Cog):
                     ON DUPLICATE KEY UPDATE ideal_count = VALUES(ideal_count)
                 """
                 await self.bot.run_db_query(query, (guild_id, class_name, count), commit=True)
-            
-            # Reload ideal staff data after update
+
             await self.bot.cache_loader.reload_category('guild_ideal_staff')
             
             await self.update_recruitment_message(ctx)
@@ -1410,11 +1406,9 @@ class GuildMembers(commands.Cog):
         if key not in guild_members:
             logging.debug(f"[GuildMembers - ChangeLanguage] Profile not found in guild_members cache for key {key}, trying database fallback...")
             try:
-                # Fallback: check if user exists in user_setup and create guild_members entry
                 user_setup_members = await self.get_user_setup_members()
                 if key in user_setup_members:
                     logging.info(f"[GuildMembers - ChangeLanguage] User found in user_setup, creating guild_members entry for {key}")
-                    # Create entry in guild_members from user_setup data
                     user_setup_data = user_setup_members[key]
                     guild_member_data = {
                         "username": user_setup_data.get("username", ctx.author.display_name),
@@ -1428,7 +1422,6 @@ class GuildMembers(commands.Cog):
                         "attendances": 0,
                         "class": "NULL"
                     }
-                    # Update cache
                     current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
                     current_cache[key] = guild_member_data
                     await self.bot.cache.set('roster_data', current_cache, 'guild_members')
