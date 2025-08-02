@@ -7,9 +7,8 @@ import logging
 import pytz
 import re
 from datetime import datetime
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, Optional
 from discord.ext import commands
-from typing import Dict, Any
 from translation import translations as global_translations
 import asyncio
 from db import DBQueryError
@@ -62,10 +61,9 @@ class ProfileSetup(commands.Cog):
         channels = await self.bot.cache.get_guild_data(guild_id, 'channels')
         return channels or {}
     
-    async def get_welcome_messages(self) -> Dict[str, Dict[str, Any]]:
-        """Get welcome messages from cache."""
-        messages = await self.bot.cache.get('temporary', 'welcome_messages')
-        return messages or {}
+    async def get_welcome_message_for_user(self, guild_id: int, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get welcome message for a specific user from cache."""
+        return await self.bot.cache.get_user_data(guild_id, user_id, 'welcome_message')
     
     async def get_pending_validations(self) -> Dict[str, Dict[str, Any]]:
         """Get pending validations from cache."""
@@ -79,7 +77,6 @@ class ProfileSetup(commands.Cog):
         await self.bot.cache_loader.ensure_category_loaded('guild_roles')
         await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self._load_welcome_messages()
         await self._load_pending_validations()
         
         logging.debug("[ProfileSetup] Profile setup data loading completed")
@@ -181,21 +178,6 @@ class ProfileSetup(commands.Cog):
         logging.warning(f"[ProfileSetup] LLM response '{cleaned_response}' not in valid options, using original")
         return original_input
 
-    async def _load_welcome_messages(self) -> None:
-        """Load welcome messages into cache."""
-        logging.debug("[ProfileSetup] Loading welcome messages from database")
-        query = "SELECT guild_id, member_id, channel_id, message_id FROM welcome_messages"
-        try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            welcome_messages = {}
-            for row in rows:
-                guild_id, member_id, channel_id, message_id = row
-                key = f"{guild_id}_{member_id}"
-                welcome_messages[key] = {"channel": channel_id, "message": message_id}
-            await self.bot.cache.set('temporary', welcome_messages, 'welcome_messages')
-            logging.debug(f"[ProfileSetup] Welcome messages loaded: {len(welcome_messages)} entries")
-        except Exception as e:
-            logging.error(f"[ProfileSetup] Error loading welcome messages: {e}", exc_info=True)
 
     async def _load_pending_validations(self) -> None:
         """Load pending diplomat validations into cache."""
@@ -421,7 +403,6 @@ Response:"""
         """Finalize user profile setup and assign roles."""
         guild_lang = await self.get_guild_lang(guild_id)
         session = await self.load_session(guild_id, user_id)
-        key = f"{guild_id}_{user_id}"
 
         def _values_from_session(s: Dict[str, Any]) -> Tuple[Any, ...]:
             """Internal method: Values from session."""
@@ -473,8 +454,6 @@ Response:"""
             else:
                 logging.error(f"[ProfileSetup] DB insertion failed: {exc}")
                 raise
-            
-        logging.debug(f"[ProfileSetup] Session saved for key {key}: {self.sessions.get(key)}")
 
         locale = session.get("locale")
 
@@ -703,9 +682,9 @@ Response:"""
                 exc_info=True,
             )
 
-        welcome_messages = await self.get_welcome_messages()
-        if key in welcome_messages:
-            info = welcome_messages[key]
+        welcome_message = await self.get_welcome_message_for_user(guild_id, user_id)
+        if welcome_message:
+            info = welcome_message
             try:
                 channel = await self.bot.fetch_channel(info["channel"])
                 message = await channel.fetch_message(info["message"])
@@ -764,7 +743,7 @@ Response:"""
             except Exception as e:
                 logging.error(f"[ProfileSetup] ❌ Error updating welcome message: {e}", exc_info=True)
         else:
-            logging.debug(f"[ProfileSetup] No welcome message cached for key {key}.")
+            logging.debug(f"[ProfileSetup] No welcome message cached for user {user_id} in guild {guild_id}.")
 
         if motif == "application":
             channels_data = await self.get_guild_channels(guild_id)
