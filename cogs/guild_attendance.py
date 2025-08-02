@@ -1,10 +1,14 @@
+"""
+Guild Attendance Cog - Manages event attendance tracking and DKP distribution.
+"""
+
 import discord
 from discord.ext import commands
 import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, time as dt_time
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple, Optional, Any
 import pytz
 
 from translation import translations as global_translations
@@ -13,122 +17,163 @@ GUILD_EVENTS = global_translations.get("guild_events", {})
 GUILD_ATTENDANCE = global_translations.get("guild_attendance", {})
 
 class GuildAttendance(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.guild_settings = {}
-        self.events_data = {}
-        self.guild_members_cache = {}
-
-    async def cog_load(self):
-        logging.info("[GuildAttendance] Cog loaded successfully. Caches will be loaded on bot ready.")
+    """Cog for managing event attendance tracking and DKP distribution."""
     
-    async def cog_unload(self):
-        logging.info("[GuildAttendance] Cog unloaded.")
+    def __init__(self, bot: discord.Bot) -> None:
+        """Initialize the GuildAttendance cog."""
+        self.bot = bot
+
 
     @commands.Cog.listener()
     async def on_ready(self):
-        asyncio.create_task(self.load_guild_settings())
-        asyncio.create_task(self.load_guild_members())
-        asyncio.create_task(self._load_current_events())
+        """Initialize attendance data on bot ready."""
+        asyncio.create_task(self.load_attendance_data())
         logging.debug("[GuildAttendance] Cache loading tasks started in on_ready.")
 
-    async def load_guild_settings(self) -> None:
-        query = """
-        SELECT gs.guild_id, gs.guild_lang, gs.premium, gc.events_channel, gc.notifications_channel, gr.members
-        FROM guild_settings gs
-        JOIN guild_channels gc ON gs.guild_id = gc.guild_id
-        LEFT JOIN guild_roles gr ON gs.guild_id = gr.guild_id
-        """
-        try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.guild_settings = {}
-            for row in rows:
-                guild_id = int(row[0])
-                self.guild_settings[guild_id] = {
-                    "guild_lang": row[1] or "en-US",
-                    "premium": row[2],
-                    "events_channel": row[3],
-                    "notifications_channel": row[4],
-                    "members_role": row[5]
-                }
-            logging.debug(f"[GuildAttendance] Guild settings loaded: {len(self.guild_settings)} guilds")
-        except Exception as e:
-            logging.error(f"[GuildAttendance] Error loading guild settings: {e}", exc_info=True)
+    async def load_attendance_data(self) -> None:
+        """Ensure all required data is loaded via centralized cache loader."""
+        logging.debug("[GuildAttendance] Loading attendance data")
+        
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+        await self.bot.cache_loader.ensure_category_loaded('guild_members')
+        await self.bot.cache_loader.ensure_category_loaded('events_data')
+        
+        logging.debug("[GuildAttendance] Attendance data loading completed")
 
-    async def load_guild_members(self) -> None:
-        query = "SELECT guild_id, member_id, class, GS, weapons, DKP, nb_events, registrations, attendances FROM guild_members"
+    async def get_event_from_cache(self, guild_id: int, event_id: int) -> Optional[Dict]:
+        """Get event data from global cache."""
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.guild_members_cache = {}
-            for row in rows:
-                try:
-                    guild_id = int(row[0])
-                    member_id = int(row[1])
-                    
-                    if guild_id not in self.guild_members_cache:
-                        self.guild_members_cache[guild_id] = {}
-                    
-                    self.guild_members_cache[guild_id][member_id] = {
-                        "class": row[2],
-                        "GS": row[3],
-                        "weapons": row[4],
-                        "DKP": int(row[5]) if row[5] is not None else 0,
-                        "nb_events": int(row[6]) if row[6] is not None else 0,
-                        "registrations": int(row[7]) if row[7] is not None else 0,
-                        "attendances": int(row[8]) if row[8] is not None else 0
-                    }
-                except (ValueError, TypeError) as e:
-                    logging.warning(f"[GuildAttendance] Invalid member data for guild {guild_id}, member {member_id}: {e}")
-                    continue
-            logging.debug(f"[GuildAttendance] Guild members loaded: {len(self.guild_members_cache)} guilds")
+            event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
+            if event_data:
+                # Ensure guild_id is included for compatibility
+                event_data['guild_id'] = guild_id
+                # Ensure default values for registrations and actual_presence
+                if not event_data.get('registrations'):
+                    event_data['registrations'] = {"presence":[],"tentative":[],"absence":[]}
+                elif isinstance(event_data['registrations'], str):
+                    try:
+                        event_data['registrations'] = json.loads(event_data['registrations'])
+                    except:
+                        event_data['registrations'] = {"presence":[],"tentative":[],"absence":[]}
+                        
+                if not event_data.get('actual_presence'):
+                    event_data['actual_presence'] = []
+                elif isinstance(event_data['actual_presence'], str):
+                    try:
+                        event_data['actual_presence'] = json.loads(event_data['actual_presence'])
+                    except:
+                        event_data['actual_presence'] = []
+            return event_data
         except Exception as e:
-            logging.error(f"[GuildAttendance] Error loading guild members: {e}", exc_info=True)
+            logging.error(f"[GuildAttendance] Error retrieving event {event_id} for guild {guild_id}: {e}", exc_info=True)
+            return None
 
-    async def reload_events_cache_for_guild(self, guild_id: int) -> None:
-        query = """
-        SELECT guild_id, event_id, name, event_date, event_time, duration, 
-               dkp_value, status, registrations, actual_presence
-        FROM events_data 
-        WHERE guild_id = %s AND status = 'Closed'
-        """
+    async def set_event_in_cache(self, guild_id: int, event_id: int, event_data: Dict) -> None:
+        """Set event data in global cache."""
         try:
+            # Remove guild_id from data if present (it's implicit in the cache key structure)
+            cache_data = event_data.copy()
+            cache_data.pop('guild_id', None)
+            await self.bot.cache.set_guild_data(guild_id, f'event_{event_id}', cache_data)
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error storing event {event_id} for guild {guild_id}: {e}", exc_info=True)
+
+    async def get_closed_events_for_guild(self, guild_id: int) -> List[Dict]:
+        """Get all closed events for a specific guild from global cache."""
+        try:
+            # Query database for closed events since we need to filter by status
+            query = """
+                SELECT event_id, name, event_date, event_time, duration, 
+                       dkp_value, status, registrations, actual_presence
+                FROM events_data WHERE guild_id = ? AND status = 'Closed'
+            """
             rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
-
-            keys_to_remove = [key for key in self.events_data.keys() if key.startswith(f"{guild_id}_")]
-            for key in keys_to_remove:
-                del self.events_data[key]
-
-            for row in rows:
-                try:
-                    event_guild_id, event_id = int(row[0]), int(row[1])
-                    key = f"{event_guild_id}_{event_id}"
-                    
-                    self.events_data[key] = {
-                        "guild_id": event_guild_id,
-                        "event_id": event_id,
-                        "name": row[2],
-                        "event_date": row[3],
-                        "event_time": row[4],
-                        "duration": row[5],
-                        "dkp_value": row[6],
-                        "status": row[7],
-                        "registrations": json.loads(row[8]) if row[8] else {},
-                        "actual_presence": json.loads(row[9]) if row[9] else []
+            events = []
+            if rows:
+                for row in rows:
+                    event_id, name, event_date, event_time, duration, dkp_value, status, registrations, actual_presence = row
+                    event_data = {
+                        'guild_id': guild_id,
+                        'event_id': event_id,
+                        'name': name,
+                        'event_date': event_date,
+                        'event_time': event_time,
+                        'duration': duration,
+                        'dkp_value': dkp_value,
+                        'status': status,
+                        'registrations': json.loads(registrations) if registrations else {"presence":[],"tentative":[],"absence":[]},
+                        'actual_presence': json.loads(actual_presence) if actual_presence else []
                     }
-                except (ValueError, TypeError, json.JSONDecodeError) as e:
-                    logging.warning(f"[GuildAttendance] Invalid event data for {row[0]}_{row[1]}: {e}")
-                    continue
-            
-            logging.debug(f"[GuildAttendance] Reloaded events cache for guild {guild_id}: {len(rows)} events")
-                    
+                    events.append(event_data)
+            return events
         except Exception as e:
-            logging.error(f"[GuildAttendance] Error reloading events cache for guild {guild_id}: {e}", exc_info=True)
+            logging.error(f"[GuildAttendance] Error retrieving closed events for guild {guild_id}: {e}", exc_info=True)
+            return []
 
-    async def reload_events_cache_all_guilds(self) -> None:
-        await self._load_current_events()
-        logging.debug(f"[GuildAttendance] Reloaded events cache for all guilds: {len(self.events_data)} events")
+    async def get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
+        """Get guild settings from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+        
+        try:
+            guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
+            premium = await self.bot.cache.get_guild_data(guild_id, 'premium')
+            
+            channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+            events_channel = channels_data.get('events_channel') if channels_data else None
+            notifications_channel = channels_data.get('notifications_channel') if channels_data else None
+            
+            roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
+            members_role = roles_data.get('members') if roles_data else None
+            
+            return {
+                "guild_lang": guild_lang,
+                "premium": premium,
+                "events_channel": events_channel,
+                "notifications_channel": notifications_channel,
+                "members_role": members_role
+            }
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error getting guild settings for {guild_id}: {e}", exc_info=True)
+            return {}
+
+    async def get_guild_members(self, guild_id: int) -> Dict[int, Dict[str, Any]]:
+        """Get guild members from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_members')
+        
+        try:
+            guild_members_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+            guild_specific_members = {}
+            
+            for (g_id, member_id), member_data in guild_members_cache.items():
+                if g_id == guild_id:
+                    guild_specific_members[member_id] = member_data
+                    
+            return guild_specific_members
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error getting guild members for {guild_id}: {e}", exc_info=True)
+            return {}
+
+    async def _update_centralized_cache(self, guild_id: int, guild_members: Dict[int, Dict[str, Any]]) -> None:
+        """Update the centralized cache with modified guild members."""
+        try:
+            current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+            
+            for member_id, member_data in guild_members.items():
+                key = (guild_id, member_id)
+                current_cache[key] = member_data
+            
+            await self.bot.cache.set('roster_data', current_cache, 'guild_members')
+            logging.debug(f"[GuildAttendance] Updated centralized cache for {len(guild_members)} members in guild {guild_id}")
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error updating centralized cache: {e}", exc_info=True)
+
 
     async def process_event_registrations(self, guild_id: int, event_id: int, event_data: Dict) -> None:
+        """Method: Process event registrations."""
         logging.info(f"[GuildAttendance] Processing registrations for event {event_id} in guild {guild_id}")
         
         guild = self.bot.get_guild(guild_id)
@@ -136,14 +181,10 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Guild {guild_id} not found")
             return
         
-        if guild_id not in self.guild_settings:
-            logging.debug(f"[GuildAttendance] Guild {guild_id} settings not found in cache ({len(self.guild_settings)} guilds loaded), refreshing...")
-            await self.load_guild_settings()
-            if guild_id not in self.guild_settings:
-                logging.error(f"[GuildAttendance] Guild {guild_id} not found in database after refresh (loaded {len(self.guild_settings)} guilds)")
-                return
-            else:
-                logging.debug(f"[GuildAttendance] Guild {guild_id} settings refreshed successfully")
+        settings = await self.get_guild_settings(guild_id)
+        if not settings.get('guild_lang'):
+            logging.error(f"[GuildAttendance] Guild {guild_id} settings not found")
+            return
 
         dkp_registration = int(event_data.get("dkp_ins", 0))
         dkp_presence = int(event_data.get("dkp_value", 0))
@@ -166,27 +207,24 @@ class GuildAttendance(commands.Cog):
         all_registered = presence_ids | tentative_ids | absence_ids
 
         updates_to_batch = []
+        guild_members = await self.get_guild_members(guild_id)
 
-        if guild_id in self.guild_members_cache:
-            for member_id, member_data in self.guild_members_cache[guild_id].items():
-                if await self._member_has_members_role(guild, member_id):
-                    member_data["nb_events"] += 1
-                updates_to_batch.append((
-                    member_data["DKP"],
-                    member_data["nb_events"], 
-                    member_data["registrations"],
-                    member_data["attendances"],
-                    guild_id,
-                    member_id
-                ))
+        for member_id, member_data in guild_members.items():
+            if await self._member_has_members_role(guild, member_id):
+                member_data["nb_events"] += 1
+            updates_to_batch.append((
+                member_data["DKP"],
+                member_data["nb_events"], 
+                member_data["registrations"],
+                member_data["attendances"],
+                guild_id,
+                member_id
+            ))
 
         for member_id in all_registered:
-            if guild_id not in self.guild_members_cache:
-                self.guild_members_cache[guild_id] = {}
-            
-            if member_id not in self.guild_members_cache[guild_id]:
+            if member_id not in guild_members:
                 initial_nb_events = 1 if await self._member_has_members_role(guild, member_id) else 0
-                self.guild_members_cache[guild_id][member_id] = {
+                guild_members[member_id] = {
                     "class": "Unknown",
                     "GS": 0,
                     "weapons": "",
@@ -196,7 +234,7 @@ class GuildAttendance(commands.Cog):
                     "attendances": 0
                 }
             
-            member_data = self.guild_members_cache[guild_id][member_id]
+            member_data = guild_members[member_id]
 
             member_data["registrations"] += 1
 
@@ -240,60 +278,63 @@ class GuildAttendance(commands.Cog):
                 
                 logging.info(f"[GuildAttendance] Updated registration stats for {len(updates_to_batch)} members in event {event_id}")
 
+                # Update centralized cache
+                await self._update_centralized_cache(guild_id, guild_members)
+
                 await self._send_registration_notification(guild_id, event_id, len(all_registered), len(presence_ids), len(tentative_ids), len(absence_ids), dkp_registration)
                 
             except Exception as e:
                 logging.error(f"[GuildAttendance] Error updating registration stats: {e}", exc_info=True)
 
     async def check_voice_presence(self):
+        """Method: Check voice presence."""
         try:
             tz = pytz.timezone("Europe/Paris")
             now = datetime.now(tz)
             
             logging.debug("[GuildAttendance] Starting voice presence check")
-            logging.debug(f"[GuildAttendance] Using cached events data: {len(self.events_data)} events")
-            logging.debug(f"[GuildAttendance] Guild settings available for {len(self.guild_settings)} guilds: {list(self.guild_settings.keys())}")
-            
-            for guild_id, settings in self.guild_settings.items():
-                guild = self.bot.get_guild(guild_id)
-                if not guild:
-                    logging.debug(f"[GuildAttendance] Guild {guild_id} not found, skipping")
-                    continue
+            logging.debug("[GuildAttendance] Starting guild processing")
 
-                logging.debug(f"[GuildAttendance] Processing guild {guild_id} ({guild.name})")
-                current_events = await self._get_current_events_for_guild(guild_id, now)
-                logging.debug(f"[GuildAttendance] Found {len(current_events)} current events for guild {guild_id}")
-                
-                for event_data in current_events:
-                    logging.info(f"[GuildAttendance] Processing voice attendance for event {event_data['event_id']} at {now}")
-                    try:
-                        await self._process_voice_attendance(guild, event_data, now)
-                    except Exception as e:
-                        logging.error(f"[GuildAttendance] Error processing voice attendance for event {event_data.get('event_id')}: {e}")
+            guild_tasks = []
+            for guild in self.bot.guilds:
+                guild_id = guild.id
+                guild_tasks.append(self._process_guild_attendance(guild, now))
+            
+            if guild_tasks:
+                await asyncio.gather(*guild_tasks, return_exceptions=True)
+                logging.debug(f"[GuildAttendance] Completed processing {len(guild_tasks)} guilds")
                         
         except Exception as e:
             logging.error(f"[GuildAttendance] Error in voice presence check: {e}", exc_info=True)
 
-    async def _load_current_events(self) -> None:
+    async def get_event_data(self, guild_id: int, event_id: int) -> Dict:
+        """Get event data from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('events_data')
+        
+        event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
+        return event_data or {}
+
+    async def _get_current_events_for_guild(self, guild_id: int, now: datetime) -> List[Dict]:
+        """Internal method: Get current events for guild."""
+        current_events = []
+        tz = pytz.timezone("Europe/Paris")
+        
+        logging.debug(f"[GuildAttendance] Filtering events for guild {guild_id} at {now}")
+
         query = """
         SELECT guild_id, event_id, name, event_date, event_time, duration, 
                dkp_value, status, registrations, actual_presence
         FROM events_data 
-        WHERE status = 'Closed'
+        WHERE guild_id = %s AND status = 'Closed'
         """
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.events_data = {}
-            logging.debug(f"[GuildAttendance] Database query returned {len(rows)} closed events")
+            rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
             
             for row in rows:
                 try:
-                    guild_id, event_id = int(row[0]), int(row[1])
-                    key = f"{guild_id}_{event_id}"
-                    
-                    self.events_data[key] = {
-                        "guild_id": guild_id,
-                        "event_id": event_id,
+                    event_data = {
+                        "guild_id": int(row[0]),
+                        "event_id": int(row[1]),
                         "name": row[2],
                         "event_date": row[3],
                         "event_time": row[4],
@@ -303,66 +344,56 @@ class GuildAttendance(commands.Cog):
                         "registrations": json.loads(row[8]) if row[8] else {},
                         "actual_presence": json.loads(row[9]) if row[9] else []
                     }
-                    logging.debug(f"[GuildAttendance] Loaded event {event_id} for guild {guild_id}: date={row[3]}, time={row[4]}, duration={row[5]}")
                 except (ValueError, TypeError, json.JSONDecodeError) as e:
                     logging.warning(f"[GuildAttendance] Invalid event data for {row[0]}_{row[1]}: {e}")
                     continue
+                
+                try:
+                    if isinstance(event_data["event_date"], str):
+                        event_date = datetime.strptime(event_data["event_date"], "%Y-%m-%d").date()
+                    else:
+                        event_date = event_data["event_date"]
                     
+                    if isinstance(event_data["event_time"], str):
+                        event_time = datetime.strptime(event_data["event_time"][:5], "%H:%M").time()
+                    elif isinstance(event_data["event_time"], timedelta):
+                        total_seconds = int(event_data["event_time"].total_seconds())
+                        hours = total_seconds // 3600
+                        minutes = (total_seconds % 3600) // 60
+                        event_time = dt_time(hours, minutes)
+                    elif isinstance(event_data["event_time"], dt_time):
+                        event_time = event_data["event_time"]
+                    elif isinstance(event_data["event_time"], datetime):
+                        event_time = event_data["event_time"].time()
+                    else:
+                        logging.warning(f"[GuildAttendance] Unknown time type for event {event_data['event_id']}: {type(event_data['event_time'])}")
+                        event_time = datetime.strptime("21:00", "%H:%M").time()
+                    
+                    event_start = tz.localize(datetime.combine(event_date, event_time))
+                    event_check_time = event_start + timedelta(minutes=5)
+                    event_end = event_start + timedelta(minutes=int(event_data.get("duration", 60)))
+
+                    event_check_end = event_end + timedelta(minutes=10)
+                    
+                    logging.debug(f"[GuildAttendance] Event {event_data['event_id']}: start={event_start}, check_time={event_check_time}, end={event_end}, check_end={event_check_end}, now={now}")
+                    logging.debug(f"[GuildAttendance] Event {event_data['event_id']}: condition {event_check_time} <= {now} <= {event_check_end} = {event_check_time <= now <= event_check_end}")
+                    
+                    if event_check_time <= now <= event_check_end:
+                        current_events.append(event_data)
+                        logging.debug(f"[GuildAttendance] Event {event_data['event_id']} matches time window, added to current events")
+                        
+                except Exception as e:
+                    logging.error(f"[GuildAttendance] Error parsing event time for {event_data['event_id']}: {e}")
+                    continue
+        
         except Exception as e:
-            logging.error(f"[GuildAttendance] Error loading events data: {e}", exc_info=True)
-
-    async def _get_current_events_for_guild(self, guild_id: int, now: datetime) -> List[Dict]:
-        current_events = []
-        tz = pytz.timezone("Europe/Paris")
-        
-        logging.debug(f"[GuildAttendance] Filtering events for guild {guild_id} at {now}")
-        
-        for key, event_data in self.events_data.items():
-            if event_data["guild_id"] != guild_id:
-                continue
-                
-            try:
-                if isinstance(event_data["event_date"], str):
-                    event_date = datetime.strptime(event_data["event_date"], "%Y-%m-%d").date()
-                else:
-                    event_date = event_data["event_date"]
-                
-                if isinstance(event_data["event_time"], str):
-                    event_time = datetime.strptime(event_data["event_time"][:5], "%H:%M").time()
-                elif isinstance(event_data["event_time"], timedelta):
-                    total_seconds = int(event_data["event_time"].total_seconds())
-                    hours = total_seconds // 3600
-                    minutes = (total_seconds % 3600) // 60
-                    event_time = dt_time(hours, minutes)
-                elif isinstance(event_data["event_time"], dt_time):
-                    event_time = event_data["event_time"]
-                elif isinstance(event_data["event_time"], datetime):
-                    event_time = event_data["event_time"].time()
-                else:
-                    logging.warning(f"[GuildAttendance] Unknown time type for event {event_data['event_id']}: {type(event_data['event_time'])}")
-                    event_time = datetime.strptime("21:00", "%H:%M").time()
-                
-                event_start = tz.localize(datetime.combine(event_date, event_time))
-                event_check_time = event_start + timedelta(minutes=5)
-                event_end = event_start + timedelta(minutes=int(event_data.get("duration", 60)))
-
-                event_check_end = event_end + timedelta(minutes=10)
-                
-                logging.debug(f"[GuildAttendance] Event {event_data['event_id']}: start={event_start}, check_time={event_check_time}, end={event_end}, check_end={event_check_end}, now={now}")
-                logging.debug(f"[GuildAttendance] Event {event_data['event_id']}: condition {event_check_time} <= {now} <= {event_check_end} = {event_check_time <= now <= event_check_end}")
-                
-                if event_check_time <= now <= event_check_end:
-                    current_events.append(event_data)
-                    logging.debug(f"[GuildAttendance] Event {event_data['event_id']} matches time window, added to current events")
-                    
-            except Exception as e:
-                logging.error(f"[GuildAttendance] Error parsing event time for {event_data['event_id']}: {e}")
-                continue
+            logging.error(f"[GuildAttendance] Error loading events for guild {guild_id}: {e}", exc_info=True)
         
         logging.debug(f"[GuildAttendance] Returning {len(current_events)} events for guild {guild_id}")
         return current_events
 
     async def _process_voice_attendance(self, guild: discord.Guild, event_data: Dict, now: datetime) -> None:
+        """Internal method: Process voice attendance."""
         event_id = event_data["event_id"]
         logging.debug(f"[GuildAttendance] Processing voice attendance for event {event_id}")
 
@@ -379,7 +410,7 @@ class GuildAttendance(commands.Cog):
         tentative_ids = set(registrations.get("tentative", []))
         absence_ids = set(registrations.get("absence", []))
 
-        attendance_changes = self._calculate_attendance_changes(
+        attendance_changes = await self._calculate_attendance_changes(
             voice_members, presence_ids, tentative_ids, absence_ids, 
             event_data.get("actual_presence", []), event_data, dkp_presence, dkp_registration
         )
@@ -392,6 +423,7 @@ class GuildAttendance(commands.Cog):
             await self._send_attendance_notification(guild.id, event_id, attendance_changes)
 
     async def _get_voice_connected_members(self, guild: discord.Guild) -> Set[int]:
+        """Internal method: Get voice connected members."""
         voice_members = set()
         
         for channel in guild.voice_channels:
@@ -403,14 +435,14 @@ class GuildAttendance(commands.Cog):
         return voice_members
 
     def _was_recently_checked(self, event_data: Dict, now: datetime, threshold_minutes: int = 10) -> bool:
+        """Internal method: Was recently checked."""
         return len(event_data.get("actual_presence", [])) > 0
 
     async def _member_has_members_role(self, guild: discord.Guild, member_id: int) -> bool:
+        """Internal method: Member has members role."""
         try:
-            if guild.id not in self.guild_settings:
-                return False
-            
-            members_role_id = self.guild_settings[guild.id].get("members_role")
+            settings = await self.get_guild_settings(guild.id)
+            members_role_id = settings.get("members_role")
             if not members_role_id:
                 return False
             
@@ -427,18 +459,20 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error checking member role for {member_id}: {e}")
             return False
 
-    def _calculate_attendance_changes(self, voice_members: Set[int], presence_ids: Set[int], 
+    async def _calculate_attendance_changes(self, voice_members: Set[int], presence_ids: Set[int], 
                                    tentative_ids: Set[int], absence_ids: Set[int], 
                                    current_actual_presence: List[int], event_data: Dict,
                                    dkp_presence: int, dkp_registration: int) -> List[Dict]:
+        """Internal method: Calculate attendance changes."""
         changes = []
         all_registered = presence_ids | tentative_ids | absence_ids
         current_actual_set = set(current_actual_presence)
 
         guild_id = event_data.get("guild_id")
         guild_lang = "en-US"
-        if guild_id and guild_id in self.guild_settings:
-            guild_lang = self.guild_settings[guild_id].get("guild_lang", "en-US")
+        if guild_id:
+            settings = await self.get_guild_settings(guild_id)
+            guild_lang = settings.get("guild_lang", "en-US")
 
         for member_id in all_registered:
             is_voice_present = member_id in voice_members
@@ -498,18 +532,20 @@ class GuildAttendance(commands.Cog):
         return changes
 
     async def _apply_attendance_changes(self, guild_id: int, event_id: int, changes: List[Dict]) -> None:
+        """Internal method: Apply attendance changes."""
         if not changes:
             return
             
         updates_to_batch = []
+        guild_members = await self.get_guild_members(guild_id)
         
         for change in changes:
             member_id = change["member_id"]
             dkp_change = change["dkp_change"]
             attendance_change = change["attendance_change"]
 
-            if guild_id in self.guild_members_cache and member_id in self.guild_members_cache[guild_id]:
-                member_data = self.guild_members_cache[guild_id][member_id]
+            if member_id in guild_members:
+                member_data = guild_members[member_id]
                 member_data["DKP"] += dkp_change
                 member_data["attendances"] += attendance_change
                 
@@ -528,25 +564,32 @@ class GuildAttendance(commands.Cog):
                 
                 logging.info(f"[GuildAttendance] Applied attendance changes for {len(updates_to_batch)} members in event {event_id}")
                 
+                # Update centralized cache
+                await self._update_centralized_cache(guild_id, guild_members)
+                
             except Exception as e:
                 logging.error(f"[GuildAttendance] Error applying attendance changes: {e}", exc_info=True)
 
     async def _update_event_actual_presence(self, guild_id: int, event_id: int, voice_members: List[int]) -> None:
+        """Internal method: Update event actual presence."""
         try:
             actual_presence_json = json.dumps(voice_members)
             update_query = "UPDATE events_data SET actual_presence = %s WHERE guild_id = %s AND event_id = %s"
             await self.bot.run_db_query(update_query, (actual_presence_json, guild_id, event_id), commit=True)
 
-            key = f"{guild_id}_{event_id}"
-            if key in self.events_data:
-                self.events_data[key]["actual_presence"] = voice_members
+            # Update global cache
+            event_data = await self.get_event_from_cache(guild_id, event_id)
+            if event_data:
+                event_data["actual_presence"] = voice_members
+                await self.set_event_in_cache(guild_id, event_id, event_data)
                 
         except Exception as e:
             logging.error(f"[GuildAttendance] Error updating actual presence for event {event_id}: {e}")
 
     async def _send_registration_notification(self, guild_id: int, event_id: int, total: int, 
                                             present: int, tentative: int, absent: int, dkp_registration: int = 0) -> None:
-        settings = self.guild_settings.get(guild_id)
+        """Internal method: Send registration notification."""
+        settings = await self.get_guild_settings(guild_id)
         if not settings or not settings.get("notifications_channel"):
             return
             
@@ -615,7 +658,8 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error sending registration notification: {e}")
 
     async def _send_attendance_notification(self, guild_id: int, event_id: int, changes: List[Dict]) -> None:
-        settings = self.guild_settings.get(guild_id)
+        """Internal method: Send attendance notification."""
+        settings = await self.get_guild_settings(guild_id)
         if not settings or not settings.get("notifications_channel") or not changes:
             return
             
@@ -688,6 +732,31 @@ class GuildAttendance(commands.Cog):
             
         except Exception as e:
             logging.error(f"[GuildAttendance] Error sending attendance notification: {e}")
+    
+    async def _process_guild_attendance(self, guild: discord.Guild, now: datetime):
+        """Process guild attendance in an optimized way."""
+        try:
+            guild_id = guild.id
+            settings = await self.get_guild_settings(guild_id)
+            if not settings.get('guild_lang'):
+                return
 
-def setup(bot):
+            logging.debug(f"[GuildAttendance] Processing guild {guild_id} ({guild.name})")
+            current_events = await self._get_current_events_for_guild(guild_id, now)
+            logging.debug(f"[GuildAttendance] Found {len(current_events)} current events for guild {guild_id}")
+
+            for event_data in current_events:
+                logging.info(f"[GuildAttendance] Processing voice attendance for event {event_data['event_id']} at {now}")
+                try:
+                    await self._process_voice_attendance(guild, event_data, now)
+                except Exception as e:
+                    logging.error(f"[GuildAttendance] Error processing voice attendance for event {event_data.get('event_id')}: {e}")
+            
+            logging.debug(f"[GuildAttendance] Completed processing {len(current_events)} events for guild {guild_id}")
+                    
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error processing guild {guild.id}: {e}", exc_info=True)
+
+def setup(bot: discord.Bot):
+    """Setup function for the cog."""
     bot.add_cog(GuildAttendance(bot))

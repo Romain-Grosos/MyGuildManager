@@ -4,7 +4,11 @@ import sys
 
 load_dotenv()
 
+# #################################################################################### #
+#                            Environment Variable Validation
+# #################################################################################### #
 def validate_env_var(var_name: str, value: str, required: bool = True) -> str:
+    """Validate and return environment variable value."""
     if not value:
         if required:
             raise ValueError(f"Missing required environment variable: {var_name}")
@@ -12,6 +16,7 @@ def validate_env_var(var_name: str, value: str, required: bool = True) -> str:
     return value
 
 def validate_int_env_var(var_name: str, value: str, default: int = None) -> int:
+    """Validate and return integer environment variable value."""
     if not value:
         if default is None:
             raise ValueError(f"Missing required integer environment variable: {var_name}")
@@ -21,6 +26,9 @@ def validate_int_env_var(var_name: str, value: str, default: int = None) -> int:
     except ValueError:
         raise ValueError(f"Invalid integer value for {var_name}: {value}")
 
+# #################################################################################### #
+#                            Debug and Logging Configuration
+# #################################################################################### #
 DEBUG: bool = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 
 LOG_DIR = "logs"
@@ -40,6 +48,9 @@ except IOError as e:
     print(f"CRITICAL: Cannot write to log file {LOG_FILE}: {e}", file=sys.stderr)
     sys.exit(1)
 
+# #################################################################################### #
+#                            Discord Bot Configuration
+# #################################################################################### #
 try:
     TOKEN: str = validate_env_var("DISCORD_TOKEN", os.getenv("DISCORD_TOKEN"))
     if len(TOKEN) < 50:
@@ -48,6 +59,9 @@ except ValueError as e:
     print(f"CRITICAL: {e}", file=sys.stderr)
     sys.exit(1)
 
+# #################################################################################### #
+#                            Database Configuration
+# #################################################################################### #
 try:
     DB_USER: str = validate_env_var("DB_USER", os.getenv("DB_USER"))
     DB_PASS: str = validate_env_var("DB_PASS", os.getenv("DB_PASS"))
@@ -65,18 +79,30 @@ except ValueError as e:
     print(f"CRITICAL: Database configuration error: {e}", file=sys.stderr)
     sys.exit(1)
 
+# #################################################################################### #
+#                            Performance and Resource Limits
+# #################################################################################### #
 MAX_MEMORY_MB = validate_int_env_var("MAX_MEMORY_MB", os.getenv("MAX_MEMORY_MB"), default=1024)
 MAX_CPU_PERCENT = validate_int_env_var("MAX_CPU_PERCENT", os.getenv("MAX_CPU_PERCENT"), default=90)
 MAX_RECONNECT_ATTEMPTS = validate_int_env_var("MAX_RECONNECT_ATTEMPTS", os.getenv("MAX_RECONNECT_ATTEMPTS"), default=5)
 RATE_LIMIT_PER_MINUTE = validate_int_env_var("RATE_LIMIT_PER_MINUTE", os.getenv("RATE_LIMIT_PER_MINUTE"), default=100)
 
+# #################################################################################### #
+#                            Database Connection Pool Settings
+# #################################################################################### #
 DB_POOL_SIZE = validate_int_env_var("DB_POOL_SIZE", os.getenv("DB_POOL_SIZE"), default=25)
 DB_TIMEOUT = validate_int_env_var("DB_TIMEOUT", os.getenv("DB_TIMEOUT"), default=30)
 DB_CIRCUIT_BREAKER_THRESHOLD = validate_int_env_var("DB_CIRCUIT_BREAKER_THRESHOLD", os.getenv("DB_CIRCUIT_BREAKER_THRESHOLD"), default=5)
 
+# #################################################################################### #
+#                            Translation System Configuration
+# #################################################################################### #
 TRANSLATION_FILE = validate_env_var("TRANSLATION_FILE", os.getenv("TRANSLATION_FILE"), required=False) or "translation.json"
 MAX_TRANSLATION_FILE_SIZE = validate_int_env_var("MAX_TRANSLATION_FILE_SIZE", os.getenv("MAX_TRANSLATION_FILE_SIZE"), default=5 * 1024 * 1024)
 
+# #################################################################################### #
+#                            Configuration Validation and Warnings
+# #################################################################################### #
 if not (50 <= MAX_MEMORY_MB <= 2048):
     print(f"WARNING: MAX_MEMORY_MB ({MAX_MEMORY_MB}) outside recommended range 50-2048MB", file=sys.stderr)
 if not (10 <= MAX_CPU_PERCENT <= 95):

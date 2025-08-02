@@ -1,0 +1,82 @@
+[run]
+# Source code to analyze
+source = .
+
+# Files to exclude from coverage
+omit = 
+    # Test files
+    tests/*
+    test_*.py
+    *_test.py
+    
+    # Virtual environments
+    venv/*
+    env/*
+    .venv/*
+    
+    # System and temporary files
+    */site-packages/*
+    */.pytest_cache/*
+    */htmlcov/*
+    
+    # Configuration and setup files
+    setup.py
+    conftest.py
+    
+    # Bot entry point (difficult to test in isolation)
+    bot.py
+    
+    # Performance profiler (external dependency heavy)
+    performance_profiler.py
+    
+    # Backup files
+    backups/*
+    logs/*
+    
+# Coverage settings
+branch = True
+parallel = False
+
+[report]
+# Reporting options
+precision = 2
+show_missing = True
+skip_covered = False
+skip_empty = False
+
+# Exclude lines from coverage
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+    
+    # Don't complain about missing debug-only code:
+    def __repr__
+    if self\.debug
+    
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+    
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if False:
+    if __name__ == .__main__.:
+    
+    # Don't complain about abstract methods
+    @(abc\.)?abstractmethod
+    
+    # Don't complain about platform specific code
+    pragma: platform
+    
+    # Don't complain about exception handling that can't be easily tested
+    except Exception:
+    except.*Error:
+
+[html]
+# HTML report settings
+directory = htmlcov
+title = Discord Bot - Test Coverage Report
+
+[xml]
+# XML report settings
+output = coverage.xml

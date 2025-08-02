@@ -1,3 +1,7 @@
+"""
+Guild Events Cog - Manages event creation, scheduling, and registration system.
+"""
+
 import discord
 from discord import NotFound, HTTPException
 import logging
@@ -7,8 +11,10 @@ from discord.ext import commands, tasks
 from datetime import datetime, timedelta, time as dt_time
 import time
 from translation import translations as global_translations
-from typing import Optional, List, Dict, Set, Tuple
+from typing import Optional, List, Dict, Set, Tuple, Any
 import json
+from performance_profiler import profile_performance
+from reliability import discord_resilient
 import math
 import statistics
 
@@ -35,174 +41,168 @@ CLASS_EMOJIS = {
 }
 
 class GuildEvents(commands.Cog):
-    def __init__(self, bot):
+    """Cog for managing event creation, scheduling, and registration system."""
+    
+    def __init__(self, bot: discord.Bot) -> None:
+        """Initialize the GuildEvents cog."""
         self.bot = bot
-        self.guild_settings = {} 
-        self.events_calendar = {}
-        self.events_data = {}
-        self.guild_members_cache = {}
-        self.static_groups_cache = {}
-        self.ideal_staff_cache = {}
         self.json_lock = asyncio.Lock()
         self.ignore_removals = {}
 
-    async def load_guild_settings(self) -> None:
-        query = """
-        SELECT gs.guild_id, gs.guild_lang, gs.guild_game, gc.events_channel, gc.notifications_channel, gc.groups_channel, gr.members, gs.premium, gc.voice_war_channel
-        FROM guild_settings gs
-        JOIN guild_channels gc ON gs.guild_id = gc.guild_id
-        JOIN guild_roles gr ON gs.guild_id = gr.guild_id;
-        """
-        try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.guild_settings = {}
-            for row in rows:
-                (guild_id, guild_lang, guild_game, events_channel, 
-                 notifications_channel, groups_channel, members_role, premium, voice_war_channel) = row
-                self.guild_settings[int(guild_id)] = {
-                    "guild_lang": guild_lang,
-                    "guild_game": guild_game,
-                    "events_channel": events_channel,
-                    "notifications_channel": notifications_channel,
-                    "groups_channel": groups_channel,
-                    "members_role": members_role,
-                    "premium": premium,
-                    "war_channel": voice_war_channel
-                }
-            logging.debug(f"[GuildEvents] Successfully loaded guild settings: {self.guild_settings}")
-        except Exception as e:
-            logging.error(f"[GuildEvents] Error loading guild settings: {e}", exc_info=True)
-
-    async def load_events_calendar(self) -> None:
-        query = """
-        SELECT game_id, day, time, duration, dkp_value, dkp_ins, week, name
-        FROM events_calendar;
-        """
-        try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.events_calendar = {}
-            for row in rows:
-                game_id, day, time_str, duration, dkp_value, dkp_ins, week, name = row
-                game_id = int(game_id)
-                event = {
-                    "day": day,
-                    "time": time_str,
-                    "duration": duration,
-                    "dkp_value": dkp_value,
-                    "dkp_ins": dkp_ins,
-                    "week": week,
-                    "name": name
-                }
-                if game_id not in self.events_calendar:
-                    self.events_calendar[game_id] = []
-                self.events_calendar[game_id].append(event)
-            logging.debug(f"[GuildEvents] Events calendar loaded: {self.events_calendar}")
-        except Exception as e:
-            logging.error(f"[GuildEvents] Error loading events calendar: {e}", exc_info=True)
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Initialize events data on bot ready."""
+        asyncio.create_task(self.load_events_data())
+        logging.debug("[GuildEvents] Cache loading tasks started in on_ready.")
 
     async def load_events_data(self) -> None:
-        query = """
-        SELECT guild_id, event_id, game_id, name, event_date, event_time, duration, dkp_value, dkp_ins, status, initial_members, registrations, actual_presence
-        FROM events_data
-        WHERE status <> 'Finished';
-        """
-        try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.events_data = {}
-            for row in rows:
-                try:
-                    (guild_id, event_message_id, game_id, name, event_date,
-                    event_time, duration, dkp_value, dkp_ins, status,
-                    initial_members, registrations, actual_presence) = row
-                    key = f"{int(guild_id)}_{int(event_message_id)}"
-                    self.events_data[key] = {
-                        "guild_id": int(guild_id),
-                        "event_id": int(event_message_id),
-                    "game_id": game_id,
-                    "name": name,
-                    "event_date": event_date,
-                    "event_time": event_time,
-                    "duration": duration,
-                    "dkp_value": dkp_value,
-                    "dkp_ins": dkp_ins,
-                    "status": status,
-                    "initial_members": initial_members,
-                    "registrations": registrations,
-                    "actual_presence": actual_presence
-                }
-                except (ValueError, TypeError) as e:
-                    logging.warning(f"[GuildEvents] Invalid data for event {event_message_id} in guild {guild_id}: {e}")
-                    continue
-            logging.debug(f"[GuildEvents] Events data loaded: {self.events_data}")
-        except Exception as e:
-            logging.error(f"[GuildEvents] Error loading events data: {e}", exc_info=True)
+        """Ensure all required data is loaded via centralized cache loader."""
+        logging.debug("[GuildEvents] Loading events data")
+        
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+        await self.bot.cache_loader.ensure_category_loaded('guild_members')
+        await self.bot.cache_loader.ensure_category_loaded('events_data')
+        await self.bot.cache_loader.ensure_category_loaded('static_data')
+        await self.bot.cache_loader.ensure_category_loaded('static_groups')
+        
+        logging.debug("[GuildEvents] Events data loading completed")
 
-    async def load_guild_members(self) -> None:
-        query = "SELECT guild_id, member_id, class, GS, weapons FROM guild_members"
+    async def get_event_from_cache(self, guild_id: int, event_id: int) -> Optional[Dict]:
+        """Get event data from global cache."""
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.guild_members_cache = {}
-            for row in rows:
-                guild_id, member_id, member_class, gs, weapons = row
-                guild_id = int(guild_id)
-                member_id = int(member_id)
-                if guild_id not in self.guild_members_cache:
-                    self.guild_members_cache[guild_id] = {}
-                self.guild_members_cache[guild_id][member_id] = {
-                    "class": member_class,
-                    "GS": gs if gs is not None else "N/A",
-                    "weapons": weapons if weapons is not None else "N/A"
-                }
-            logging.debug(f"[GuildEvents] Guild members cache loaded: {self.guild_members_cache}")
+            event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
+            if event_data:
+                event_data['guild_id'] = guild_id
+                if not event_data.get('registrations'):
+                    event_data['registrations'] = '{"presence":[],"tentative":[],"absence":[]}'
+                if not event_data.get('actual_presence'):
+                    event_data['actual_presence'] = '[]'
+            return event_data
         except Exception as e:
-            logging.error(f"[GuildEvents] Error loading guild members cache: {e}", exc_info=True)
+            logging.error(f"[GuildEvents] Error retrieving event {event_id} for guild {guild_id}: {e}", exc_info=True)
+            return None
 
-    async def load_static_groups_cache(self) -> None:
-        logging.debug("[GuildEvents] Loading static groups cache from database")
-        query = """
-            SELECT sg.guild_id, sg.group_name, sg.leader_id, 
-                   GROUP_CONCAT(sm.member_id ORDER BY sm.position_order) as member_ids,
-                   COUNT(sm.member_id) as member_count
-            FROM guild_static_groups sg
-            LEFT JOIN guild_static_members sm ON sg.id = sm.group_id
-            WHERE sg.is_active = TRUE
-            GROUP BY sg.id, sg.guild_id, sg.group_name, sg.leader_id
-        """
+    async def set_event_in_cache(self, guild_id: int, event_id: int, event_data: Dict) -> None:
+        """Set event data in global cache."""
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.static_groups_cache = {}
-            for row in rows:
-                guild_id, group_name, leader_id, member_ids_str, member_count = row
-                member_ids = [int(mid) for mid in member_ids_str.split(',')] if member_ids_str else []
-                
-                if guild_id not in self.static_groups_cache:
-                    self.static_groups_cache[guild_id] = {}
-                
-                self.static_groups_cache[guild_id][group_name] = {
-                    "leader_id": leader_id,
-                    "member_ids": member_ids,
-                    "member_count": member_count
-                }
-            logging.debug(f"[GuildEvents] Static groups cache loaded: {self.static_groups_cache}")
+            cache_data = event_data.copy()
+            cache_data.pop('guild_id', None)
+            await self.bot.cache.set_guild_data(guild_id, f'event_{event_id}', cache_data)
         except Exception as e:
-            logging.error(f"[GuildEvents] Error loading static groups cache: {e}", exc_info=True)
+            logging.error(f"[GuildEvents] Error storing event {event_id} for guild {guild_id}: {e}", exc_info=True)
 
-    async def load_ideal_staff_cache(self) -> None:
-        logging.debug("[GuildEvents] Loading ideal staff cache from database")
-        query = "SELECT guild_id, class_name, ideal_count FROM guild_ideal_staff"
+    async def delete_event_from_cache(self, guild_id: int, event_id: int) -> None:
+        """Delete event data from global cache."""
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
-            self.ideal_staff_cache = {}
-            for row in rows:
-                guild_id, class_name, ideal_count = row
-                if guild_id not in self.ideal_staff_cache:
-                    self.ideal_staff_cache[guild_id] = {}
-                self.ideal_staff_cache[guild_id][class_name] = ideal_count
-            logging.debug(f"[GuildEvents] Ideal staff cache loaded: {self.ideal_staff_cache}")
+            await self.bot.cache.delete_guild_data(guild_id, f'event_{event_id}')
         except Exception as e:
-            logging.error(f"[GuildEvents] Error loading ideal staff cache: {e}", exc_info=True)
+            logging.error(f"[GuildEvents] Error deleting event {event_id} for guild {guild_id}: {e}", exc_info=True)
+
+    async def get_all_guild_events(self, guild_id: int) -> List[Dict]:
+        """Get all events for a specific guild from global cache."""
+        try:
+            query = """
+                SELECT event_id, name, event_date, event_time, duration, 
+                       dkp_value, dkp_ins, status, registrations, actual_presence
+                FROM events_data WHERE guild_id = ?
+            """
+            rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
+            events = []
+            if rows:
+                for row in rows:
+                    event_id, name, event_date, event_time, duration, dkp_value, dkp_ins, status, registrations, actual_presence = row
+                    event_data = {
+                        'guild_id': guild_id,
+                        'event_id': event_id,
+                        'name': name,
+                        'event_date': event_date,
+                        'event_time': event_time,
+                        'duration': duration,
+                        'dkp_value': dkp_value,
+                        'dkp_ins': dkp_ins,
+                        'status': status,
+                        'registrations': registrations if registrations else '{"presence":[],"tentative":[],"absence":[]}',
+                        'actual_presence': actual_presence if actual_presence else '[]'
+                    }
+                    events.append(event_data)
+            return events
+        except Exception as e:
+            logging.error(f"[GuildEvents] Error retrieving all events for guild {guild_id}: {e}", exc_info=True)
+            return []
+
+    async def get_static_group_data(self, guild_id: int, group_name: str) -> Optional[Dict]:
+        """Get static group data from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('static_groups')
+        static_groups = await self.bot.cache.get_guild_data(guild_id, 'static_groups')
+        if not static_groups:
+            return None
+        return static_groups.get(group_name)
+
+    async def get_guild_settings(self, guild_id: int) -> Dict:
+        """Get guild settings from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+        
+        guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
+        guild_game = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
+        events_channel = await self.bot.cache.get_guild_data(guild_id, 'events_channel')
+        notifications_channel = await self.bot.cache.get_guild_data(guild_id, 'notifications_channel')
+        groups_channel = await self.bot.cache.get_guild_data(guild_id, 'groups_channel')
+        members_role = await self.bot.cache.get_guild_data(guild_id, 'members_role')
+        premium = await self.bot.cache.get_guild_data(guild_id, 'premium')
+        war_channel = await self.bot.cache.get_guild_data(guild_id, 'voice_war_channel')
+        
+        return {
+            "guild_lang": guild_lang,
+            "guild_game": guild_game,
+            "events_channel": events_channel,
+            "notifications_channel": notifications_channel,
+            "groups_channel": groups_channel,
+            "members_role": members_role,
+            "premium": premium,
+            "war_channel": war_channel
+        }
+
+
+    async def get_events_calendar_data(self, game_id: int) -> Dict:
+        """Get events calendar data from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('static_data')
+        
+        calendar_data = await self.bot.cache.get('static_data', f'events_calendar_{game_id}')
+        return calendar_data or {}
+
+    async def get_event_data(self, guild_id: int, event_id: int) -> Dict:
+        """Get event data from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('events_data')
+        
+        event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
+        return event_data or {}
+
+    async def get_guild_member_data(self, guild_id: int, member_id: int) -> Dict:
+        """Get guild member data from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_members')
+        
+        member_data = await self.bot.cache.get_guild_data(guild_id, f'member_{member_id}')
+        return member_data or {}
+
+    async def get_static_groups_data(self, guild_id: int) -> Dict:
+        """Get static groups data from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('static_groups')
+        static_groups = await self.bot.cache.get_guild_data(guild_id, 'static_groups')
+        return static_groups or {}
+
+    async def get_ideal_staff_data(self, guild_id: int) -> Dict:
+        """Get ideal staff data from centralized cache."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_ideal_staff')
+        
+        staff_data = await self.bot.cache.get('guild_data', 'ideal_staff')
+        return staff_data.get(guild_id, {}) if staff_data else {}
 
     def get_next_date_for_day(self, day_name: str, event_time_value, tz, tomorrow_only: bool = False) -> Optional[datetime]:
+        """Get next occurrence date for specified day of week."""
         if isinstance(event_time_value, timedelta):
             total_seconds = int(event_time_value.total_seconds())
             hours = total_seconds // 3600
@@ -257,34 +257,44 @@ class GuildEvents(commands.Cog):
         return tz.localize(naive_dt)
 
     async def create_events_for_all_premium_guilds(self) -> None:
-        for guild_id, settings in self.guild_settings.items():
-            if settings.get("premium") in [True, 1, "1"]:
-                guild = self.bot.get_guild(guild_id)
-                if guild:
-                    try:
-                        await self.create_events_for_guild(guild)
-                        logging.info(f"[GuildEvents] Events created for premium guild {guild_id}.")
-                    except Exception as e:
-                        logging.exception(f"[GuildEvents] Error creating events for guild {guild_id}: {e}")
-                else:
+        """Create recurring events for all premium guilds based on calendar."""
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        
+        for guild in self.bot.guilds:
+            guild_id = guild.id
+            settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
+            if settings and settings.get("premium") in [True, 1, "1"]:
+                try:
+                    await self.create_events_for_guild(guild)
+                    logging.info(f"[GuildEvents] Events created for premium guild {guild_id}.")
+                except Exception as e:
+                    logging.exception(f"[GuildEvents] Error creating events for guild {guild_id}: {e}")
+            else:
                     logging.error(f"❌ [GuildEvents] Guild {guild_id} not found.")
         await self.load_events_data()
 
-        attendance_cog = self.bot.get_cog("GuildAttendance")
-        if attendance_cog:
-            await attendance_cog.reload_events_cache_all_guilds()
-            logging.debug("[GuildEvents] Reloaded events cache in attendance cog after bulk creation")
-
+    @profile_performance(threshold_ms=200.0)
+    @discord_resilient(service_name='discord_api', max_retries=2)
     async def create_events_for_guild(self, guild: discord.Guild) -> None:
+        """Create recurring events for a specific guild based on its game calendar."""
         guild_id = guild.id
-        settings = self.guild_settings.get(guild_id)
+        
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         if not settings:
             logging.error(f"[GuildEvents - create_events_for_guild] No configuration for guild {guild_id}.")
             return
 
         guild_lang = settings.get("guild_lang")
-        events_channel = guild.get_channel(settings.get("events_channel"))
-        conference_channel = guild.get_channel(settings.get("war_channel"))
+
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+        if not channels_data:
+            logging.error(f"[GuildEvents - create_events_for_guild] No channels configuration for guild {guild_id}.")
+            return
+        
+        events_channel = guild.get_channel(channels_data.get("events_channel"))
+        conference_channel = guild.get_channel(channels_data.get("voice_war_channel"))
         if not events_channel:
             logging.error(f"[GuildEvents - create_events_for_guild] Events channel not found for guild {guild_id}.")
             return
@@ -406,13 +416,18 @@ class GuildEvents(commands.Cog):
                     continue
 
                 try:
-                    members_role_id = settings.get("members_role")
+                    await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+                    roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
+                    members_role_id = roles_data.get("members") if roles_data else None
                     if members_role_id:
-                        role = guild.get_role(int(members_role_id))
-                        if role:
-                            initial_members = [member.id for member in guild.members if role in member.roles]
+                        if hasattr(self.bot, 'cache') and hasattr(self.bot.cache, 'get_role_members_optimized'):
+                            initial_members = list(await self.bot.cache.get_role_members_optimized(guild_id, int(members_role_id)))
                         else:
-                            initial_members = []
+                            role = guild.get_role(int(members_role_id))
+                            if role:
+                                initial_members = [member.id for member in guild.members if role in member.roles]
+                            else:
+                                initial_members = []
                     else:
                         initial_members = []
                 except Exception as e:
@@ -500,10 +515,13 @@ class GuildEvents(commands.Cog):
     )
     @commands.has_permissions(manage_guild=True)
     async def event_confirm(self, ctx: discord.ApplicationContext, event_id: str):
+        """Confirm and close an event for registration."""
         await ctx.defer(ephemeral=True)
 
         guild = ctx.guild
-        settings = self.guild_settings.get(ctx.guild.id)
+        guild_id = ctx.guild.id
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         user_locale = ctx.locale if hasattr(ctx, "locale") and ctx.locale else "en-US"
         guild_locale = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
 
@@ -519,11 +537,7 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-        target_event = None
-        for key, ev in self.events_data.items():
-            if ev.get("event_id") == event_id_int:
-                target_event = ev
-                break
+        target_event = await self.get_event_from_cache(guild.id, event_id_int)
         if not target_event:
             follow_message = GUILD_EVENTS["event_confirm"]["no_events"].get(user_locale,GUILD_EVENTS["event_confirm"]["no_events"].get("en-US")).format(event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
@@ -533,17 +547,17 @@ class GuildEvents(commands.Cog):
         try:
             await self.bot.run_db_query(query, ("Confirmed", guild.id, event_id), commit=True)
             target_event["status"] = "Confirmed"
+            await self.set_event_in_cache(guild.id, event_id_int, target_event)
             logging.info(f"[GuildEvents] Event {event_id} status updated to 'Confirmed' for guild {guild.id}.")
 
-            attendance_cog = self.bot.get_cog("GuildAttendance")
-            if attendance_cog:
-                await attendance_cog.reload_events_cache_for_guild(guild.id)
-                logging.debug(f"[GuildEvents] Reloaded events cache for guild {guild.id} in attendance cog")
                 
         except Exception as e:
             logging.error(f"[GuildEvents] Error updating event {event_id} status for guild {guild.id}: {e}", exc_info=True)
 
-        events_channel = guild.get_channel(settings.get("events_channel"))
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+        
+        events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
         if not events_channel:
             follow_message = GUILD_EVENTS["event_confirm"]["no_events_canal"].get(user_locale,GUILD_EVENTS["event_confirm"]["no_events_canal"].get("en-US"))
             await ctx.followup.send(follow_message, ephemeral=True)
@@ -584,7 +598,10 @@ class GuildEvents(commands.Cog):
             new_embed.add_field(name=field["name"], value=field["value"], inline=field["inline"])
 
         try:
-            members_role = settings.get("members_role")
+            await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+            roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
+            
+            members_role = roles_data.get("members") if roles_data else None
             update_message = GUILD_EVENTS["event_confirm"]["confirmed_notif"].get(user_locale,GUILD_EVENTS["event_confirm"]["confirmed_notif"].get("en-US")).format(role=members_role)
             await message.edit(content=update_message,embed=new_embed)
             follow_message = GUILD_EVENTS["event_confirm"]["event_updated"].get(user_locale,GUILD_EVENTS["event_confirm"]["event_updated"].get("en-US")).format(event_id=event_id)
@@ -596,6 +613,7 @@ class GuildEvents(commands.Cog):
 
     @event_confirm.error
     async def event_confirm_error(self, ctx, error):
+        """Method: Event confirm error."""
         logging.error(f"❌ [GuildEvents] event_confirm error: {error}")
         follow_message = GUILD_EVENTS["event_confirm"]["event_ko"].get(ctx.locale,GUILD_EVENTS["event_confirm"]["event_ko"].get("en-US")).format(error=error)
         await ctx.send(follow_message, delete_after=10)
@@ -608,10 +626,13 @@ class GuildEvents(commands.Cog):
     )
     @commands.has_permissions(manage_guild=True)
     async def event_cancel(self, ctx: discord.ApplicationContext, event_id: str):
+        """Cancel an event and remove it from the system."""
         await ctx.defer(ephemeral=True)
 
         guild = ctx.guild
-        settings = self.guild_settings.get(ctx.guild.id)
+        guild_id = ctx.guild.id
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         user_locale = ctx.locale if hasattr(ctx, "locale") and ctx.locale else "en-US"
         guild_locale = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
 
@@ -627,11 +648,7 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-        target_event = None
-        for key, ev in self.events_data.items():
-            if ev.get("event_id") == event_id_int:
-                target_event = ev
-                break
+        target_event = await self.get_event_from_cache(guild.id, event_id_int)
         if not target_event:
             follow_message = GUILD_EVENTS["event_cancel"]["no_events"].get(user_locale,GUILD_EVENTS["event_cancel"]["no_events"].get("en-US")).format(event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
@@ -641,17 +658,16 @@ class GuildEvents(commands.Cog):
         try:
             await self.bot.run_db_query(query, ("Canceled", guild.id, event_id_int), commit=True)
             target_event["status"] = "Canceled"
+            await self.set_event_in_cache(guild.id, event_id_int, target_event)
             logging.info(f"[GuildEvents] Event {event_id_int} status updated to 'Canceled' for guild {guild.id}.")
-
-            attendance_cog = self.bot.get_cog("GuildAttendance")
-            if attendance_cog:
-                await attendance_cog.reload_events_cache_for_guild(guild.id)
-                logging.debug(f"[GuildEvents] Reloaded events cache for guild {guild.id} in attendance cog")
                 
         except Exception as e:
             logging.error(f"[GuildEvents] Error updating status for event {event_id_int} in guild {guild.id}: {e}", exc_info=True)
 
-        events_channel = guild.get_channel(settings.get("events_channel"))
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+        
+        events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
         if not events_channel:
             follow_message = GUILD_EVENTS["event_cancel"]["no_settings"].get(user_locale,GUILD_EVENTS["event_cancel"]["no_settings"].get("en-US"))
             await ctx.followup.send(follow_message, ephemeral=True)
@@ -715,28 +731,32 @@ class GuildEvents(commands.Cog):
 
     @event_cancel.error
     async def event_cancel_error(self, ctx, error):
+        """Method: Event cancel error."""
         logging.error(f"❌ [GuildEvents] event_cancel error: {error}")
         error_msg = GUILD_EVENTS["event_cancel"]["event_embed_ko"].get(ctx.locale,GUILD_EVENTS["event_cancel"]["event_embed_ko"].get("en-US")).format(error=error)
         await ctx.send(error_msg, delete_after=10)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        """Handle reaction additions for event registration."""
         logging.debug(f"[GuildEvents - on_raw_reaction_add] Starting with payload: {payload}")
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             logging.debug("[GuildEvents - on_raw_reaction_add] Guild not found.")
             return
 
-        settings = self.guild_settings.get(guild.id)
-        if not settings:
-            logging.debug("[GuildEvents - on_raw_reaction_add] Settings not found for this guild.")
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
+        if not channels_data:
+            logging.debug("[GuildEvents - on_raw_reaction_add] Channels data not found for this guild.")
             return
 
-        events_channel_id = settings.get("events_channel")
-        if payload.channel_id != events_channel_id:
-            logging.debug("[GuildEvents - on_raw_reaction_add] Channel ID does not match events channel.")
-            return
+        events_channel_id = channels_data.get("events_channel")
+        if payload.channel_id == events_channel_id:
+            await self._handle_event_reaction(payload, guild, channels_data)
 
+    async def _handle_event_reaction(self, payload: discord.RawReactionActionEvent, guild: discord.Guild, settings: dict) -> None:
+        """Handle reaction additions for event registration."""
         valid_emojis = [
             "<:_yes_:1340109996666388570>",
             "<:_attempt_:1340110058692018248>",
@@ -768,11 +788,7 @@ class GuildEvents(commands.Cog):
                     logging.error(f"[GuildEvents - on_raw_reaction_add] Error removing reaction {emoji} for {member}: {e}")
 
         async with self.json_lock:
-            target_event = None
-            for ev in self.events_data.values():
-                if ev.get("event_id") == message.id:
-                    target_event = ev
-                    break
+            target_event = await self.get_event_from_cache(guild.id, message.id)
             if not target_event:
                 logging.debug("[GuildEvents - on_raw_reaction_add] No event found for this message.")
                 return
@@ -801,6 +817,8 @@ class GuildEvents(commands.Cog):
 
             logging.debug(f"[GuildEvents - on_raw_reaction_add] Registrations AFTER update: {target_event['registrations']}")
 
+            await self.set_event_in_cache(guild.id, message.id, target_event)
+
         try:
             new_registrations = json.dumps(target_event["registrations"])
             update_query = "UPDATE events_data SET registrations = %s WHERE guild_id = %s AND event_id = %s"
@@ -813,6 +831,7 @@ class GuildEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        """Handle reaction removals for event registration."""
         key = (payload.message_id, payload.user_id, str(payload.emoji))
         if key in self.ignore_removals:
             ts = self.ignore_removals.pop(key)
@@ -824,10 +843,11 @@ class GuildEvents(commands.Cog):
         if not guild:
             return
 
-        settings = self.guild_settings.get(guild.id)
-        if not settings:
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
+        if not channels_data:
             return
-        events_channel_id = settings.get("events_channel")
+        events_channel_id = channels_data.get("events_channel")
         if payload.channel_id != events_channel_id:
             return
 
@@ -839,11 +859,7 @@ class GuildEvents(commands.Cog):
             return
 
         async with self.json_lock:
-            target_event = None
-            for ev in self.events_data.values():
-                if ev.get("event_id") == message.id:
-                    target_event = ev
-                    break
+            target_event = await self.get_event_from_cache(guild.id, message.id)
             if not target_event:
                 return
             if target_event.get("status", "").strip().lower() == "closed":
@@ -853,6 +869,8 @@ class GuildEvents(commands.Cog):
             for key in ["presence", "tentative", "absence"]:
                 if payload.user_id in target_event["registrations"].get(key, []):
                     target_event["registrations"][key].remove(payload.user_id)
+
+            await self.set_event_in_cache(guild.id, message.id, target_event)
 
         await self.update_event_embed(message, target_event)
 
@@ -865,10 +883,13 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents - on_raw_reaction_remove] Error updating DB for registrations: {e}")
 
     async def update_event_embed(self, message, event_record):
+        """Update event embed with current registration information."""
         logging.debug("✅ [GuildEvents] Starting embed update for event.")
         guild = self.bot.get_guild(message.guild.id)
         guild_id = guild.id
-        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+        
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
         present_key = GUILD_EVENTS["events_infos"]["present"] \
             .get(guild_lang, GUILD_EVENTS["events_infos"]["present"]["en-US"]) \
@@ -883,6 +904,7 @@ class GuildEvents(commands.Cog):
             .get(guild_lang, GUILD_EVENTS["events_infos"]["none"]["en-US"])
 
         def format_list(id_list):
+            """Format member ID list for display in embed."""
             members = [guild.get_member(uid) for uid in id_list if guild.get_member(uid)]
             return ", ".join(m.mention for m in members) if members else none_key
 
@@ -925,26 +947,34 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error updating embed: {e}")
 
     async def event_delete_cron(self, ctx=None) -> None:
+        """Automated task to delete finished events."""
         tz = pytz.timezone("Europe/Paris")
         now = datetime.now(tz)
 
-        for guild_id, settings in self.guild_settings.items():
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        
+        for guild in self.bot.guilds:
+            guild_id = guild.id
             total_deleted = 0
             canceled_events_to_delete = []
-            guild = self.bot.get_guild(guild_id)
-            if not guild:
-                logging.error(f"[GuildEvents CRON] Guild {guild_id} not found.")
+            
+            settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
+            if not settings:
                 continue
 
-            events_channel = guild.get_channel(settings.get("events_channel"))
+            await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+            channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+            if not channels_data:
+                continue
+                
+            events_channel = guild.get_channel(channels_data.get("events_channel"))
             if not events_channel:
                 logging.error(f"[GuildEvents CRON] Events channel not found for guild {guild_id}.")
                 continue
 
-            guild_events_keys = [key for key, ev in list(self.events_data.items())if ev["guild_id"] == guild_id]
+            guild_events = await self.get_all_guild_events(guild_id)
 
-            for key in guild_events_keys:
-                ev = self.events_data.get(key)
+            for ev in guild_events:
                 try:
                     if isinstance(ev["event_date"], str):
                         event_date = datetime.strptime(ev["event_date"], "%Y-%m-%d").date()
@@ -985,7 +1015,7 @@ class GuildEvents(commands.Cog):
                         continue
 
                     total_deleted += 1
-                    del self.events_data[key]
+                    await self.delete_event_from_cache(ev["guild_id"], ev["event_id"])
 
                     if str(ev.get("status", "")).lower() == "canceled":
                         canceled_events_to_delete.append((ev["guild_id"], ev["event_id"]))
@@ -1005,27 +1035,35 @@ class GuildEvents(commands.Cog):
             logging.info(f"[GuildEvents CRON] For guild {guild_id}, messages deleted: {total_deleted}")
 
     async def event_reminder_cron(self) -> None:
+        """Automated task to send event reminders."""
         tz = pytz.timezone("Europe/Paris")
         today_str = datetime.now(tz).strftime("%Y-%m-%d")
         overall_results = []
 
         logging.info(f"[GuildEvents - event_reminder_cron] Starting automatic reminder for {today_str}.")
 
-        for guild_id, settings in self.guild_settings.items():
-            guild = self.bot.get_guild(guild_id)
-            if not guild:
-                logging.error(f"[GuildEvents] Guild {guild_id} not found.")
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        
+        for guild in self.bot.guilds:
+            guild_id = guild.id
+            settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
+            if not settings:
                 continue
 
             guild_locale = settings.get("guild_lang") or "en-US"
 
-            notifications_channel = guild.get_channel(settings.get("notifications_channel"))
-            events_channel = guild.get_channel(settings.get("events_channel"))
+            await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+            channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+            if not channels_data:
+                continue
+                
+            notifications_channel = guild.get_channel(channels_data.get("notifications_channel"))
+            events_channel = guild.get_channel(channels_data.get("events_channel"))
             if not events_channel or not notifications_channel:
                 logging.error(f"[GuildEvents] Events or notifications channel not found for guild {guild.name}.")
                 continue
 
-            guild_events = [ev for ev in self.events_data.values() if ev["guild_id"] == guild_id]
+            guild_events = await self.get_all_guild_events(guild_id)
             for ev in guild_events:
                 logging.debug(f"[GuildEvents - event_reminder_cron] Comparing event {ev['event_id']}: event_date={repr(ev.get('event_date'))} (type {type(ev.get('event_date'))}), "
                             f"today_str={repr(today_str)}, status={repr(ev.get('status', ''))} (lowercased: {repr(ev.get('status', '').strip().lower())})")
@@ -1059,11 +1097,16 @@ class GuildEvents(commands.Cog):
                 initial = set(initial_members)
                 
                 try:
-                    members_role_id = settings.get("members_role")
+                    await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+                    roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
+                    members_role_id = roles_data.get("members") if roles_data else None
                     if members_role_id:
                         role = guild.get_role(int(members_role_id))
                         if role:
-                            current_members = {member.id for member in guild.members if role in member.roles}
+                            if hasattr(self.bot, 'cache') and hasattr(self.bot.cache, 'get_role_members_optimized'):
+                                current_members = await self.bot.cache.get_role_members_optimized(guild_id, int(members_role_id))
+                            else:
+                                current_members = {member.id for member in guild.members if role in member.roles}
                         else:
                             current_members = set()
                     else:
@@ -1132,26 +1175,34 @@ class GuildEvents(commands.Cog):
         logging.info("Reminder results:\n" + "\n".join(overall_results))
 
     async def event_close_cron(self) -> None:
+        """Automated task to close events and process registrations."""
         tz = pytz.timezone("Europe/Paris")
         now = datetime.now(tz)
 
-        for guild_id, settings in self.guild_settings.items():
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+
+        for guild in self.bot.guilds:
+            guild_id = guild.id
             closed_events_to_update = []
-            guild = self.bot.get_guild(guild_id)
-            if not guild:
-                logging.error(f"[GuildEvents CRON] Guild {guild_id} not found.")
+
+            settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
+            if not settings:
+                continue
+                
+            channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+            if not channels_data:
                 continue
 
-            events_channel = guild.get_channel(settings.get("events_channel"))
+            events_channel = guild.get_channel(channels_data.get("events_channel"))
             if not events_channel:
                 logging.error(f"[GuildEvents CRON] Events channel not found for guild {guild_id}.")
                 continue
 
             guild_lang = settings.get("guild_lang") or "en-US"
 
-            guild_events_keys = [key for key, ev in self.events_data.items() if ev["guild_id"] == guild_id]
-            for key in guild_events_keys:
-                ev = self.events_data[key]
+            guild_events = await self.get_all_guild_events(guild_id)
+            for ev in guild_events:
                 try:
                     if isinstance(ev["event_date"], str):
                         event_date = datetime.strptime(ev["event_date"], "%Y-%m-%d").date()
@@ -1237,10 +1288,6 @@ class GuildEvents(commands.Cog):
                     await self.bot.run_db_query(update_query, params, commit=True)
                     logging.debug(f"[GuildEvents CRON] Batch updated {len(closed_events_to_update)} events to Closed status for guild {guild_id}")
 
-                    attendance_cog = self.bot.get_cog("GuildAttendance")
-                    if attendance_cog:
-                        await attendance_cog.reload_events_cache_for_guild(guild_id)
-                        logging.debug(f"[GuildEvents CRON] Reloaded events cache for guild {guild_id} in attendance cog")
                         
                 except Exception as e:
                     logging.error(f"[GuildEvents CRON] Error batch updating event statuses for guild {guild_id}: {e}", exc_info=True)
@@ -1249,6 +1296,7 @@ class GuildEvents(commands.Cog):
 
     @staticmethod
     def group_members_by_class(member_ids, roster_data):
+        """Group members by their class for balanced team composition."""
         logging.debug("[Guild_Events - GroupsMembersByClass] Building class buckets…")
         classes = {c: [] for c in ("Tank", "Melee DPS", "Ranged DPS",
                                 "Healer", "Flanker")}
@@ -1280,6 +1328,7 @@ class GuildEvents(commands.Cog):
 
     @staticmethod
     def _get_optimal_grouping(n: int, min_size: int = 4, max_size: int = 6) -> list[int]:
+        """Internal method: Get optimal grouping."""
         logging.debug(f"[Guild_Events - GetOptimalGrouping] Start – n={n}, min={min_size}, max={max_size}")
         possible = []
         try:
@@ -1309,6 +1358,7 @@ class GuildEvents(commands.Cog):
             return [min_size] * math.ceil(n / min_size)
 
     def _calculate_gs_ranges(self, members_data: List[Dict]) -> List[Tuple[int, int]]:
+        """Internal method: Calculate gs ranges."""
         gs_values = []
         for member in members_data:
             try:
@@ -1353,6 +1403,7 @@ class GuildEvents(commands.Cog):
         return ranges
 
     def _get_member_gs_range(self, member_gs, gs_ranges: List[Tuple[int, int]]) -> int:
+        """Internal method: Get member GS range."""
         try:
             if isinstance(member_gs, str) and member_gs.lower() in ["n/a", "na", ""]:
                 return 0
@@ -1369,19 +1420,36 @@ class GuildEvents(commands.Cog):
             pass
         return 0
 
-    def _format_static_group_members(self, member_ids: List[int], guild_obj, absent_text: str) -> List[str]:
+    async def _format_static_group_members(self, member_ids: List[int], guild_obj, absent_text: str) -> List[str]:
+        """Internal method: Format static group members."""
         member_info_list = []
+
+        await self.bot.cache_loader.ensure_category_loaded('guild_members')
+        guild_members_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
 
         for member_id in member_ids:
             member = guild_obj.get_member(member_id) if guild_obj else None
-            member_data = self.guild_members_cache.get(guild_obj.id, {}).get(member_id, {}) if guild_obj else {}
+
+            member_data = guild_members_cache.get((guild_obj.id, member_id), {}) if guild_obj else {}
+
+            class_value = member_data.get("class")
+            if not class_value or class_value == "NULL":
+                class_value = "Unknown"
+            
+            gs_value = member_data.get("GS")
+            if not gs_value or gs_value == 0 or gs_value == "0":
+                gs_value = "N/A"
+            
+            weapons_value = member_data.get("weapons")
+            if not weapons_value or weapons_value == "NULL":
+                weapons_value = "N/A"
             
             member_info = {
                 "member": member,
                 "member_id": member_id,
-                "class": member_data.get("class", "Unknown"),
-                "gs": member_data.get("GS", "N/A"),
-                "weapons": member_data.get("weapons", "N/A"),
+                "class": class_value,
+                "gs": gs_value,
+                "weapons": weapons_value,
                 "mention": member.mention if member else f"<@{member_id}> ({absent_text})",
                 "is_present": member is not None
             }
@@ -1420,6 +1488,7 @@ class GuildEvents(commands.Cog):
 
     def _calculate_member_score(self, member: Dict, target_class: str, target_gs_range: int, 
                                gs_ranges: List[Tuple[int, int]], is_tentative: bool = False) -> float:
+        """Internal method: Calculate member score."""
         score = 0.0
         
         if member.get("class") == target_class:
@@ -1442,7 +1511,8 @@ class GuildEvents(commands.Cog):
         
         return score
 
-    def _assign_groups_enhanced(self, guild_id: int, presence_ids: List[int], tentative_ids: List[int], roster_data: Dict) -> List[List[Dict]]:
+    async def _assign_groups_enhanced(self, guild_id: int, presence_ids: List[int], tentative_ids: List[int], roster_data: Dict) -> List[List[Dict]]:
+        """Internal method: Assign groups enhanced."""
         logging.info("[GuildEvents - Groups Enhanced] Starting enhanced group assignment")
         
         all_inscribed = set(presence_ids + tentative_ids)
@@ -1451,6 +1521,7 @@ class GuildEvents(commands.Cog):
         incomplete_static_groups = []
         
         def get_member_info(uid: int, tentative: bool = False):
+            """Get formatted member information for event display."""
             info = roster_data["members"].get(str(uid))
             if not info:
                 return None
@@ -1462,7 +1533,7 @@ class GuildEvents(commands.Cog):
         
         logging.info("[GuildEvents - Groups Enhanced] Step 1: Processing static groups (complete or N-1)")
         
-        static_groups = self.static_groups_cache.get(guild_id, {})
+        static_groups = await self.get_static_groups_data(guild_id)
         for group_name, group_data in static_groups.items():
             member_ids = group_data["member_ids"]
             configured_count = len(member_ids)
@@ -1685,12 +1756,14 @@ class GuildEvents(commands.Cog):
         return final_groups
 
     def _assign_groups_legacy(self, presence_ids: list[int], tentative_ids: list[int], roster_data: dict) -> list[list[dict]]:
+        """Internal method: Assign groups legacy."""
         logging.debug("[Guild_Events - AssignGroups] Starting group assignment…")
 
         buckets = {c: [] for c in ("Tank", "Healer",
                                    "Melee DPS", "Ranged DPS", "Flanker")}
 
         def _push(uid: int, tentative: bool):
+            """Internal method: Push."""
             info = roster_data["members"].get(str(uid))
             if not info:
                 logging.warning(f"[Guild_Events - AssignGroups] UID {uid} missing from roster, skipped.")
@@ -1723,6 +1796,7 @@ class GuildEvents(commands.Cog):
             sizes = self._get_optimal_grouping(len(presence_ids), 4, 6)
 
             def _pop(role, titular_first=True):
+                """Internal method: Pop."""
                 pool = buckets[role]
                 for i, m in enumerate(pool):
                     if (titular_first and not m["tentative"]) or not titular_first:
@@ -1756,6 +1830,7 @@ class GuildEvents(commands.Cog):
             fill_order = ("Healer", "Tank", "Melee DPS", "Ranged DPS")
 
             def _need_role(g):
+                """Internal method: Need role."""
                 classes = [m["class"] for m in g]
                 if "Healer" not in classes and buckets["Healer"]:
                     return "Healer"
@@ -1790,6 +1865,7 @@ class GuildEvents(commands.Cog):
             return []
 
     async def create_groups(self, guild_id: int, event_id: int) -> None:
+        """Create balanced groups for an event based on registrations."""
         logging.info(f"[GuildEvent - Cron Create_Groups] Creating groups for guild {guild_id}, event {event_id}")
 
         guild = self.bot.get_guild(guild_id)
@@ -1797,23 +1873,32 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvent - Cron Create_Groups] Guild not found for guild_id: {guild_id}")
             return
 
-        settings = self.guild_settings.get(guild_id)
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         if not settings:
             logging.error(f"[GuildEvent - Cron Create_Groups] No configuration found for guild {guild_id}")
             return
 
         guild_lang = settings.get("guild_lang", "en-US")
 
-        groups_channel = guild.get_channel(int(settings.get("groups_channel")))
-        events_channel = guild.get_channel(int(settings.get("events_channel")))
-        members_role_id = settings.get("members_role")
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+        if not channels_data:
+            logging.error(f"[GuildEvent - Cron Create_Groups] No channels configuration for guild {guild_id}")
+            return
+
+        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+        roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
+        
+        groups_channel = guild.get_channel(channels_data.get("groups_channel")) if channels_data.get("groups_channel") else None
+        events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data.get("events_channel") else None
+        members_role_id = roles_data.get("members") if roles_data else None
         mention_role = f"<@&{members_role_id}>" if members_role_id else ""
         if not groups_channel or not events_channel:
             logging.error(f"[GuildEvent - Cron Create_Groups] Channels not found (groups/events) for guild {guild_id}")
             return
 
-        key = f"{guild_id}_{event_id}"
-        event = self.events_data.get(key)
+        event = await self.get_event_from_cache(guild_id, event_id)
         if not event:
             logging.error(f"[GuildEvent - Cron Create_Groups] Event not found for guild {guild_id} and event {event_id}")
             return
@@ -1842,20 +1927,36 @@ class GuildEvents(commands.Cog):
 
         try:
             roster_data = {"members": {}}
-            for member in guild.members:
-                md = self.guild_members_cache.get(guild_id, {}).get(member.id, {})
-                roster_data["members"][str(member.id)] = {
-                    "pseudo": member.display_name,
-                    "GS": md.get("GS", "N/A"),
-                    "weapons": md.get("weapons", "N/A"),
-                    "class": md.get("class", "Unknown"),
-                }
+
+            if hasattr(self.bot, 'cache') and hasattr(self.bot.cache, 'get_bulk_guild_members'):
+                members_data = await self.bot.cache.get_bulk_guild_members(guild_id)
+                for member_id, member_data in members_data.items():
+                    try:
+                        discord_member = guild.get_member(member_id)
+                        if discord_member:
+                            roster_data["members"][str(member_id)] = {
+                                "pseudo": discord_member.display_name,
+                                "GS": member_data.get("GS", "N/A"),
+                                "weapons": member_data.get("weapons", "N/A"),
+                                "class": member_data.get("class", "Unknown"),
+                            }
+                    except Exception:
+                        continue
+            else:
+                for member in guild.members:
+                    md = await self.get_guild_member_data(guild_id, member.id)
+                    roster_data["members"][str(member.id)] = {
+                        "pseudo": member.display_name,
+                        "GS": md.get("GS", "N/A"),
+                        "weapons": md.get("weapons", "N/A"),
+                        "class": md.get("class", "Unknown"),
+                    }
         except Exception as exc:
             logging.exception("[Guild_Events - CreateGroups] Failed to build roster.", exc_info=exc)
             return
 
         try:
-            all_groups = self._assign_groups_enhanced(guild_id, presence_ids, tentative_ids, roster_data)
+            all_groups = await self._assign_groups_enhanced(guild_id, presence_ids, tentative_ids, roster_data)
         except Exception as exc:
             logging.exception("[Guild_Events - CreateGroups] _assign_groups_enhanced crashed.", exc_info=exc)
             return
@@ -1949,13 +2050,18 @@ class GuildEvents(commands.Cog):
             max_value=9999
         )
     ):
+        """Create a new event with specified parameters."""
         await ctx.defer(ephemeral=True)
 
         guild = ctx.guild
-        settings = self.guild_settings.get(ctx.guild.id)
+        guild_id = ctx.guild.id
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+        
         user_locale = ctx.locale if hasattr(ctx, "locale") and ctx.locale else "en-US"
-        guild_lang = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
-
+        guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
+        
+        settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         if not settings:
             follow_message = GUILD_EVENTS["event_create"]["no_settings"].get(user_locale,GUILD_EVENTS["event_create"]["no_settings"].get("en-US"))
             await ctx.followup.send(follow_message, ephemeral=True)
@@ -2023,8 +2129,9 @@ class GuildEvents(commands.Cog):
         event_voice_channel = GUILD_EVENTS["events_infos"]["voice_channel"].get(guild_lang,GUILD_EVENTS["events_infos"]["voice_channel"].get("en-US"))
         event_groups = GUILD_EVENTS["events_infos"]["groups"].get(guild_lang,GUILD_EVENTS["events_infos"]["groups"].get("en-US"))
         event_auto_grouping = GUILD_EVENTS["events_infos"]["auto_grouping"].get(guild_lang,GUILD_EVENTS["events_infos"]["auto_grouping"].get("en-US"))
-        conference_channel = guild.get_channel(settings.get("war_channel"))
-        events_channel = guild.get_channel(settings.get("events_channel"))
+        channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
+        conference_channel = guild.get_channel(channels_data.get("voice_war_channel")) if channels_data else None
+        events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
         if not events_channel or not conference_channel:
             logging.error(f"[GuildEvents - event_create] Channels not found: events_channel={events_channel}, conference_channel={conference_channel}")
             follow_message = GUILD_EVENTS["event_create"]["no_events_canal"].get(user_locale,GUILD_EVENTS["event_create"]["no_events_canal"].get("en-US"))
@@ -2049,7 +2156,9 @@ class GuildEvents(commands.Cog):
 
         try:
             if status.lower() == "confirmed":
-                members_role = settings.get("members_role")
+                await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+                roles_data = await self.bot.cache.get_guild_data(guild.id, 'roles')
+                members_role = roles_data.get("members") if roles_data else None
                 update_message = GUILD_EVENTS["event_confirm"]["confirmed_notif"].get(
                     user_locale,
                     GUILD_EVENTS["event_confirm"]["confirmed_notif"].get("en-US")
@@ -2084,7 +2193,9 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents - event_create] Error creating scheduled event: {e}", exc_info=True)
 
         try:
-            members_role_id = settings.get("members_role")
+            await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+            roles_data = await self.bot.cache.get_guild_data(guild.id, 'roles')
+            members_role_id = roles_data.get("members") if roles_data else None
             if members_role_id:
                 role = guild.get_role(int(members_role_id))
                 if role:
@@ -2157,13 +2268,9 @@ class GuildEvents(commands.Cog):
         """
         try:
             await self.bot.run_db_query(query, record, commit=True)
-            self.events_data[f"{guild.id}_{announcement.id}"] = record
+            await self.set_event_in_cache(guild.id, announcement.id, record)
             logging.info(f"[GuildEvents - event_create] Event saved in DB successfully: {announcement.id}")
 
-            attendance_cog = self.bot.get_cog("GuildAttendance")
-            if attendance_cog:
-                await attendance_cog.reload_events_cache_for_guild(guild.id)
-                logging.debug(f"[GuildEvents - event_create] Reloaded events cache for guild {guild.id} in attendance cog")
             
             follow_message = GUILD_EVENTS["event_create"]["events_created"].get(user_locale,GUILD_EVENTS["event_create"]["events_created"].get("en-US")).format(event_id=announcement.id)
             await ctx.followup.send(follow_message, ephemeral=True)
@@ -2190,13 +2297,16 @@ class GuildEvents(commands.Cog):
             max_length=50
         )
     ):
+        """Create a new static group."""
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
         leader_id = ctx.author.id
-        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
-        if guild_id in self.static_groups_cache and group_name in self.static_groups_cache[guild_id]:
+        existing_group = await self.get_static_group_data(guild_id, group_name)
+        if existing_group:
             error_msg = STATIC_GROUPS["static_create"]["messages"]["already_exists"].get(guild_lang, STATIC_GROUPS["static_create"]["messages"]["already_exists"].get("en-US")).format(group_name=group_name)
             await ctx.followup.send(error_msg, ephemeral=True)
             return
@@ -2205,13 +2315,7 @@ class GuildEvents(commands.Cog):
             query = "INSERT INTO guild_static_groups (guild_id, group_name, leader_id) VALUES (%s, %s, %s)"
             await self.bot.run_db_query(query, (guild_id, group_name, leader_id), commit=True)
 
-            if guild_id not in self.static_groups_cache:
-                self.static_groups_cache[guild_id] = {}
-            self.static_groups_cache[guild_id][group_name] = {
-                "leader_id": leader_id,
-                "member_ids": [],
-                "member_count": 0
-            }
+            await self.bot.cache_loader.reload_category('static_groups')
             
             success_msg = STATIC_GROUPS["static_create"]["messages"]["success"].get(guild_lang, STATIC_GROUPS["static_create"]["messages"]["success"].get("en-US")).format(group_name=group_name)
             await ctx.followup.send(success_msg, ephemeral=True)
@@ -2248,17 +2352,20 @@ class GuildEvents(commands.Cog):
             description_localizations=STATIC_GROUPS["static_add"]["options"]["member"]["description"]
         )
     ):
+        """Add a member to a static group."""
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
-        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
-        if guild_id not in self.static_groups_cache or group_name not in self.static_groups_cache[guild_id]:
+        group_data = await self.get_static_group_data(guild_id, group_name)
+        if not group_data:
             error_msg = STATIC_GROUPS["static_add"]["messages"]["group_not_found"].get(guild_lang, STATIC_GROUPS["static_add"]["messages"]["group_not_found"].get("en-US")).format(group_name=group_name)
             await ctx.followup.send(error_msg, ephemeral=True)
             return
 
-        current_members = self.static_groups_cache[guild_id][group_name]["member_ids"]
+        current_members = group_data.get("member_ids", [])
         if member.id in current_members:
             already_in_msg = STATIC_GROUPS["static_add"]["messages"]["already_in_group"].get(guild_lang, STATIC_GROUPS["static_add"]["messages"]["already_in_group"].get("en-US")).format(member=member.mention, group_name=group_name)
             await ctx.followup.send(already_in_msg, ephemeral=True)
@@ -2284,10 +2391,9 @@ class GuildEvents(commands.Cog):
             query = "INSERT INTO guild_static_members (group_id, member_id, position_order) VALUES (%s, %s, %s)"
             await self.bot.run_db_query(query, (group_id, member.id, position), commit=True)
 
-            self.static_groups_cache[guild_id][group_name]["member_ids"].append(member.id)
-            self.static_groups_cache[guild_id][group_name]["member_count"] += 1
+            await self.bot.cache_loader.reload_category('static_groups')
             
-            member_count = len(self.static_groups_cache[guild_id][group_name]["member_ids"])
+            member_count = len(current_members) + 1
             success_msg = STATIC_GROUPS["static_add"]["messages"]["success"].get(guild_lang, STATIC_GROUPS["static_add"]["messages"]["success"].get("en-US")).format(member=member.mention, group_name=group_name, count=member_count)
             await ctx.followup.send(success_msg, ephemeral=True)
             logging.info(f"[GuildEvents] Member {member.id} added to static group '{group_name}' in guild {guild_id}")
@@ -2318,17 +2424,20 @@ class GuildEvents(commands.Cog):
             description_localizations=STATIC_GROUPS["static_remove"]["options"]["member"]["description"]
         )
     ):
+        """Remove a member from a static group."""
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
-        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
-        if guild_id not in self.static_groups_cache or group_name not in self.static_groups_cache[guild_id]:
+        group_data = await self.get_static_group_data(guild_id, group_name)
+        if not group_data:
             error_msg = STATIC_GROUPS["static_remove"]["messages"]["group_not_found"].get(guild_lang, STATIC_GROUPS["static_remove"]["messages"]["group_not_found"].get("en-US")).format(group_name=group_name)
             await ctx.followup.send(error_msg, ephemeral=True)
             return
 
-        current_members = self.static_groups_cache[guild_id][group_name]["member_ids"]
+        current_members = group_data.get("member_ids", [])
         if member.id not in current_members:
             not_in_group_msg = STATIC_GROUPS["static_remove"]["messages"]["not_in_group"].get(guild_lang, STATIC_GROUPS["static_remove"]["messages"]["not_in_group"].get("en-US")).format(member=member.mention, group_name=group_name)
             await ctx.followup.send(not_in_group_msg, ephemeral=True)
@@ -2348,10 +2457,9 @@ class GuildEvents(commands.Cog):
             query = "DELETE FROM guild_static_members WHERE group_id = %s AND member_id = %s"
             await self.bot.run_db_query(query, (group_id, member.id), commit=True)
 
-            self.static_groups_cache[guild_id][group_name]["member_ids"].remove(member.id)
-            self.static_groups_cache[guild_id][group_name]["member_count"] -= 1
+            await self.bot.cache_loader.reload_category('static_groups')
             
-            member_count = len(self.static_groups_cache[guild_id][group_name]["member_ids"])
+            member_count = len(current_members) - 1
             success_msg = STATIC_GROUPS["static_remove"]["messages"]["success"].get(guild_lang, STATIC_GROUPS["static_remove"]["messages"]["success"].get("en-US")).format(member=member.mention, group_name=group_name, count=member_count)
             await ctx.followup.send(success_msg, ephemeral=True)
             logging.info(f"[GuildEvents] Member {member.id} removed from static group '{group_name}' in guild {guild_id}")
@@ -2377,10 +2485,14 @@ class GuildEvents(commands.Cog):
             description_localizations=STATIC_GROUPS["preview_groups"]["options"]["event_id"]["description"]
         )
     ):
+        """Preview generated groups for an event."""
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
-        settings = self.guild_settings.get(guild_id)
+        
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
+        
         user_locale = ctx.locale if hasattr(ctx, "locale") and ctx.locale else "en-US"
         guild_lang = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
         
@@ -2396,8 +2508,7 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(error_msg, ephemeral=True)
             return
 
-        key = f"{guild_id}_{event_id_int}"
-        event = self.events_data.get(key)
+        event = await self.get_event_from_cache(guild_id, event_id_int)
         if not event:
             error_msg = STATIC_GROUPS["preview_groups"]["messages"]["event_not_found"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["event_not_found"].get("en-US"))
             await ctx.followup.send(error_msg, ephemeral=True)
@@ -2420,9 +2531,14 @@ class GuildEvents(commands.Cog):
             return
 
         try:
+            guild_members_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+            logging.debug(f"[GuildEvents] preview_groups: Guild members cache contains {len(guild_members_cache)} entries")
+            
             roster_data = {"members": {}}
             for member in ctx.guild.members:
-                md = self.guild_members_cache.get(guild_id, {}).get(member.id, {})
+                key = (guild_id, member.id)
+                md = guild_members_cache.get(key, {})
+                logging.debug(f"[GuildEvents] preview_groups: Member {member.id} data: {md}")
                 roster_data["members"][str(member.id)] = {
                     "pseudo": member.display_name,
                     "GS": md.get("GS", "N/A"),
@@ -2436,7 +2552,7 @@ class GuildEvents(commands.Cog):
             return
 
         try:
-            all_groups = self._assign_groups_enhanced(guild_id, presence_ids, tentative_ids, roster_data)
+            all_groups = await self._assign_groups_enhanced(guild_id, presence_ids, tentative_ids, roster_data)
         except Exception as exc:
             logging.error(f"[GuildEvents] Error generating groups for event {event_id}: {exc}")
             error_msg = STATIC_GROUPS["preview_groups"]["messages"]["error_generating_groups"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["error_generating_groups"].get("en-US")).format(error=exc)
@@ -2509,14 +2625,16 @@ class GuildEvents(commands.Cog):
         logging.info(f"[GuildEvents] Groups preview generated for event {event_id} in guild {guild_id}")
 
     async def update_static_groups_message_for_cron(self, guild_id: int) -> None:
+        """Update static groups message for automated tasks."""
         try:
             await self.update_static_groups_message(guild_id)
         except Exception as e:
             logging.error(f"[GuildEvents] Error in cron static groups update for guild {guild_id}: {e}")
 
     async def update_static_groups_message(self, guild_id: int) -> bool:
+        """Update static groups message in the groups channel."""
         try:
-            guild_settings = self.guild_settings.get(guild_id, {})
+            guild_settings = await self.get_guild_settings(guild_id)
             guild_lang = guild_settings.get("guild_lang", "en-US")
             
             query = "SELECT statics_channel, statics_message FROM guild_channels WHERE guild_id = %s"
@@ -2546,7 +2664,8 @@ class GuildEvents(commands.Cog):
             embeds = []
             guild_obj = self.bot.get_guild(guild_id)
             
-            if not self.static_groups_cache.get(guild_id):
+            static_groups = await self.get_static_groups_data(guild_id)
+            if not static_groups:
                 no_groups_text = STATIC_GROUPS["static_update"]["messages"]["no_groups"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["no_groups"].get("en-US"))
                 embed = discord.Embed(
                     title=title,
@@ -2567,7 +2686,7 @@ class GuildEvents(commands.Cog):
                 no_members_text = STATIC_GROUPS["static_update"]["messages"]["no_members"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["no_members"].get("en-US"))
                 absent_text = STATIC_GROUPS["static_update"]["messages"]["absent"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["absent"].get("en-US"))
                 
-                for group_name, group_data in self.static_groups_cache[guild_id].items():
+                for group_name, group_data in static_groups.items():
                     member_ids = group_data["member_ids"]
                     member_count = len(member_ids)
                     leader_id = group_data["leader_id"]
@@ -2575,7 +2694,7 @@ class GuildEvents(commands.Cog):
                     leader = guild_obj.get_member(leader_id) if guild_obj else None
                     leader_mention = leader.mention if leader else f"<@{leader_id}> ({absent_text})"
 
-                    formatted_members = self._format_static_group_members(member_ids, guild_obj, absent_text)
+                    formatted_members = await self._format_static_group_members(member_ids, guild_obj, absent_text)
                     
                     members_count = members_count_template.format(count=member_count)
                     description = f"{leader_label} {leader_mention}\n{members_count}\n\n"
@@ -2608,10 +2727,12 @@ class GuildEvents(commands.Cog):
     )
     @commands.has_permissions(manage_roles=True)
     async def static_update(self, ctx: discord.ApplicationContext):
+        """Update static groups message manually."""
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
-        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+        guild_settings = await self.get_guild_settings(guild_id)
+        guild_lang = guild_settings.get("guild_lang", "en-US")
         
         query = "SELECT statics_channel, statics_message FROM guild_channels WHERE guild_id = %s"
         result = await self.bot.run_db_query(query, (guild_id,), fetch_one=True)
@@ -2646,12 +2767,15 @@ class GuildEvents(commands.Cog):
             description_localizations=STATIC_GROUPS["static_delete"]["options"]["group_name"]["description"]
         )
     ):
+        """Delete a static group."""
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
-        guild_lang = self.guild_settings.get(guild_id, {}).get("guild_lang", "en-US")
+        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+        guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
-        if guild_id not in self.static_groups_cache or group_name not in self.static_groups_cache[guild_id]:
+        group_data = await self.get_static_group_data(guild_id, group_name)
+        if not group_data:
             error_msg = STATIC_GROUPS["static_delete"]["messages"]["not_found"].get(guild_lang, STATIC_GROUPS["static_delete"]["messages"]["not_found"].get("en-US")).format(group_name=group_name)
             await ctx.followup.send(error_msg, ephemeral=True)
             return
@@ -2660,7 +2784,7 @@ class GuildEvents(commands.Cog):
             query = "UPDATE guild_static_groups SET is_active = FALSE WHERE guild_id = %s AND group_name = %s"
             await self.bot.run_db_query(query, (guild_id, group_name), commit=True)
 
-            del self.static_groups_cache[guild_id][group_name]
+            await self.bot.cache_loader.reload_category('static_groups')
             
             success_msg = STATIC_GROUPS["static_delete"]["messages"]["success"].get(guild_lang, STATIC_GROUPS["static_delete"]["messages"]["success"].get("en-US")).format(group_name=group_name)
             await ctx.followup.send(success_msg, ephemeral=True)
@@ -2672,6 +2796,7 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error deleting static group: {e}")
 
     async def _notify_ptb_groups(self, guild_id: int, event_id: int, all_groups: List) -> None:
+        """Internal method: Notify ptb groups."""
         try:
             ptb_cog = self.bot.get_cog("GuildPTB")
             if not ptb_cog:
@@ -2707,11 +2832,11 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error notifying PTB groups: {e}", exc_info=True)
     
     async def _schedule_ptb_cleanup(self, guild_id: int, event_id: int) -> None:
+        """Internal method: Schedule ptb cleanup."""
         try:
-            key = f"{guild_id}_{event_id}"
-            event_data = self.events_data.get(key)
+            event_data = await self.get_event_from_cache(guild_id, event_id)
             if not event_data:
-                logging.error(f"[GuildEvents] Event data not found for PTB cleanup scheduling: {key}")
+                logging.error(f"[GuildEvents] Event data not found for PTB cleanup scheduling: guild {guild_id}, event {event_id}")
                 return
 
             event_date = event_data["event_date"]
@@ -2747,6 +2872,7 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error scheduling PTB cleanup: {e}", exc_info=True)
     
     async def _delayed_ptb_cleanup(self, guild_id: int, event_id: int, delay_seconds: float) -> None:
+        """Internal method: Delayed ptb cleanup."""
         try:
             if delay_seconds > 0:
                 await asyncio.sleep(delay_seconds)
@@ -2762,15 +2888,7 @@ class GuildEvents(commands.Cog):
         except Exception as e:
             logging.error(f"[GuildEvents] Error in delayed PTB cleanup: {e}", exc_info=True)
 
-    @commands.Cog.listener() 
-    async def on_ready(self):
-        asyncio.create_task(self.load_guild_settings())
-        asyncio.create_task(self.load_events_calendar())
-        asyncio.create_task(self.load_events_data())
-        asyncio.create_task(self.load_guild_members())
-        asyncio.create_task(self.load_static_groups_cache())
-        asyncio.create_task(self.load_ideal_staff_cache())
-        logging.debug("[GuildEvents] Cache loading tasks started in on_ready.")
 
 def setup(bot: discord.Bot):
+    """Setup function for the cog."""
     bot.add_cog(GuildEvents(bot))
