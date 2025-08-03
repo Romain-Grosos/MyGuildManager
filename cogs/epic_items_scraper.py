@@ -645,11 +645,24 @@ class EpicItemsScraper(commands.Cog):
                 if results:
                     items = []
                     for row in results:
+                        item_id = row[0]
+                        item_type_db = row[2]
+                        item_category_db = row[3]
+                        
+                        # Si les types/catégories sont NULL/vides en BDD, les recalculer
+                        if not item_type_db or not item_category_db:
+                            item_type_calc, item_category_calc = self.classify_item_by_id(item_id)
+                            item_type_final = item_type_calc or item_type_db or "Unknown"
+                            item_category_final = item_category_calc or item_category_db or "Unknown"
+                        else:
+                            item_type_final = item_type_db
+                            item_category_final = item_category_db
+                        
                         items.append({
-                            "item_id": row[0],
+                            "item_id": item_id,
                             "item_name": row[1],
-                            "item_type": row[2],
-                            "item_category": row[3],
+                            "item_type": item_type_final,
+                            "item_category": item_category_final,
                             "item_icon_url": row[4],
                             "item_url": row[5]
                         })
@@ -665,6 +678,17 @@ class EpicItemsScraper(commands.Cog):
 
                     filtered_item = item.copy()
                     filtered_item["item_name"] = item_name
+                    
+                    # Si les types/catégories sont manquants, les recalculer
+                    item_id = item.get("item_id", "")
+                    item_type_cached = item.get("item_type")
+                    item_category_cached = item.get("item_category")
+                    
+                    if not item_type_cached or not item_category_cached:
+                        item_type_calc, item_category_calc = self.classify_item_by_id(item_id)
+                        filtered_item["item_type"] = item_type_calc or item_type_cached or "Unknown"
+                        filtered_item["item_category"] = item_category_calc or item_category_cached or "Unknown"
+                    
                     filtered_items.append(filtered_item)
                 
                 items = filtered_items
