@@ -615,8 +615,7 @@ class CacheLoader:
                     "info_channel_id": int(row[2]),
                     "groups": {}
                 }
-                
-                # Process groups G1-G12
+
                 for i in range(1, 13):
                     role_idx = 2 + (i-1) * 2 + 1
                     channel_idx = role_idx + 1

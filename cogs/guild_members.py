@@ -436,11 +436,9 @@ class GuildMembers(commands.Cog):
         if key not in guild_members:
             logging.debug(f"[GuildMembers - Build] Profile not found in guild_members cache for key {key}, trying database fallback...")
             try:
-                # Fallback: check if user exists in user_setup and create guild_members entry
                 user_setup_members = await self.get_user_setup_members()
                 if key in user_setup_members:
                     logging.info(f"[GuildMembers - Build] User found in user_setup, creating guild_members entry for {key}")
-                    # Create entry in guild_members from user_setup data
                     user_setup_data = user_setup_members[key]
                     guild_member_data = {
                         "username": user_setup_data.get("username", ctx.author.display_name),
@@ -454,7 +452,6 @@ class GuildMembers(commands.Cog):
                         "attendances": 0,
                         "class": "NULL"
                     }
-                    # Update cache
                     current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
                     current_cache[key] = guild_member_data
                     await self.bot.cache.set('roster_data', current_cache, 'guild_members')
@@ -512,11 +509,9 @@ class GuildMembers(commands.Cog):
         if key not in guild_members:
             logging.debug(f"[GuildMembers - Username] Profile not found in guild_members cache for key {key}, trying database fallback...")
             try:
-                # Fallback: check if user exists in user_setup and create guild_members entry
                 user_setup_members = await self.get_user_setup_members()
                 if key in user_setup_members:
                     logging.info(f"[GuildMembers - Username] User found in user_setup, creating guild_members entry for {key}")
-                    # Create entry in guild_members from user_setup data
                     user_setup_data = user_setup_members[key]
                     guild_member_data = {
                         "username": user_setup_data.get("username", ctx.author.display_name),
@@ -530,7 +525,6 @@ class GuildMembers(commands.Cog):
                         "attendances": 0,
                         "class": "NULL"
                     }
-                    # Update cache
                     current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
                     current_cache[key] = guild_member_data
                     await self.bot.cache.set('roster_data', current_cache, 'guild_members')
@@ -1193,8 +1187,7 @@ class GuildMembers(commands.Cog):
             return
         
         guild_id = ctx.guild.id
-        
-        # Ensure guild members data is loaded
+
         await self.bot.cache_loader.ensure_guild_members_loaded()
         guild_members = await self.get_guild_members()
         matching = [m for (g, _), m in guild_members.items() 

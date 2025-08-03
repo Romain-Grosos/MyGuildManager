@@ -47,9 +47,7 @@ class GuildAttendance(commands.Cog):
         try:
             event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
             if event_data:
-                # Ensure guild_id is included for compatibility
                 event_data['guild_id'] = guild_id
-                # Ensure default values for registrations and actual_presence
                 if not event_data.get('registrations'):
                     event_data['registrations'] = {"presence":[],"tentative":[],"absence":[]}
                 elif isinstance(event_data['registrations'], str):
@@ -73,7 +71,6 @@ class GuildAttendance(commands.Cog):
     async def set_event_in_cache(self, guild_id: int, event_id: int, event_data: Dict) -> None:
         """Set event data in global cache."""
         try:
-            # Remove guild_id from data if present (it's implicit in the cache key structure)
             cache_data = event_data.copy()
             cache_data.pop('guild_id', None)
             await self.bot.cache.set_guild_data(guild_id, f'event_{event_id}', cache_data)
@@ -83,7 +80,6 @@ class GuildAttendance(commands.Cog):
     async def get_closed_events_for_guild(self, guild_id: int) -> List[Dict]:
         """Get all closed events for a specific guild from global cache."""
         try:
-            # Query database for closed events since we need to filter by status
             query = """
                 SELECT event_id, name, event_date, event_time, duration, 
                        dkp_value, status, registrations, actual_presence
@@ -278,7 +274,6 @@ class GuildAttendance(commands.Cog):
                 
                 logging.info(f"[GuildAttendance] Updated registration stats for {len(updates_to_batch)} members in event {event_id}")
 
-                # Update centralized cache
                 await self._update_centralized_cache(guild_id, guild_members)
 
                 await self._send_registration_notification(guild_id, event_id, len(all_registered), len(presence_ids), len(tentative_ids), len(absence_ids), dkp_registration)
@@ -563,8 +558,7 @@ class GuildAttendance(commands.Cog):
                     await self.bot.run_db_query(update_query, update_data, commit=True)
                 
                 logging.info(f"[GuildAttendance] Applied attendance changes for {len(updates_to_batch)} members in event {event_id}")
-                
-                # Update centralized cache
+
                 await self._update_centralized_cache(guild_id, guild_members)
                 
             except Exception as e:
@@ -577,7 +571,6 @@ class GuildAttendance(commands.Cog):
             update_query = "UPDATE events_data SET actual_presence = %s WHERE guild_id = %s AND event_id = %s"
             await self.bot.run_db_query(update_query, (actual_presence_json, guild_id, event_id), commit=True)
 
-            # Update global cache
             event_data = await self.get_event_from_cache(guild_id, event_id)
             if event_data:
                 event_data["actual_presence"] = voice_members

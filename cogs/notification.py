@@ -274,12 +274,25 @@ class Notification(commands.Cog):
                         "DELETE FROM guild_members WHERE guild_id = %s AND member_id = %s", 
                         (guild.id, member.id), commit=True
                     )
+                    await self.bot.run_db_query(
+                        "DELETE FROM pending_diplomat_validations WHERE guild_id = %s AND member_id = %s", 
+                        (guild.id, member.id), commit=True
+                    )
 
                     await self.bot.cache.delete('user_data', guild.id, member.id, 'welcome_message')
                     await self.bot.cache.delete('user_data', guild.id, member.id, 'setup')
 
+                    pending_validations = await self.bot.cache.get('temporary', 'pending_validations')
+                    if pending_validations:
+                        keys_to_remove = [key for key in pending_validations.keys() 
+                                         if key.split('_')[0] == str(guild.id) and key.split('_')[1] == str(member.id)]
+                        for key in keys_to_remove:
+                            del pending_validations[key]
+                        await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
+
                     await self.bot.cache.invalidate_category('roster_data')
                     logging.debug(f"[NotificationManager] Invalidated roster_data cache after removing member {safe_user}")
+                    logging.debug(f"[NotificationManager] Cleaned up pending diplomat validations for {safe_user}")
                 except Exception as e:
                     logging.error(f"[NotificationManager] Error cleaning up DB records for {safe_user}: {e}", exc_info=True)
             else:
@@ -302,6 +315,25 @@ class Notification(commands.Cog):
                         
                         embed = create_embed(title, description, discord.Color.red(), member)
                         await self.safe_send_notification(channel, embed)
+
+                try:
+                    await self.bot.run_db_query(
+                        "DELETE FROM pending_diplomat_validations WHERE guild_id = %s AND member_id = %s", 
+                        (guild.id, member.id), commit=True
+                    )
+
+                    pending_validations = await self.bot.cache.get('temporary', 'pending_validations')
+                    if pending_validations:
+                        keys_to_remove = [key for key in pending_validations.keys() 
+                                         if key.split('_')[0] == str(guild.id) and key.split('_')[1] == str(member.id)]
+                        for key in keys_to_remove:
+                            del pending_validations[key]
+                        await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
+                    
+                    logging.debug(f"[NotificationManager] Cleaned up pending diplomat validations for {safe_user} (no welcome message case)")
+                except Exception as e:
+                    logging.error(f"[NotificationManager] Error cleaning up diplomat validations for {safe_user}: {e}", exc_info=True)
+                    
         except Exception as e:
             logging.error(f"[NotificationManager] Error in on_member_remove for {safe_user}: {e}", exc_info=True)
 

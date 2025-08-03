@@ -27,7 +27,8 @@ class TaskScheduler:
             'events_reminder': asyncio.Lock(),
             'events_delete': asyncio.Lock(),
             'events_close': asyncio.Lock(),
-            'attendance_check': asyncio.Lock()
+            'attendance_check': asyncio.Lock(),
+            'epic_items_scraping': asyncio.Lock()
         }
         self._last_execution: Dict[str, str] = {}
         self._task_metrics: Dict[str, Dict[str, int]] = {
@@ -46,7 +47,6 @@ class TaskScheduler:
     
     async def _execute_with_monitoring(self, task_name: str, coroutine, *args, **kwargs):
         """Execute task with performance monitoring and error handling."""
-        # Ensure metrics exist for this task
         if task_name not in self._task_metrics:
             self._task_metrics[task_name] = {'success': 0, 'failures': 0, 'total_time': 0}
         
@@ -76,6 +76,19 @@ class TaskScheduler:
         """Execute all scheduled tasks based on current time."""
         now = datetime.now(TIMEZONE).strftime("%H:%M")
         now_time = datetime.now(TIMEZONE)
+
+        if now == "03:30" and self._should_execute('epic_items_scraping', now):
+            if self._task_locks['epic_items_scraping'].locked():
+                logging.warning("[Scheduler] Epic items scraping already running, skipping")
+            else:
+                async with self._task_locks['epic_items_scraping']:
+                    logging.info("[Scheduler] Automatic Epic T2 items scraping triggered")
+                    epic_items_cog = await self._safe_get_cog("EpicItemsScraper")
+                    if epic_items_cog:
+                        await self._execute_with_monitoring(
+                            'epic_items_scraping',
+                            epic_items_cog.scrape_epic_items
+                        )
 
         if now == "06:30" and self._should_execute('contracts', now):
             if self._task_locks['contracts'].locked():

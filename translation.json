@@ -3690,5 +3690,280 @@
                 }
             }
         }
+    },
+    "epic_items": {
+        "name": {
+            "en-US": "epic_items",
+            "fr": "epic_items",
+            "es-ES": "epic_items",
+            "de": "epic_items",
+            "it": "epic_items"
+        },
+        "description": {
+            "en-US": "View Epic T2 items from Throne and Liberty",
+            "fr": "Voir les objets Epic T2 de Throne and Liberty",
+            "es-ES": "Ver objetos Épicos T2 de Throne and Liberty",
+            "de": "Epische T2-Gegenstände von Throne and Liberty anzeigen",
+            "it": "Visualizza oggetti Epici T2 di Throne and Liberty"
+        },
+        "options": {
+            "search": {
+                "description": {
+                    "en-US": "Search for specific item by name",
+                    "fr": "Rechercher un objet spécifique par nom",
+                    "es-ES": "Buscar un objeto específico por nombre",
+                    "de": "Nach einem bestimmten Gegenstand nach Name suchen",
+                    "it": "Cerca un oggetto specifico per nome"
+                }
+            },
+            "item_type": {
+                "description": {
+                    "en-US": "Filter by item type",
+                    "fr": "Filtrer par type d'objet",
+                    "es-ES": "Filtrar por tipo de objeto",
+                    "de": "Nach Gegenstandstyp filtern",
+                    "it": "Filtra per tipo di oggetto"
+                }
+            },
+            "language": {
+                "description": {
+                    "en-US": "Language for item names",
+                    "fr": "Langue pour les noms d'objets",
+                    "es-ES": "Idioma para los nombres de objetos",
+                    "de": "Sprache für Gegenstandsnamen",
+                    "it": "Lingua per i nomi degli oggetti"
+                }
+            }
+        },
+        "messages": {
+            "no_items_found": {
+                "en-US": "❌ No Epic T2 items found matching your criteria.",
+                "fr": "❌ Aucun objet Epic T2 trouvé correspondant à vos critères.",
+                "es-ES": "❌ No se encontraron objetos Épicos T2 que coincidan con tus criterios.",
+                "de": "❌ Keine epischen T2-Gegenstände gefunden, die Ihren Kriterien entsprechen.",
+                "it": "❌ Nessun oggetto Epico T2 trovato che corrisponda ai tuoi criteri."
+            },
+            "embed_title": {
+                "en-US": "🏺 Epic T2 Items ({language})",
+                "fr": "🏺 Objets Epic T2 ({language})",
+                "es-ES": "🏺 Objetos Épicos T2 ({language})",
+                "de": "🏺 Epische T2-Gegenstände ({language})",
+                "it": "🏺 Oggetti Epici T2 ({language})"
+            },
+            "embed_description": {
+                "en-US": "Showing {start}-{end} of {total} items",
+                "fr": "Affichage {start}-{end} sur {total} objets",
+                "es-ES": "Mostrando {start}-{end} de {total} objetos",
+                "de": "Zeige {start}-{end} von {total} Gegenständen",
+                "it": "Mostra {start}-{end} di {total} oggetti"
+            },
+            "item_type_label": {
+                "en-US": "Type",
+                "fr": "Type",
+                "es-ES": "Tipo",
+                "de": "Typ",
+                "it": "Tipo"
+            },
+            "item_category_label": {
+                "en-US": "Category",
+                "fr": "Catégorie",
+                "es-ES": "Categoría",
+                "de": "Kategorie",
+                "it": "Categoria"
+            },
+            "embed_footer": {
+                "en-US": "Page {current}/{total} • 🔄 Scraped daily at 3:30 AM",
+                "fr": "Page {current}/{total} • 🔄 Mise à jour quotidienne à 3h30",
+                "es-ES": "Página {current}/{total} • 🔄 Actualizado diariamente a las 3:30 AM",
+                "de": "Seite {current}/{total} • 🔄 Täglich um 3:30 Uhr aktualisiert",
+                "it": "Pagina {current}/{total} • 🔄 Aggiornato quotidianamente alle 3:30"
+            },
+            "view_on_questlog": {
+                "en-US": "📖 View on Questlog",
+                "fr": "📖 Voir sur Questlog",
+                "es-ES": "📖 Ver en Questlog",
+                "de": "📖 Auf Questlog anzeigen",
+                "it": "📖 Visualizza su Questlog"
+            },
+            "error": {
+                "en-US": "❌ An error occurred while fetching Epic T2 items.",
+                "fr": "❌ Une erreur s'est produite lors de la récupération des objets Epic T2.",
+                "es-ES": "❌ Ocurrió un error al obtener los objetos Épicos T2.",
+                "de": "❌ Ein Fehler ist beim Abrufen der epischen T2-Gegenstände aufgetreten.",
+                "it": "❌ Si è verificato un errore durante il recupero degli oggetti Epici T2."
+            }
+        },
+        "item_types": {
+            "Weapon": {
+                "en-US": "Weapon",
+                "fr": "Arme",
+                "es-ES": "Arma",
+                "de": "Waffe",
+                "it": "Arma"
+            },
+            "Armor": {
+                "en-US": "Armor",
+                "fr": "Armure",
+                "es-ES": "Armadura",
+                "de": "Rüstung",
+                "it": "Armatura"
+            },
+            "Accessory": {
+                "en-US": "Accessory",
+                "fr": "Accessoire",
+                "es-ES": "Accesorio",
+                "de": "Accessoire",
+                "it": "Accessorio"
+            },
+            "All": {
+                "en-US": "All",
+                "fr": "Tous",
+                "es-ES": "Todos",
+                "de": "Alle",
+                "it": "Tutti"
+            }
+        },
+        "item_categories": {
+            "Bow": {
+                "en-US": "Bow",
+                "fr": "Arc",
+                "es-ES": "Arco",
+                "de": "Bogen",
+                "it": "Arco"
+            },
+            "Sword": {
+                "en-US": "Sword",
+                "fr": "Épée",
+                "es-ES": "Espada",
+                "de": "Schwert",
+                "it": "Spada"
+            },
+            "Greatsword": {
+                "en-US": "Greatsword",
+                "fr": "Épée à deux mains",
+                "es-ES": "Mandoble",
+                "de": "Großschwert",
+                "it": "Spadone"
+            },
+            "Staff": {
+                "en-US": "Staff",
+                "fr": "Bâton",
+                "es-ES": "Bastón",
+                "de": "Stab",
+                "it": "Bastone"
+            },
+            "Wand": {
+                "en-US": "Wand",
+                "fr": "Baguette",
+                "es-ES": "Varita",
+                "de": "Zauberstab",
+                "it": "Bacchetta"
+            },
+            "Dagger": {
+                "en-US": "Dagger",
+                "fr": "Dague",
+                "es-ES": "Daga",
+                "de": "Dolch",
+                "it": "Pugnale"
+            },
+            "Crossbow": {
+                "en-US": "Crossbow",
+                "fr": "Arbalète",
+                "es-ES": "Ballesta",
+                "de": "Armbrust",
+                "it": "Balestra"
+            },
+            "Spear": {
+                "en-US": "Spear",
+                "fr": "Lance",
+                "es-ES": "Lanza",
+                "de": "Speer",
+                "it": "Lancia"
+            },
+            "Axe": {
+                "en-US": "Axe",
+                "fr": "Hache",
+                "es-ES": "Hacha",
+                "de": "Axt",
+                "it": "Ascia"
+            },
+            "Hammer": {
+                "en-US": "Hammer",
+                "fr": "Marteau",
+                "es-ES": "Martillo",
+                "de": "Hammer",
+                "it": "Martello"
+            },
+            "Head": {
+                "en-US": "Head",
+                "fr": "Tête",
+                "es-ES": "Cabeza",
+                "de": "Kopf",
+                "it": "Testa"
+            },
+            "Chest": {
+                "en-US": "Chest",
+                "fr": "Torse",
+                "es-ES": "Pecho",
+                "de": "Brust",
+                "it": "Petto"
+            },
+            "Legs": {
+                "en-US": "Legs",
+                "fr": "Jambes",
+                "es-ES": "Piernas",
+                "de": "Beine",
+                "it": "Gambe"
+            },
+            "Hands": {
+                "en-US": "Hands",
+                "fr": "Mains",
+                "es-ES": "Manos",
+                "de": "Hände",
+                "it": "Mani"
+            },
+            "Feet": {
+                "en-US": "Feet",
+                "fr": "Pieds",
+                "es-ES": "Pies",
+                "de": "Füße",
+                "it": "Piedi"
+            },
+            "Ring": {
+                "en-US": "Ring",
+                "fr": "Anneau",
+                "es-ES": "Anillo",
+                "de": "Ring",
+                "it": "Anello"
+            },
+            "Necklace": {
+                "en-US": "Necklace",
+                "fr": "Collier",
+                "es-ES": "Collar",
+                "de": "Halskette",
+                "it": "Collana"
+            },
+            "Bracelet": {
+                "en-US": "Bracelet",
+                "fr": "Bracelet",
+                "es-ES": "Brazalete",
+                "de": "Armband",
+                "it": "Braccialetto"
+            },
+            "Belt": {
+                "en-US": "Belt",
+                "fr": "Ceinture",
+                "es-ES": "Cinturón",
+                "de": "Gürtel",
+                "it": "Cintura"
+            },
+            "Earring": {
+                "en-US": "Earring",
+                "fr": "Boucle d'oreille",
+                "es-ES": "Pendiente",
+                "de": "Ohrring",
+                "it": "Orecchino"
+            }
+        }
     }
 }
