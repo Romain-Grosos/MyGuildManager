@@ -13,6 +13,7 @@ from reliability import discord_resilient
 import db
 import asyncio
 from datetime import datetime
+import unicodedata
 
 LOOT_WISHLIST_DATA = global_translations.get("loot_wishlist", {})
 
@@ -34,6 +35,68 @@ class LootWishlist(commands.Cog):
     def __init__(self, bot: discord.Bot) -> None:
         """Initialize the Loot Wishlist cog."""
         self.bot = bot
+    
+    def sanitize_for_discord(self, text: str) -> str:
+        """Remove accents and special characters for Discord compatibility."""
+        if not text:
+            return text
+        normalized = unicodedata.normalize('NFD', text)
+        ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
+        return ascii_text
+    
+    async def autocomplete_epic_items(self, ctx: discord.AutocompleteContext) -> List[str]:
+        """Autocomplete callback for Epic T2 item names."""
+        try:
+            user_input = ctx.value.lower() if ctx.value else ""
+            
+            epic_items = await self.bot.cache.get_static_data('epic_items_t2')
+            
+            if not epic_items:
+                return []
+
+            suggestions = []
+            
+            for item in epic_items:
+                item_name = item.get("item_name_en", "")
+                if not item_name:
+                    continue
+                    
+                if not user_input:
+                    suggestions.append(item_name)
+                elif user_input in item_name.lower():
+                    suggestions.append(item_name)
+            
+            suggestions.sort()
+            return suggestions[:25]
+            
+        except Exception as e:
+            logging.error(f"[LootWishlist] Autocomplete error: {e}")
+            return []
+    
+    async def autocomplete_remove_items(self, ctx: discord.AutocompleteContext) -> List[str]:
+        """Autocomplete callback for removing items - prioritizes user's wishlist items."""
+        try:
+            guild_id = ctx.interaction.guild_id
+            user_id = ctx.interaction.user.id
+            user_input = ctx.value.lower() if ctx.value else ""
+            
+            if guild_id and user_id:
+                user_items = await self.get_user_wishlist(guild_id, user_id)
+                suggestions = []
+
+                for item in user_items:
+                    item_name = item.get('item_name', '')
+                    if not user_input or user_input in item_name.lower():
+                        suggestions.append(item_name)
+
+                suggestions.sort()
+                return suggestions[:25]
+
+            return []
+            
+        except Exception as e:
+            logging.error(f"[LootWishlist] Remove autocomplete error: {e}")
+            return []
         
     async def get_user_wishlist(self, guild_id: int, user_id: int) -> List[Dict[str, Any]]:
         """Get user's current wishlist items."""
@@ -305,7 +368,8 @@ class LootWishlist(commands.Cog):
         item_name: str = discord.Option(
             description="Name of the Epic T2 item you want to add",
             description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("options", {}).get("item_name", {}).get("description", {}),
-            required=True
+            required=True,
+            autocomplete=discord.utils.basic_autocomplete(lambda ctx: ctx.bot.get_cog('LootWishlist').autocomplete_epic_items(ctx))
         ),
         priority: str = discord.Option(
             description="Priority level (1=Low, 2=Medium, 3=High)",
@@ -385,7 +449,7 @@ class LootWishlist(commands.Cog):
             logging.error(f"[LootWishlist] Error adding item to wishlist: {e}")
             message = get_user_message(str(ctx.locale), "messages", "general_error", action="adding the item")
             await ctx.followup.send(message, ephemeral=True)
-    
+
     @wishlist_group.command(
         name="remove_item",
         description="Remove an item from your wishlist",
@@ -399,7 +463,8 @@ class LootWishlist(commands.Cog):
         item_name: str = discord.Option(
             description="Name of the item to remove from your wishlist",
             description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("options", {}).get("item_name", {}).get("description", {}),
-            required=True
+            required=True,
+            autocomplete=discord.utils.basic_autocomplete(lambda ctx: ctx.bot.get_cog('LootWishlist').autocomplete_remove_items(ctx))
         )
     ):
         """Remove an item from user's wishlist."""
