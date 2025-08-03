@@ -648,8 +648,7 @@ class EpicItemsScraper(commands.Cog):
                         item_id = row[0]
                         item_type_db = row[2]
                         item_category_db = row[3]
-                        
-                        # Si les types/catégories sont NULL/vides en BDD, les recalculer
+
                         if not item_type_db or not item_category_db:
                             item_type_calc, item_category_calc = self.classify_item_by_id(item_id)
                             item_type_final = item_type_calc or item_type_db or "Unknown"
@@ -658,13 +657,15 @@ class EpicItemsScraper(commands.Cog):
                             item_type_final = item_type_db
                             item_category_final = item_category_db
                         
+                        item_url = row[5] if row[5] else f"https://questlog.gg/throne-and-liberty/en/db/items/{item_id}"
+                        
                         items.append({
                             "item_id": item_id,
                             "item_name": row[1],
                             "item_type": item_type_final,
                             "item_category": item_category_final,
                             "item_icon_url": row[4],
-                            "item_url": row[5]
+                            "item_url": item_url
                         })
             else:
                 filtered_items = []
@@ -678,8 +679,10 @@ class EpicItemsScraper(commands.Cog):
 
                     filtered_item = item.copy()
                     filtered_item["item_name"] = item_name
-                    
-                    # Si les types/catégories sont manquants, les recalculer
+
+                    if not filtered_item.get("item_url") and item.get("item_id"):
+                        filtered_item["item_url"] = f"https://questlog.gg/throne-and-liberty/en/db/item/{item['item_id']}"
+
                     item_id = item.get("item_id", "")
                     item_type_cached = item.get("item_type")
                     item_category_cached = item.get("item_category")
