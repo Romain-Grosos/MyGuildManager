@@ -17,16 +17,6 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Current Database: `DB_discordbot`
---
-
-/*!40000 DROP DATABASE IF EXISTS `DB_discordbot`*/;
-
-CREATE DATABASE /*!32312 IF NOT EXISTS*/ `DB_discordbot` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
-
-USE `DB_discordbot`;
-
---
 -- Table structure for table `absence_messages`
 --
 
@@ -75,6 +65,84 @@ CREATE TABLE `dynamic_voice_channels` (
   CONSTRAINT `fk_dynamic_voice_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Temporary voice channels created by users';
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `epic_items_scraping_history`
+--
+
+DROP TABLE IF EXISTS `epic_items_scraping_history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `epic_items_scraping_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `scraping_date` timestamp NULL DEFAULT current_timestamp(),
+  `items_scraped` int(11) NOT NULL,
+  `items_added` int(11) DEFAULT 0,
+  `items_updated` int(11) DEFAULT 0,
+  `items_deleted` int(11) DEFAULT 0,
+  `status` enum('success','partial','error') NOT NULL,
+  `error_message` text DEFAULT NULL,
+  `execution_time_seconds` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_scraping_date` (`scraping_date`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `epic_items_t2`
+--
+
+DROP TABLE IF EXISTS `epic_items_t2`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `epic_items_t2` (
+  `item_id` varchar(100) NOT NULL,
+  `item_type` varchar(50) NOT NULL,
+  `item_category` varchar(50) NOT NULL,
+  `item_name_en` varchar(255) NOT NULL,
+  `item_name_fr` varchar(255) NOT NULL,
+  `item_name_es` varchar(255) NOT NULL,
+  `item_name_de` varchar(255) NOT NULL,
+  `item_url` text NOT NULL,
+  `item_icon_url` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`item_id`),
+  KEY `idx_item_type` (`item_type`),
+  KEY `idx_item_category` (`item_category`),
+  KEY `idx_type_category` (`item_type`,`item_category`),
+  FULLTEXT KEY `idx_name_en` (`item_name_en`),
+  FULLTEXT KEY `idx_name_fr` (`item_name_fr`),
+  FULLTEXT KEY `idx_name_es` (`item_name_es`),
+  FULLTEXT KEY `idx_name_de` (`item_name_de`),
+  FULLTEXT KEY `idx_all_names` (`item_name_en`,`item_name_fr`,`item_name_es`,`item_name_de`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Temporary table structure for view `epic_items_t2_view`
+--
+
+DROP TABLE IF EXISTS `epic_items_t2_view`;
+/*!50001 DROP VIEW IF EXISTS `epic_items_t2_view`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8mb4;
+/*!50001 CREATE VIEW `epic_items_t2_view` AS SELECT
+ 1 AS `item_id`,
+  1 AS `item_type`,
+  1 AS `item_category`,
+  1 AS `item_name_en`,
+  1 AS `item_name_fr`,
+  1 AS `item_name_es`,
+  1 AS `item_name_de`,
+  1 AS `item_url`,
+  1 AS `item_icon_url`,
+  1 AS `created_at`,
+  1 AS `updated_at`,
+  1 AS `full_category`,
+  1 AS `has_icon` */;
+SET character_set_client = @saved_cs_client;
 
 --
 -- Table structure for table `events_calendar`
@@ -174,6 +242,7 @@ CREATE TABLE `guild_channels` (
   `statics_message` bigint(20) DEFAULT NULL COMMENT 'Message ID for static groups list',
   `abs_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for absence requests and tracking',
   `loot_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for loot distribution and DKP',
+  `loot_message` bigint(20) unsigned DEFAULT NULL,
   `tuto_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for tutorials and guides',
   `forum_allies_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for ally guild communications',
   `forum_friends_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for friendly guild communications',
@@ -373,7 +442,7 @@ CREATE TABLE `guild_static_groups` (
   KEY `idx_leader_id` (`leader_id`),
   KEY `idx_active` (`is_active`),
   CONSTRAINT `fk_static_groups_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -395,8 +464,152 @@ CREATE TABLE `guild_static_members` (
   KEY `idx_group_id` (`group_id`),
   KEY `idx_static_members_member_group` (`member_id`,`group_id`),
   CONSTRAINT `guild_static_members_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `guild_static_groups` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group membership with positions';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group membership with positions';
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `loot_wishlist`
+--
+
+DROP TABLE IF EXISTS `loot_wishlist`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `loot_wishlist` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `guild_id` bigint(20) NOT NULL,
+  `user_id` bigint(20) NOT NULL,
+  `item_name` varchar(255) NOT NULL,
+  `item_id` varchar(100) DEFAULT NULL,
+  `priority` tinyint(4) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_user_item` (`guild_id`,`user_id`,`item_name`),
+  KEY `idx_guild_user` (`guild_id`,`user_id`),
+  KEY `idx_guild_item` (`guild_id`,`item_name`),
+  KEY `idx_item_id` (`item_id`),
+  KEY `idx_created_at` (`created_at`),
+  CONSTRAINT `fk_loot_wishlist_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_priority` CHECK (`priority` in (1,2,3))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Epic T2 items wishlist for guild members - max 3 items per user';
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`USER_discordbot`@`localhost`*/ /*!50003 TRIGGER loot_wishlist_history_insert
+AFTER INSERT ON loot_wishlist
+FOR EACH ROW
+BEGIN
+    INSERT INTO loot_wishlist_history (
+        guild_id, user_id, item_name, item_id, action, priority_new
+    ) VALUES (
+        NEW.guild_id, NEW.user_id, NEW.item_name, NEW.item_id, 'ADD', NEW.priority
+    );
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`USER_discordbot`@`localhost`*/ /*!50003 TRIGGER loot_wishlist_history_update
+AFTER UPDATE ON loot_wishlist
+FOR EACH ROW
+BEGIN
+    INSERT INTO loot_wishlist_history (
+        guild_id, user_id, item_name, item_id, action, priority_old, priority_new
+    ) VALUES (
+        NEW.guild_id, NEW.user_id, NEW.item_name, NEW.item_id, 'UPDATE', OLD.priority, NEW.priority
+    );
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`USER_discordbot`@`localhost`*/ /*!50003 TRIGGER loot_wishlist_history_delete
+AFTER DELETE ON loot_wishlist
+FOR EACH ROW
+BEGIN
+    INSERT INTO loot_wishlist_history (
+        guild_id, user_id, item_name, item_id, action, priority_old
+    ) VALUES (
+        OLD.guild_id, OLD.user_id, OLD.item_name, OLD.item_id, 'REMOVE', OLD.priority
+    );
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+
+--
+-- Table structure for table `loot_wishlist_history`
+--
+
+DROP TABLE IF EXISTS `loot_wishlist_history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `loot_wishlist_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `guild_id` bigint(20) NOT NULL,
+  `user_id` bigint(20) NOT NULL,
+  `item_name` varchar(255) NOT NULL,
+  `item_id` varchar(100) DEFAULT NULL,
+  `action` enum('ADD','REMOVE','UPDATE') NOT NULL,
+  `priority_old` tinyint(4) DEFAULT NULL,
+  `priority_new` tinyint(4) DEFAULT NULL,
+  `timestamp` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_guild_timestamp` (`guild_id`,`timestamp`),
+  KEY `idx_user_timestamp` (`user_id`,`timestamp`),
+  KEY `idx_item_timestamp` (`item_name`,`timestamp`),
+  KEY `idx_action` (`action`),
+  CONSTRAINT `fk_loot_wishlist_history_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='History of wishlist changes for analytics and audit trail';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Temporary table structure for view `loot_wishlist_stats`
+--
+
+DROP TABLE IF EXISTS `loot_wishlist_stats`;
+/*!50001 DROP VIEW IF EXISTS `loot_wishlist_stats`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8mb4;
+/*!50001 CREATE VIEW `loot_wishlist_stats` AS SELECT
+ 1 AS `guild_id`,
+  1 AS `item_name`,
+  1 AS `item_id`,
+  1 AS `demand_count`,
+  1 AS `interested_users`,
+  1 AS `avg_priority`,
+  1 AS `first_request`,
+  1 AS `last_request` */;
+SET character_set_client = @saved_cs_client;
 
 --
 -- Temporary table structure for view `member_statistics`
@@ -443,7 +656,7 @@ CREATE TABLE `pending_diplomat_validations` (
   KEY `idx_pending_validations_guild` (`guild_id`),
   KEY `idx_pending_validations_created` (`created_at`),
   CONSTRAINT `fk_diplomat_validations_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Diplomat validation requests and status';
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Diplomat validation requests and status';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -560,12 +773,180 @@ CREATE TABLE `welcome_messages` (
 --
 -- Dumping routines for database 'DB_discordbot'
 --
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+/*!50003 DROP FUNCTION IF EXISTS `GetItemName` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+DELIMITER ;;
+CREATE DEFINER=`USER_discordbot`@`localhost` FUNCTION `GetItemName`(p_item_id VARCHAR(100),
+    p_language VARCHAR(5)
+) RETURNS varchar(255) CHARSET utf8mb4 COLLATE utf8mb4_general_ci
+    READS SQL DATA
+    DETERMINISTIC
+BEGIN
+    DECLARE item_name VARCHAR(255);
+    
+    -- Utilisation de CASE pour éviter le SQL dynamique dans une fonction
+    SELECT 
+        CASE p_language
+            WHEN 'en' THEN item_name_en
+            WHEN 'fr' THEN item_name_fr
+            WHEN 'es' THEN item_name_es
+            WHEN 'de' THEN item_name_de
+            ELSE item_name_en -- Par défaut, retourne l'anglais
+        END INTO item_name
+    FROM epic_items_t2 
+    WHERE item_id = p_item_id;
+    
+    RETURN item_name;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `CheckWishlistLimit` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+DELIMITER ;;
+CREATE DEFINER=`USER_discordbot`@`localhost` PROCEDURE `CheckWishlistLimit`(
+    IN p_guild_id BIGINT,
+    IN p_user_id BIGINT
+)
+BEGIN
+    DECLARE item_count INT DEFAULT 0;
+    
+    SELECT COUNT(*) INTO item_count 
+    FROM loot_wishlist 
+    WHERE guild_id = p_guild_id AND user_id = p_user_id;
+    
+    IF item_count >= 3 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'User already has 3 items in wishlist';
+    END IF;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `GetItemsByTypeAndLanguage` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+DELIMITER ;;
+CREATE DEFINER=`USER_discordbot`@`localhost` PROCEDURE `GetItemsByTypeAndLanguage`(
+    IN p_item_type VARCHAR(50),
+    IN p_language VARCHAR(5)
+)
+BEGIN
+    SET @sql = CONCAT(
+        'SELECT item_id, item_type, item_category, item_name_', p_language, 
+        ' AS item_name, item_icon_url, item_url ',
+        'FROM epic_items_t2 '
+    );
+    
+    IF p_item_type IS NOT NULL AND p_item_type != '' THEN
+        SET @sql = CONCAT(@sql, 'WHERE item_type = ''', p_item_type, ''' ');
+    END IF;
+    
+    SET @sql = CONCAT(@sql, 'ORDER BY item_category, item_name_', p_language);
+    
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `SearchItemsByName` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+DELIMITER ;;
+CREATE DEFINER=`USER_discordbot`@`localhost` PROCEDURE `SearchItemsByName`(
+    IN p_search_term VARCHAR(255)
+)
+BEGIN
+    SELECT DISTINCT
+        item_id,
+        item_type,
+        item_category,
+        item_name_en,
+        item_name_fr,
+        item_name_es,
+        item_name_de,
+        item_icon_url,
+        item_url,
+        CASE
+            WHEN item_name_en LIKE CONCAT('%', p_search_term, '%') THEN 'en'
+            WHEN item_name_fr LIKE CONCAT('%', p_search_term, '%') THEN 'fr'
+            WHEN item_name_es LIKE CONCAT('%', p_search_term, '%') THEN 'es'
+            WHEN item_name_de LIKE CONCAT('%', p_search_term, '%') THEN 'de'
+        END AS matched_language
+    FROM epic_items_t2
+    WHERE 
+        item_name_en LIKE CONCAT('%', p_search_term, '%') OR
+        item_name_fr LIKE CONCAT('%', p_search_term, '%') OR
+        item_name_es LIKE CONCAT('%', p_search_term, '%') OR
+        item_name_de LIKE CONCAT('%', p_search_term, '%')
+    ORDER BY 
+        CASE
+            WHEN item_name_en LIKE CONCAT(p_search_term, '%') THEN 1
+            WHEN item_name_fr LIKE CONCAT(p_search_term, '%') THEN 1
+            WHEN item_name_es LIKE CONCAT(p_search_term, '%') THEN 1
+            WHEN item_name_de LIKE CONCAT(p_search_term, '%') THEN 1
+            ELSE 2
+        END,
+        item_type,
+        item_category,
+        item_name_en;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
--- Current Database: `DB_discordbot`
+-- Final view structure for view `epic_items_t2_view`
 --
 
-USE `DB_discordbot`;
+/*!50001 DROP VIEW IF EXISTS `epic_items_t2_view`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_unicode_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`USER_discordbot`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `epic_items_t2_view` AS select `epic_items_t2`.`item_id` AS `item_id`,`epic_items_t2`.`item_type` AS `item_type`,`epic_items_t2`.`item_category` AS `item_category`,`epic_items_t2`.`item_name_en` AS `item_name_en`,`epic_items_t2`.`item_name_fr` AS `item_name_fr`,`epic_items_t2`.`item_name_es` AS `item_name_es`,`epic_items_t2`.`item_name_de` AS `item_name_de`,`epic_items_t2`.`item_url` AS `item_url`,`epic_items_t2`.`item_icon_url` AS `item_icon_url`,`epic_items_t2`.`created_at` AS `created_at`,`epic_items_t2`.`updated_at` AS `updated_at`,concat(`epic_items_t2`.`item_type`,' - ',`epic_items_t2`.`item_category`) AS `full_category`,case when `epic_items_t2`.`item_icon_url` is not null and `epic_items_t2`.`item_icon_url` <> '' then 1 else 0 end AS `has_icon` from `epic_items_t2` */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
 
 --
 -- Final view structure for view `guild_overview`
@@ -581,6 +962,24 @@ USE `DB_discordbot`;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`USER_discordbot`@`localhost` SQL SECURITY DEFINER */
 /*!50001 VIEW `guild_overview` AS select `gs`.`guild_id` AS `guild_id`,`gs`.`guild_name` AS `guild_name`,`gs`.`guild_lang` AS `guild_lang`,`gs`.`guild_game` AS `guild_game`,`gs`.`guild_server` AS `guild_server`,`gs`.`initialized` AS `initialized`,`gs`.`premium` AS `premium`,`gs`.`created_at` AS `created_at`,count(distinct `gm`.`member_id`) AS `total_members`,count(distinct `sg`.`id`) AS `static_groups_count`,`gl`.`game_name` AS `game_name` from (((`guild_settings` `gs` left join `guild_members` `gm` on(`gs`.`guild_id` = `gm`.`guild_id`)) left join `guild_static_groups` `sg` on(`gs`.`guild_id` = `sg`.`guild_id` and `sg`.`is_active` = 1)) left join `games_list` `gl` on(`gs`.`guild_game` = `gl`.`id`)) group by `gs`.`guild_id`,`gs`.`guild_name`,`gs`.`guild_lang`,`gs`.`guild_game`,`gs`.`guild_server`,`gs`.`initialized`,`gs`.`premium`,`gs`.`created_at`,`gl`.`game_name` */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
+-- Final view structure for view `loot_wishlist_stats`
+--
+
+/*!50001 DROP VIEW IF EXISTS `loot_wishlist_stats`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_unicode_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`USER_discordbot`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `loot_wishlist_stats` AS select `loot_wishlist`.`guild_id` AS `guild_id`,`loot_wishlist`.`item_name` AS `item_name`,`loot_wishlist`.`item_id` AS `item_id`,count(0) AS `demand_count`,group_concat(distinct `loot_wishlist`.`user_id` order by `loot_wishlist`.`priority` DESC,`loot_wishlist`.`created_at` ASC separator ',') AS `interested_users`,avg(`loot_wishlist`.`priority`) AS `avg_priority`,min(`loot_wishlist`.`created_at`) AS `first_request`,max(`loot_wishlist`.`created_at`) AS `last_request` from `loot_wishlist` group by `loot_wishlist`.`guild_id`,`loot_wishlist`.`item_name`,`loot_wishlist`.`item_id` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -630,4 +1029,4 @@ USE `DB_discordbot`;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-07-28 15:30:41
+-- Dump completed on 2025-08-03 21:56:23

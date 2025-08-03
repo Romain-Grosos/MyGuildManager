@@ -28,7 +28,8 @@ class TaskScheduler:
             'events_delete': asyncio.Lock(),
             'events_close': asyncio.Lock(),
             'attendance_check': asyncio.Lock(),
-            'epic_items_scraping': asyncio.Lock()
+            'epic_items_scraping': asyncio.Lock(),
+            'wishlist_update': asyncio.Lock()
         }
         self._last_execution: Dict[str, str] = {}
         self._task_metrics: Dict[str, Dict[str, int]] = {
@@ -181,6 +182,51 @@ class TaskScheduler:
                             'attendance_check',
                             attendance_cog.check_voice_presence
                         )
+
+        if now in ["09:00", "22:00"] and self._should_execute('wishlist_update', now):
+            if self._task_locks['wishlist_update'].locked():
+                logging.warning("[Scheduler] Wishlist update already running, skipping")
+            else:
+                async with self._task_locks['wishlist_update']:
+                    logging.info(f"[Scheduler] Automatic wishlist update triggered at {now}")
+                    loot_wishlist_cog = await self._safe_get_cog("LootWishlist")
+                    if loot_wishlist_cog:
+                        await self._execute_with_monitoring(
+                            'wishlist_update',
+                            self._update_all_guild_wishlists,
+                            loot_wishlist_cog
+                        )
+
+    async def _update_all_guild_wishlists(self, loot_wishlist_cog):
+        """Update wishlist messages for all guilds in parallel."""
+        guild_ids = [guild.id for guild in self.bot.guilds]
+        if not guild_ids:
+            logging.info("[Scheduler] No guilds found for wishlist update")
+            return
+        
+        semaphore = asyncio.Semaphore(3)
+        successful_updates = 0
+        failed_updates = 0
+        
+        async def update_guild_wishlist(guild_id):
+            nonlocal successful_updates, failed_updates
+            async with semaphore:
+                try:
+                    success = await loot_wishlist_cog.update_wishlist_message(guild_id)
+                    if success:
+                        successful_updates += 1
+                        logging.debug(f"[Scheduler] Wishlist updated for guild {guild_id}")
+                    else:
+                        failed_updates += 1
+                        logging.debug(f"[Scheduler] Wishlist update failed for guild {guild_id}")
+                except Exception as e:
+                    failed_updates += 1
+                    logging.error(f"[Scheduler] Error updating wishlist for guild {guild_id}: {e}")
+
+        tasks = [update_guild_wishlist(guild_id) for guild_id in guild_ids]
+        await asyncio.gather(*tasks, return_exceptions=True)
+        
+        logging.info(f"[Scheduler] Wishlist update completed: {successful_updates} successful, {failed_updates} failed")
 
     async def _process_roster_updates_parallel(self, guild_members_cog):
         """Process roster updates for all guilds in parallel with rate limiting."""

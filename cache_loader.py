@@ -105,7 +105,7 @@ class CacheLoader:
             SELECT guild_id, rules_channel, rules_message, announcements_channel, voice_tavern_channel, 
                    voice_war_channel, create_room_channel, events_channel, members_channel, 
                    members_m1, members_m2, members_m3, members_m4, members_m5, groups_channel,
-                   statics_channel, statics_message, abs_channel, loot_channel, tuto_channel,
+                   statics_channel, statics_message, abs_channel, loot_channel, loot_message, tuto_channel,
                    forum_allies_channel, forum_friends_channel, forum_diplomats_channel,
                    forum_recruitment_channel, forum_members_channel, notifications_channel,
                    external_recruitment_cat, category_diplomat, external_recruitment_channel, 
@@ -117,7 +117,7 @@ class CacheLoader:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             if rows:
                 for row in rows:
-                    guild_id, rules_channel, rules_message, announcements_channel, voice_tavern_channel, voice_war_channel, create_room_channel, events_channel, members_channel, members_m1, members_m2, members_m3, members_m4, members_m5, groups_channel, statics_channel, statics_message, abs_channel, loot_channel, tuto_channel, forum_allies_channel, forum_friends_channel, forum_diplomats_channel, forum_recruitment_channel, forum_members_channel, notifications_channel, external_recruitment_cat, category_diplomat, external_recruitment_channel, external_recruitment_message = row
+                    guild_id, rules_channel, rules_message, announcements_channel, voice_tavern_channel, voice_war_channel, create_room_channel, events_channel, members_channel, members_m1, members_m2, members_m3, members_m4, members_m5, groups_channel, statics_channel, statics_message, abs_channel, loot_channel, loot_message, tuto_channel, forum_allies_channel, forum_friends_channel, forum_diplomats_channel, forum_recruitment_channel, forum_members_channel, notifications_channel, external_recruitment_cat, category_diplomat, external_recruitment_channel, external_recruitment_message = row
 
                     channels_data = {
                         'rules_channel': rules_channel,
@@ -138,6 +138,7 @@ class CacheLoader:
                         'statics_message': statics_message,
                         'abs_channel': abs_channel,
                         'loot_channel': loot_channel,
+                        'loot_message': loot_message,
                         'tuto_channel': tuto_channel,
                         'forum_allies_channel': forum_allies_channel,
                         'forum_friends_channel': forum_friends_channel,
@@ -181,6 +182,12 @@ class CacheLoader:
                     
                     if create_room_channel:
                         await self.bot.cache.set_guild_data(guild_id, 'create_room_channel', create_room_channel)
+                    
+                    if loot_channel and loot_message:
+                        await self.bot.cache.set_guild_data(guild_id, 'loot_message', {
+                            'channel': loot_channel,
+                            'message': loot_message
+                        })
                     
                 logging.info(f"[CacheLoader] Loaded channels for {len(rows)} guilds")
                 self._loaded_categories.add('guild_channels')
@@ -519,6 +526,40 @@ class CacheLoader:
         except Exception as e:
             logging.error(f"[CacheLoader] Error loading games list: {e}", exc_info=True)
 
+    async def ensure_epic_items_t2_loaded(self) -> None:
+        """Load Epic T2 items data."""
+        if 'epic_items_t2' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading Epic T2 items data")
+        query = "SELECT item_id, item_name_en, item_name_fr, item_name_es, item_name_de FROM epic_items_t2"
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                items_data = []
+                for row in rows:
+                    item_id, name_en, name_fr, name_es, name_de = row
+                    
+                    items_data.append({
+                        'item_id': item_id,
+                        'item_name_en': name_en,
+                        'item_name_fr': name_fr,
+                        'item_name_es': name_es,
+                        'item_name_de': name_de
+                    })
+                
+                await self.bot.cache.set_static_data('epic_items_t2', items_data)
+                    
+                logging.info(f"[CacheLoader] Loaded Epic T2 items: {len(rows)} items")
+                self._loaded_categories.add('epic_items_t2')
+            else:
+                logging.warning("[CacheLoader] No Epic T2 items data found in database")
+                await self.bot.cache.set_static_data('epic_items_t2', [])
+                self._loaded_categories.add('epic_items_t2')
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading Epic T2 items: {e}", exc_info=True)
+
     async def load_all_shared_data(self) -> None:
         """Load all shared data categories in parallel."""
         logging.info("[CacheLoader] Loading all shared data categories")
@@ -537,6 +578,7 @@ class CacheLoader:
             self.ensure_weapons_combinations_loaded(),
             self.ensure_guild_ideal_staff_loaded(),
             self.ensure_games_list_loaded(),
+            self.ensure_epic_items_t2_loaded(),
             return_exceptions=True
         )
         
@@ -572,6 +614,8 @@ class CacheLoader:
             await self.ensure_guild_ideal_staff_loaded()
         elif category == 'games_list':
             await self.ensure_games_list_loaded()
+        elif category == 'epic_items_t2':
+            await self.ensure_epic_items_t2_loaded()
         elif category == 'guild_ptb_settings':
             await self.ensure_guild_ptb_settings_loaded()
         else:

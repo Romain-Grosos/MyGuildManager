@@ -199,6 +199,21 @@ class GuildInit(commands.Cog):
                 await abs_ch.send(channel_names["absences_message"].get(guild_lang))
                 loot = await guild.create_text_channel(name=channel_names["loot"].get(guild_lang),category=org_cat)
 
+                wishlist_translations = global_translations.get("loot_wishlist", {}).get("placeholder", {})
+                wishlist_title = wishlist_translations.get("title", {}).get(guild_lang, wishlist_translations.get("title", {}).get("en-US", "🌟 Epic T2 Items Wishlist"))
+                wishlist_description = wishlist_translations.get("description", {}).get(guild_lang, wishlist_translations.get("description", {}).get("en-US", "Most wanted Epic T2 items by guild members"))
+                wishlist_empty = wishlist_translations.get("empty", {}).get(guild_lang, wishlist_translations.get("empty", {}).get("en-US", "No items in wishlist yet. Use `/wishlist add` to add your desired Epic T2 items!"))
+                wishlist_footer = wishlist_translations.get("footer", {}).get(guild_lang, wishlist_translations.get("footer", {}).get("en-US", "Updated every day at 9 AM and 10 PM • Max 3 items per member"))
+                
+                wishlist_embed = discord.Embed(
+                    title=wishlist_title,
+                    description=wishlist_description,
+                    color=discord.Color.gold()
+                )
+                wishlist_embed.add_field(name="📋 Current Wishlist", value=wishlist_empty, inline=False)
+                wishlist_embed.set_footer(text=wishlist_footer)
+                loot_msg = await loot.send(embed=wishlist_embed)
+
                 council_cat = await guild.create_category(name=channel_names["cat_council"].get(guild_lang))
                 await guild.create_text_channel(name=channel_names["rounded_table"].get(guild_lang),category=council_cat)
                 await guild.create_text_channel(name=channel_names["reports"].get(guild_lang),category=council_cat)
@@ -277,6 +292,7 @@ class GuildInit(commands.Cog):
                     statics_msg.id,
                     abs_ch.id,
                     loot.id,
+                    loot_msg.id,
                     tutorial_channel.id,
                     *forum_ids,
                     notif_ch.id,
@@ -306,6 +322,7 @@ class GuildInit(commands.Cog):
                     statics_message,
                     abs_channel,
                     loot_channel,
+                    loot_message,
                     tutorial_channel,
                     forum_allies_channel,
                     forum_friends_channel,
@@ -316,7 +333,7 @@ class GuildInit(commands.Cog):
                     external_recruitment_channel,
                     external_recruitment_message,
                     category_diplomat
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     rules_channel = VALUES(rules_channel),
                     rules_message = VALUES(rules_message),
@@ -336,6 +353,7 @@ class GuildInit(commands.Cog):
                     statics_message = VALUES(statics_message),
                     abs_channel = VALUES(abs_channel),
                     loot_channel = VALUES(loot_channel),
+                    loot_message = VALUES(loot_message),
                     tutorial_channel = VALUES(tutorial_channel),
                     forum_allies_channel = VALUES(forum_allies_channel),
                     forum_friends_channel = VALUES(forum_friends_channel),
@@ -369,6 +387,7 @@ class GuildInit(commands.Cog):
                     "statics_message": statics_msg.id,
                     "abs_channel": abs_ch.id,
                     "loot_channel": loot.id,
+                    "loot_message": loot_msg.id,
                     "tutorial_channel": tutorial_channel.id,
                     "forum_allies_channel": forum_ids[0],
                     "forum_friends_channel": forum_ids[1],

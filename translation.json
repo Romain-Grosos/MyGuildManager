@@ -3700,8 +3700,8 @@
             "it": "epic_items"
         },
         "description": {
-            "en-US": "View Epic T2 items from Throne and Liberty",
-            "fr": "Voir les objets Epic T2 de Throne and Liberty",
+            "en-US": "View items from Throne and Liberty",
+            "fr": "Voir les objets de Throne and Liberty",
             "es-ES": "Ver objetos Épicos T2 de Throne and Liberty",
             "de": "Epische T2-Gegenstände von Throne and Liberty anzeigen",
             "it": "Visualizza oggetti Epici T2 di Throne and Liberty"
@@ -3737,15 +3737,15 @@
         },
         "messages": {
             "no_items_found": {
-                "en-US": "❌ No Epic T2 items found matching your criteria.",
-                "fr": "❌ Aucun objet Epic T2 trouvé correspondant à vos critères.",
+                "en-US": "❌ No items found matching your criteria.",
+                "fr": "❌ Aucun objet trouvé correspondant à vos critères.",
                 "es-ES": "❌ No se encontraron objetos Épicos T2 que coincidan con tus criterios.",
                 "de": "❌ Keine epischen T2-Gegenstände gefunden, die Ihren Kriterien entsprechen.",
                 "it": "❌ Nessun oggetto Epico T2 trovato che corrisponda ai tuoi criteri."
             },
             "embed_title": {
-                "en-US": "🏺 Epic T2 Items ({language})",
-                "fr": "🏺 Objets Epic T2 ({language})",
+                "en-US": "🏺 Items ({language})",
+                "fr": "🏺 Objets ({language})",
                 "es-ES": "🏺 Objetos Épicos T2 ({language})",
                 "de": "🏺 Epische T2-Gegenstände ({language})",
                 "it": "🏺 Oggetti Epici T2 ({language})"
@@ -3786,8 +3786,8 @@
                 "it": "📖 Visualizza su Questlog"
             },
             "error": {
-                "en-US": "❌ An error occurred while fetching Epic T2 items.",
-                "fr": "❌ Une erreur s'est produite lors de la récupération des objets Epic T2.",
+                "en-US": "❌ An error occurred while fetching items.",
+                "fr": "❌ Une erreur s'est produite lors de la récupération des objets.",
                 "es-ES": "❌ Ocurrió un error al obtener los objetos Épicos T2.",
                 "de": "❌ Ein Fehler ist beim Abrufen der epischen T2-Gegenstände aufgetreten.",
                 "it": "❌ Si è verificato un errore durante il recupero degli oggetti Epici T2."
@@ -3963,6 +3963,356 @@
                 "es-ES": "Pendiente",
                 "de": "Ohrring",
                 "it": "Orecchino"
+            }
+        }
+    },
+    "loot_wishlist": {
+        "commands": {
+            "wishlist": {
+                "name": {
+                    "en-US": "wishlist",
+                    "fr": "liste_souhaits",
+                    "es-ES": "lista_deseos",
+                    "de": "wunschliste",
+                    "it": "lista_desideri"
+                },
+                "description": {
+                    "en-US": "Manage your items wishlist",
+                    "fr": "Gérer votre liste de souhaits d'objets",
+                    "es-ES": "Gestionar tu lista de deseos de objetos",
+                    "de": "Verwalte deine Gegenstände Wunschliste",
+                    "it": "Gestisci la tua lista desideri oggetti"
+                }
+            },
+            "wishlist_add": {
+                "name": {
+                    "en-US": "add_item",
+                    "fr": "ajouter_objet",
+                    "es-ES": "añadir_objeto",
+                    "de": "gegenstand_hinzufuegen",
+                    "it": "aggiungi_oggetto"
+                },
+                "description": {
+                    "en-US": "Add an item to your wishlist",
+                    "fr": "Ajouter un objet à votre liste de souhaits",
+                    "es-ES": "Añadir un objeto a tu lista de deseos",
+                    "de": "Einen Gegenstand zu deiner Wunschliste hinzufügen",
+                    "it": "Aggiungi un oggetto alla tua lista desideri"
+                },
+                "options": {
+                    "item_name": {
+                        "description": {
+                            "en-US": "Name of the item you want to add",
+                            "fr": "Nom de l'objet que vous voulez ajouter",
+                            "es-ES": "Nombre del objeto que quieres añadir",
+                            "de": "Name des Gegenstands, den du hinzufügen möchtest",
+                            "it": "Nome dell'oggetto che vuoi aggiungere"
+                        }
+                    },
+                    "priority": {
+                        "description": {
+                            "en-US": "Priority level (1=Low, 2=Medium, 3=High)",
+                            "fr": "Niveau de priorité (1=Basse, 2=Moyenne, 3=Haute)",
+                            "es-ES": "Nivel de prioridad (1=Baja, 2=Media, 3=Alta)",
+                            "de": "Prioritätsstufe (1=Niedrig, 2=Mittel, 3=Hoch)",
+                            "it": "Livello di priorità (1=Bassa, 2=Media, 3=Alta)"
+                        }
+                    }
+                }
+            },
+            "wishlist_remove": {
+                "name": {
+                    "en-US": "remove_item",
+                    "fr": "supprimer_objet",
+                    "es-ES": "eliminar_objeto",
+                    "de": "gegenstand_entfernen",
+                    "it": "rimuovi_oggetto"
+                },
+                "description": {
+                    "en-US": "Remove an item from your wishlist",
+                    "fr": "Supprimer un objet de votre liste de souhaits",
+                    "es-ES": "Eliminar un objeto de tu lista de deseos",
+                    "de": "Einen Gegenstand aus deiner Wunschliste entfernen",
+                    "it": "Rimuovi un oggetto dalla tua lista desideri"
+                },
+                "options": {
+                    "item_name": {
+                        "description": {
+                            "en-US": "Name of the item to remove from your wishlist",
+                            "fr": "Nom de l'objet à supprimer de votre liste de souhaits",
+                            "es-ES": "Nombre del objeto a eliminar de tu lista de deseos",
+                            "de": "Name des Gegenstands, der aus deiner Wunschliste entfernt werden soll",
+                            "it": "Nome dell'oggetto da rimuovere dalla tua lista desideri"
+                        }
+                    }
+                }
+            },
+            "wishlist_list": {
+                "name": {
+                    "en-US": "show_items",
+                    "fr": "voir_objets",
+                    "es-ES": "mostrar_objetos",
+                    "de": "gegenstaende_anzeigen",
+                    "it": "mostra_oggetti"
+                },
+                "description": {
+                    "en-US": "View your current wishlist",
+                    "fr": "Voir votre liste de souhaits actuelle",
+                    "es-ES": "Ver tu lista de deseos actual",
+                    "de": "Deine aktuelle Wunschliste anzeigen",
+                    "it": "Visualizza la tua lista desideri attuale"
+                }
+            },
+            "wishlist_admin": {
+                "name": {
+                    "en-US": "wishlist_admin",
+                    "fr": "liste_souhaits_admin",
+                    "es-ES": "lista_deseos_admin",
+                    "de": "wunschliste_admin",
+                    "it": "lista_desideri_admin"
+                },
+                "description": {
+                    "en-US": "[MOD] View global wishlist statistics",
+                    "fr": "[MOD] Voir les statistiques globales des listes de souhaits",
+                    "es-ES": "[MOD] Ver estadísticas globales de listas de deseos",
+                    "de": "[MOD] Globale Wunschlisten-Statistiken anzeigen",
+                    "it": "[MOD] Visualizza statistiche globali liste desideri"
+                }
+            }
+        },
+        "messages": {
+            "item_not_valid": {
+                "en-US": "❌ **{item_name}** is not a valid item. Please check the name and try again.",
+                "fr": "❌ **{item_name}** n'est pas un objet valide. Veuillez vérifier le nom et réessayer.",
+                "es-ES": "❌ **{item_name}** no es un objeto válido. Por favor verifica el nombre e intenta de nuevo.",
+                "de": "❌ **{item_name}** ist kein gültiger Gegenstand. Bitte überprüfe den Namen und versuche es erneut.",
+                "it": "❌ **{item_name}** non è un oggetto valido. Controlla il nome e riprova."
+            },
+            "wishlist_full": {
+                "en-US": "❌ You already have 3 items in your wishlist (maximum limit). Remove an item first using `/wishlist remove_item`.",
+                "fr": "❌ Vous avez déjà 3 objets dans votre liste de souhaits (limite maximum). Supprimez d'abord un objet avec `/wishlist supprimer_objet`.",
+                "es-ES": "❌ Ya tienes 3 objetos en tu lista de deseos (límite máximo). Elimina primero un objeto usando `/wishlist eliminar_objeto`.",
+                "de": "❌ Du hast bereits 3 Gegenstände in deiner Wunschliste (Maximum). Entferne zuerst einen Gegenstand mit `/wishlist gegenstand_entfernen`.",
+                "it": "❌ Hai già 3 oggetti nella tua lista desideri (limite massimo). Rimuovi prima un oggetto usando `/wishlist rimuovi_oggetto`."
+            },
+            "item_already_exists": {
+                "en-US": "❌ **{item_name}** is already in your wishlist.",
+                "fr": "❌ **{item_name}** est déjà dans votre liste de souhaits.",
+                "es-ES": "❌ **{item_name}** ya está en tu lista de deseos.",
+                "de": "❌ **{item_name}** ist bereits in deiner Wunschliste.",
+                "it": "❌ **{item_name}** è già nella tua lista desideri."
+            },
+            "item_added": {
+                "en-US": "✅ **{item_name}** added to your wishlist with **{priority}** priority!\nYou now have **{count}/3** items in your wishlist.",
+                "fr": "✅ **{item_name}** ajouté à votre liste de souhaits avec une priorité **{priority}** !\nVous avez maintenant **{count}/3** objets dans votre liste de souhaits.",
+                "es-ES": "✅ **{item_name}** añadido a tu lista de deseos con prioridad **{priority}**!\nAhora tienes **{count}/3** objetos en tu lista de deseos.",
+                "de": "✅ **{item_name}** zu deiner Wunschliste mit **{priority}** Priorität hinzugefügt!\nDu hast jetzt **{count}/3** Gegenstände in deiner Wunschliste.",
+                "it": "✅ **{item_name}** aggiunto alla tua lista desideri con priorità **{priority}**!\nOra hai **{count}/3** oggetti nella tua lista desideri."
+            },
+            "item_not_in_wishlist": {
+                "en-US": "❌ **{item_name}** is not in your wishlist.",
+                "fr": "❌ **{item_name}** n'est pas dans votre liste de souhaits.",
+                "es-ES": "❌ **{item_name}** no está en tu lista de deseos.",
+                "de": "❌ **{item_name}** ist nicht in deiner Wunschliste.",
+                "it": "❌ **{item_name}** non è nella tua lista desideri."
+            },
+            "item_removed": {
+                "en-US": "✅ **{item_name}** removed from your wishlist!\nYou now have **{count}/3** items in your wishlist.",
+                "fr": "✅ **{item_name}** supprimé de votre liste de souhaits !\nVous avez maintenant **{count}/3** objets dans votre liste de souhaits.",
+                "es-ES": "✅ **{item_name}** eliminado de tu lista de deseos!\nAhora tienes **{count}/3** objetos en tu lista de deseos.",
+                "de": "✅ **{item_name}** aus deiner Wunschliste entfernt!\nDu hast jetzt **{count}/3** Gegenstände in deiner Wunschliste.",
+                "it": "✅ **{item_name}** rimosso dalla tua lista desideri!\nOra hai **{count}/3** oggetti nella tua lista desideri."
+            },
+            "database_error_add": {
+                "en-US": "❌ Failed to add item. Please try again.",
+                "fr": "❌ Échec de l'ajout de l'objet. Veuillez réessayer.",
+                "es-ES": "❌ Error al agregar el objeto. Por favor intenta de nuevo.",
+                "de": "❌ Fehler beim Hinzufügen des Gegenstands. Bitte versuche es erneut.",
+                "it": "❌ Errore nell'aggiungere l'oggetto. Riprova per favore."
+            },
+            "database_error_remove": {
+                "en-US": "❌ Failed to remove item. Please try again.",
+                "fr": "❌ Échec de la suppression de l'objet. Veuillez réessayer.",
+                "es-ES": "❌ Error al eliminar el objeto. Por favor intenta de nuevo.",
+                "de": "❌ Fehler beim Entfernen des Gegenstands. Bitte versuche es erneut.",
+                "it": "❌ Errore nel rimuovere l'oggetto. Riprova per favore."
+            },
+            "general_error": {
+                "en-US": "❌ An error occurred while {action}. Please try again.",
+                "fr": "❌ Une erreur s'est produite lors de {action}. Veuillez réessayer.",
+                "es-ES": "❌ Ocurrió un error al {action}. Por favor intenta de nuevo.",
+                "de": "❌ Ein Fehler ist beim {action} aufgetreten. Bitte versuche es erneut.",
+                "it": "❌ Si è verificato un errore durante {action}. Riprova per favore."
+            },
+            "priority_low": {
+                "en-US": "Low",
+                "fr": "Basse",
+                "es-ES": "Baja",
+                "de": "Niedrig",
+                "it": "Bassa"
+            },
+            "priority_medium": {
+                "en-US": "Medium",
+                "fr": "Moyenne",
+                "es-ES": "Media",
+                "de": "Mittel",
+                "it": "Media"
+            },
+            "priority_high": {
+                "en-US": "High",
+                "fr": "Haute",
+                "es-ES": "Alta",
+                "de": "Hoch",
+                "it": "Alta"
+            },
+            "wishlist_title": {
+                "en-US": "🌟 {user}'s Wishlist",
+                "fr": "🌟 Liste de souhaits de {user}",
+                "es-ES": "🌟 Lista de deseos de {user}",
+                "de": "🌟 {user}s Wunschliste",
+                "it": "🌟 Lista desideri di {user}"
+            },
+            "wishlist_empty": {
+                "en-US": "Your wishlist is empty. Use `/wishlist add_item` to add items!",
+                "fr": "Votre liste de souhaits est vide. Utilisez `/wishlist ajouter_objet` pour ajouter des objets !",
+                "es-ES": "Tu lista de deseos está vacía. ¡Usa `/wishlist añadir_objeto` para añadir objetos!",
+                "de": "Deine Wunschliste ist leer. Verwende `/wishlist gegenstand_hinzufuegen` um Gegenstände hinzuzufügen!",
+                "it": "La tua lista desideri è vuota. Usa `/wishlist aggiungi_oggetto` per aggiungere oggetti!"
+            },
+            "your_items": {
+                "en-US": "📋 Your Items ({count}/3)",
+                "fr": "📋 Vos objets ({count}/3)",
+                "es-ES": "📋 Tus objetos ({count}/3)",
+                "de": "📋 Deine Gegenstände ({count}/3)",
+                "it": "📋 I tuoi oggetti ({count}/3)"
+            },
+            "wishlist_footer": {
+                "en-US": "Use /wishlist add_item or /wishlist remove_item to manage your list",
+                "fr": "Utilisez /wishlist ajouter_objet ou /wishlist supprimer_objet pour gérer votre liste",
+                "es-ES": "Usa /wishlist añadir_objeto o /wishlist eliminar_objeto para gestionar tu lista",
+                "de": "Verwende /wishlist gegenstand_hinzufuegen oder /wishlist gegenstand_entfernen um deine Liste zu verwalten",
+                "it": "Usa /wishlist aggiungi_oggetto o /wishlist rimuovi_oggetto per gestire la tua lista"
+            },
+            "admin_title": {
+                "en-US": "📊 Guild Wishlist Statistics",
+                "fr": "📊 Statistiques des listes de souhaits de la guilde",
+                "es-ES": "📊 Estadísticas de listas de deseos del gremio",
+                "de": "📊 Gilden-Wunschlisten Statistiken",
+                "it": "📊 Statistiche liste desideri della gilda"
+            },
+            "admin_overview": {
+                "en-US": "📈 Overview",
+                "fr": "📈 Vue d'ensemble",
+                "es-ES": "📈 Resumen",
+                "de": "📈 Übersicht",
+                "it": "📈 Panoramica"
+            },
+            "admin_overview_content": {
+                "en-US": "**{members}** members with wishlists\n**{total_items}** total items requested\n**{unique_items}** unique items",
+                "fr": "**{members}** membres avec des listes de souhaits\n**{total_items}** objets demandés au total\n**{unique_items}** objets uniques",
+                "es-ES": "**{members}** miembros con listas de deseos\n**{total_items}** objetos solicitados en total\n**{unique_items}** objetos únicos",
+                "de": "**{members}** Mitglieder mit Wunschlisten\n**{total_items}** Gegenstände insgesamt angefragt\n**{unique_items}** einzigartige Gegenstände",
+                "it": "**{members}** membri con liste desideri\n**{total_items}** oggetti richiesti in totale\n**{unique_items}** oggetti unici"
+            },
+            "admin_most_wanted": {
+                "en-US": "🔥 Most Wanted Items",
+                "fr": "🔥 Objets les plus désirés",
+                "es-ES": "🔥 Objetos más deseados",
+                "de": "🔥 Meist gewünschte Gegenstände",
+                "it": "🔥 Oggetti più desiderati"
+            },
+            "admin_members_title": {
+                "en-US": "👥 Members with Wishlists",
+                "fr": "👥 Membres avec des listes de souhaits",
+                "es-ES": "👥 Miembros con listas de deseos",
+                "de": "👥 Mitglieder mit Wunschlisten",
+                "it": "👥 Membri con liste desideri"
+            },
+            "admin_footer": {
+                "en-US": "Use this data to plan loot distribution",
+                "fr": "Utilisez ces données pour planifier la distribution du butin",
+                "es-ES": "Usa estos datos para planificar la distribución del botín",
+                "de": "Verwende diese Daten zur Planung der Beute-Verteilung",
+                "it": "Usa questi dati per pianificare la distribuzione del bottino"
+            },
+            "admin_no_wishlists": {
+                "en-US": "📝 No items in any wishlist yet.",
+                "fr": "📝 Aucun objet dans les listes de souhaits pour le moment.",
+                "es-ES": "📝 Aún no hay objetos en ninguna lista de deseos.",
+                "de": "📝 Noch keine Gegenstände in Wunschlisten.",
+                "it": "📝 Nessun oggetto nelle liste desideri ancora."
+            },
+            "admin_members_count": {
+                "en-US": "{count} items",
+                "fr": "{count} objets",
+                "es-ES": "{count} objetos",
+                "de": "{count} Gegenstände",
+                "it": "{count} oggetti"
+            },
+            "admin_more_members": {
+                "en-US": "... and {count} more members",
+                "fr": "... et {count} membres de plus",
+                "es-ES": "... y {count} miembros más",
+                "de": "... und {count} weitere Mitglieder",
+                "it": "... e altri {count} membri"
+            }
+        },
+        "placeholder": {
+            "title": {
+                "en-US": "🌟 Items Wishlist",
+                "fr": "🌟 Liste de souhaits d'objets",
+                "es-ES": "🌟 Lista de deseos de objetos",
+                "de": "🌟 Gegenstände Wunschliste",
+                "it": "🌟 Lista desideri oggetti"
+            },
+            "description": {
+                "en-US": "Most wanted items by guild members",
+                "fr": "Objets les plus désirés par les membres de la guilde",
+                "es-ES": "Objetos más deseados por los miembros del gremio",
+                "de": "Meist gewünschte Gegenstände von Gildenmitgliedern",
+                "it": "Oggetti più desiderati dai membri della gilda"
+            },
+            "empty": {
+                "en-US": "No items in wishlist yet. Use `/wishlist add_item` to add your desired items!",
+                "fr": "Aucun objet dans la liste de souhaits pour le moment. Utilisez `/wishlist ajouter_objet` pour ajouter vos objets désirés !",
+                "es-ES": "Aún no hay objetos en la lista de deseos. ¡Usa `/wishlist añadir_objeto` para añadir tus objetos deseados!",
+                "de": "Noch keine Gegenstände in der Wunschliste. Verwende `/wishlist gegenstand_hinzufuegen` um deine gewünschten Gegenstände hinzuzufügen!",
+                "it": "Nessun oggetto nella lista desideri ancora. Usa `/wishlist aggiungi_oggetto` per aggiungere i tuoi oggetti desiderati!"
+            },
+            "footer": {
+                "en-US": "Updated every day at 9 AM and 10 PM • Max 3 items per member",
+                "fr": "Mis à jour tous les jours à 9h et 22h • Max 3 objets par membre",
+                "es-ES": "Actualizado todos los días a las 9 AM y 10 PM • Máx 3 objetos por miembro",
+                "de": "Täglich um 9 Uhr und 22 Uhr aktualisiert • Max 3 Gegenstände pro Mitglied",
+                "it": "Aggiornato ogni giorno alle 9 e alle 22 • Max 3 oggetti per membro"
+            },
+            "most_wanted_title": {
+                "en-US": "📋 Most Wanted Items",
+                "fr": "📋 Objets les plus désirés",
+                "es-ES": "📋 Objetos más deseados",
+                "de": "📋 Meist gewünschte Gegenstände",
+                "it": "📋 Oggetti più desiderati"
+            },
+            "current_wishlist_title": {
+                "en-US": "📋 Current Wishlist",
+                "fr": "📋 Liste de souhaits actuelle",
+                "es-ES": "📋 Lista de deseos actual",
+                "de": "📋 Aktuelle Wunschliste",
+                "it": "📋 Lista desideri attuale"
+            },
+            "members_text": {
+                "en-US": "members",
+                "fr": "membres",
+                "es-ES": "miembros",
+                "de": "Mitglieder",
+                "it": "membri"
+            },
+            "and_more": {
+                "en-US": "and {count} more",
+                "fr": "et {count} de plus",
+                "es-ES": "y {count} más",
+                "de": "und {count} weitere",
+                "it": "e altri {count}"
             }
         }
     }
