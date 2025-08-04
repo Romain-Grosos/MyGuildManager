@@ -236,12 +236,13 @@ class GuildMembers(commands.Cog):
         """
         guild_members = await self.bot.cache.get('roster_data', 'guild_members')
         if guild_members is None:
-            logging.warning("[GuildMembers] guild_members cache returned None, checking raw cache...")
+            logging.warning("[GuildMembers] guild_members cache returned None, ensuring cache is loaded...")
             try:
-                raw_cache = await self.bot.cache.get('roster_data', 'guild_members')
-                logging.debug(f"[GuildMembers] Raw cache check result: {type(raw_cache)} - {raw_cache is None}")
+                await self.bot.cache_loader.ensure_guild_members_loaded()
+                guild_members = await self.bot.cache.get('roster_data', 'guild_members')
+                logging.debug(f"[GuildMembers] After cache reload: {type(guild_members)} - {guild_members is None}")
             except Exception as e:
-                logging.error(f"[GuildMembers] Error accessing raw cache: {e}")
+                logging.error(f"[GuildMembers] Error reloading guild members cache: {e}")
         return guild_members or {}
 
     async def get_user_setup_members(self) -> Dict[Tuple[int, int], Dict[str, Any]]:
@@ -1076,6 +1077,17 @@ class GuildMembers(commands.Cog):
                     INSERT INTO guild_members 
                     (guild_id, member_id, username, language, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    username = VALUES(username),
+                    language = VALUES(language),
+                    GS = VALUES(GS),
+                    build = VALUES(build),
+                    weapons = VALUES(weapons),
+                    DKP = VALUES(DKP),
+                    nb_events = VALUES(nb_events),
+                    registrations = VALUES(registrations),
+                    attendances = VALUES(attendances),
+                    `class` = VALUES(`class`)
                 """
                 for member_data in to_insert:
                     required_fields = ['member_id', 'username', 'language', 'GS', 'build', 'weapons', 'DKP', 'nb_events', 'registrations', 'attendances', 'class']
@@ -1822,6 +1834,17 @@ class GuildMembers(commands.Cog):
                     INSERT INTO guild_members 
                     (guild_id, member_id, username, language, GS, build, weapons, DKP, nb_events, registrations, attendances, `class`)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    username = VALUES(username),
+                    language = VALUES(language),
+                    GS = VALUES(GS),
+                    build = VALUES(build),
+                    weapons = VALUES(weapons),
+                    DKP = VALUES(DKP),
+                    nb_events = VALUES(nb_events),
+                    registrations = VALUES(registrations),
+                    attendances = VALUES(attendances),
+                    `class` = VALUES(`class`)
                 """
                 await self.bot.run_db_query(
                     insert_query,

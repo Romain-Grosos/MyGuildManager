@@ -12,11 +12,11 @@ from typing import Dict, Any, Optional, Set, List, Callable
 DEFAULT_TTL = 3600  # 1 hour
 CACHE_CATEGORIES = {
     'guild_data': 86400,    # 24 hours - Guild settings, roles, channels (event-driven + fail-safe)
-    'user_data': 3600,      # 1 hour - User profiles, setup data (event-driven + fail-safe)
-    'events_data': 3600,    # 1 hour - Events, registrations (event-driven + fail-safe)
-    'roster_data': 3600,    # 1 hour - Guild members, roster info (event-driven + fail-safe)
-    'static_data': 3600,    # 1 hour - Weapons, combinations, static configs (event-driven + fail-safe)
-    'discord_entities': 3600, # 1 hour - Discord members, channels, guilds (event-driven + fail-safe)
+    'user_data': 7200,      # 2 hours - User profiles, setup data (event-driven + fail-safe)
+    'events_data': 90000,   # 25 hours - Events, registrations (daily cron at 12:00 + fail-safe)
+    'roster_data': 25200,   # 7 hours - Guild members, roster info (6h cron + fail-safe)
+    'static_data': 90000,   # 25 hours - Weapons, combinations, static configs (daily cron at 03:30 + fail-safe)
+    'discord_entities': 7200, # 2 hours - Discord members, channels, guilds (event-driven + fail-safe)
     'temporary': 300        # 5 minutes - Short-term cache
 }
 

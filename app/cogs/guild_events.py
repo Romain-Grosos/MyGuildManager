@@ -471,7 +471,8 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents - create_events_for_guild] Error converting guild_game for guild {guild_id}: {e}")
             return
 
-        calendar = self.events_calendar.get(game_id, [])
+        calendar_data = await self.get_events_calendar_data(game_id)
+        calendar = calendar_data.get('events', [])
         if not calendar:
             logging.info(f"[GuildEvents - create_events_for_guild] No events defined in calendar for game_id {game_id}.")
             return
@@ -3093,6 +3094,11 @@ class GuildEvents(commands.Cog):
             Boolean indicating whether the update was successful
         """
         try:
+            guild_ptb_config = await self.bot.cache.get('guild_ptb_settings', guild_id)
+            if guild_ptb_config and guild_ptb_config.get('ptb_guild_id') == guild_id:
+                logging.debug(f"[GuildEvents] Skipping statics update for PTB guild {guild_id}")
+                return False
+            
             guild_settings = await self.get_guild_settings(guild_id)
             guild_lang = guild_settings.get("guild_lang", "en-US")
             
@@ -3100,7 +3106,7 @@ class GuildEvents(commands.Cog):
             result = await self.bot.run_db_query(query, (guild_id,), fetch_one=True)
             
             if not result or not result[0] or not result[1]:
-                logging.warning(f"[GuildEvents] No statics channel/message configured for guild {guild_id}")
+                logging.debug(f"[GuildEvents] No statics channel/message configured for guild {guild_id}")
                 return False
                 
             channel_id, message_id = result

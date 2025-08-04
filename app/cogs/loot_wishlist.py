@@ -277,11 +277,16 @@ class LootWishlist(commands.Cog):
             True if the message was successfully updated, False otherwise
         """
         try:
+            guild_ptb_config = await self.bot.cache.get('guild_ptb_settings', guild_id)
+            if guild_ptb_config and guild_ptb_config.get('ptb_guild_id') == guild_id:
+                logging.debug(f"[LootWishlist] Skipping loot update for PTB guild {guild_id}")
+                return False
+            
             await self.bot.cache_loader.ensure_guild_channels_loaded()
             loot_data = await self.bot.cache.get_guild_data(guild_id, 'loot_message')
             
             if not loot_data:
-                logging.warning(f"[LootWishlist] No loot message data found for guild {guild_id}")
+                logging.debug(f"[LootWishlist] No loot message data found for guild {guild_id}")
                 return False
             
             channel_id = loot_data.get('channel')
