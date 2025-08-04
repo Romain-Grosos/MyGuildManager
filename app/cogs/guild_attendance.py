@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, time as dt_time
 from typing import Dict, List, Set, Tuple, Optional, Any
 import pytz
 
-from translation import translations as global_translations
+from ..core.translation from ..core import translations as global_translations
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
 GUILD_ATTENDANCE = global_translations.get("guild_attendance", {})

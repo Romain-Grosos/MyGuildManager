@@ -9,7 +9,7 @@ import re
 from datetime import datetime
 from typing import Dict, Tuple, Any, Optional
 from discord.ext import commands
-from translation import translations as global_translations
+from ..core.translation from ..core import translations as global_translations
 import asyncio
 from db import DBQueryError
 

@@ -8,7 +8,7 @@ from discord.ext import commands
 import asyncio
 import time
 import re
-from translation import translations as global_translations
+from ..core.translation from ..core import translations as global_translations
 
 class DynamicVoice(commands.Cog):
     """Cog for managing dynamic temporary voice channels."""

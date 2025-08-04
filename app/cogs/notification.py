@@ -9,8 +9,8 @@ from typing import Any
 import asyncio
 import time
 import re
-from reliability import discord_resilient
-from translation import translations as global_translations
+from ..core.reliability import discord_resilient
+from ..core.translation from ..core import translations as global_translations
 
 def create_embed(title: str, description: str, color: discord.Color, member: discord.Member) -> discord.Embed:
     """Create a Discord embed with member information."""

@@ -3,8 +3,8 @@ Centralized Cache Loader - Manages loading of shared data into global cache.
 """
 
 import logging
-from typing import Dict, Any, Optional
 import asyncio
+from typing import Dict, Any, Optional
 
 class CacheLoader:
     """Centralized loader for shared guild data to eliminate redundant DB queries."""

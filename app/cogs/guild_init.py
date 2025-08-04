@@ -6,10 +6,10 @@ import discord
 from discord.ext import commands
 import logging
 from typing import Any, Dict, Tuple
-from functions import get_user_message
-from translation import translations as global_translations
-from rate_limiter import admin_rate_limit
-from reliability import discord_resilient
+from ..core.functions import get_user_message
+from ..core.translation from ..core import translations as global_translations
+from ..core.rate_limiter import admin_rate_limit
+from ..core.reliability import discord_resilient
 import asyncio
 
 GUILD_INIT_DATA = global_translations.get("guild_init", {})

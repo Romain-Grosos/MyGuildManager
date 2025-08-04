@@ -10,11 +10,11 @@ import pytz
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta, time as dt_time
 import time
-from translation import translations as global_translations
+from ..core.translation from ..core import translations as global_translations
 from typing import Optional, List, Dict, Set, Tuple, Any
 import json
-from performance_profiler import profile_performance
-from reliability import discord_resilient
+from ..core.performance_profiler import profile_performance
+from ..core.reliability import discord_resilient
 import math
 import statistics
 

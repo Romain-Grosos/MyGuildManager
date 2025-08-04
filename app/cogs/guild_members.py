@@ -10,12 +10,12 @@ import re
 import time
 from typing import Dict, List, Tuple, Any, Optional, Union
 from discord.ext import commands, tasks
-from functions import get_user_message
+from ..core.functions import get_user_message
 from datetime import datetime
-from translation import translations as global_translations
+from ..core.translation from ..core import translations as global_translations
 from urllib.parse import urlparse
-from rate_limiter import admin_rate_limit
-from performance_profiler import profile_performance
+from ..core.rate_limiter import admin_rate_limit
+from ..core.performance_profiler import profile_performance
 
 GUILD_MEMBERS = global_translations.get("guild_members", {})
 CONFIG_ROSTER_DATA = global_translations.get("commands", {}).get("config_roster", {})

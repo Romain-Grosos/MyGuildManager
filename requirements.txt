@@ -1,0 +1,28 @@
+# Core Discord library
+py-cord==2.6.1
+
+# Database
+mariadb==1.1.10
+
+# Web scraping
+selenium==4.25.0
+beautifulsoup4==4.12.3
+
+# Timezone handling
+pytz==2024.2
+
+# Environment variables
+python-dotenv==1.0.1
+
+# HTTP client
+aiohttp==3.10.10
+
+# Testing
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-cov==5.0.0
+
+# Development tools (optional)
+black==24.10.0
+flake8==7.1.1
+mypy==1.13.0

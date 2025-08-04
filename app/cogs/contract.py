@@ -7,7 +7,7 @@ import logging
 import asyncio
 from datetime import datetime
 from discord.ext import commands
-from translation import translations
+from ..core.translation from ..core import translations
 from typing import Optional, Dict, Any
 
 CONTRACT_DATA = translations.get("contract", {})

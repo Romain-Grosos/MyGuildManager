@@ -8,7 +8,7 @@
 python -m pytest tests/ --cov=. --cov-report=html --cov-report=term
 
 # Or use the comprehensive script
-python run_tests_with_coverage.py
+python tests/run_tests_with_coverage.py
 ```
 
 ### View Results

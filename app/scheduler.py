@@ -1,11 +1,11 @@
 import logging
-import discord
 import asyncio
 import time
-from discord.ext import tasks
 from datetime import datetime
 from typing import Dict, Set, Optional
+import discord
 import pytz
+from discord.ext import tasks
 
 # #################################################################################### #
 #                            Scheduler Configuration

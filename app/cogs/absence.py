@@ -6,7 +6,7 @@ import discord
 import logging
 from discord.ext import commands
 import asyncio
-from translation import translations as global_translations
+from ..core.translation from ..core import translations as global_translations
 
 ABSENCE_TRANSLATIONS = global_translations.get("absence", {})
 

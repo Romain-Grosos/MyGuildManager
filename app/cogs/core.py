@@ -2,16 +2,16 @@
 Core Management Cog - Handles guild initialization, modification, and reset operations.
 """
 
-import discord
-from discord.ext import commands
 import logging
 import asyncio
 import re
-from functions import get_user_message
-from translation import translations as global_translations
 from typing import Optional, Tuple
-from rate_limiter import admin_rate_limit, start_cleanup_task
-from reliability import discord_resilient
+import discord
+from discord.ext import commands
+from ..core.functions import get_user_message
+from ..core.translation import translations as global_translations
+from ..core.rate_limiter import admin_rate_limit, start_cleanup_task
+from ..core.reliability import discord_resilient
 
 APP_INITIALIZE_DATA = global_translations.get("commands", {}).get("app_initialize", {})
 APP_MODIFICATION_DATA = global_translations.get("commands", {}).get("app_modify", {})

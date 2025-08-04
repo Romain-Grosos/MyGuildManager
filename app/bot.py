@@ -1,30 +1,30 @@
 import discord
 import logging
-from logging.handlers import TimedRotatingFileHandler
-import config
-from translation import translations
-from db import run_db_query
 import asyncio
 import signal
 import sys
-from typing import Final, Dict, Any, Optional
 import aiohttp
 import time
-from discord.ext import commands
-from collections import defaultdict, deque
-from functools import wraps
-from scheduler import setup_task_scheduler
-from cache import get_global_cache, start_cache_maintenance_task
-from cache_loader import get_cache_loader
-from rate_limiter import start_cleanup_task
-from performance_profiler import get_profiler
-from reliability import setup_reliability_system
 try:
     import psutil
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
     logging.warning("[Bot] psutil not available - resource monitoring disabled")
+from logging.handlers import TimedRotatingFileHandler
+from typing import Final, Dict, Any, Optional
+from discord.ext import commands
+from collections import defaultdict, deque
+from functools import wraps
+from . import config
+from .db import run_db_query
+from .scheduler import setup_task_scheduler
+from .cache import get_global_cache, start_cache_maintenance_task
+from .cache_loader import get_cache_loader
+from .core.translation import translations
+from .core.rate_limiter import start_cleanup_task
+from .core.performance_profiler import get_profiler
+from .core.reliability import setup_reliability_system
 
 # #################################################################################### #
 #                               Logging Configuration

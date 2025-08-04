@@ -11,7 +11,7 @@ import re
 import logging
 import asyncio
 import time
-from translation import translations as global_translations
+from ..core.translation from ..core import translations as global_translations
 
 LLM_DATA = global_translations.get("llm", {})
 

@@ -7,9 +7,9 @@ import discord
 from discord.ext import commands
 import logging
 from typing import Dict, List, Optional, Any, Tuple
-from functions import get_user_message
-from translation import translations as global_translations
-from reliability import discord_resilient
+from ..core.functions import get_user_message
+from ..core.translation from ..core import translations as global_translations
+from ..core.reliability import discord_resilient
 import db
 import asyncio
 from datetime import datetime

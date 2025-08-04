@@ -1,11 +1,11 @@
-import mariadb
-import config
 import logging
 import sys
 import asyncio
 import time
 import contextlib
 from typing import Optional, Any
+import mariadb
+from . import config
 
 # #################################################################################### #
 #                            Database Pool Initialization

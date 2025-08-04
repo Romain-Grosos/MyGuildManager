@@ -10,8 +10,8 @@ import asyncio
 import pytz
 import time
 from datetime import datetime
-from translation import translations as global_translations
-from reliability import discord_resilient
+from ..core.translation from ..core import translations as global_translations
+from ..core.reliability import discord_resilient
 
 WELCOME_MP_DATA = global_translations.get("welcome_mp", {})
 

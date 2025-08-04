@@ -9,8 +9,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set
 import pytz
-from translation import translations as global_translations
-from reliability import discord_resilient
+from ..core.translation from ..core import translations as global_translations
+from ..core.reliability import discord_resilient
 
 GUILD_PTB = global_translations.get("guild_ptb", {})
 

@@ -13,10 +13,10 @@ from typing import Dict, List, Optional, Any, Tuple
 import re
 import tempfile
 import os
-from reliability import discord_resilient
+from ..core.reliability import discord_resilient
 import db
-from functions import get_user_message
-from translation import translations as global_translations
+from ..core.functions import get_user_message
+from ..core.translation from ..core import translations as global_translations
 
 EPIC_ITEMS_DATA = global_translations.get("epic_items", {})
 
