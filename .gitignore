@@ -176,3 +176,11 @@ cython_debug/
 package-lock.json
 .vscode
 backups
+
+# IDE and Editor
+.idea/
+
+# Testing output
+htmlcov/
+coverage.xml
+.coverage.*
