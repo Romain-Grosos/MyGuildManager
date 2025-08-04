@@ -7,7 +7,7 @@ from typing import Optional, Any
 
 import mariadb
 
-from . import config
+import config
 
 # #################################################################################### #
 #                            Database Pool Initialization

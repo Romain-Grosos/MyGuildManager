@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 import discord
 from discord.ext import commands
 
-from ..core.translation import translations
+from core.translation import translations
 
 CONTRACT_DATA = translations.get("contract", {})
 

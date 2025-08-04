@@ -12,8 +12,8 @@ import discord
 import pytz
 from discord.ext import commands
 
-from ..core.translation import translations as global_translations
-from ..db import DBQueryError
+from core.translation import translations as global_translations
+from db import DBQueryError
 
 MAX_PLAYTIME_LEN = 64
 SUPPORTED_LOCALES = global_translations.get("supported_locales", {})

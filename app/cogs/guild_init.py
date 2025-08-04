@@ -9,10 +9,10 @@ from typing import Any, Dict, Tuple
 import discord
 from discord.ext import commands
 
-from ..core.functions import get_user_message
-from ..core.rate_limiter import admin_rate_limit
-from ..core.reliability import discord_resilient
-from ..core.translation import translations as global_translations
+from core.functions import get_user_message
+from core.rate_limiter import admin_rate_limit
+from core.reliability import discord_resilient
+from core.translation import translations as global_translations
 
 GUILD_INIT_DATA = global_translations.get("guild_init", {})
 

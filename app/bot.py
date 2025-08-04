@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import signal
 import sys
 import time
@@ -8,19 +9,24 @@ from functools import wraps
 from logging.handlers import TimedRotatingFileHandler
 from typing import Final, Dict, Any, Optional
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, current_dir)
+sys.path.insert(0, parent_dir)
+
 import aiohttp
 import discord
 from discord.ext import commands
 
-from . import config
-from .db import run_db_query
-from .scheduler import setup_task_scheduler
-from .cache import get_global_cache, start_cache_maintenance_task
-from .cache_loader import get_cache_loader
-from .core.translation import translations
-from .core.rate_limiter import start_cleanup_task
-from .core.performance_profiler import get_profiler
-from .core.reliability import setup_reliability_system
+import config
+from db import run_db_query
+from scheduler import setup_task_scheduler
+from cache import get_global_cache, start_cache_maintenance_task
+from cache_loader import get_cache_loader
+from core.translation import translations
+from core.rate_limiter import start_cleanup_task
+from core.performance_profiler import get_profiler
+from core.reliability import setup_reliability_system
 
 try:
     import psutil
@@ -410,7 +416,7 @@ EXTENSIONS: Final["list[str]"] = [
     "cogs.autorole"
 ]
 
-async def load_extensions():
+def load_extensions():
     """
     Load all Discord bot extensions (cogs) with error handling.
     
@@ -420,7 +426,7 @@ async def load_extensions():
     failed_extensions = []
     for ext in EXTENSIONS:
         try:
-            await bot.load_extension(ext)
+            bot.load_extension(ext)
             logging.debug(f"[Bot] Extension loaded: {ext}")
         except Exception as e:
             failed_extensions.append(ext)
@@ -629,7 +635,7 @@ async def run_bot():
     """
     Main bot runner with retry logic for resilient startup.
     """
-    await load_extensions()
+    load_extensions()
     max_retries = config.MAX_RECONNECT_ATTEMPTS
     retry_count = 0
     

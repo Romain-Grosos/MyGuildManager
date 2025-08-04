@@ -21,10 +21,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from ..core.reliability import discord_resilient
-from ..db import run_db_query, run_db_transaction
-from ..core.functions import get_user_message
-from ..core.translation import translations as global_translations
+from core.reliability import discord_resilient
+from db import run_db_query, run_db_transaction
+from core.functions import get_user_message
+from core.translation import translations as global_translations
 
 EPIC_ITEMS_DATA = global_translations.get("epic_items", {})
 

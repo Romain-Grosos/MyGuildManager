@@ -12,7 +12,7 @@ import discord
 import pytz
 from discord.ext import commands
 
-from ..core.translation import translations as global_translations
+from core.translation import translations as global_translations
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
 GUILD_ATTENDANCE = global_translations.get("guild_attendance", {})

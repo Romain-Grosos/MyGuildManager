@@ -11,8 +11,8 @@ import discord
 import pytz
 from discord.ext import commands
 
-from ..core.reliability import discord_resilient
-from ..core.translation import translations as global_translations
+from core.reliability import discord_resilient
+from core.translation import translations as global_translations
 
 GUILD_PTB = global_translations.get("guild_ptb", {})
 

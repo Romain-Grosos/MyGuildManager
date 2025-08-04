@@ -11,8 +11,8 @@ from typing import Any
 import discord
 from discord.ext import commands
 
-from ..core.reliability import discord_resilient
-from ..core.translation import translations as global_translations
+from core.reliability import discord_resilient
+from core.translation import translations as global_translations
 
 def create_embed(title: str, description: str, color: discord.Color, member: discord.Member) -> discord.Embed:
     """

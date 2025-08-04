@@ -12,9 +12,9 @@ from typing import Dict, List, Optional, Any, Tuple
 import discord
 from discord.ext import commands
 
-from .. import db
-from ..core import translations as global_translations
-from ..core.reliability import discord_resilient
+import db
+from core.translation import translations as global_translations
+from core.reliability import discord_resilient
 
 LOOT_WISHLIST_DATA = global_translations.get("loot_wishlist", {})
 

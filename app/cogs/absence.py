@@ -8,7 +8,7 @@ import logging
 import discord
 from discord.ext import commands
 
-from ..core.translation import translations as global_translations
+from core.translation import translations as global_translations
 
 ABSENCE_TRANSLATIONS = global_translations.get("absence", {})
 

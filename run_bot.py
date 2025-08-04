@@ -26,10 +26,10 @@ if __name__ == "__main__":
     # Setup signal handlers
     for sig in (signal.SIGTERM, signal.SIGINT):
         try:
-            loop.add_signal_handler(sig, _graceful_exit, sig.name)
+            loop.add_signal_handler(sig, lambda: _graceful_exit(sig.name))
         except NotImplementedError:
             # Windows doesn't support add_signal_handler
-            signal.signal(sig, lambda *_: asyncio.create_task(_graceful_exit(sig.name)))
+            signal.signal(sig, lambda signum, frame: _graceful_exit(sig.name))
     
     # Run the bot
     try:

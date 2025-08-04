@@ -16,9 +16,9 @@ import pytz
 from discord import NotFound, HTTPException
 from discord.ext import commands, tasks
 
-from ..core.performance_profiler import profile_performance
-from ..core.reliability import discord_resilient
-from ..core.translation import translations as global_translations
+from core.performance_profiler import profile_performance
+from core.reliability import discord_resilient
+from core.translation import translations as global_translations
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
 STATIC_GROUPS = global_translations.get("static_groups", {})

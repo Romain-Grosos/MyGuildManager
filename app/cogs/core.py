@@ -10,10 +10,10 @@ from typing import Optional, Tuple
 import discord
 from discord.ext import commands
 
-from ..core.functions import get_user_message
-from ..core.rate_limiter import admin_rate_limit, start_cleanup_task
-from ..core.reliability import discord_resilient
-from ..core.translation import translations as global_translations
+from core.functions import get_user_message
+from core.rate_limiter import admin_rate_limit, start_cleanup_task
+from core.reliability import discord_resilient
+from core.translation import translations as global_translations
 
 APP_INITIALIZE_DATA = global_translations.get("commands", {}).get("app_initialize", {})
 APP_MODIFICATION_DATA = global_translations.get("commands", {}).get("app_modify", {})

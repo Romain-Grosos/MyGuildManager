@@ -13,11 +13,11 @@ from urllib.parse import urlparse
 import discord
 from discord.ext import commands, tasks
 
-from ..core.functions import get_user_message
-from ..core.performance_profiler import profile_performance
-from ..core.rate_limiter import admin_rate_limit
-from ..core.translation import translations as global_translations
-from ..db import run_db_transaction
+from core.functions import get_user_message
+from core.performance_profiler import profile_performance
+from core.rate_limiter import admin_rate_limit
+from core.translation import translations as global_translations
+from db import run_db_transaction
 
 GUILD_MEMBERS = global_translations.get("guild_members", {})
 CONFIG_ROSTER_DATA = global_translations.get("commands", {}).get("config_roster", {})

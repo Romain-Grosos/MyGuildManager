@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 
-from ..config import TRANSLATION_FILE, MAX_TRANSLATION_FILE_SIZE
+from config import TRANSLATION_FILE, MAX_TRANSLATION_FILE_SIZE
 
 # #################################################################################### #
 #                            Translation System Loader

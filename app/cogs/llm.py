@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
-from ..core.translation import translations as global_translations
+from core.translation import translations as global_translations
 
 LLM_DATA = global_translations.get("llm", {})
 
