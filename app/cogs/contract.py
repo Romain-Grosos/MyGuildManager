@@ -2,24 +2,45 @@
 Contract Manager Cog - Manages guild contract selection and publishing system.
 """
 
-import discord
-import logging
 import asyncio
+import logging
 from datetime import datetime
-from discord.ext import commands
-from ..core.translation from ..core import translations
 from typing import Optional, Dict, Any
+
+import discord
+from discord.ext import commands
+
+from ..core.translation import translations
 
 CONTRACT_DATA = translations.get("contract", {})
 
 async def get_guild_event_channel(bot, guild_id):
-    """Get event channel ID for a guild from cache."""
+    """
+    Get event channel ID for a guild from cache.
+    
+    Args:
+        bot: Discord bot instance
+        guild_id: Discord guild ID
+        
+    Returns:
+        Event channel ID or None if not found
+    """
     channels_data = await bot.cache.get_guild_data(guild_id, 'channels')
     return channels_data.get('events_channel') if channels_data else None
 
 
 async def save_contract_message(bot, guild_id, message_id):
-    """Save contract message ID to database."""
+    """
+    Save contract message ID to database.
+    
+    Args:
+        bot: Discord bot instance
+        guild_id: Discord guild ID
+        message_id: Discord message ID to save
+        
+    Raises:
+        Exception: If database operation fails
+    """
     query = "INSERT INTO contracts (guild_id, message_id) VALUES (%s, %s) ON DUPLICATE KEY UPDATE message_id = %s"
     try:
         await bot.run_db_query(query, (guild_id, message_id, message_id), commit=True)
@@ -28,7 +49,16 @@ async def save_contract_message(bot, guild_id, message_id):
         raise
 
 async def load_contract_message(bot, guild_id):
-    """Load contract message ID from database."""
+    """
+    Load contract message ID from database.
+    
+    Args:
+        bot: Discord bot instance
+        guild_id: Discord guild ID
+        
+    Returns:
+        Message ID or None if not found
+    """
     query = "SELECT message_id FROM contracts WHERE guild_id = %s"
     try:
         result = await bot.run_db_query(query, (guild_id,), fetch_one=True)
@@ -38,7 +68,16 @@ async def load_contract_message(bot, guild_id):
     return result[0] if result else None
 
 async def delete_contract_message(bot, guild_id):
-    """Delete contract message record from database."""
+    """
+    Delete contract message record from database.
+    
+    Args:
+        bot: Discord bot instance
+        guild_id: Discord guild ID
+        
+    Raises:
+        Exception: If database operation fails
+    """
     query = "DELETE FROM contracts WHERE guild_id = %s"
     try:
         await bot.run_db_query(query, (guild_id,), commit=True)
@@ -50,7 +89,14 @@ class ContractSelect(discord.ui.View):
     """Interactive view for contract selection with dropdowns and validation."""
     
     def __init__(self, bot, author, guild_lang):
-        """Initialize contract selection view."""
+        """
+        Initialize contract selection view.
+        
+        Args:
+            bot: Discord bot instance
+            author: Discord user who initiated the view
+            guild_lang: Guild language for translations
+        """
         super().__init__(timeout=1800)
         self.bot = bot
         self.author = author
@@ -152,7 +198,7 @@ class ContractSelect(discord.ui.View):
                 custom_id="open_dungeon"
             )
             async def dungeon_callback(interaction: discord.Interaction):
-                """Handle dungeon callback."""
+                """Handle dungeon selection callback."""
                 if not self._validate_author_interaction(interaction):
                     error_msg = CONTRACT_DATA.get("events", {})\
                         .get("errors", {})\
@@ -203,7 +249,15 @@ class ContractSelect(discord.ui.View):
         self.add_item(self.validate_button)
 
     async def _get_channel_safe(self, channel_id: int) -> Optional[discord.TextChannel]:
-        """Safely get channel with caching and error handling."""
+        """
+        Safely get channel with caching and error handling.
+        
+        Args:
+            channel_id: Discord channel ID
+            
+        Returns:
+            Discord TextChannel or None if not found
+        """
         channel = self.bot.get_channel(channel_id)
         if not channel:
             try:
@@ -214,7 +268,15 @@ class ContractSelect(discord.ui.View):
         return channel
     
     def _validate_author_interaction(self, interaction: discord.Interaction) -> bool:
-        """Validate that interaction comes from original command author."""
+        """
+        Validate that interaction comes from original command author.
+        
+        Args:
+            interaction: Discord interaction to validate
+            
+        Returns:
+            True if interaction is from original author, False otherwise
+        """
         if interaction.user != self.author:
             error_msg = CONTRACT_DATA.get("events", {})\
                 .get("errors", {})\
@@ -224,7 +286,12 @@ class ContractSelect(discord.ui.View):
         return True
     
     async def post_event_message(self, interaction: discord.Interaction):
-        """Post the contract message to the guild's event channel."""
+        """
+        Post the contract message to the guild's event channel.
+        
+        Args:
+            interaction: Discord interaction context
+        """
         guild = interaction.guild
         guild_id = guild.id
         channel_id = await get_guild_event_channel(self.bot, guild_id)
@@ -295,15 +362,37 @@ class Contract(commands.Cog):
     """Cog for managing guild contract selection and publishing."""
     
     def __init__(self, bot):
-        """Initialize the Contract cog."""
+        """
+        Initialize the Contract cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
     
     def _validate_author(self, interaction: discord.Interaction, original_author: discord.Member) -> bool:
-        """Validate interaction author matches original command author."""
+        """
+        Validate interaction author matches original command author.
+        
+        Args:
+            interaction: Discord interaction to validate
+            original_author: Original command author
+            
+        Returns:
+            True if authors match, False otherwise
+        """
         return interaction.user.id == original_author.id
     
     async def _get_channel_safe(self, channel_id: int) -> Optional[discord.TextChannel]:
-        """Safely get channel with optimized fetching."""
+        """
+        Safely get channel with optimized fetching.
+        
+        Args:
+            channel_id: Discord channel ID
+            
+        Returns:
+            Discord TextChannel or None if not found
+        """
         channel = self.bot.get_channel(channel_id)
         if not channel:
             try:
@@ -314,7 +403,15 @@ class Contract(commands.Cog):
         return channel
     
     async def _get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
-        """Get guild settings from centralized cache."""
+        """
+        Get guild settings from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Dictionary with events_channel and guild_lang
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         
@@ -335,7 +432,12 @@ class Contract(commands.Cog):
     )
     @commands.has_permissions(manage_messages=True)
     async def contract(self, ctx: discord.ApplicationContext):
-        """Command to create and publish guild contracts."""
+        """
+        Command to create and publish guild contracts.
+        
+        Args:
+            ctx: Discord application context
+        """
         if not ctx.guild:
             await ctx.respond("This command can only be used in a guild.", ephemeral=True)
             return
@@ -374,7 +476,12 @@ class Contract(commands.Cog):
     )
     @commands.has_permissions(manage_messages=True)
     async def contract_delete(self, ctx: discord.ApplicationContext):
-        """Command to delete existing guild contracts."""
+        """
+        Command to delete existing guild contracts.
+        
+        Args:
+            ctx: Discord application context
+        """
         try:
             await ctx.defer(ephemeral=True)
             if not ctx.guild:
@@ -445,7 +552,12 @@ class Contract(commands.Cog):
             await ctx.followup.send(error_msg, ephemeral=True)
 
     async def contract_delete_cron(self):
-        """Automated task to clean up old contracts across all guilds."""
+        """
+        Automated task to clean up old contracts across all guilds.
+        
+        Returns:
+            None
+        """
         failed_guilds = []
         processed = 0
         
@@ -496,5 +608,10 @@ class Contract(commands.Cog):
         logging.info(f"[ContractManager] Cron completed: {processed} contracts processed, {len(failed_guilds)} failures")
 
 def setup(bot: discord.Bot):
-    """Setup function to add the Contract cog to the bot."""
+    """
+    Setup function to add the Contract cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(Contract(bot))

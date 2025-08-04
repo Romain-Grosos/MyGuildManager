@@ -2,20 +2,22 @@
 Guild Members Cog - Manages guild member profiles, roster updates, and member data.
 """
 
-import discord
-from discord.ext import commands
 import asyncio
 import logging
 import re
 import time
-from typing import Dict, List, Tuple, Any, Optional, Union
-from discord.ext import commands, tasks
-from ..core.functions import get_user_message
 from datetime import datetime
-from ..core.translation from ..core import translations as global_translations
+from typing import Dict, List, Tuple, Any, Optional, Union
 from urllib.parse import urlparse
-from ..core.rate_limiter import admin_rate_limit
+
+import discord
+from discord.ext import commands, tasks
+
+from ..core.functions import get_user_message
 from ..core.performance_profiler import profile_performance
+from ..core.rate_limiter import admin_rate_limit
+from ..core.translation import translations as global_translations
+from ..db import run_db_transaction
 
 GUILD_MEMBERS = global_translations.get("guild_members", {})
 CONFIG_ROSTER_DATA = global_translations.get("commands", {}).get("config_roster", {})
@@ -24,7 +26,15 @@ class GuildMembers(commands.Cog):
     """Cog for managing guild member profiles, roster updates, and member data."""
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the GuildMembers cog."""
+        """
+        Initialize the GuildMembers cog.
+        
+        Args:
+            bot: The Discord bot instance
+            
+        Returns:
+            None
+        """
         self.bot = bot
         
         self.allowed_build_domains = ['questlog.gg', 'maxroll.gg']
@@ -33,14 +43,31 @@ class GuildMembers(commands.Cog):
         self.min_gs_value = 500
     
     def _sanitize_string(self, text: str, max_length: int = 100) -> str:
-        """Sanitize string input by removing dangerous characters."""
+        """
+        Sanitize string input by removing dangerous characters.
+        
+        Args:
+            text: The input string to sanitize
+            max_length: Maximum length of the sanitized string (default: 100)
+            
+        Returns:
+            Sanitized string with dangerous characters removed and length limited
+        """
         if not isinstance(text, str):
             return ""
         sanitized = re.sub(r'[<>"\';\\\x00-\x1f\x7f]', '', text.strip())
         return sanitized[:max_length]
     
     def _validate_url(self, url: str) -> bool:
-        """Validate build URL against allowed domains."""
+        """
+        Validate build URL against allowed domains.
+        
+        Args:
+            url: The URL string to validate
+            
+        Returns:
+            True if URL is valid and from allowed domain, False otherwise
+        """
         if not isinstance(url, str) or not url.strip():
             return False
         
@@ -57,8 +84,18 @@ class GuildMembers(commands.Cog):
         except Exception:
             return False
     
-    def _validate_integer(self, value: Any, min_val: int = None, max_val: int = None) -> Optional[int]:
-        """Validate and convert value to integer within bounds."""
+    def _validate_integer(self, value: Any, min_val: Optional[int] = None, max_val: Optional[int] = None) -> Optional[int]:
+        """
+        Validate and convert value to integer within bounds.
+        
+        Args:
+            value: The value to convert to integer
+            min_val: Minimum allowed value (optional)
+            max_val: Maximum allowed value (optional)
+            
+        Returns:
+            Validated integer value or None if validation fails
+        """
         try:
             int_val = int(value)
             if min_val is not None and int_val < min_val:
@@ -70,7 +107,15 @@ class GuildMembers(commands.Cog):
             return None
     
     def _validate_weapon_code(self, weapon: str) -> Optional[str]:
-        """Validate and normalize weapon code."""
+        """
+        Validate and normalize weapon code.
+        
+        Args:
+            weapon: The weapon code string to validate
+            
+        Returns:
+            Normalized weapon code string or None if validation fails
+        """
         if not isinstance(weapon, str):
             return None
         
@@ -80,7 +125,15 @@ class GuildMembers(commands.Cog):
         return sanitized
 
     async def load_guild_members_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
+        """
+        Ensure all required data is loaded via centralized cache loader.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         logging.debug("[GuildMembers] Loading guild members data")
         
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -92,7 +145,15 @@ class GuildMembers(commands.Cog):
         logging.debug("[GuildMembers] Guild members data loading completed")
 
     async def _load_weapons_data(self) -> None:
-        """Load weapons and combinations data using centralized cache loaders."""
+        """
+        Load weapons and combinations data using centralized cache loaders.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         logging.debug("[GuildMembers] Loading weapons data via cache loaders")
         
         await self.bot.cache_loader.ensure_weapons_loaded()
@@ -101,7 +162,18 @@ class GuildMembers(commands.Cog):
         logging.debug("[GuildMembers] Weapons and combinations data loaded via cache loaders")
 
     async def _load_user_setup_members(self) -> None:
-        """Load user setup members with specific motif filter."""
+        """
+        Load user setup members with specific motif filter.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            Exception: When database query fails
+        """
         user_setup_query = """
             SELECT guild_id, user_id, username, locale, gs, weapons
             FROM user_setup
@@ -125,19 +197,43 @@ class GuildMembers(commands.Cog):
             logging.error(f"[GuildMembers] Error loading user setup members: {e}", exc_info=True)
 
     async def _load_members_data(self) -> None:
-        """Load member-specific data into cache (legacy method for compatibility)."""
+        """
+        Load member-specific data into cache (legacy method for compatibility).
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         await self._load_user_setup_members()
         await self.bot.cache_loader.ensure_guild_members_loaded()
         await self.bot.cache_loader.ensure_guild_ideal_staff_loaded()
         logging.debug("[GuildMembers] Guild members and ideal staff data loaded via cache loaders")
 
     async def get_weapons_combinations(self, game_id: int) -> List[Dict[str, str]]:
-        """Get weapon combinations for a specific game from cache."""
+        """
+        Get weapon combinations for a specific game from cache.
+        
+        Args:
+            game_id: The ID of the game to get weapon combinations for
+            
+        Returns:
+            List of weapon combination dictionaries for the specified game
+        """
         combinations = await self.bot.cache.get('static_data', 'weapons_combinations')
         return combinations.get(game_id, []) if combinations else []
 
     async def get_guild_members(self) -> Dict[Tuple[int, int], Dict[str, Any]]:
-        """Get all guild members from cache."""
+        """
+        Get all guild members from cache.
+        
+        Args:
+            None
+            
+        Returns:
+            Dictionary mapping (guild_id, member_id) tuples to member data dictionaries
+        """
         guild_members = await self.bot.cache.get('roster_data', 'guild_members')
         if guild_members is None:
             logging.warning("[GuildMembers] guild_members cache returned None, checking raw cache...")
@@ -149,17 +245,44 @@ class GuildMembers(commands.Cog):
         return guild_members or {}
 
     async def get_user_setup_members(self) -> Dict[Tuple[int, int], Dict[str, Any]]:
-        """Get user setup members from cache."""
+        """
+        Get user setup members from cache.
+        
+        Args:
+            None
+            
+        Returns:
+            Dictionary mapping (guild_id, user_id) tuples to user setup data dictionaries
+        """
         user_setup = await self.bot.cache.get('user_data', 'user_setup_members')
         return user_setup or {}
 
     async def get_ideal_staff(self, guild_id: int) -> Dict[str, int]:
-        """Get ideal staff configuration for a guild from cache."""
+        """
+        Get ideal staff configuration for a guild from cache.
+        
+        Args:
+            guild_id: The ID of the guild to get ideal staff configuration for
+            
+        Returns:
+            Dictionary mapping class names to ideal count numbers
+        """
         ideal_staff = await self.bot.cache.get('guild_data', 'ideal_staff')
         return ideal_staff.get(guild_id, {}) if ideal_staff else {}
 
     async def update_guild_member_cache(self, guild_id: int, member_id: int, field: str, value: Any) -> None:
-        """Update a specific field for a guild member in cache."""
+        """
+        Update a specific field for a guild member in cache.
+        
+        Args:
+            guild_id: The ID of the guild
+            member_id: The ID of the member
+            field: The field name to update
+            value: The new value for the field
+            
+        Returns:
+            None
+        """
         guild_members = await self.get_guild_members()
         key = (guild_id, member_id)
         if key in guild_members:
@@ -167,7 +290,16 @@ class GuildMembers(commands.Cog):
             await self.bot.cache.set('roster_data', guild_members, 'guild_members')
 
     async def determine_class(self, weapons_list: list, guild_id: int) -> str:
-        """Determine class based on weapon combination."""
+        """
+        Determine class based on weapon combination.
+        
+        Args:
+            weapons_list: List of weapon codes
+            guild_id: The ID of the guild to check weapon combinations for
+            
+        Returns:
+            The determined class name or "NULL" if no match found
+        """
         if not isinstance(weapons_list, list) or not weapons_list:
             return "NULL"
         
@@ -188,7 +320,15 @@ class GuildMembers(commands.Cog):
         return "NULL"
 
     async def get_valid_weapons(self, guild_id: int) -> set:
-        """Get valid weapons for a guild based on its game configuration."""
+        """
+        Get valid weapons for a guild based on its game configuration.
+        
+        Args:
+            guild_id: The ID of the guild
+            
+        Returns:
+            Set of valid weapon codes for the guild's game
+        """
         valid = set()
         if not isinstance(guild_id, int):
             return valid
@@ -222,7 +362,16 @@ class GuildMembers(commands.Cog):
             description_localizations=GUILD_MEMBERS["gs"]["value_comment"]
         )
     ):
-        """Update member's gear score (GS) value."""
+        """
+        Update member's gear score (GS) value.
+        
+        Args:
+            ctx: Discord application context
+            value: New GS value to set
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
@@ -313,7 +462,17 @@ class GuildMembers(commands.Cog):
             description_localizations=GUILD_MEMBERS["weapons"]["value_comment"]
         )
     ):
-        """Update member's weapon combination and determine class."""
+        """
+        Update member's weapon combination and determine class.
+        
+        Args:
+            ctx: Discord application context
+            weapon1: First weapon code
+            weapon2: Second weapon code
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
@@ -415,7 +574,16 @@ class GuildMembers(commands.Cog):
             description_localizations=GUILD_MEMBERS["build"]["value_comment"]
         ),
     ):
-        """Update member's build URL."""
+        """
+        Update member's build URL.
+        
+        Args:
+            ctx: Discord application context
+            url: Build URL to set
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
@@ -493,7 +661,16 @@ class GuildMembers(commands.Cog):
             description_localizations=GUILD_MEMBERS["username"]["value_comment"]
         ),
     ):
-        """Update member's username and Discord nickname."""
+        """
+        Update member's username and Discord nickname.
+        
+        Args:
+            ctx: Discord application context
+            new_name: New username to set
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
@@ -572,7 +749,15 @@ class GuildMembers(commands.Cog):
     )
     @commands.has_permissions(manage_roles=True)
     async def maj_roster(self, ctx: discord.ApplicationContext):
-        """Optimized roster update command - reduces DB queries by 90%."""
+        """
+        Optimized roster update command - reduces DB queries by 90%.
+        
+        Args:
+            ctx: Discord application context
+            
+        Returns:
+            None
+        """
         start_time = time.time()
         
         await ctx.defer(ephemeral=True)
@@ -642,7 +827,15 @@ class GuildMembers(commands.Cog):
 
     @profile_performance(threshold_ms=50.0)
     async def _get_guild_members_bulk(self, guild_id: int) -> dict:
-        """Retrieves all guild members with performance optimization."""
+        """
+        Retrieves all guild members with performance optimization.
+        
+        Args:
+            guild_id: The ID of the guild to retrieve members for
+            
+        Returns:
+            Dictionary mapping member IDs to member data dictionaries
+        """
         if hasattr(self.bot, 'cache') and hasattr(self.bot.cache, 'get_bulk_guild_members'):
             return await self.bot.cache.get_bulk_guild_members(guild_id)
 
@@ -675,7 +868,15 @@ class GuildMembers(commands.Cog):
         return members_db
 
     async def _get_user_setup_bulk(self, guild_id: int) -> dict:
-        """Retrieves consolidated member data from guild_members, with fallback to user_setup for missing members."""
+        """
+        Retrieves consolidated member data from guild_members, with fallback to user_setup for missing members.
+        
+        Args:
+            guild_id: The ID of the guild to retrieve setup data for
+            
+        Returns:
+            Dictionary mapping member IDs to consolidated setup data dictionaries
+        """
         query = """
         SELECT COALESCE(gm.member_id, us.user_id) as member_id,
                COALESCE(us.locale, gm.language) as locale,
@@ -718,7 +919,19 @@ class GuildMembers(commands.Cog):
 
     async def _calculate_roster_changes(self, guild_id: int, actual_members: dict, 
                                        guild_members_db: dict, user_setup_db: dict, locale: str):
-        """Calculates all necessary changes without DB queries."""
+        """
+        Calculates all necessary changes without DB queries.
+        
+        Args:
+            guild_id: The ID of the guild
+            actual_members: Dictionary of current Discord members
+            guild_members_db: Dictionary of members from database
+            user_setup_db: Dictionary of user setup data from database
+            locale: Guild's locale for language defaults
+            
+        Returns:
+            Tuple of (to_delete, to_update, to_insert) lists
+        """
         to_delete = []
         to_update = []
         to_insert = []
@@ -765,7 +978,16 @@ class GuildMembers(commands.Cog):
         return to_delete, to_update, to_insert
 
     async def _process_weapons_optimized(self, weapons_raw: str, guild_id: int):
-        """Optimized weapon processing with validation."""
+        """
+        Optimized weapon processing with validation.
+        
+        Args:
+            weapons_raw: Raw weapon string from database
+            guild_id: The ID of the guild for weapon validation
+            
+        Returns:
+            Tuple of (normalized_weapons_string, computed_class)
+        """
         if not weapons_raw or not isinstance(weapons_raw, str):
             return "NULL", "NULL"
         
@@ -795,7 +1017,22 @@ class GuildMembers(commands.Cog):
 
     @profile_performance(threshold_ms=100.0)
     async def _apply_roster_changes_bulk(self, guild_id: int, to_delete: list, to_update: list, to_insert: list):
-        """Applies all changes using a secure transaction with automatic rollback."""
+        """
+        Applies all changes using a secure transaction with automatic rollback.
+        
+        Args:
+            guild_id: The ID of the guild
+            to_delete: List of member IDs to delete
+            to_update: List of update tuples (member_id, field, value)
+            to_insert: List of member data dictionaries to insert
+            
+        Returns:
+            Tuple of (deleted_count, updated_count, inserted_count)
+            
+        Raises:
+            ValueError: When invalid data is provided
+            Exception: When database transaction fails
+        """
         deleted_count = 0
         updated_count = 0
         inserted_count = 0
@@ -866,7 +1103,6 @@ class GuildMembers(commands.Cog):
                 inserted_count = len(to_insert)
 
             if transaction_queries:
-                from db import run_db_transaction
                 success = await run_db_transaction(transaction_queries)
                 if not success:
                     raise Exception("Database transaction failed")
@@ -883,7 +1119,15 @@ class GuildMembers(commands.Cog):
 
 
     async def update_recruitment_message(self, ctx):
-        """Method: Update recruitment message."""
+        """
+        Update recruitment message with current roster statistics.
+        
+        Args:
+            ctx: Discord context (can be ApplicationContext or Guild object)
+            
+        Returns:
+            None
+        """
         if hasattr(ctx, "guild"):
             guild_obj = ctx.guild
         else:
@@ -950,7 +1194,7 @@ class GuildMembers(commands.Cog):
             if cls in ideal_staff:
                 class_counts[cls] += 1
 
-        remaining_slots = max(0, roster_size_max - total_members)
+        remaining_slots = max(0, (roster_size_max or 0) - total_members)
 
         title = GUILD_MEMBERS["post_recruitment"]["name"][locale]
         roster_size_template = GUILD_MEMBERS["post_recruitment"]["roster_size"][locale]
@@ -987,7 +1231,15 @@ class GuildMembers(commands.Cog):
             await self.bot.run_db_query(query, (new_message.id, guild_id), commit=True)
 
     async def update_members_message(self, ctx):
-        """Method: Update members message."""
+        """
+        Update members message with detailed roster table.
+        
+        Args:
+            ctx: Discord context (can be ApplicationContext or Guild object)
+            
+        Returns:
+            None
+        """
         if hasattr(ctx, "guild"):
             guild_obj = ctx.guild
         else:
@@ -1173,7 +1425,16 @@ class GuildMembers(commands.Cog):
             description_localizations=GUILD_MEMBERS["show_build"]["value_comment"]
         ),
     ):
-        """Show another member's build URL in private message."""
+        """
+        Show another member's build URL in private message.
+        
+        Args:
+            ctx: Discord application context
+            username: Username to search for
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
@@ -1222,7 +1483,15 @@ class GuildMembers(commands.Cog):
     )
     @commands.has_permissions(manage_roles=True)
     async def notify_incomplete_profiles(self, ctx: discord.ApplicationContext):
-        """Send notifications to members with incomplete profiles."""
+        """
+        Send notifications to members with incomplete profiles.
+        
+        Args:
+            ctx: Discord application context
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         guild = ctx.guild
         guild_id = guild.id
@@ -1322,7 +1591,20 @@ class GuildMembers(commands.Cog):
             default=10
         )
     ):
-        """Configure ideal roster sizes by class for the guild."""
+        """
+        Configure ideal roster sizes by class for the guild.
+        
+        Args:
+            ctx: Discord application context
+            tank: Ideal number of Tank class members
+            healer: Ideal number of Healer class members
+            flanker: Ideal number of Flanker class members
+            ranged_dps: Ideal number of Ranged DPS class members
+            melee_dps: Ideal number of Melee DPS class members
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
@@ -1384,7 +1666,16 @@ class GuildMembers(commands.Cog):
             ]
         )
     ):
-        """Change member's preferred language."""
+        """
+        Change member's preferred language.
+        
+        Args:
+            ctx: Discord application context
+            language: New language code to set
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         if not ctx.guild or not ctx.author:
@@ -1452,7 +1743,15 @@ class GuildMembers(commands.Cog):
             await ctx.followup.send(error_msg, ephemeral=True)
 
     async def run_maj_roster(self, guild_id: int) -> None:
-        """Run roster update for a specific guild."""
+        """
+        Run roster update for a specific guild.
+        
+        Args:
+            guild_id: The ID of the guild to update roster for
+            
+        Returns:
+            None
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_roles')
         roles_config = await self.bot.cache.get_guild_data(guild_id, 'roles')
         if not roles_config:
@@ -1554,7 +1853,15 @@ class GuildMembers(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Initialize guild members data on bot ready."""
+        """
+        Initialize guild members data on bot ready.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         try:
             asyncio.create_task(self.load_guild_members_data())
             logging.debug("[GuildMembers] Database info caching tasks launched from on_ready")
@@ -1563,7 +1870,16 @@ class GuildMembers(commands.Cog):
     
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
-        """Sync member nickname changes to PTB guild."""
+        """
+        Sync member nickname changes to PTB guild.
+        
+        Args:
+            before: Member state before the update
+            after: Member state after the update
+            
+        Returns:
+            None
+        """
         try:
             if before.display_name == after.display_name:
                 return
@@ -1602,5 +1918,14 @@ class GuildMembers(commands.Cog):
             logging.error(f"[GuildMembers] Error in on_member_update: {e}", exc_info=True)
 
 def setup(bot: discord.Bot):
-    """Setup function for the cog."""
+    """
+    Setup function for the cog.
+    
+    Args:
+        bot: The Discord bot instance
+        
+    Returns:
+        None
+    """
     bot.add_cog(GuildMembers(bot))
+

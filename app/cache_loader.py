@@ -2,19 +2,30 @@
 Centralized Cache Loader - Manages loading of shared data into global cache.
 """
 
-import logging
 import asyncio
+import logging
 from typing import Dict, Any, Optional
 
 class CacheLoader:
     """Centralized loader for shared guild data to eliminate redundant DB queries."""
     
     def __init__(self, bot):
+        """
+        Initialize cache loader with bot instance and tracking.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self._loaded_categories = set()
         
     async def ensure_guild_settings_loaded(self) -> None:
-        """Load guild settings (language, name, game, server) for all guilds."""
+        """
+        Load guild settings (language, name, game, server) for all guilds.
+        
+        Loads and caches guild configuration data including PTB settings,
+        language preferences, and initialization status.
+        """
         if 'guild_settings' in self._loaded_categories:
             return
             
@@ -53,7 +64,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading guild settings: {e}", exc_info=True)
     
     async def ensure_guild_roles_loaded(self) -> None:
-        """Load guild roles (members, absent_members, rules_ok) for all guilds."""
+        """
+        Load guild roles (members, absent_members, rules_ok) for all guilds.
+        
+        Loads and caches Discord role IDs for various guild functions
+        including member management and permissions.
+        """
         if 'guild_roles' in self._loaded_categories:
             return
             
@@ -96,7 +112,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading guild roles: {e}", exc_info=True)
     
     async def ensure_guild_channels_loaded(self) -> None:
-        """Load guild channels (rules, absence, events, etc.) for all guilds."""
+        """
+        Load guild channels (rules, absence, events, etc.) for all guilds.
+        
+        Loads and caches Discord channel IDs for various guild functions
+        including rules, events, members, and forum channels.
+        """
         if 'guild_channels' in self._loaded_categories:
             return
             
@@ -197,7 +218,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading guild channels: {e}", exc_info=True)
     
     async def ensure_welcome_messages_loaded(self) -> None:
-        """Load welcome messages for autorole functionality."""
+        """
+        Load welcome messages for autorole functionality.
+        
+        Loads message tracking data for automatic role assignment
+        based on user reactions.
+        """
         if 'welcome_messages' in self._loaded_categories:
             return
             
@@ -222,7 +248,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading welcome messages: {e}", exc_info=True)
     
     async def ensure_absence_messages_loaded(self) -> None:
-        """Mark absence messages as 'loaded' - these are managed directly in DB due to high frequency changes."""
+        """
+        Mark absence messages as 'loaded' - these are managed directly in DB due to high frequency changes.
+        
+        Absence messages are not cached due to their dynamic nature and high
+        frequency of updates. This method only marks the category as handled.
+        """
         if 'absence_messages' in self._loaded_categories:
             return
             
@@ -230,7 +261,12 @@ class CacheLoader:
         self._loaded_categories.add('absence_messages')
 
     async def ensure_guild_members_loaded(self) -> None:
-        """Load guild members data for all guilds."""
+        """
+        Load guild members data for all guilds.
+        
+        Loads member information including usernames, classes, gear scores,
+        builds, weapons, DKP, and event statistics.
+        """
         if 'guild_members' in self._loaded_categories:
             return
             
@@ -272,7 +308,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading guild members: {e}", exc_info=True)
     
     async def ensure_events_data_loaded(self) -> None:
-        """Load events data for all guilds."""
+        """
+        Load events data for all guilds.
+        
+        Loads event information including dates, times, DKP values,
+        status, and attendance tracking.
+        """
         if 'events_data' in self._loaded_categories:
             return
             
@@ -311,7 +352,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading events data: {e}", exc_info=True)
     
     async def ensure_static_data_loaded(self) -> None:
-        """Load static groups data and mark other static data as on-demand."""
+        """
+        Load static groups data and mark other static data as on-demand.
+        
+        Loads static group configurations for PvP organization.
+        Other static data is loaded on-demand to optimize memory usage.
+        """
         if 'static_data' in self._loaded_categories:
             return
             
@@ -326,7 +372,12 @@ class CacheLoader:
         self._loaded_categories.add('static_data')
     
     async def ensure_static_groups_loaded(self) -> None:
-        """Load static groups data for all guilds."""
+        """
+        Load static groups data for all guilds.
+        
+        Loads PvP static group configurations including leaders
+        and member assignments for guild war organization.
+        """
         if 'static_groups' in self._loaded_categories:
             return
             
@@ -370,7 +421,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading static groups: {e}", exc_info=True)
     
     async def ensure_user_setup_loaded(self) -> None:
-        """Load user setup data for all users."""
+        """
+        Load user setup data for all users.
+        
+        Loads user-specific configuration including locale preferences,
+        gear scores, and weapon setups.
+        """
         if 'user_setup' in self._loaded_categories:
             return
             
@@ -400,7 +456,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading user setup data: {e}", exc_info=True)
     
     async def ensure_weapons_loaded(self) -> None:
-        """Load weapons data for all games."""
+        """
+        Load weapons data for all games.
+        
+        Loads weapon definitions organized by game ID,
+        including weapon codes and display names.
+        """
         if 'weapons' in self._loaded_categories:
             return
             
@@ -431,7 +492,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading weapons data: {e}", exc_info=True)
     
     async def ensure_weapons_combinations_loaded(self) -> None:
-        """Load weapons combinations data for all games."""
+        """
+        Load weapons combinations data for all games.
+        
+        Loads valid weapon combinations organized by game and role,
+        defining which weapon pairs are viable for each class.
+        """
         if 'weapons_combinations' in self._loaded_categories:
             return
             
@@ -466,7 +532,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading weapons combinations: {e}", exc_info=True)
     
     async def ensure_guild_ideal_staff_loaded(self) -> None:
-        """Load guild ideal staff data for all guilds."""
+        """
+        Load guild ideal staff data for all guilds.
+        
+        Loads ideal class composition targets for each guild,
+        defining optimal member distribution across classes.
+        """
         if 'guild_ideal_staff' in self._loaded_categories:
             return
             
@@ -496,7 +567,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading guild ideal staff: {e}", exc_info=True)
     
     async def ensure_games_list_loaded(self) -> None:
-        """Load games list data for all games."""
+        """
+        Load games list data for all games.
+        
+        Loads game definitions including names and maximum
+        member limits for guild size management.
+        """
         if 'games_list' in self._loaded_categories:
             return
             
@@ -527,7 +603,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading games list: {e}", exc_info=True)
 
     async def ensure_epic_items_t2_loaded(self) -> None:
-        """Load Epic T2 items data."""
+        """
+        Load Epic T2 items data.
+        
+        Loads epic item definitions with multilingual names
+        for loot wishlist and distribution systems.
+        """
         if 'epic_items_t2' in self._loaded_categories:
             return
             
@@ -561,7 +642,12 @@ class CacheLoader:
             logging.error(f"[CacheLoader] Error loading Epic T2 items: {e}", exc_info=True)
 
     async def load_all_shared_data(self) -> None:
-        """Load all shared data categories in parallel."""
+        """
+        Load all shared data categories in parallel.
+        
+        Executes all cache loading operations concurrently
+        to minimize startup time and database load.
+        """
         logging.info("[CacheLoader] Loading all shared data categories")
         
         await asyncio.gather(
@@ -585,7 +671,12 @@ class CacheLoader:
         logging.info("[CacheLoader] Shared data loading completed")
     
     async def ensure_category_loaded(self, category: str) -> None:
-        """Ensure a specific category is loaded."""
+        """
+        Ensure a specific category is loaded.
+        
+        Args:
+            category: Name of the data category to load
+        """
         if category == 'guild_settings':
             await self.ensure_guild_settings_loaded()
         elif category == 'guild_roles':
@@ -622,21 +713,44 @@ class CacheLoader:
             logging.warning(f"[CacheLoader] Unknown category: {category}")
     
     def is_category_loaded(self, category: str) -> bool:
-        """Check if a category has been loaded."""
+        """
+        Check if a category has been loaded.
+        
+        Args:
+            category: Name of the data category to check
+            
+        Returns:
+            True if category is loaded, False otherwise
+        """
         return category in self._loaded_categories
     
     async def reload_category(self, category: str) -> None:
-        """Force reload a specific category."""
+        """
+        Force reload a specific category.
+        
+        Args:
+            category: Name of the data category to reload
+        """
         if category in self._loaded_categories:
             self._loaded_categories.remove(category)
         await self.ensure_category_loaded(category)
     
     def get_loaded_categories(self) -> set:
-        """Get list of loaded categories."""
+        """
+        Get list of loaded categories.
+        
+        Returns:
+            Set of loaded category names
+        """
         return self._loaded_categories.copy()
 
     async def ensure_guild_ptb_settings_loaded(self) -> None:
-        """Ensure guild PTB settings are loaded."""
+        """
+        Ensure guild PTB settings are loaded.
+        
+        Loads Peace/War (PTB) guild configurations including
+        group assignments and channel mappings.
+        """
         if 'guild_ptb_settings' in self._loaded_categories:
             return
         
@@ -683,7 +797,15 @@ class CacheLoader:
 _cache_loader = None
 
 def get_cache_loader(bot=None):
-    """Get the global cache loader instance."""
+    """
+    Get the global cache loader instance (singleton pattern).
+    
+    Args:
+        bot: Discord bot instance (optional)
+        
+    Returns:
+        Global cache loader instance or None if not initialized
+    """
     global _cache_loader
     if _cache_loader is None and bot:
         _cache_loader = CacheLoader(bot)

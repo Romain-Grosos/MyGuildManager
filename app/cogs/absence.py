@@ -2,11 +2,13 @@
 Absence Manager Cog - Manages member absence status and notifications.
 """
 
-import discord
-import logging
-from discord.ext import commands
 import asyncio
-from ..core.translation from ..core import translations as global_translations
+import logging
+
+import discord
+from discord.ext import commands
+
+from ..core.translation import translations as global_translations
 
 ABSENCE_TRANSLATIONS = global_translations.get("absence", {})
 
@@ -14,7 +16,12 @@ class AbsenceManager(commands.Cog):
     """Cog for managing member absence status and notifications."""
     
     def __init__(self, bot: commands.Bot) -> None:
-        """Initialize the AbsenceManager cog."""
+        """
+        Initialize the AbsenceManager cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
 
     @commands.Cog.listener()
@@ -23,8 +30,16 @@ class AbsenceManager(commands.Cog):
         asyncio.create_task(self.load_absence_channels())
         logging.debug("[AbsenceManager] Load absence channels task started")
 
-    async def _get_guild_roles(self, guild: discord.Guild) -> tuple[discord.Role | None, discord.Role | None]:
-        """Get member and absent roles for a guild from cache."""
+    async def _get_guild_roles(self, guild: discord.Guild) -> "tuple[discord.Role | None, discord.Role | None]":
+        """
+        Get member and absent roles for a guild from cache.
+        
+        Args:
+            guild: Discord guild to get roles for
+            
+        Returns:
+            Tuple of (member_role, absent_role) or (None, None) if not found
+        """
         role_data = await self.bot.cache.get_guild_data(guild.id, 'roles')
         if not role_data:
             return None, None
@@ -172,7 +187,15 @@ class AbsenceManager(commands.Cog):
                         member: discord.Member,
                         channel: discord.TextChannel,
                         reason_message: str) -> None:
-        """Set a member as absent with proper role management and database tracking."""
+        """
+        Set a member as absent with proper role management and database tracking.
+        
+        Args:
+            guild: Discord guild where the member is located
+            member: Discord member to mark as absent
+            channel: Text channel to post absence message
+            reason_message: Message to post in the absence channel
+        """
         role_member, role_absent = await self._get_guild_roles(guild)
         if not role_member or not role_absent:
             return
@@ -223,7 +246,14 @@ class AbsenceManager(commands.Cog):
         member: discord.Member,
         return_date: str | None = None
     ):
-        """Command to manually mark a member as absent."""
+        """
+        Command to manually mark a member as absent.
+        
+        Args:
+            ctx: Discord application context
+            member: Discord member to mark as absent
+            return_date: Optional return date for the absence
+        """
         await ctx.defer(ephemeral=True)
 
         loc = ctx.locale or "en-US"
@@ -252,7 +282,15 @@ class AbsenceManager(commands.Cog):
         await ctx.respond(resp, ephemeral=True)
 
     async def notify_absence(self, member: discord.Member, action: str, channel_id: int, guild_lang: str) -> None:
-        """Send absence notification to the designated forum channel."""
+        """
+        Send absence notification to the designated forum channel.
+        
+        Args:
+            member: Discord member whose absence status changed
+            action: Type of action ('addition' or 'removal')
+            channel_id: ID of the notification channel
+            guild_lang: Guild language for localized messages
+        """
         channel = self.bot.get_channel(channel_id)
         if not channel:
             try:
@@ -294,5 +332,10 @@ class AbsenceManager(commands.Cog):
             logging.error(f"[AbsenceManager] Error sending notification for {member.name}: {e}")
 
 def setup(bot: discord.Bot):
-    """Setup function to add the AbsenceManager cog to the bot."""
+    """
+    Setup function to add the AbsenceManager cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(AbsenceManager(bot))

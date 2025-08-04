@@ -1,22 +1,50 @@
-from dotenv import load_dotenv
 import os
 import sys
 
-load_dotenv()
+from dotenv import load_dotenv
+
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(env_path)
 
 # #################################################################################### #
 #                            Environment Variable Validation
 # #################################################################################### #
-def validate_env_var(var_name: str, value: str, required: bool = True) -> str:
-    """Validate and return environment variable value."""
+def validate_env_var(var_name: str, value: str | None, required: bool = True) -> str:
+    """
+    Validate and return environment variable value.
+    
+    Args:
+        var_name: Name of the environment variable
+        value: Raw value from environment (can be None)
+        required: Whether the variable is required
+        
+    Returns:
+        Validated environment variable value
+        
+    Raises:
+        ValueError: If required variable is missing
+    """
     if not value:
         if required:
             raise ValueError(f"Missing required environment variable: {var_name}")
         return ""
     return value
 
-def validate_int_env_var(var_name: str, value: str, default: int = None) -> int:
-    """Validate and return integer environment variable value."""
+def validate_int_env_var(var_name: str, value: str | None, default: int | None = None) -> int:
+    """
+    Validate and return integer environment variable value.
+    
+    Args:
+        var_name: Name of the environment variable
+        value: Raw value from environment (can be None)
+        default: Default value if not provided
+        
+    Returns:
+        Validated integer value
+        
+    Raises:
+        ValueError: If value is invalid or missing without default
+    """
     if not value:
         if default is None:
             raise ValueError(f"Missing required integer environment variable: {var_name}")
@@ -52,7 +80,7 @@ except IOError as e:
 #                            Discord Bot Configuration
 # #################################################################################### #
 try:
-    TOKEN: str = validate_env_var("DISCORD_TOKEN", os.getenv("DISCORD_TOKEN"))
+    TOKEN: str = validate_env_var("BOT_TOKEN", os.getenv("BOT_TOKEN") or os.getenv("DISCORD_TOKEN"))
     if len(TOKEN) < 50:
         raise ValueError("Invalid Discord token format - token too short")
 except ValueError as e:
@@ -64,7 +92,7 @@ except ValueError as e:
 # #################################################################################### #
 try:
     DB_USER: str = validate_env_var("DB_USER", os.getenv("DB_USER"))
-    DB_PASS: str = validate_env_var("DB_PASS", os.getenv("DB_PASS"))
+    DB_PASS: str = validate_env_var("DB_PASSWORD", os.getenv("DB_PASSWORD") or os.getenv("DB_PASS"))
     DB_HOST: str = validate_env_var("DB_HOST", os.getenv("DB_HOST", "localhost"), required=False) or "localhost"
     DB_PORT: int = validate_int_env_var("DB_PORT", os.getenv("DB_PORT"), default=3306)
     DB_NAME: str = validate_env_var("DB_NAME", os.getenv("DB_NAME"))
@@ -97,7 +125,8 @@ DB_CIRCUIT_BREAKER_THRESHOLD = validate_int_env_var("DB_CIRCUIT_BREAKER_THRESHOL
 # #################################################################################### #
 #                            Translation System Configuration
 # #################################################################################### #
-TRANSLATION_FILE = validate_env_var("TRANSLATION_FILE", os.getenv("TRANSLATION_FILE"), required=False) or "translation.json"
+default_translation_path = os.path.join(os.path.dirname(__file__), 'core', 'translation.json')
+TRANSLATION_FILE = validate_env_var("TRANSLATION_FILE", os.getenv("TRANSLATION_FILE"), required=False) or default_translation_path
 MAX_TRANSLATION_FILE_SIZE = validate_int_env_var("MAX_TRANSLATION_FILE_SIZE", os.getenv("MAX_TRANSLATION_FILE_SIZE"), default=5 * 1024 * 1024)
 
 # #################################################################################### #

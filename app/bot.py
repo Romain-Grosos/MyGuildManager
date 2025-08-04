@@ -1,21 +1,17 @@
-import discord
-import logging
 import asyncio
+import logging
 import signal
 import sys
-import aiohttp
 import time
-try:
-    import psutil
-    PSUTIL_AVAILABLE = True
-except ImportError:
-    PSUTIL_AVAILABLE = False
-    logging.warning("[Bot] psutil not available - resource monitoring disabled")
-from logging.handlers import TimedRotatingFileHandler
-from typing import Final, Dict, Any, Optional
-from discord.ext import commands
 from collections import defaultdict, deque
 from functools import wraps
+from logging.handlers import TimedRotatingFileHandler
+from typing import Final, Dict, Any, Optional
+
+import aiohttp
+import discord
+from discord.ext import commands
+
 from . import config
 from .db import run_db_query
 from .scheduler import setup_task_scheduler
@@ -25,6 +21,14 @@ from .core.translation import translations
 from .core.rate_limiter import start_cleanup_task
 from .core.performance_profiler import get_profiler
 from .core.reliability import setup_reliability_system
+
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    psutil = None
+    PSUTIL_AVAILABLE = False
+    logging.warning("[Bot] psutil not available - resource monitoring disabled")
 
 # #################################################################################### #
 #                               Logging Configuration
@@ -45,6 +49,14 @@ console_handler.setFormatter(formatter)
 logging.getLogger().addHandler(console_handler)
 
 def _global_exception_hook(exc_type, exc_value, exc_tb):
+    """
+    Global exception handler for uncaught exceptions.
+    
+    Args:
+        exc_type: Exception type
+        exc_value: Exception value
+        exc_tb: Exception traceback
+    """
     logging.critical("UNCAUGHT EXCEPTION", exc_info=(exc_type, exc_value, exc_tb))
 
 sys.excepthook = _global_exception_hook
@@ -61,6 +73,12 @@ class BotOptimizer:
     """Integrated optimizer for the main bot."""
     
     def __init__(self, bot):
+        """
+        Initialize bot optimizer with caching and metrics.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         
         self._member_cache = {}
@@ -83,18 +101,42 @@ class BotOptimizer:
         logging.info("[BotOptimizer] Initialized with Discord API caching and metrics")
     
     def is_cache_valid(self, key: str) -> bool:
-        """Check if cache entry is still valid."""
+        """
+        Check if cache entry is still valid based on TTL.
+        
+        Args:
+            key: Cache key to validate
+            
+        Returns:
+            True if cache entry is valid, False otherwise
+        """
         if key not in self._cache_times:
             return False
         return time.time() - self._cache_times[key] < self._cache_ttl
     
     def set_cache(self, cache_dict: dict, key: str, value: Any):
-        """Store value in cache with timestamp."""
+        """
+        Store value in cache with timestamp for TTL tracking.
+        
+        Args:
+            cache_dict: Cache dictionary to store in
+            key: Cache key
+            value: Value to cache
+        """
         cache_dict[key] = value
         self._cache_times[key] = time.time()
     
-    def get_cached_member(self, guild_id: int, member_id: int) -> Optional:
-        """Get member from cache or return None."""
+    def get_cached_member(self, guild_id: int, member_id: int) -> Optional[Any]:
+        """
+        Get member from cache or return None if not found/expired.
+        
+        Args:
+            guild_id: Discord guild ID
+            member_id: Discord member ID
+            
+        Returns:
+            Cached member object or None
+        """
         key = f"member_{guild_id}_{member_id}"
         if key in self._member_cache and self.is_cache_valid(key):
             self.metrics['cache_hits'] += 1
@@ -103,7 +145,16 @@ class BotOptimizer:
         return None
     
     async def get_member_optimized(self, guild, member_id: int):
-        """Optimized get_member with caching."""
+        """
+        Optimized get_member with caching and fallback to API.
+        
+        Args:
+            guild: Discord guild object
+            member_id: Discord member ID
+            
+        Returns:
+            Member object or None if not found
+        """
         cached = self.get_cached_member(guild.id, member_id)
         if cached:
             return cached
@@ -126,7 +177,15 @@ class BotOptimizer:
             return None
     
     async def get_channel_optimized(self, channel_id: int):
-        """Optimized get_channel with caching."""
+        """
+        Optimized get_channel with caching and fallback to API.
+        
+        Args:
+            channel_id: Discord channel ID
+            
+        Returns:
+            Channel object or None if not found
+        """
         key = f"channel_{channel_id}"
         
         if key in self._channel_cache and self.is_cache_valid(key):
@@ -151,18 +210,31 @@ class BotOptimizer:
             return None
     
     def track_command_execution(self, command_name: str, execution_time: float):
-        """Track command execution."""
+        """
+        Track command execution metrics and log slow commands.
+        
+        Args:
+            command_name: Name of the executed command
+            execution_time: Execution time in milliseconds
+        """
         self.metrics['commands_executed'] += 1
         
         if execution_time > 5000:
             logging.warning(f"[BotOptimizer] Slow command detected: {command_name} took {execution_time:.0f}ms")
     
     def track_db_query(self):
-        """Track database query."""
+        """
+        Track database query execution for metrics.
+        """
         self.metrics['db_queries_count'] += 1
     
     def get_performance_stats(self) -> Dict[str, Any]:
-        """Get performance statistics."""
+        """
+        Get comprehensive performance statistics.
+        
+        Returns:
+            Dictionary containing performance metrics
+        """
         total_api_calls = self.metrics['api_calls_total']
         cache_hit_rate = 0
         if total_api_calls > 0:
@@ -179,7 +251,9 @@ class BotOptimizer:
         }
     
     def cleanup_cache(self):
-        """Clean expired cache entries."""
+        """
+        Clean expired cache entries based on TTL.
+        """
         current_time = time.time()
         expired_keys = []
         
@@ -198,7 +272,15 @@ class BotOptimizer:
 
 
 def optimize_command(func):
-    """Decorator that automatically adds metrics to commands."""
+    """
+    Decorator that automatically adds metrics tracking to commands.
+    
+    Args:
+        func: Command function to decorate
+        
+    Returns:
+        Wrapped function with metrics tracking
+    """
     @wraps(func)
     async def wrapper(self, ctx, *args, **kwargs):
         if not hasattr(self.bot, 'optimizer'):
@@ -222,7 +304,19 @@ def optimize_command(func):
 
 
 async def optimized_run_db_query(original_func, bot, query: str, params: tuple = (), **kwargs):
-    """Optimized wrapper for run_db_query with metrics."""
+    """
+    Optimized wrapper for run_db_query with metrics and slow query detection.
+    
+    Args:
+        original_func: Original database query function
+        bot: Discord bot instance
+        query: SQL query string
+        params: Query parameters tuple
+        **kwargs: Additional keyword arguments
+        
+    Returns:
+        Query result from original function
+    """
     if hasattr(bot, 'optimizer'):
         bot.optimizer.track_db_query()
     
@@ -259,6 +353,15 @@ intents.guilds = True
 intents.members = True
 
 def validate_token():
+    """
+    Validate Discord bot token format and return masked version for logging.
+    
+    Returns:
+        Validated Discord token
+        
+    Raises:
+        SystemExit: If token is invalid or missing
+    """
     token = config.TOKEN
     if not token or len(token) < 50:
         logging.critical("[Bot] Invalid or missing Discord token")
@@ -289,7 +392,7 @@ bot.scheduler = setup_task_scheduler(bot)
 bot.cache = get_global_cache(bot)
 bot.cache_loader = get_cache_loader(bot)
 
-EXTENSIONS: Final[list[str]] = [
+EXTENSIONS: Final["list[str]"] = [
     "cogs.core",
     "cogs.llm",
     "cogs.guild_init",
@@ -307,11 +410,17 @@ EXTENSIONS: Final[list[str]] = [
     "cogs.autorole"
 ]
 
-def load_extensions():
+async def load_extensions():
+    """
+    Load all Discord bot extensions (cogs) with error handling.
+    
+    Raises:
+        SystemExit: If too many extensions fail to load
+    """
     failed_extensions = []
     for ext in EXTENSIONS:
         try:
-            bot.load_extension(ext)
+            await bot.load_extension(ext)
             logging.debug(f"[Bot] Extension loaded: {ext}")
         except Exception as e:
             failed_extensions.append(ext)
@@ -329,16 +438,31 @@ def load_extensions():
 # #################################################################################### #
 @bot.event
 async def on_disconnect() -> None:
+    """
+    Handle Discord gateway disconnection event.
+    """
     logging.warning("[Discord] Gateway disconnected")
 
 
 @bot.event
 async def on_resumed() -> None:
+    """
+    Handle Discord gateway resume event.
+    """
     logging.info("[Discord] Gateway resume OK")
 
 
 @bot.before_invoke
 async def global_rate_limit(ctx):
+    """
+    Global rate limiting before command execution.
+    
+    Args:
+        ctx: Discord command context
+        
+    Raises:
+        CommandOnCooldown: If rate limit is exceeded
+    """
     now = time.time()
     bot.global_command_cooldown = {
         timestamp for timestamp in bot.global_command_cooldown 
@@ -347,12 +471,16 @@ async def global_rate_limit(ctx):
     
     if len(bot.global_command_cooldown) >= bot.max_commands_per_minute:
         logging.warning(f"[Bot] Global rate limit exceeded ({len(bot.global_command_cooldown)} commands/min)")
-        raise commands.CommandOnCooldown(None, 60)
+        cooldown = commands.Cooldown(1, 60)
+        raise commands.CommandOnCooldown(cooldown, 60, commands.BucketType.default)
     
     bot.global_command_cooldown.add(now)
 
 @bot.event
 async def on_ready() -> None:
+    """
+    Handle bot ready event and initialize background tasks.
+    """
     logging.info("[Discord] Connected as %s (%s)", bot.user, bot.user.id)
 
     if not hasattr(bot, '_background_tasks'):
@@ -396,7 +524,12 @@ async def on_ready() -> None:
 @bot.slash_command(name="perf", description="Show bot performance stats")
 @discord.default_permissions(administrator=True)
 async def performance_stats(ctx):
-    """Simple command to view performance stats."""
+    """
+    Display comprehensive bot performance statistics.
+    
+    Args:
+        ctx: Discord slash command context
+    """
     await ctx.defer(ephemeral=True)
     
     stats = bot.optimizer.get_performance_stats()
@@ -462,10 +595,13 @@ async def performance_stats(ctx):
 #                            Resource Monitoring
 # #################################################################################### #
 async def monitor_resources():
+    """
+    Monitor system resources (CPU, memory) and log warnings for high usage.
+    """
     try:
         while True:
             try:
-                if PSUTIL_AVAILABLE:
+                if PSUTIL_AVAILABLE and psutil:
                     process = psutil.Process()
                     memory_mb = process.memory_info().rss / 1024 / 1024
                     cpu_percent = process.cpu_percent()
@@ -490,7 +626,10 @@ async def monitor_resources():
 #                            Resilient runner
 # #################################################################################### #
 async def run_bot():
-    load_extensions()
+    """
+    Main bot runner with retry logic for resilient startup.
+    """
+    await load_extensions()
     max_retries = config.MAX_RECONNECT_ATTEMPTS
     retry_count = 0
     
@@ -512,7 +651,9 @@ async def run_bot():
             break
 
 async def cleanup_background_tasks():
-    """Cancel all background tasks properly."""
+    """
+    Cancel all background tasks properly during shutdown.
+    """
     if hasattr(bot, '_scheduler_loop') and bot._scheduler_loop:
         if bot._scheduler_loop.is_running():
             logging.debug("[Bot] Stopping scheduler loop")
@@ -531,6 +672,12 @@ async def cleanup_background_tasks():
         logging.debug("[Bot] Background tasks cleanup completed")
 
 def _graceful_exit(sig_name):
+    """
+    Handle graceful shutdown on system signals.
+    
+    Args:
+        sig_name: Signal name that triggered shutdown
+    """
     logging.warning("[Bot] Signal %s received - closing the bot", sig_name)
     
     async def shutdown():
@@ -548,7 +695,7 @@ if __name__ == "__main__":
         try:
             loop.add_signal_handler(sig, _graceful_exit, sig.name)
         except NotImplementedError:
-           signal.signal(sig, lambda *_: asyncio.create_task(_graceful_exit(sig.name)))
+           signal.signal(sig, lambda *_: _graceful_exit(sig.name))
 
     try:
         loop.run_until_complete(run_bot())

@@ -1,8 +1,9 @@
-import logging
 import asyncio
+import logging
 import time
 from datetime import datetime
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, Any
+
 import discord
 import pytz
 from discord.ext import tasks
@@ -19,6 +20,12 @@ class TaskScheduler:
     """Core task scheduler for automated bot operations."""
     
     def __init__(self, bot):
+        """
+        Initialize task scheduler with locks, metrics and bot instance.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self._task_locks: Dict[str, asyncio.Lock] = {
             'contracts': asyncio.Lock(),
@@ -40,14 +47,31 @@ class TaskScheduler:
         logging.info("[Scheduler] Task scheduler initialized")
 
     def _should_execute(self, task_key: str, current_time: str) -> bool:
-        """Check if task should execute based on last execution time."""
+        """
+        Check if task should execute based on last execution time.
+        
+        Args:
+            task_key: Unique identifier for the task
+            current_time: Current time string for comparison
+            
+        Returns:
+            True if task should execute, False otherwise
+        """
         if self._last_execution.get(task_key) == current_time:
             return False
         self._last_execution[task_key] = current_time
         return True
     
     async def _execute_with_monitoring(self, task_name: str, coroutine, *args, **kwargs):
-        """Execute task with performance monitoring and error handling."""
+        """
+        Execute task with performance monitoring and error handling.
+        
+        Args:
+            task_name: Name of the task for logging and metrics
+            coroutine: Coroutine function to execute
+            *args: Arguments for the coroutine
+            **kwargs: Keyword arguments for the coroutine
+        """
         if task_name not in self._task_metrics:
             self._task_metrics[task_name] = {'success': 0, 'failures': 0, 'total_time': 0}
         
@@ -63,8 +87,16 @@ class TaskScheduler:
             execution_time = int((time.time() - start_time) * 1000)
             logging.exception(f"[Scheduler] {task_name} failed after {execution_time}ms: {e}")
     
-    async def _safe_get_cog(self, cog_name: str) -> Optional[object]:
-        """Safely get cog with error handling."""
+    async def _safe_get_cog(self, cog_name: str) -> Optional[Any]:
+        """
+        Safely get cog with error handling.
+        
+        Args:
+            cog_name: Name of the cog to retrieve
+            
+        Returns:
+            Cog instance or None if not found (typed as Any to avoid attribute access issues)
+        """
         cog = self.bot.get_cog(cog_name)
         if not cog:
             logging.warning(f"[Scheduler] {cog_name} cog not found, skipping related tasks")
@@ -74,7 +106,17 @@ class TaskScheduler:
 #                            Scheduled Task Execution
 # #################################################################################### #
     async def execute_scheduled_tasks(self):
-        """Execute all scheduled tasks based on current time."""
+        """
+        Execute all scheduled tasks based on current time.
+        
+        This method runs all time-based scheduled tasks including:
+        - Epic items scraping
+        - Contract cleanup
+        - Roster updates
+        - Event management
+        - Attendance checks
+        - Wishlist updates
+        """
         now = datetime.now(TIMEZONE).strftime("%H:%M")
         now_time = datetime.now(TIMEZONE)
 
@@ -198,7 +240,12 @@ class TaskScheduler:
                         )
 
     async def _update_all_guild_wishlists(self, loot_wishlist_cog):
-        """Update wishlist messages for all guilds in parallel."""
+        """
+        Update wishlist messages for all guilds in parallel.
+        
+        Args:
+            loot_wishlist_cog: LootWishlist cog instance
+        """
         guild_ids = [guild.id for guild in self.bot.guilds]
         if not guild_ids:
             logging.info("[Scheduler] No guilds found for wishlist update")
@@ -229,7 +276,12 @@ class TaskScheduler:
         logging.info(f"[Scheduler] Wishlist update completed: {successful_updates} successful, {failed_updates} failed")
 
     async def _process_roster_updates_parallel(self, guild_members_cog):
-        """Process roster updates for all guilds in parallel with rate limiting."""
+        """
+        Process roster updates for all guilds in parallel with rate limiting.
+        
+        Args:
+            guild_members_cog: GuildMembers cog instance
+        """
         guild_ids = [guild.id for guild in self.bot.guilds]
         if not guild_ids:
             logging.info("[Scheduler] No guilds found for roster update")
@@ -259,7 +311,12 @@ class TaskScheduler:
 #                            Health Monitoring and Status
 # #################################################################################### #
     def get_health_status(self) -> dict:
-        """Get scheduler health status and metrics."""
+        """
+        Get scheduler health status and metrics.
+        
+        Returns:
+            Dictionary containing task metrics, active locks, and last executions
+        """
         return {
             'task_metrics': self._task_metrics,
             'active_locks': {name: lock.locked() for name, lock in self._task_locks.items()},
@@ -273,14 +330,23 @@ _scheduler_instance = None
 _scheduled_task = None
 
 def setup_task_scheduler(bot):
-    """Initialize and start the task scheduler."""
+    """
+    Initialize and start the task scheduler.
+    
+    Args:
+        bot: Discord bot instance
+        
+    Returns:
+        TaskScheduler instance
+    """
     global _scheduler_instance, _scheduled_task
     
     _scheduler_instance = TaskScheduler(bot)
     
     @tasks.loop(minutes=1)
     async def scheduled_tasks():
-        await _scheduler_instance.execute_scheduled_tasks()
+        if _scheduler_instance:
+            await _scheduler_instance.execute_scheduled_tasks()
     
     @scheduled_tasks.before_loop
     async def before_scheduled_tasks():
@@ -309,13 +375,20 @@ def setup_task_scheduler(bot):
     return _scheduler_instance
 
 def get_scheduler_health_status() -> dict:
-    """Get current scheduler health status."""
+    """
+    Get current scheduler health status.
+    
+    Returns:
+        Dictionary containing scheduler health status or error message
+    """
     if _scheduler_instance:
         return _scheduler_instance.get_health_status()
     return {'error': 'Scheduler not initialized'}
 
 def stop_scheduler():
-    """Stop the task scheduler."""
+    """
+    Stop the task scheduler and cancel all scheduled tasks.
+    """
     global _scheduled_task
     if _scheduled_task:
         _scheduled_task.cancel()

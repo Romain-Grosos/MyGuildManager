@@ -2,18 +2,31 @@
 Notification Manager Cog - Manages member join/leave notifications and welcome message handling.
 """
 
-import discord
-import logging
-from discord.ext import commands
-from typing import Any
 import asyncio
-import time
+import logging
 import re
+import time
+from typing import Any
+
+import discord
+from discord.ext import commands
+
 from ..core.reliability import discord_resilient
-from ..core.translation from ..core import translations as global_translations
+from ..core.translation import translations as global_translations
 
 def create_embed(title: str, description: str, color: discord.Color, member: discord.Member) -> discord.Embed:
-    """Create a Discord embed with member information."""
+    """
+    Create a Discord embed with member information.
+    
+    Args:
+        title: Embed title
+        description: Embed description text
+        color: Discord color for the embed
+        member: Discord member to extract avatar from
+        
+    Returns:
+        Configured Discord embed with member avatar
+    """
     embed = discord.Embed(title=title, description=description, color=color)
     if member.avatar:
         embed.set_thumbnail(url=member.avatar.url)
@@ -23,20 +36,49 @@ class Notification(commands.Cog):
     """Cog for managing member join/leave notifications and welcome message handling."""
     
     def __init__(self, bot: commands.Bot) -> None:
-        """Initialize the Notification cog."""
+        """
+        Initialize the Notification cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self.max_events_per_minute = 10
     
     def get_safe_user_info(self, member):
-        """Get safe user information for logging purposes."""
+        """
+        Get safe user information for logging purposes.
+        
+        Args:
+            member: Discord member object
+            
+        Returns:
+            Safe user identifier string for logs
+        """
         return f"User{member.id}"
     
     def sanitize_user_data(self, name: str) -> str:
-        """Sanitize user data by removing potentially harmful characters."""
+        """
+        Sanitize user data by removing potentially harmful characters.
+        
+        Args:
+            name: Raw username to sanitize
+            
+        Returns:
+            Sanitized username with harmful characters removed
+        """
         return re.sub(r'[@#`]', '', name[:100])
     
     async def check_event_rate_limit(self, guild_id: int) -> bool:
-        """Check if guild has exceeded the event rate limit."""
+        """
+        Check if guild has exceeded the event rate limit.
+        
+        Args:
+            guild_id: Discord guild ID to check
+            
+        Returns:
+            True if guild can process events, False if rate limited
+        """
         now = time.time()
         member_events = await self.bot.cache.get('temporary', f'member_events_{guild_id}') or []
 
@@ -50,7 +92,15 @@ class Notification(commands.Cog):
         return True
     
     async def is_ptb_guild(self, guild_id: int) -> bool:
-        """Check if guild is a PTB (Public Test Branch) guild."""
+        """
+        Check if guild is a PTB (Public Test Branch) guild.
+        
+        Args:
+            guild_id: Discord guild ID to check
+            
+        Returns:
+            True if guild is a PTB guild, False otherwise
+        """
         try:
             guild_ptb_cog = self.bot.get_cog("GuildPTB")
             if not guild_ptb_cog:
@@ -67,7 +117,15 @@ class Notification(commands.Cog):
             return False
     
     async def get_safe_channel(self, channel_id: int):
-        """Safely retrieve a Discord channel by ID with error handling."""
+        """
+        Safely retrieve a Discord channel by ID with error handling.
+        
+        Args:
+            channel_id: Discord channel ID to retrieve
+            
+        Returns:
+            Discord channel object or None if not accessible
+        """
         try:
             channel = self.bot.get_channel(channel_id)
             if not channel:
@@ -85,7 +143,16 @@ class Notification(commands.Cog):
     
     @discord_resilient(service_name='discord_api', max_retries=2)
     async def safe_send_notification(self, channel, embed):
-        """Safely send a notification embed to a channel with timeout and error handling."""
+        """
+        Safely send a notification embed to a channel with timeout and error handling.
+        
+        Args:
+            channel: Discord channel to send message to
+            embed: Discord embed to send
+            
+        Returns:
+            Discord message object or None if sending failed
+        """
         try:
             return await asyncio.wait_for(channel.send(embed=embed), timeout=10.0)
         except asyncio.TimeoutError:
@@ -105,7 +172,11 @@ class Notification(commands.Cog):
         logging.debug("[NotificationManager] Notification data loading tasks started in on_ready.")
 
     async def load_notification_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
+        """
+        Ensure all required data is loaded via centralized cache loader.
+        
+        Loads guild settings and channels data needed for notification processing.
+        """
         logging.debug("[NotificationManager] Loading notification data")
         
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -114,7 +185,15 @@ class Notification(commands.Cog):
         logging.debug("[NotificationManager] Notification data loading completed")
 
     async def get_guild_lang(self, guild: discord.Guild) -> str:
-        """Get guild language from centralized cache."""
+        """
+        Get guild language from centralized cache.
+        
+        Args:
+            guild: Discord guild to get language for
+            
+        Returns:
+            Guild language code (default: en-US)
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         
         guild_lang = await self.bot.cache.get_guild_data(guild.id, 'guild_lang')
@@ -123,7 +202,12 @@ class Notification(commands.Cog):
     @commands.Cog.listener()
     @discord_resilient(service_name='discord_api', max_retries=2)
     async def on_member_join(self, member: discord.Member) -> None:
-        """Handle member join events with notification and welcome message creation."""
+        """
+        Handle member join events with notification and welcome message creation.
+        
+        Args:
+            member: Discord member who joined the guild
+        """
         guild = member.guild
         safe_user = self.get_safe_user_info(member)
         logging.debug(f"[NotificationManager] New member detected: {safe_user} in guild {guild.id}")
@@ -193,7 +277,12 @@ class Notification(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
-        """Handle member leave events with PTB auto-kick and leave notifications."""
+        """
+        Handle member leave events with PTB auto-kick and leave notifications.
+        
+        Args:
+            member: Discord member who left the guild
+        """
         guild = member.guild
         safe_user = self.get_safe_user_info(member)
         logging.debug(f"[NotificationManager] Departure detected: {safe_user} from guild {guild.id}")
@@ -338,5 +427,11 @@ class Notification(commands.Cog):
             logging.error(f"[NotificationManager] Error in on_member_remove for {safe_user}: {e}", exc_info=True)
 
 def setup(bot: discord.Bot):
-    """Setup function for the cog."""
+    """
+    Setup function to add the Notification cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(Notification(bot))
+

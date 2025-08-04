@@ -2,33 +2,57 @@
 Guild PTB Cog - Manages Public Test Branch servers for guild event coordination.
 """
 
-import discord
-from discord.ext import commands
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set
+
+import discord
 import pytz
-from ..core.translation from ..core import translations as global_translations
+from discord.ext import commands
+
 from ..core.reliability import discord_resilient
+from ..core.translation import translations as global_translations
 
 GUILD_PTB = global_translations.get("guild_ptb", {})
 
 class GuildPTB(commands.Cog):
-    """Cog for managing Public Test Branch servers for guild event coordination."""
+    """
+    Cog for managing Public Test Branch servers for guild event coordination.
+    
+    This cog handles the creation, management, and coordination of Public Test Branch (PTB)
+    Discord servers that are used for guild event organization and member coordination.
+    It provides functionality for setting up PTB servers, managing member permissions,
+    and coordinating events across main and PTB guilds.
+    """
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the GuildPTB cog."""
+        """
+        Initialize the GuildPTB cog.
+        
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Initialize PTB data on bot ready."""
+        """
+        Initialize PTB data when the bot becomes ready.
+        
+        This method is called when the bot has finished logging in and is ready
+        to receive events. It starts the process of loading PTB data from cache.
+        """
         asyncio.create_task(self.load_ptb_data())
         logging.debug("[GuildPTB] Cache loading tasks started in on_ready.")
     
     async def load_ptb_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
+        """
+        Ensure all required data is loaded via centralized cache loader.
+        
+        This method loads essential PTB data categories into the cache,
+        including guild settings and PTB-specific settings.
+        """
         logging.debug("[GuildPTB] Loading PTB data")
         
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -38,7 +62,13 @@ class GuildPTB(commands.Cog):
     
     
     async def get_ptb_settings(self) -> Dict:
-        """Get PTB settings for all guilds from centralized cache."""
+        """
+        Get PTB settings for all guilds from centralized cache.
+        
+        Returns:
+            Dict: A dictionary mapping guild IDs to their PTB settings,
+                 containing only guilds that have PTB configurations
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_ptb_settings')
 
         all_ptb_settings = {}
@@ -50,7 +80,15 @@ class GuildPTB(commands.Cog):
         return all_ptb_settings
     
     async def get_guild_ptb_settings(self, guild_id: int) -> Dict:
-        """Get PTB settings for a specific guild from centralized cache."""
+        """
+        Get PTB settings for a specific guild from centralized cache.
+        
+        Args:
+            guild_id: The ID of the guild to get PTB settings for
+            
+        Returns:
+            Dict: The PTB settings for the specified guild, or empty dict if none found
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_ptb_settings')
         result = await self.bot.cache.get_guild_data(guild_id, 'ptb_settings')
         if not result:
@@ -58,16 +96,38 @@ class GuildPTB(commands.Cog):
         return result or {}
     
     async def get_active_events(self) -> Dict:
-        """Get active events from temporary cache."""
+        """
+        Get active events from temporary cache.
+        
+        Returns:
+            Dict: Dictionary of active PTB events, organized by guild ID and event ID
+        """
         active_events = await self.bot.cache.get('temporary', 'ptb_active_events')
         return active_events or {}
     
     async def set_active_events(self, active_events: Dict) -> None:
-        """Set active events in temporary cache."""
+        """
+        Set active events in temporary cache.
+        
+        Args:
+            active_events: Dictionary of active events to store in cache
+        """
         await self.bot.cache.set('temporary', active_events, 'ptb_active_events')
     
     async def _verify_ptb_ownership(self, main_guild_id: int, ptb_guild_id: int) -> bool:
-        """Verify PTB guild ownership and permissions."""
+        """
+        Verify PTB guild ownership and permissions.
+        
+        This method ensures that the bot has proper access and permissions in the PTB guild,
+        and that the PTB guild is correctly associated with the main guild.
+        
+        Args:
+            main_guild_id: The ID of the main guild that owns the PTB
+            ptb_guild_id: The ID of the PTB guild to verify
+            
+        Returns:
+            bool: True if ownership and permissions are valid, False otherwise
+        """
         try:
             await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             ptb_guild = self.bot.get_guild(ptb_guild_id)
@@ -106,8 +166,24 @@ class GuildPTB(commands.Cog):
             return False
     
     @discord_resilient(service_name='discord_api', max_retries=2)
-    async def initialize_ptb_server(self, main_guild_id: int, authorized_user_id: int = None) -> bool:
-        """Initialize a new PTB server for a main guild."""
+    async def initialize_ptb_server(self, main_guild_id: int, authorized_user_id: Optional[int] = None) -> bool:
+        """
+        Initialize a new PTB server for a main guild.
+        
+        Creates a new Discord server to serve as a Public Test Branch (PTB) for the main guild,
+        setting up all necessary roles, channels, and permissions. The authorized user must have
+        appropriate permissions in the main guild.
+        
+        Args:
+            main_guild_id: The ID of the main guild to create a PTB for
+            authorized_user_id: The ID of the user authorizing the PTB creation
+            
+        Returns:
+            bool: True if PTB server was successfully initialized, False otherwise
+            
+        Raises:
+            Exception: If there's an error during PTB creation or setup
+        """
         try:
             if not authorized_user_id:
                 logging.error(f"[GuildPTB] PTB server creation requires authorized user ID for guild {main_guild_id}")
@@ -180,7 +256,22 @@ class GuildPTB(commands.Cog):
     
     @discord_resilient(service_name='discord_api', max_retries=2)
     async def _setup_ptb_structure(self, main_guild_id: int, ptb_guild: discord.Guild) -> bool:
-        """Setup the structure of a PTB guild with roles and channels."""
+        """
+        Setup the structure of a PTB guild with roles and channels.
+        
+        Creates all necessary roles (G1-G12), voice channels, and an info channel
+        with appropriate permissions for the PTB guild.
+        
+        Args:
+            main_guild_id: The ID of the main guild this PTB belongs to
+            ptb_guild: The PTB guild object to set up
+            
+        Returns:
+            bool: True if structure was successfully set up, False otherwise
+            
+        Raises:
+            Exception: If there's an error during structure setup
+        """
         try:
             roles = {}
             for i in range(1, 13):
@@ -247,7 +338,22 @@ class GuildPTB(commands.Cog):
     
     async def _save_ptb_settings(self, main_guild_id: int, ptb_guild_id: int, info_channel_id: int, 
                                 roles: Dict[str, discord.Role], channels: Dict[str, discord.VoiceChannel]) -> None:
-        """Save PTB settings to database and update cache."""
+        """
+        Save PTB settings to database and update cache.
+        
+        Stores all PTB configuration data including role IDs, channel IDs,
+        and other settings in the database and updates the cache.
+        
+        Args:
+            main_guild_id: The ID of the main guild
+            ptb_guild_id: The ID of the PTB guild
+            info_channel_id: The ID of the info channel
+            roles: Dictionary mapping group names to Discord role objects
+            channels: Dictionary mapping group names to Discord voice channel objects
+            
+        Raises:
+            Exception: If there's an error saving settings to database
+        """
         try:
             data = {
                 "guild_id": main_guild_id,
@@ -292,7 +398,20 @@ class GuildPTB(commands.Cog):
             raise
     
     async def assign_event_permissions(self, main_guild_id: int, event_id: int, groups_data: Dict) -> bool:
-        """Assign event permissions to PTB guild members based on group assignments."""
+        """
+        Assign event permissions to PTB guild members based on group assignments.
+        
+        Assigns roles to members in the PTB guild based on their group assignments
+        for a specific event, sends event recap, and invites missing members.
+        
+        Args:
+            main_guild_id: The ID of the main guild
+            event_id: The ID of the event
+            groups_data: Dictionary mapping group names to lists of member IDs
+            
+        Returns:
+            bool: True if permissions were successfully assigned, False otherwise
+        """
         try:
             ptb_settings = await self.get_guild_ptb_settings(main_guild_id)
             if not ptb_settings:
@@ -334,7 +453,14 @@ class GuildPTB(commands.Cog):
             return False
     
     async def _assign_roles_to_members(self, ptb_guild: discord.Guild, ptb_settings: Dict, groups_data: Dict) -> None:
-        """Assign roles to PTB guild members based on group data."""
+        """
+        Assign roles to PTB guild members based on group data.
+        
+        Args:
+            ptb_guild: The PTB guild object
+            ptb_settings: Dictionary containing PTB configuration settings
+            groups_data: Dictionary mapping group names to lists of member IDs
+        """
         try:
             for group_name, member_ids in groups_data.items():
                 if group_name not in ptb_settings["groups"]:
@@ -361,7 +487,18 @@ class GuildPTB(commands.Cog):
             logging.error(f"[GuildPTB] Error assigning roles to members: {e}", exc_info=True)
     
     async def _send_event_recap(self, ptb_guild: discord.Guild, info_channel_id: int, event_id: int, groups_data: Dict) -> None:
-        """Send event recap to PTB info channel."""
+        """
+        Send event recap to PTB info channel.
+        
+        Creates and sends an embed message to the PTB info channel with details
+        about the event and group assignments.
+        
+        Args:
+            ptb_guild: The PTB guild object
+            info_channel_id: The ID of the info channel
+            event_id: The ID of the event
+            groups_data: Dictionary mapping group names to lists of member IDs
+        """
         try:
             await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             info_channel = ptb_guild.get_channel(info_channel_id)
@@ -427,7 +564,17 @@ class GuildPTB(commands.Cog):
             logging.error(f"[GuildPTB] Error sending event recap: {e}", exc_info=True)
     
     async def _send_invitations_to_missing_members(self, main_guild_id: int, ptb_guild: discord.Guild, groups_data: Dict) -> None:
-        """Send invitations to members who are not yet in the PTB guild."""
+        """
+        Send invitations to members who are not yet in the PTB guild.
+        
+        Creates an invite link and sends it via DM to members who are assigned
+        to groups but are not yet present in the PTB guild.
+        
+        Args:
+            main_guild_id: The ID of the main guild
+            ptb_guild: The PTB guild object
+            groups_data: Dictionary mapping group names to lists of member IDs
+        """
         try:
             await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             main_guild = self.bot.get_guild(main_guild_id)
@@ -477,7 +624,19 @@ class GuildPTB(commands.Cog):
             logging.error(f"[GuildPTB] Error sending invitations: {e}", exc_info=True)
     
     async def remove_event_permissions(self, main_guild_id: int, event_id: int) -> bool:
-        """Remove event permissions from PTB guild members after event ends."""
+        """
+        Remove event permissions from PTB guild members after event ends.
+        
+        Removes all group roles from members and cleans up active event data
+        when an event concludes.
+        
+        Args:
+            main_guild_id: The ID of the main guild
+            event_id: The ID of the event that ended
+            
+        Returns:
+            bool: True if permissions were successfully removed, False otherwise
+        """
         try:
             active_events = await self.get_active_events()
             if (main_guild_id not in active_events or 
@@ -537,7 +696,15 @@ class GuildPTB(commands.Cog):
     
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        """Handle member joining PTB guild - auto-assign roles if part of active event."""
+        """
+        Handle member joining PTB guild - auto-assign roles if part of active event.
+        
+        When a member joins a PTB guild, automatically assigns appropriate roles
+        if they are part of any active events, and syncs their nickname from the main guild.
+        
+        Args:
+            member: The Discord member who joined the guild
+        """
         try:
             ptb_guild_id = member.guild.id
             main_guild_id = None
@@ -577,7 +744,16 @@ class GuildPTB(commands.Cog):
             logging.error(f"[GuildPTB] Error handling member join: {e}", exc_info=True)
     
     async def _sync_nickname_from_main(self, ptb_member: discord.Member, main_guild_id: int):
-        """Synchronize nickname from main guild to PTB guild."""
+        """
+        Synchronize nickname from main guild to PTB guild.
+        
+        Updates the member's nickname in the PTB guild to match their
+        display name in the main guild.
+        
+        Args:
+            ptb_member: The member in the PTB guild
+            main_guild_id: The ID of the main guild to sync from
+        """
         try:
             await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             logging.debug(f"[GuildPTB] Attempting to sync nickname for {ptb_member.display_name} ({ptb_member.id}) from main guild {main_guild_id}")
@@ -618,12 +794,20 @@ class GuildPTB(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def ptb_init(self, 
                       ctx: discord.ApplicationContext, 
-                      main_guild_id: discord.Option(
-                          str, 
+                      main_guild_id: str = discord.Option(
                           description=GUILD_PTB["commands"]["ptb_init"]["options"]["main_guild_id"]["description"]["en-US"],
                           description_localizations=GUILD_PTB["commands"]["ptb_init"]["options"]["main_guild_id"]["description"]
                       )):
-        """Method: Ptb init."""
+        """
+        Initialize PTB configuration for a main guild.
+        
+        This slash command allows authorized users to configure the current guild
+        as a PTB (Public Test Branch) server for a specified main guild.
+        
+        Args:
+            ctx: The Discord application context
+            main_guild_id: The ID of the main guild to configure PTB for
+        """
         try:
             guild_lang = "en-US"
 
@@ -718,7 +902,18 @@ class GuildPTB(commands.Cog):
             logging.error(f"[GuildPTB] Error in ptb_init command: {e}", exc_info=True)
     
     async def audit_ptb_security(self, main_guild_id: int) -> Dict:
-        """Perform security audit on PTB configuration for a guild."""
+        """
+        Perform security audit on PTB configuration for a guild.
+        
+        Checks the PTB configuration for security issues, missing components,
+        and proper permissions setup.
+        
+        Args:
+            main_guild_id: The ID of the main guild to audit
+            
+        Returns:
+            Dict: Audit report containing status, issues, and recommendations
+        """
         audit_report = {
             "main_guild_id": main_guild_id,
             "status": "unknown",
@@ -793,5 +988,10 @@ class GuildPTB(commands.Cog):
         return audit_report
 
 def setup(bot: discord.Bot):
-    """Setup function for the cog."""
+    """
+    Setup function for the cog.
+    
+    Args:
+        bot: The Discord bot instance to add the cog to
+    """
     bot.add_cog(GuildPTB(bot))

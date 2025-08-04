@@ -2,16 +2,18 @@
 Profile Setup Cog - Manages member profile creation and role assignment workflow.
 """
 
-import discord
+import asyncio
 import logging
-import pytz
 import re
 from datetime import datetime
 from typing import Dict, Tuple, Any, Optional
+
+import discord
+import pytz
 from discord.ext import commands
-from ..core.translation from ..core import translations as global_translations
-import asyncio
-from db import DBQueryError
+
+from ..core.translation import translations as global_translations
+from ..db import DBQueryError
 
 MAX_PLAYTIME_LEN = 64
 SUPPORTED_LOCALES = global_translations.get("supported_locales", {})
@@ -23,13 +25,27 @@ class ProfileSetup(commands.Cog):
     """Cog for managing member profile creation and role assignment workflow."""
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the ProfileSetup cog."""
+        """
+        Initialize the ProfileSetup cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self.sessions: Dict[str, Dict[str, Any]] = {}
         self.session_locks: Dict[str, asyncio.Lock] = {}
 
     async def load_session(self, guild_id: int, user_id: int) -> Dict[str, Any]:
-        """Load or create a user session for profile setup."""
+        """
+        Load or create a user session for profile setup.
+        
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID
+            
+        Returns:
+            Dictionary containing user session data
+        """
         key = f"{guild_id}_{user_id}"
         if key not in self.sessions:
             self.sessions[key] = {}
@@ -38,40 +54,91 @@ class ProfileSetup(commands.Cog):
         return self.sessions[key]
     
     async def get_guild_lang(self, guild_id: int) -> str:
-        """Get guild language from cache."""
+        """
+        Get guild language from cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Guild language code (default: en-US)
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
         return guild_lang or "en-US"
     
     async def get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
-        """Get guild settings from cache."""
+        """
+        Get guild settings from cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Dictionary containing guild settings
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'guild_settings')
         return settings or {}
     
     async def get_guild_roles(self, guild_id: int) -> Dict[str, Any]:
-        """Get guild roles from cache."""
+        """
+        Get guild roles from cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Dictionary containing guild role IDs
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_roles')
         roles = await self.bot.cache.get_guild_data(guild_id, 'roles')
         return roles or {}
     
     async def get_guild_channels(self, guild_id: int) -> Dict[str, Any]:
-        """Get guild channels from cache."""
+        """
+        Get guild channels from cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Dictionary containing guild channel IDs
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         channels = await self.bot.cache.get_guild_data(guild_id, 'channels')
         return channels or {}
     
     async def get_welcome_message_for_user(self, guild_id: int, user_id: int) -> Optional[Dict[str, Any]]:
-        """Get welcome message for a specific user from cache."""
+        """
+        Get welcome message for a specific user from cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID
+            
+        Returns:
+            Dictionary with welcome message info or None if not found
+        """
         return await self.bot.cache.get_user_data(guild_id, user_id, 'welcome_message')
     
     async def get_pending_validations(self) -> Dict[str, Dict[str, Any]]:
-        """Get pending validations from cache."""
+        """
+        Get pending validations from cache.
+        
+        Returns:
+            Dictionary containing pending diplomat validations
+        """
         validations = await self.bot.cache.get('temporary', 'pending_validations')
         return validations or {}
     
     async def load_profile_setup_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
+        """
+        Ensure all required data is loaded via centralized cache loader.
+        
+        Loads guild roles, channels, settings, and pending validations needed
+        for profile setup workflow.
+        """
         logging.debug("[ProfileSetup] Loading profile setup data")
         
         await self.bot.cache_loader.ensure_category_loaded('guild_roles')
@@ -180,7 +247,12 @@ class ProfileSetup(commands.Cog):
 
 
     async def _load_pending_validations(self) -> None:
-        """Load pending diplomat validations into cache."""
+        """
+        Load pending diplomat validations into cache.
+        
+        Retrieves all pending diplomat validations from database and stores
+        them in cache for restoration after bot restart.
+        """
         logging.debug("[ProfileSetup] Loading pending validations from database")
         query = """
             SELECT guild_id, member_id, guild_name, channel_id, message_id, created_at 
@@ -208,7 +280,12 @@ class ProfileSetup(commands.Cog):
 
 
     async def restore_pending_validation_views(self) -> None:
-        """Method: Restore pending validation views."""
+        """
+        Restore pending validation views after bot restart.
+        
+        Re-attaches Discord UI views to pending validation messages
+        so buttons remain functional after bot restarts.
+        """
         logging.debug("[ProfileSetup] Restoring pending validation views")
         
         await asyncio.sleep(2)
@@ -258,7 +335,16 @@ class ProfileSetup(commands.Cog):
                 logging.error(f"[ProfileSetup] Error restoring validation view for key {key}: {e}")
     async def save_pending_validation(self, guild_id: int, member_id: int, guild_name: str, 
                                     channel_id: int, message_id: int) -> None:
-        """Method: Save pending validation."""
+        """
+        Save pending validation to database and cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            member_id: Discord member ID requiring validation
+            guild_name: Name of the guild being validated for
+            channel_id: Discord channel ID where validation message is
+            message_id: Discord message ID of the validation message
+        """
         query = """
             INSERT INTO pending_diplomat_validations 
             (guild_id, member_id, guild_name, channel_id, message_id, status)
@@ -290,7 +376,14 @@ class ProfileSetup(commands.Cog):
             raise
 
     async def remove_pending_validation(self, guild_id: int, member_id: int, guild_name: str) -> None:
-        """Method: Remove pending validation."""
+        """
+        Remove pending validation from database and cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            member_id: Discord member ID to remove validation for
+            guild_name: Name of the guild validation was for
+        """
         query = """
             UPDATE pending_diplomat_validations 
             SET status = 'completed', completed_at = NOW()
@@ -310,7 +403,16 @@ class ProfileSetup(commands.Cog):
             logging.error(f"[ProfileSetup] Error removing pending validation: {e}")
 
     async def validate_guild_name_with_llm(self, guild_name: str, category_channel) -> str:
-        """Method: Validate guild name with llm."""
+        """
+        Validate guild name with LLM to detect similar existing guilds.
+        
+        Args:
+            guild_name: Guild name to validate
+            category_channel: Discord category channel containing diplomat channels
+            
+        Returns:
+            Validated guild name (may be corrected if similar guild found)
+        """
         try:
             existing_guild_names = []
             for channel in category_channel.channels:
@@ -337,22 +439,18 @@ class ProfileSetup(commands.Cog):
                 sanitized_existing_names = sanitized_existing_names[:20]
                 logging.warning(f"[ProfileSetup] Truncated existing guild names list for LLM validation (guild: {category_channel.guild.id})")
 
-            prompt = f"""Task: Compare guild names for similarity detection.
-            
-Input guild name: "{sanitized_guild_name}"
-Existing guild names: {', '.join(f'"{name}"' for name in sanitized_existing_names)}
-
-Instructions:
-1. If the input guild name is very similar to any existing guild name (typos, abbreviations), return the most similar existing guild name.
-2. If the input guild name is clearly different and unique, return the input guild name unchanged.
-3. Return only the guild name, no additional text or explanations.
-
-Examples:
-- Input "Guild War" vs existing "Guild Wars" -> return "Guild Wars"
-- Input "MGM" vs existing "MGM Guild" -> return "MGM Guild"
-- Input "DarK Knight" vs existing "Dark Knights" -> return "Dark Knights"
-
-Response:"""
+            prompt = f"""Task: Compare guild names for similarity detection.\n
+            Input guild name: "{sanitized_guild_name}"\n
+            Existing guild names: {', '.join(f'"{name}"' for name in sanitized_existing_names)}\n
+            Instructions:\n
+            1. If the input guild name is very similar to any existing guild name (typos, abbreviations), return the most similar existing guild name.\n
+            2. If the input guild name is clearly different and unique, return the input guild name unchanged.\n
+            3. Return only the guild name, no additional text or explanations.\n
+            Examples:\n
+            - Input "Guild War" vs existing "Guild Wars" -> return "Guild Wars"\n
+            - Input "MGM" vs existing "MGM Guild" -> return "MGM Guild"\n
+            - Input "DarK Knight" vs existing "Dark Knights" -> return "Dark Knights"\n
+            Response:"""
             
             try:
                 response = await llm_cog.safe_ai_query(prompt)
@@ -400,7 +498,13 @@ Response:"""
         logging.debug("[ProfileSetup] Cache loading tasks started from on_ready")
 
     async def finalize_profile(self, guild_id: int, user_id: int) -> None:
-        """Finalize user profile setup and assign roles."""
+        """
+        Finalize user profile setup and assign roles.
+        
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID to finalize profile for
+        """
         guild_lang = await self.get_guild_lang(guild_id)
         session = await self.load_session(guild_id, user_id)
 
@@ -530,7 +634,7 @@ Response:"""
             "allies": channels_data.get("forum_allies_channel"),
             "friends": channels_data.get("forum_friends_channel"),
         }
-        channel_id = channels.get(motif)
+        channel_id = channels.get(str(motif)) if motif else None
         if not channel_id:
             logging.error(
                 f"[ProfileSetup] ❌ Unknown motif ({motif}) for user {user_id}, notification skipped."
@@ -701,7 +805,8 @@ Response:"""
                     "allies": discord.Color.green(),
                     "friends": discord.Color.blue(),
                 }
-                embed.color = colors.get(session.get("motif"), discord.Color.default())
+                motif_value = session.get("motif")
+                embed.color = colors.get(str(motif_value) if motif_value else "", discord.Color.default())
                 tz_france = pytz.timezone("Europe/Paris")
                 now = datetime.now(pytz.utc).astimezone(tz_france).strftime("%d/%m/%Y à %Hh%M")
                 pending_text = PROFILE_SETUP_DATA["pending"].get(
@@ -972,13 +1077,23 @@ Response:"""
         """Button for language selection."""
         
         def __init__(self, locale: str):
-            """Initialize language button."""
+            """
+            Initialize language button.
+            
+            Args:
+                locale: Language locale code
+            """
             label = LANGUAGE_NAMES.get(locale, locale)
             super().__init__(label=label, style=discord.ButtonStyle.primary, custom_id=f"lang_{locale}")
             self.locale = locale
 
         async def callback(self, interaction: discord.Interaction):
-            """Handle language selection."""
+            """
+            Handle language selection.
+            
+            Args:
+                interaction: Discord interaction from button click
+            """
             cog: ProfileSetup = self.view.cog
             guild_id = self.view.guild_id
             user_id = interaction.user.id
@@ -994,7 +1109,13 @@ Response:"""
         """View for language selection."""
         
         def __init__(self, cog: "ProfileSetup", guild_id: int):
-            """Initialize language selection view."""
+            """
+            Initialize language selection view.
+            
+            Args:
+                cog: ProfileSetup cog instance
+                guild_id: Discord guild ID
+            """
             super().__init__(timeout=180)
             self.cog = cog
             self.guild_id = guild_id
@@ -1005,7 +1126,13 @@ Response:"""
         """Select menu for choosing profile motif."""
         
         def __init__(self, locale: str, guild_id: int):
-            """Initialize motif selection."""
+            """
+            Initialize motif selection.
+            
+            Args:
+                locale: Language locale code
+                guild_id: Discord guild ID
+            """
             self.locale = locale
             self.guild_id = guild_id
             options = []
@@ -1020,7 +1147,12 @@ Response:"""
             super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options)
 
         async def callback(self, interaction: discord.Interaction):
-            """Handle motif selection."""
+            """
+            Handle motif selection.
+            
+            Args:
+                interaction: Discord interaction from select menu
+            """
             try:
                 cog: ProfileSetup = self.view.cog
                 guild_id = self.guild_id
@@ -1042,7 +1174,14 @@ Response:"""
         """View for motif selection modal."""
         
         def __init__(self, cog: "ProfileSetup", locale: str, guild_id: int):
-            """Initialize motif modal view."""
+            """
+            Initialize motif modal view.
+            
+            Args:
+                cog: ProfileSetup cog instance
+                locale: Language locale code
+                guild_id: Discord guild ID
+            """
             super().__init__(timeout=180)
             self.cog = cog
             self.locale = locale
@@ -1053,7 +1192,14 @@ Response:"""
         """Modal for collecting profile information based on motif."""
         
         def __init__(self, locale: str, guild_id: int, motif: str):
-            """Initialize questions modal for profile setup."""
+            """
+            Initialize questions modal for profile setup.
+            
+            Args:
+                locale: Language locale code
+                guild_id: Discord guild ID
+                motif: Profile motif (member, application, diplomat, etc.)
+            """
             title = PROFILE_SETUP_DATA["questions_title"].get(locale, PROFILE_SETUP_DATA["questions_title"].get("en-US"))
             super().__init__(title=title)
             self.locale = locale
@@ -1129,7 +1275,12 @@ Response:"""
                 self.add_item(self.playtime)
 
         async def callback(self, interaction: discord.Interaction):
-            """Handle profile information submission."""
+            """
+            Handle profile information submission.
+            
+            Args:
+                interaction: Discord interaction from modal submission
+            """
             try:
                 logging.debug(f"[ProfileSetup] QuestionsSelect submitted by user {interaction.user.id} in guild {self.guild_id}.")
                 cog: ProfileSetup = interaction.client.get_cog("ProfileSetup")
@@ -1189,7 +1340,15 @@ Response:"""
         """Button to open profile questions modal."""
         
         def __init__(self, cog: "ProfileSetup", locale: str, guild_id: int, motif: str):
-            """Initialize questions select button."""
+            """
+            Initialize questions select button.
+            
+            Args:
+                cog: ProfileSetup cog instance
+                locale: Language locale code
+                guild_id: Discord guild ID
+                motif: Profile motif type
+            """
             label = PROFILE_SETUP_DATA["comp_profile"].get(locale, PROFILE_SETUP_DATA["comp_profile"].get("en-US"))
             super().__init__(label=label, style=discord.ButtonStyle.primary, custom_id="questions_select_button")
             self.cog = cog
@@ -1198,7 +1357,12 @@ Response:"""
             self.motif = motif
 
         async def callback(self, interaction: discord.Interaction):
-            """Handle button click to show profile modal."""
+            """
+            Handle button click to show profile modal.
+            
+            Args:
+                interaction: Discord interaction from button click
+            """
             logging.debug(f"[ProfileSetup] QuestionsSelectButton clicked for user {interaction.user.id}")
             try:
                 modal = ProfileSetup.QuestionsSelect(self.locale, self.guild_id, self.motif)
@@ -1216,7 +1380,15 @@ Response:"""
         """View containing the profile questions button."""
         
         def __init__(self, cog: "ProfileSetup", locale: str, guild_id: int, motif: str):
-            """Initialize questions select view."""
+            """
+            Initialize questions select view.
+            
+            Args:
+                cog: ProfileSetup cog instance
+                locale: Language locale code
+                guild_id: Discord guild ID
+                motif: Profile motif type
+            """
             super().__init__(timeout=180)
             self.cog = cog
             self.locale = locale
@@ -1229,7 +1401,15 @@ Response:"""
         """Button for validating diplomat access to channels."""
         
         def __init__(self, member: discord.Member, channel: discord.TextChannel, guild_lang: str, guild_name: str = "Unknown"):
-            """Initialize diplomat validation button."""
+            """
+            Initialize diplomat validation button.
+            
+            Args:
+                member: Discord member requiring validation
+                channel: Discord text channel for validation
+                guild_lang: Guild language code
+                guild_name: Name of the guild being validated for
+            """
             button_text = PROFILE_SETUP_DATA["anti_espionage"]["validation_button"].get(
                 guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["validation_button"].get("en-US")
             )
@@ -1241,7 +1421,12 @@ Response:"""
             self.guild_name = guild_name
 
         async def callback(self, interaction: discord.Interaction):
-            """Handle diplomat validation."""
+            """
+            Handle diplomat validation button callback.
+            
+            Args:
+                interaction: Discord interaction from button press
+            """
             try:
                 channel_perms = self.channel.permissions_for(interaction.user)
                 can_manage = channel_perms.manage_channels or channel_perms.administrator
@@ -1329,7 +1514,16 @@ Response:"""
         """View for diplomat validation buttons."""
         
         def __init__(self, member: discord.Member, channel: discord.TextChannel, guild_lang: str, guild_name: str = "Unknown", bot=None):
-            """Initialize diplomat validation view."""
+            """
+            Initialize diplomat validation view.
+            
+            Args:
+                member: Discord member to validate
+                channel: Text channel for validation
+                guild_lang: Guild language for translations
+                guild_name: Name of the guild (default: Unknown)
+                bot: Discord bot instance (optional)
+            """
             super().__init__(timeout=86400)
             self.member = member
             self.channel = channel
@@ -1340,7 +1534,11 @@ Response:"""
             self.add_item(ProfileSetup.DiplomatValidationButton(member, channel, guild_lang, guild_name))
         
         async def on_timeout(self):
-            """Handle view timeout after 24 hours."""
+            """
+            Handle view timeout after 24 hours.
+            
+            Disables all buttons and updates database to mark validation as expired.
+            """
             for item in self.children:
                 item.disabled = True
             
@@ -1377,5 +1575,11 @@ Response:"""
                 logging.error(f"[ProfileSetup] Error handling timeout: {e}")
 
 def setup(bot: discord.Bot):
-    """Setup function for the cog."""
+    """
+    Setup function to add the ProfileSetup cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(ProfileSetup(bot))
+

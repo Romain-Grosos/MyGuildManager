@@ -3,14 +3,16 @@ Reliability and Resilience System - Comprehensive failure handling and recovery 
 """
 
 import asyncio
-import logging
-import time
 import json
+import logging
 import os
-from typing import Dict, Any, Optional, Callable, List, Union
+import random
+import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
 from functools import wraps
+from typing import Dict, Any, Optional, Callable, List, Union
+
 import discord
 from discord.ext import commands
 
@@ -18,6 +20,15 @@ class ServiceCircuitBreaker:
     """Circuit breaker for external services (Discord API, webhooks, etc.)."""
     
     def __init__(self, service_name: str, failure_threshold: int = 5, timeout: int = 60, half_open_max_calls: int = 3):
+        """
+        Initialize circuit breaker with failure thresholds and timeouts.
+        
+        Args:
+            service_name: Name of the service to protect
+            failure_threshold: Number of failures before opening circuit
+            timeout: Seconds to wait before attempting to close circuit
+            half_open_max_calls: Maximum calls allowed in half-open state
+        """
         self.service_name = service_name
         self.failure_threshold = failure_threshold
         self.timeout = timeout
@@ -30,7 +41,12 @@ class ServiceCircuitBreaker:
         self.half_open_calls = 0
         
     def is_open(self) -> bool:
-        """Check if circuit breaker is open."""
+        """
+        Check if circuit breaker is open and handle state transitions.
+        
+        Returns:
+            True if circuit breaker is open (blocking requests), False otherwise
+        """
         if self.state == "OPEN":
             if time.time() - self.last_failure_time > self.timeout:
                 self.state = "HALF_OPEN"
@@ -41,7 +57,12 @@ class ServiceCircuitBreaker:
         return False
     
     def can_execute(self) -> bool:
-        """Check if operation can be executed."""
+        """
+        Check if operation can be executed based on current circuit state.
+        
+        Returns:
+            True if operation can proceed, False if blocked
+        """
         if self.state == "OPEN":
             return not self.is_open()
         elif self.state == "HALF_OPEN":
@@ -49,7 +70,9 @@ class ServiceCircuitBreaker:
         return True
     
     def record_success(self):
-        """Record successful operation."""
+        """
+        Record successful operation and update circuit state accordingly.
+        """
         if self.state == "HALF_OPEN":
             self.success_count += 1
             if self.success_count >= self.half_open_max_calls:
@@ -61,7 +84,9 @@ class ServiceCircuitBreaker:
             self.failure_count = max(0, self.failure_count - 1)
     
     def record_failure(self):
-        """Record failed operation."""
+        """
+        Record failed operation and update circuit state accordingly.
+        """
         self.failure_count += 1
         self.last_failure_time = time.time()
         
@@ -76,7 +101,12 @@ class ServiceCircuitBreaker:
             self.half_open_calls += 1
     
     def get_status(self) -> Dict[str, Any]:
-        """Get circuit breaker status."""
+        """
+        Get comprehensive circuit breaker status information.
+        
+        Returns:
+            Dictionary containing service status, state, and timing information
+        """
         return {
             'service': self.service_name,
             'state': self.state,
@@ -100,8 +130,26 @@ class RetryManager:
         exclude_on: tuple = (),
         on_retry: Optional[Callable] = None
     ):
-        """Execute function with exponential backoff retry."""
-        import random
+        """
+        Execute function with exponential backoff retry strategy.
+        
+        Args:
+            func: Function to execute (can be sync or async)
+            max_attempts: Maximum number of retry attempts
+            base_delay: Initial delay between retries in seconds
+            max_delay: Maximum delay between retries in seconds
+            exponential_base: Base for exponential backoff calculation
+            jitter: Whether to add randomization to delay
+            retry_on: Tuple of exceptions to retry on
+            exclude_on: Tuple of exceptions to never retry
+            on_retry: Optional callback function called on each retry
+            
+        Returns:
+            Result of successful function execution
+            
+        Raises:
+            Last exception if all attempts fail
+        """
         
         last_exception = None
         
@@ -128,21 +176,39 @@ class RetryManager:
                 logging.debug(f"[RetryManager] Attempt {attempt + 1} failed, retrying in {delay:.2f}s: {e}")
                 await asyncio.sleep(delay)
         
-        raise last_exception
+        if last_exception:
+            raise last_exception
+        raise Exception("All retry attempts failed")
 
 class GracefulDegradation:
     """System for graceful service degradation during failures."""
     
     def __init__(self):
+        """
+        Initialize graceful degradation system with service tracking.
+        """
         self.degraded_services: Dict[str, Dict[str, Any]] = {}
         self.fallback_handlers: Dict[str, Callable] = {}
         
     def register_fallback(self, service_name: str, fallback_handler: Callable):
-        """Register fallback handler for a service."""
+        """
+        Register fallback handler for a service.
+        
+        Args:
+            service_name: Name of the service
+            fallback_handler: Callable to use when service is degraded
+        """
         self.fallback_handlers[service_name] = fallback_handler
         
     def degrade_service(self, service_name: str, reason: str, duration: int = 300):
-        """Mark service as degraded."""
+        """
+        Mark service as degraded for a specified duration.
+        
+        Args:
+            service_name: Name of the service to degrade
+            reason: Reason for degradation
+            duration: Duration in seconds to keep service degraded
+        """
         self.degraded_services[service_name] = {
             'reason': reason,
             'degraded_at': time.time(),
@@ -152,13 +218,26 @@ class GracefulDegradation:
         logging.warning(f"[GracefulDegradation] Service {service_name} degraded: {reason}")
     
     def restore_service(self, service_name: str):
-        """Restore service from degraded state."""
+        """
+        Restore service from degraded state.
+        
+        Args:
+            service_name: Name of the service to restore
+        """
         if service_name in self.degraded_services:
             del self.degraded_services[service_name]
             logging.info(f"[GracefulDegradation] Service {service_name} restored")
     
     def is_degraded(self, service_name: str) -> bool:
-        """Check if service is currently degraded."""
+        """
+        Check if service is currently degraded.
+        
+        Args:
+            service_name: Name of the service to check
+            
+        Returns:
+            True if service is degraded, False otherwise
+        """
         if service_name not in self.degraded_services:
             return False
         
@@ -170,7 +249,18 @@ class GracefulDegradation:
         return True
     
     async def execute_with_fallback(self, service_name: str, primary_func: Callable, *args, **kwargs):
-        """Execute function with fallback if service is degraded."""
+        """
+        Execute function with fallback if service is degraded.
+        
+        Args:
+            service_name: Name of the service
+            primary_func: Primary function to execute
+            *args: Arguments for the function
+            **kwargs: Keyword arguments for the function
+            
+        Returns:
+            Result of primary function or fallback handler
+        """
         if self.is_degraded(service_name) and service_name in self.fallback_handlers:
             logging.info(f"[GracefulDegradation] Using fallback for {service_name}")
             return await self.fallback_handlers[service_name](*args, **kwargs)
@@ -194,15 +284,35 @@ class DataBackupManager:
     """Automated backup and recovery system for critical data."""
     
     def __init__(self, backup_dir: str = "backups"):
+        """
+        Initialize backup manager with backup directory.
+        
+        Args:
+            backup_dir: Directory to store backup files
+        """
         self.backup_dir = backup_dir
         self.ensure_backup_dir()
         
     def ensure_backup_dir(self):
-        """Ensure backup directory exists."""
+        """
+        Ensure backup directory exists and is accessible.
+        """
         os.makedirs(self.backup_dir, exist_ok=True)
         
     async def backup_guild_data(self, bot, guild_id: int) -> str:
-        """Create backup of all guild data."""
+        """
+        Create comprehensive backup of all guild data.
+        
+        Args:
+            bot: Discord bot instance with database access
+            guild_id: ID of the guild to backup
+            
+        Returns:
+            Path to the created backup file
+            
+        Raises:
+            Exception: If backup creation fails
+        """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_file = os.path.join(self.backup_dir, f"guild_{guild_id}_{timestamp}.json")
         
@@ -257,7 +367,17 @@ class DataBackupManager:
             raise
     
     async def restore_guild_data(self, bot, guild_id: int, backup_file: str) -> bool:
-        """Restore guild data from backup."""
+        """
+        Restore guild data from backup file.
+        
+        Args:
+            bot: Discord bot instance with database access
+            guild_id: ID of the guild to restore
+            backup_file: Path to the backup file
+            
+        Returns:
+            True if restoration succeeded, False otherwise
+        """
         try:
             if not os.path.exists(backup_file):
                 logging.error(f"[DataBackup] Backup file not found: {backup_file}")
@@ -295,7 +415,15 @@ class DataBackupManager:
             return False
     
     def list_backups(self, guild_id: Optional[int] = None) -> List[Dict[str, Any]]:
-        """List available backups."""
+        """
+        List available backup files with metadata.
+        
+        Args:
+            guild_id: Optional guild ID to filter backups
+            
+        Returns:
+            List of backup information dictionaries sorted by creation date
+        """
         backups = []
         pattern = f"guild_{guild_id}_" if guild_id else "guild_"
         
@@ -321,6 +449,12 @@ class ReliabilitySystem:
     """Main reliability and resilience system coordinator."""
     
     def __init__(self, bot):
+        """
+        Initialize comprehensive reliability system.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self.circuit_breakers: Dict[str, ServiceCircuitBreaker] = {}
         self.retry_manager = RetryManager()
@@ -333,14 +467,18 @@ class ReliabilitySystem:
         self._setup_fallback_handlers()
     
     def _setup_circuit_breakers(self):
-        """Setup circuit breakers for various services."""
+        """
+        Setup circuit breakers for various services with appropriate thresholds.
+        """
         self.circuit_breakers['discord_api'] = ServiceCircuitBreaker('discord_api', failure_threshold=5, timeout=120)
         self.circuit_breakers['database'] = ServiceCircuitBreaker('database', failure_threshold=3, timeout=60)
         self.circuit_breakers['scheduler'] = ServiceCircuitBreaker('scheduler', failure_threshold=3, timeout=180)
         self.circuit_breakers['cache'] = ServiceCircuitBreaker('cache', failure_threshold=10, timeout=30)
     
     def _setup_fallback_handlers(self):
-        """Setup fallback handlers for graceful degradation."""
+        """
+        Setup fallback handlers for graceful degradation of critical services.
+        """
         self.graceful_degradation.register_fallback('member_fetch', self._fallback_member_fetch)
         self.graceful_degradation.register_fallback('role_assignment', self._fallback_role_assignment)
         self.graceful_degradation.register_fallback('channel_creation', self._fallback_channel_creation)
@@ -364,11 +502,33 @@ class ReliabilitySystem:
         return None
     
     def get_circuit_breaker(self, service_name: str) -> Optional[ServiceCircuitBreaker]:
-        """Get circuit breaker for service."""
+        """
+        Get circuit breaker instance for a specific service.
+        
+        Args:
+            service_name: Name of the service
+            
+        Returns:
+            ServiceCircuitBreaker instance or None if not found
+        """
         return self.circuit_breakers.get(service_name)
     
     async def execute_with_reliability(self, service_name: str, func: Callable, *args, **kwargs):
-        """Execute function with full reliability features."""
+        """
+        Execute function with full reliability features including circuit breakers and fallbacks.
+        
+        Args:
+            service_name: Name of the service for monitoring
+            func: Function to execute
+            *args: Arguments for the function
+            **kwargs: Keyword arguments for the function
+            
+        Returns:
+            Result of function execution
+            
+        Raises:
+            Exception: If circuit breaker is open or all reliability mechanisms fail
+        """
         circuit_breaker = self.get_circuit_breaker(service_name)
         
         if circuit_breaker and not circuit_breaker.can_execute():
@@ -394,7 +554,12 @@ class ReliabilitySystem:
         )
     
     def get_system_status(self) -> Dict[str, Any]:
-        """Get overall system reliability status."""
+        """
+        Get comprehensive system reliability status.
+        
+        Returns:
+            Dictionary containing status of all reliability components
+        """
         return {
             'circuit_breakers': {name: cb.get_status() for name, cb in self.circuit_breakers.items()},
             'degraded_services': list(self.graceful_degradation.degraded_services.keys()),
@@ -404,7 +569,16 @@ class ReliabilitySystem:
         }
 
 def discord_resilient(service_name: str = 'discord_api', max_retries: int = 3):
-    """Decorator for Discord API operations with full resilience."""
+    """
+    Decorator for Discord API operations with full resilience.
+    
+    Args:
+        service_name: Name of the service for circuit breaker tracking
+        max_retries: Maximum number of retry attempts
+        
+    Returns:
+        Decorated function with resiliance features
+    """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -434,7 +608,8 @@ def discord_resilient(service_name: str = 'discord_api', max_retries: int = 3):
                 except discord.HTTPException as e:
                     if e.status == 429:
                         logging.warning(f"[DiscordResilience] Rate limited in {func.__name__}, retrying...")
-                        await asyncio.sleep(e.retry_after if hasattr(e, 'retry_after') else 5)
+                        retry_after = getattr(e, 'retry_after', 5)
+                        await asyncio.sleep(retry_after)
                     raise
             
             return await reliability_system.execute_with_reliability(service_name, execute)
@@ -443,7 +618,15 @@ def discord_resilient(service_name: str = 'discord_api', max_retries: int = 3):
     return decorator
 
 def setup_reliability_system(bot):
-    """Setup reliability system for the bot."""
+    """
+    Setup comprehensive reliability system for the bot.
+    
+    Args:
+        bot: Discord bot instance
+        
+    Returns:
+        ReliabilitySystem instance attached to the bot
+    """
     if not hasattr(bot, 'reliability_system'):
         bot.reliability_system = ReliabilitySystem(bot)
     return bot.reliability_system

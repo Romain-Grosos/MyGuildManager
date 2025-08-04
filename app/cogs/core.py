@@ -2,16 +2,18 @@
 Core Management Cog - Handles guild initialization, modification, and reset operations.
 """
 
-import logging
 import asyncio
+import logging
 import re
 from typing import Optional, Tuple
+
 import discord
 from discord.ext import commands
+
 from ..core.functions import get_user_message
-from ..core.translation import translations as global_translations
 from ..core.rate_limiter import admin_rate_limit, start_cleanup_task
 from ..core.reliability import discord_resilient
+from ..core.translation import translations as global_translations
 
 APP_INITIALIZE_DATA = global_translations.get("commands", {}).get("app_initialize", {})
 APP_MODIFICATION_DATA = global_translations.get("commands", {}).get("app_modify", {})
@@ -21,14 +23,27 @@ class Core(commands.Cog):
     """Cog for managing core guild operations and bot initialization."""
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the Core cog."""
+        """
+        Initialize the Core cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self._sync_lock = asyncio.Lock()
         if not hasattr(bot, "synced"):
             bot.synced = False
     
     def _validate_guild_name(self, guild_name: str) -> Tuple[bool, str]:
-        """Validate guild name format and constraints."""
+        """
+        Validate guild name format and constraints.
+        
+        Args:
+            guild_name: Guild name to validate
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
         if not guild_name or len(guild_name.strip()) == 0:
             return False, "Guild name cannot be empty"
         if len(guild_name) > 50:
@@ -38,7 +53,15 @@ class Core(commands.Cog):
         return True, ""
     
     def _validate_guild_server(self, guild_server: str) -> Tuple[bool, str]:
-        """Validate guild server name format and constraints."""
+        """
+        Validate guild server name format and constraints.
+        
+        Args:
+            guild_server: Server name to validate
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
         if not guild_server or len(guild_server.strip()) == 0:
             return False, "Guild server cannot be empty"
         if len(guild_server) > 50:
@@ -49,7 +72,16 @@ class Core(commands.Cog):
     
     @discord_resilient(service_name='discord_api', max_retries=2)
     async def _safe_edit_nickname(self, guild: discord.Guild, nickname: str) -> bool:
-        """Safely change bot nickname in guild with error handling."""
+        """
+        Safely change bot nickname in guild with error handling.
+        
+        Args:
+            guild: Discord guild where to change nickname
+            nickname: New nickname for the bot
+            
+        Returns:
+            True if nickname was changed successfully, False otherwise
+        """
         try:
             await guild.me.edit(nick=nickname)
             logging.debug(f"[CoreManager] Bot nickname changed to '{nickname}' in guild {guild.id}")
@@ -90,7 +122,13 @@ class Core(commands.Cog):
 
     @commands.Cog.listener()
     async def on_app_command_error(self, ctx: discord.ApplicationContext, error: Exception):
-        """Handle global application command errors."""
+        """
+        Handle global application command errors.
+        
+        Args:
+            ctx: Discord application context
+            error: Exception that occurred during command execution
+        """
         response = get_user_message(ctx, global_translations, "global_error", error=error)
         try:
             if ctx.response.is_done():
@@ -134,7 +172,16 @@ class Core(commands.Cog):
             description_localizations=APP_INITIALIZE_DATA["options"]["guild_server"]["description"]
         )
     ):
-        """Initialize a guild in the bot system with basic settings."""
+        """
+        Initialize a guild in the bot system with basic settings.
+        
+        Args:
+            ctx: Discord application context
+            guild_name: Name of the guild to initialize
+            guild_lang: Language for the guild
+            guild_game: Game ID for the guild
+            guild_server: Server name for the guild
+        """
         valid_name, name_error = self._validate_guild_name(guild_name)
         if not valid_name:
             await ctx.respond(f"Invalid guild name: {name_error}", ephemeral=True)
@@ -235,7 +282,16 @@ class Core(commands.Cog):
             description_localizations=APP_MODIFICATION_DATA["options"]["guild_server"]["description"]
         )
     ):
-        """Modify existing guild settings and update caches."""
+        """
+        Modify existing guild settings and update caches.
+        
+        Args:
+            ctx: Discord application context
+            guild_name: New guild name (optional)
+            guild_lang: New guild language (optional)
+            guild_game: New game ID (optional)
+            guild_server: New server name (optional)
+        """
         if guild_name is not None:
             valid_name, name_error = self._validate_guild_name(guild_name)
             if not valid_name:
@@ -322,7 +378,13 @@ class Core(commands.Cog):
             description_localizations=APP_RESET_DATA["options"]["confirmation"]["description"]
         )
     ):
-        """Reset guild configuration and delete all associated data."""
+        """
+        Reset guild configuration and delete all associated data.
+        
+        Args:
+            ctx: Discord application context
+            confirmation: Confirmation string to validate reset intention
+        """
         guild_id = ctx.guild.id
 
         if confirmation != "DELETE":
@@ -370,7 +432,15 @@ class Core(commands.Cog):
         await ctx.respond(response, ephemeral=True)
 
     async def _delete_guild_data_atomic(self, guild_id: int) -> bool:
-        """Atomically delete all guild data from database."""
+        """
+        Atomically delete all guild data from database.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            True if deletion succeeded, False otherwise
+        """
         try:
             delete_queries = [
                 "DELETE FROM welcome_messages WHERE guild_id = %s",
@@ -398,7 +468,12 @@ class Core(commands.Cog):
     
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):
-        """Handle bot removal from guild and cleanup data."""
+        """
+        Handle bot removal from guild and cleanup data.
+        
+        Args:
+            guild: Discord guild the bot was removed from
+        """
         guild_id = guild.id
         logging.info(f"[CoreManager] Bot removed from guild {guild_id}. Deleting associated data from the database.")
         
@@ -427,5 +502,10 @@ class Core(commands.Cog):
             logging.error(f"[CoreManager] Failed to completely delete data for guild {guild_id}")
 
 def setup(bot: discord.Bot) -> None:
-    """Setup function to add the Core cog to the bot."""
+    """
+    Setup function to add the Core cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(Core(bot))

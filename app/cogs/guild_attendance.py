@@ -2,16 +2,17 @@
 Guild Attendance Cog - Manages event attendance tracking and DKP distribution.
 """
 
-import discord
-from discord.ext import commands
 import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, time as dt_time
 from typing import Dict, List, Set, Tuple, Optional, Any
-import pytz
 
-from ..core.translation from ..core import translations as global_translations
+import discord
+import pytz
+from discord.ext import commands
+
+from ..core.translation import translations as global_translations
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
 GUILD_ATTENDANCE = global_translations.get("guild_attendance", {})
@@ -20,7 +21,12 @@ class GuildAttendance(commands.Cog):
     """Cog for managing event attendance tracking and DKP distribution."""
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the GuildAttendance cog."""
+        """
+        Initialize the GuildAttendance cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
 
 
@@ -31,7 +37,13 @@ class GuildAttendance(commands.Cog):
         logging.debug("[GuildAttendance] Cache loading tasks started in on_ready.")
 
     async def load_attendance_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
+        """
+        Ensure all required data is loaded via centralized cache loader.
+        
+        Loads guild settings, channels, roles, members, and events data needed
+        for attendance tracking. This method is called during bot initialization
+        to warm up the cache.
+        """
         logging.debug("[GuildAttendance] Loading attendance data")
         
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -43,7 +55,16 @@ class GuildAttendance(commands.Cog):
         logging.debug("[GuildAttendance] Attendance data loading completed")
 
     async def get_event_from_cache(self, guild_id: int, event_id: int) -> Optional[Dict]:
-        """Get event data from global cache."""
+        """
+        Get event data from global cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Event ID to retrieve
+            
+        Returns:
+            Event data dictionary or None if not found
+        """
         try:
             event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
             if event_data:
@@ -69,7 +90,14 @@ class GuildAttendance(commands.Cog):
             return None
 
     async def set_event_in_cache(self, guild_id: int, event_id: int, event_data: Dict) -> None:
-        """Set event data in global cache."""
+        """
+        Set event data in global cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Event ID to store
+            event_data: Event data dictionary to store
+        """
         try:
             cache_data = event_data.copy()
             cache_data.pop('guild_id', None)
@@ -78,7 +106,15 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error storing event {event_id} for guild {guild_id}: {e}", exc_info=True)
 
     async def get_closed_events_for_guild(self, guild_id: int) -> List[Dict]:
-        """Get all closed events for a specific guild from global cache."""
+        """
+        Get all closed events for a specific guild from global cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            List of closed event dictionaries
+        """
         try:
             query = """
                 SELECT event_id, name, event_date, event_time, duration, 
@@ -109,7 +145,15 @@ class GuildAttendance(commands.Cog):
             return []
 
     async def get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
-        """Get guild settings from centralized cache."""
+        """
+        Get guild settings from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Dictionary containing guild settings (language, premium, channels, roles)
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         await self.bot.cache_loader.ensure_category_loaded('guild_roles')
@@ -137,7 +181,15 @@ class GuildAttendance(commands.Cog):
             return {}
 
     async def get_guild_members(self, guild_id: int) -> Dict[int, Dict[str, Any]]:
-        """Get guild members from centralized cache."""
+        """
+        Get guild members from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Dictionary mapping member IDs to member data
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_members')
         
         try:
@@ -154,7 +206,13 @@ class GuildAttendance(commands.Cog):
             return {}
 
     async def _update_centralized_cache(self, guild_id: int, guild_members: Dict[int, Dict[str, Any]]) -> None:
-        """Update the centralized cache with modified guild members."""
+        """
+        Update the centralized cache with modified guild members.
+        
+        Args:
+            guild_id: Discord guild ID
+            guild_members: Dictionary of updated member data to store
+        """
         try:
             current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
             
@@ -169,7 +227,14 @@ class GuildAttendance(commands.Cog):
 
 
     async def process_event_registrations(self, guild_id: int, event_id: int, event_data: Dict) -> None:
-        """Method: Process event registrations."""
+        """
+        Process event registrations and calculate attendance/DKP.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Event ID to process
+            event_data: Event data containing registration information
+        """
         logging.info(f"[GuildAttendance] Processing registrations for event {event_id} in guild {guild_id}")
         
         guild = self.bot.get_guild(guild_id)
@@ -188,7 +253,6 @@ class GuildAttendance(commands.Cog):
         registrations_raw = event_data.get("registrations", {})
         if isinstance(registrations_raw, str):
             try:
-                import json
                 registrations = json.loads(registrations_raw)
             except (json.JSONDecodeError, TypeError) as e:
                 logging.warning(f"[GuildAttendance] Failed to parse registrations JSON for event {event_id}: {e}")
@@ -282,7 +346,13 @@ class GuildAttendance(commands.Cog):
                 logging.error(f"[GuildAttendance] Error updating registration stats: {e}", exc_info=True)
 
     async def check_voice_presence(self):
-        """Method: Check voice presence."""
+        """
+        Check voice presence for all guilds and process attendance.
+        
+        This method is called periodically by the scheduler to monitor voice channels
+        and update event attendance based on member presence. It processes all guilds
+        concurrently to improve performance.
+        """
         try:
             tz = pytz.timezone("Europe/Paris")
             now = datetime.now(tz)
@@ -303,14 +373,32 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error in voice presence check: {e}", exc_info=True)
 
     async def get_event_data(self, guild_id: int, event_id: int) -> Dict:
-        """Get event data from centralized cache."""
+        """
+        Get event data from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Event ID to retrieve
+            
+        Returns:
+            Dictionary containing event data or empty dict if not found
+        """
         await self.bot.cache_loader.ensure_category_loaded('events_data')
         
         event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
         return event_data or {}
 
     async def _get_current_events_for_guild(self, guild_id: int, now: datetime) -> List[Dict]:
-        """Internal method: Get current events for guild."""
+        """
+        Get current events for a guild.
+        
+        Args:
+            guild_id: Discord guild ID
+            now: Current datetime for filtering events
+            
+        Returns:
+            List of event dictionaries currently active for the guild
+        """
         current_events = []
         tz = pytz.timezone("Europe/Paris")
         
@@ -388,7 +476,14 @@ class GuildAttendance(commands.Cog):
         return current_events
 
     async def _process_voice_attendance(self, guild: discord.Guild, event_data: Dict, now: datetime) -> None:
-        """Internal method: Process voice attendance."""
+        """
+        Process voice attendance for a specific event.
+        
+        Args:
+            guild: Discord guild where the event is taking place
+            event_data: Dictionary containing event information
+            now: Current datetime for processing
+        """
         event_id = event_data["event_id"]
         logging.debug(f"[GuildAttendance] Processing voice attendance for event {event_id}")
 
@@ -418,7 +513,15 @@ class GuildAttendance(commands.Cog):
             await self._send_attendance_notification(guild.id, event_id, attendance_changes)
 
     async def _get_voice_connected_members(self, guild: discord.Guild) -> Set[int]:
-        """Internal method: Get voice connected members."""
+        """
+        Get voice connected members for attendance tracking.
+        
+        Args:
+            guild: Discord guild to check voice channels
+            
+        Returns:
+            Set of member IDs currently connected to voice channels
+        """
         voice_members = set()
         
         for channel in guild.voice_channels:
@@ -430,11 +533,30 @@ class GuildAttendance(commands.Cog):
         return voice_members
 
     def _was_recently_checked(self, event_data: Dict, now: datetime, threshold_minutes: int = 10) -> bool:
-        """Internal method: Was recently checked."""
+        """
+        Check if event was recently processed to avoid spam.
+        
+        Args:
+            event_data: Dictionary containing event information
+            now: Current datetime for comparison
+            threshold_minutes: Minimum minutes between checks (default: 10)
+            
+        Returns:
+            True if event was checked recently, False otherwise
+        """
         return len(event_data.get("actual_presence", [])) > 0
 
     async def _member_has_members_role(self, guild: discord.Guild, member_id: int) -> bool:
-        """Internal method: Member has members role."""
+        """
+        Check if member has the members role.
+        
+        Args:
+            guild: Discord guild to check in
+            member_id: Discord member ID to check
+            
+        Returns:
+            True if member has the members role, False otherwise
+        """
         try:
             settings = await self.get_guild_settings(guild.id)
             members_role_id = settings.get("members_role")
@@ -458,7 +580,22 @@ class GuildAttendance(commands.Cog):
                                    tentative_ids: Set[int], absence_ids: Set[int], 
                                    current_actual_presence: List[int], event_data: Dict,
                                    dkp_presence: int, dkp_registration: int) -> List[Dict]:
-        """Internal method: Calculate attendance changes."""
+        """
+        Calculate attendance changes based on voice presence.
+        
+        Args:
+            voice_members: Set of member IDs currently in voice channels
+            presence_ids: Set of member IDs registered as present
+            tentative_ids: Set of member IDs registered as tentative
+            absence_ids: Set of member IDs registered as absent
+            current_actual_presence: List of member IDs already processed
+            event_data: Dictionary containing event information
+            dkp_presence: DKP value for attendance
+            dkp_registration: DKP value for registration
+            
+        Returns:
+            List of dictionaries containing attendance changes to apply
+        """
         changes = []
         all_registered = presence_ids | tentative_ids | absence_ids
         current_actual_set = set(current_actual_presence)
@@ -527,7 +664,14 @@ class GuildAttendance(commands.Cog):
         return changes
 
     async def _apply_attendance_changes(self, guild_id: int, event_id: int, changes: List[Dict]) -> None:
-        """Internal method: Apply attendance changes."""
+        """
+        Apply attendance changes to database.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Event ID to update
+            changes: List of attendance changes to apply
+        """
         if not changes:
             return
             
@@ -565,7 +709,14 @@ class GuildAttendance(commands.Cog):
                 logging.error(f"[GuildAttendance] Error applying attendance changes: {e}", exc_info=True)
 
     async def _update_event_actual_presence(self, guild_id: int, event_id: int, voice_members: List[int]) -> None:
-        """Internal method: Update event actual presence."""
+        """
+        Update event's actual presence count.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Event ID to update
+            voice_members: List of member IDs currently in voice channels
+        """
         try:
             actual_presence_json = json.dumps(voice_members)
             update_query = "UPDATE events_data SET actual_presence = %s WHERE guild_id = %s AND event_id = %s"
@@ -581,7 +732,18 @@ class GuildAttendance(commands.Cog):
 
     async def _send_registration_notification(self, guild_id: int, event_id: int, total: int, 
                                             present: int, tentative: int, absent: int, dkp_registration: int = 0) -> None:
-        """Internal method: Send registration notification."""
+        """
+        Send registration summary notification.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Event ID for the notification
+            total: Total number of registrations
+            present: Number of present registrations
+            tentative: Number of tentative registrations
+            absent: Number of absent registrations
+            dkp_registration: Number of DKP-only registrations (default: 0)
+        """
         settings = await self.get_guild_settings(guild_id)
         if not settings or not settings.get("notifications_channel"):
             return
@@ -651,7 +813,14 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error sending registration notification: {e}")
 
     async def _send_attendance_notification(self, guild_id: int, event_id: int, changes: List[Dict]) -> None:
-        """Internal method: Send attendance notification."""
+        """
+        Send attendance change notification.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Event ID for the notification
+            changes: List of attendance changes to report
+        """
         settings = await self.get_guild_settings(guild_id)
         if not settings or not settings.get("notifications_channel") or not changes:
             return
@@ -727,7 +896,13 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error sending attendance notification: {e}")
     
     async def _process_guild_attendance(self, guild: discord.Guild, now: datetime):
-        """Process guild attendance in an optimized way."""
+        """
+        Process attendance for a specific guild.
+        
+        Args:
+            guild: Discord guild to process attendance for
+            now: Current datetime for processing
+        """
         try:
             guild_id = guild.id
             settings = await self.get_guild_settings(guild_id)
@@ -751,5 +926,10 @@ class GuildAttendance(commands.Cog):
             logging.error(f"[GuildAttendance] Error processing guild {guild.id}: {e}", exc_info=True)
 
 def setup(bot: discord.Bot):
-    """Setup function for the cog."""
+    """
+    Setup function to add the GuildAttendance cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(GuildAttendance(bot))

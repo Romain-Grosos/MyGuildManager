@@ -2,21 +2,33 @@
 AutoRole Manager Cog - Manages automatic role assignment and welcome message handling.
 """
 
-import discord
-import logging
-from discord.ext import commands
-from typing import Dict, Tuple
 import asyncio
-import pytz
+import logging
 import time
 from datetime import datetime
-from ..core.translation from ..core import translations as global_translations
+from typing import Dict, Tuple
+
+import discord
+import pytz
+from discord.ext import commands
+
 from ..core.reliability import discord_resilient
+from ..core.translation import translations as global_translations
 
 WELCOME_MP_DATA = global_translations.get("welcome_mp", {})
 
 def update_welcome_embed(embed: discord.Embed, lang: str, translations: dict) -> discord.Embed:
-    """Update welcome embed with acceptance timestamp and language-specific text."""
+    """
+    Update welcome embed with acceptance timestamp and language-specific text.
+    
+    Args:
+        embed: Discord embed to update
+        lang: Language code for translations
+        translations: Translation dictionary
+        
+    Returns:
+        Updated Discord embed with acceptance timestamp
+    """
     try:
         tz_france = pytz.timezone("Europe/Paris")
         now = datetime.now(pytz.utc).astimezone(tz_france).strftime("%d/%m/%Y at %Hh%M")
@@ -39,7 +51,12 @@ class AutoRole(commands.Cog):
     """Cog for managing automatic role assignment and welcome message handling."""
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the AutoRole cog."""
+        """
+        Initialize the AutoRole cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self._profile_setup_cog = None
         self._recent_reactions: Dict[Tuple[int, int, int], float] = {}
@@ -63,7 +80,17 @@ class AutoRole(commands.Cog):
         logging.debug("[AutoRole] Autorole data loading completed")
 
     def _check_rate_limit(self, guild_id: int, user_id: int, message_id: int) -> bool:
-        """Check if user is rate limited for reactions on a specific message."""
+        """
+        Check if user is rate limited for reactions on a specific message.
+        
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID
+            message_id: Discord message ID
+            
+        Returns:
+            True if user can react, False if rate limited
+        """
         key = (guild_id, user_id, message_id)
         current_time = time.time()
         
@@ -91,7 +118,12 @@ class AutoRole(commands.Cog):
         return True
 
     def _get_profile_setup_cog(self):
-        """Get ProfileSetup cog instance with caching."""
+        """
+        Get ProfileSetup cog instance with caching.
+        
+        Returns:
+            ProfileSetup cog instance or None if not found
+        """
         if self._profile_setup_cog is None:
             self._profile_setup_cog = self.bot.get_cog("ProfileSetup")
         return self._profile_setup_cog
@@ -99,7 +131,12 @@ class AutoRole(commands.Cog):
     @commands.Cog.listener()
     @discord_resilient(service_name='discord_api', max_retries=2)
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent) -> None:
-        """Handle reaction addition for role assignment and welcome message updates."""
+        """
+        Handle reaction addition for role assignment and welcome message updates.
+        
+        Args:
+            payload: Discord raw reaction event payload
+        """
         logging.debug(f"[AutoRole - on_raw_reaction_add] Processing reaction: user={payload.user_id}, message={payload.message_id}, emoji={payload.emoji}")
         
         if not payload.guild_id:
@@ -205,7 +242,12 @@ class AutoRole(commands.Cog):
     @commands.Cog.listener()
     @discord_resilient(service_name='discord_api', max_retries=2)
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:
-        """Handle reaction removal and role management."""
+        """
+        Handle reaction removal and role management.
+        
+        Args:
+            payload: Discord raw reaction event payload
+        """
         if not payload.guild_id:
             return
 
@@ -248,5 +290,10 @@ class AutoRole(commands.Cog):
                 logging.error(f"[AutoRole] Error removing role from {member.name}: {e}", exc_info=True)
 
 def setup(bot: discord.Bot):
-    """Setup function to add the AutoRole cog to the bot."""
+    """
+    Setup function to add the AutoRole cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(AutoRole(bot))

@@ -3,20 +3,37 @@ Performance Profiler - Profiles the slowest functions of the Discord bot.
 """
 
 import asyncio
+import functools
+import inspect
 import logging
 import time
-import functools
-from typing import Dict, List, Callable, Any, Optional
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
-import inspect
+from typing import Dict, List, Callable, Any, Optional, DefaultDict
+from typing_extensions import TypedDict
+
+class FunctionStats(TypedDict):
+    """Type definition for function statistics."""
+    calls: int
+    total_time: float
+    min_time: float
+    max_time: float
+    recent_times: "deque[float]"
+    errors: int
+    last_called: Optional[datetime]
 
 class PerformanceProfiler:
     """Performance profiler for async and sync functions."""
     
     def __init__(self, max_entries: int = 1000):
+        """
+        Initialize performance profiler with tracking structures.
+        
+        Args:
+            max_entries: Maximum number of entries to track
+        """
         self.max_entries = max_entries
-        self._function_stats = defaultdict(lambda: {
+        self._function_stats: DefaultDict[str, FunctionStats] = defaultdict(lambda: {
             'calls': 0,
             'total_time': 0.0,
             'min_time': float('inf'),
@@ -30,7 +47,15 @@ class PerformanceProfiler:
         self._call_counter = 0
         
     def profile_function(self, threshold_ms: float = 10.0):
-        """Decorator to profile a function."""
+        """
+        Decorator to profile function execution time and statistics.
+        
+        Args:
+            threshold_ms: Threshold in milliseconds to log slow calls
+            
+        Returns:
+            Decorated function with profiling capabilities
+        """
         def decorator(func: Callable) -> Callable:
             func_name = f"{func.__module__}.{func.__name__}" if hasattr(func, '__module__') else func.__name__
             
@@ -48,7 +73,19 @@ class PerformanceProfiler:
         return decorator
     
     async def _profile_async_call(self, func: Callable, func_name: str, threshold_ms: float, *args, **kwargs):
-        """Profile an asynchronous function call."""
+        """
+        Profile an asynchronous function call with timing and error tracking.
+        
+        Args:
+            func: Function to profile
+            func_name: Name of the function for logging
+            threshold_ms: Threshold for slow call detection
+            *args: Function arguments
+            **kwargs: Function keyword arguments
+            
+        Returns:
+            Result of function execution
+        """
         call_id = self._call_counter
         self._call_counter += 1
         
@@ -77,7 +114,19 @@ class PerformanceProfiler:
                 del self._active_calls[call_id]
     
     def _profile_sync_call(self, func: Callable, func_name: str, threshold_ms: float, *args, **kwargs):
-        """Profile a synchronous function call."""
+        """
+        Profile a synchronous function call with timing and error tracking.
+        
+        Args:
+            func: Function to profile
+            func_name: Name of the function for logging
+            threshold_ms: Threshold for slow call detection
+            *args: Function arguments
+            **kwargs: Function keyword arguments
+            
+        Returns:
+            Result of function execution
+        """
         call_id = self._call_counter
         self._call_counter += 1
         
@@ -105,8 +154,17 @@ class PerformanceProfiler:
             if call_id in self._active_calls:
                 del self._active_calls[call_id]
     
-    def _record_call(self, func_name: str, execution_time: float, threshold_ms: float, success: bool = True, error: str = None):
-        """Records statistics for a function call."""
+    def _record_call(self, func_name: str, execution_time: float, threshold_ms: float, success: bool = True, error: Optional[str] = None):
+        """
+        Record statistics and metrics for a function call.
+        
+        Args:
+            func_name: Name of the function
+            execution_time: Execution time in milliseconds
+            threshold_ms: Threshold for slow call detection
+            success: Whether the call succeeded
+            error: Error message if call failed
+        """
         stats = self._function_stats[func_name]
         stats['calls'] += 1
         stats['total_time'] += execution_time
@@ -132,7 +190,15 @@ class PerformanceProfiler:
                 logging.warning(f"[PerformanceProfiler] Very slow call: {func_name} took {execution_time:.1f}ms")
     
     def get_function_stats(self, top_n: int = 20) -> List[Dict[str, Any]]:
-        """Returns statistics for the slowest functions."""
+        """
+        Get statistics for the slowest functions sorted by total execution time.
+        
+        Args:
+            top_n: Number of top functions to return
+            
+        Returns:
+            List of function statistics dictionaries
+        """
         stats_list = []
         
         for func_name, stats in self._function_stats.items():
@@ -159,11 +225,24 @@ class PerformanceProfiler:
         return stats_list[:top_n]
     
     def get_slow_calls(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Returns recent slowest calls."""
+        """
+        Get recent slowest calls above the threshold.
+        
+        Args:
+            limit: Maximum number of slow calls to return
+            
+        Returns:
+            List of slow call information dictionaries
+        """
         return list(self._slow_calls)[-limit:]
     
     def get_active_calls(self) -> List[Dict[str, Any]]:
-        """Returns currently active calls."""
+        """
+        Get information about currently executing functions.
+        
+        Returns:
+            List of active call information dictionaries
+        """
         current_time = time.time()
         active = []
         
@@ -180,7 +259,12 @@ class PerformanceProfiler:
         return active
     
     def get_summary_stats(self) -> Dict[str, Any]:
-        """Returns a summary of performance statistics."""
+        """
+        Get comprehensive summary of all performance statistics.
+        
+        Returns:
+            Dictionary containing aggregated performance metrics
+        """
         total_calls = sum(stats['calls'] for stats in self._function_stats.values())
         total_time = sum(stats['total_time'] for stats in self._function_stats.values())
         total_errors = sum(stats['errors'] for stats in self._function_stats.values())
@@ -204,7 +288,9 @@ class PerformanceProfiler:
         }
     
     def reset_stats(self):
-        """Resets all statistics to zero."""
+        """
+        Reset all collected statistics and clear tracking data.
+        """
         self._function_stats.clear()
         self._slow_calls.clear()
         self._active_calls.clear()
@@ -212,7 +298,12 @@ class PerformanceProfiler:
         logging.info("[PerformanceProfiler] Statistics reset")
     
     def get_recommendations(self) -> List[str]:
-        """Generates optimization recommendations."""
+        """
+        Generate optimization recommendations based on collected performance data.
+        
+        Returns:
+            List of actionable optimization recommendations
+        """
         recommendations = []
         stats_list = self.get_function_stats(10)
         
@@ -246,9 +337,22 @@ class PerformanceProfiler:
 global_profiler = PerformanceProfiler()
 
 def profile_performance(threshold_ms: float = 10.0):
-    """Simple decorator to profile a function."""
+    """
+    Simple decorator to profile a function using the global profiler.
+    
+    Args:
+        threshold_ms: Threshold in milliseconds for slow call detection
+        
+    Returns:
+        Profiling decorator
+    """
     return global_profiler.profile_function(threshold_ms)
 
 def get_profiler() -> PerformanceProfiler:
-    """Returns the global profiler instance."""
+    """
+    Get the global profiler instance.
+    
+    Returns:
+        Global PerformanceProfiler instance
+    """
     return global_profiler

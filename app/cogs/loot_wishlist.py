@@ -3,22 +3,34 @@ Loot Wishlist Cog - Manages Epic T2 item wishlists for guild members.
 Allows users to add/remove items from their wishlist and provides centralized tracking.
 """
 
+import asyncio
+import logging
+import unicodedata
+from datetime import datetime
+from typing import Dict, List, Optional, Any, Tuple
+
 import discord
 from discord.ext import commands
-import logging
-from typing import Dict, List, Optional, Any, Tuple
-from ..core.functions import get_user_message
-from ..core.translation from ..core import translations as global_translations
+
+from .. import db
+from ..core import translations as global_translations
 from ..core.reliability import discord_resilient
-import db
-import asyncio
-from datetime import datetime
-import unicodedata
 
 LOOT_WISHLIST_DATA = global_translations.get("loot_wishlist", {})
 
-def get_user_message(interaction_locale: str, section: str, key: str, **kwargs) -> str:
-    """Get localized message for loot wishlist."""
+def get_wishlist_message(interaction_locale: str, section: str, key: str, **kwargs) -> str:
+    """
+    Get localized message for loot wishlist.
+    
+    Args:
+        interaction_locale: The locale code for the interaction (e.g., 'en-US')
+        section: The section name in the translation data
+        key: The specific message key to retrieve
+        **kwargs: Additional keyword arguments for string formatting
+        
+    Returns:
+        The localized message string, formatted with kwargs if provided
+    """
     message_data = LOOT_WISHLIST_DATA.get(section, {}).get(key, {})
     message = message_data.get(interaction_locale, message_data.get("en-US", f"Missing translation: {section}.{key}"))
     
@@ -30,14 +42,33 @@ def get_user_message(interaction_locale: str, section: str, key: str, **kwargs) 
     return message
 
 class LootWishlist(commands.Cog):
-    """Cog for managing Epic T2 item wishlists."""
+    """
+    Cog for managing Epic T2 item wishlists.
+    
+    This cog provides functionality for guild members to create and manage
+    personal wishlists of Epic T2 items, with priority levels and automatic
+    message updates for guild-wide visibility.
+    """
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the Loot Wishlist cog."""
+        """
+        Initialize the Loot Wishlist cog.
+        
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
     
     def sanitize_for_discord(self, text: str) -> str:
-        """Remove accents and special characters for Discord compatibility."""
+        """
+        Remove accents and special characters for Discord compatibility.
+        
+        Args:
+            text: The text string to sanitize
+            
+        Returns:
+            The sanitized text with ASCII characters only
+        """
         if not text:
             return text
         normalized = unicodedata.normalize('NFD', text)
@@ -45,7 +76,15 @@ class LootWishlist(commands.Cog):
         return ascii_text
     
     async def autocomplete_epic_items(self, ctx: discord.AutocompleteContext) -> List[str]:
-        """Autocomplete callback for Epic T2 item names."""
+        """
+        Autocomplete callback for Epic T2 item names.
+        
+        Args:
+            ctx: The autocomplete context containing user input
+            
+        Returns:
+            List of up to 25 matching Epic T2 item names sorted alphabetically
+        """
         try:
             user_input = ctx.value.lower() if ctx.value else ""
             
@@ -74,7 +113,15 @@ class LootWishlist(commands.Cog):
             return []
     
     async def autocomplete_remove_items(self, ctx: discord.AutocompleteContext) -> List[str]:
-        """Autocomplete callback for removing items - prioritizes user's wishlist items."""
+        """
+        Autocomplete callback for removing items - prioritizes user's wishlist items.
+        
+        Args:
+            ctx: The autocomplete context containing user input and interaction data
+            
+        Returns:
+            List of up to 25 items from the user's current wishlist that match the input
+        """
         try:
             guild_id = ctx.interaction.guild_id
             user_id = ctx.interaction.user.id
@@ -99,7 +146,16 @@ class LootWishlist(commands.Cog):
             return []
         
     async def get_user_wishlist(self, guild_id: int, user_id: int) -> List[Dict[str, Any]]:
-        """Get user's current wishlist items."""
+        """
+        Get user's current wishlist items.
+        
+        Args:
+            guild_id: The Discord guild ID
+            user_id: The Discord user ID
+            
+        Returns:
+            List of dictionaries containing item_name, item_id, priority, and created_at
+        """
         query = """
         SELECT item_name, item_id, priority, created_at 
         FROM loot_wishlist 
@@ -125,7 +181,16 @@ class LootWishlist(commands.Cog):
             return []
     
     async def get_wishlist_stats(self, guild_id: int) -> List[Dict[str, Any]]:
-        """Get top 10 most wanted items for the guild."""
+        """
+        Get top 10 most wanted items for the guild.
+        
+        Args:
+            guild_id: The Discord guild ID
+            
+        Returns:
+            List of dictionaries with item statistics including demand_count, user_ids,
+            avg_priority, and item_icon_url, ordered by demand and priority
+        """
         query = """
         SELECT w.item_name, w.item_id, COUNT(*) as demand_count,
                GROUP_CONCAT(DISTINCT w.user_id ORDER BY w.priority DESC, w.created_at ASC) as user_ids,
@@ -159,7 +224,16 @@ class LootWishlist(commands.Cog):
             return []
     
     async def is_valid_epic_item(self, item_name: str) -> Tuple[bool, Optional[str]]:
-        """Check if item exists in Epic T2 database and return item_id."""
+        """
+        Check if item exists in Epic T2 database and return item_id.
+        
+        Args:
+            item_name: The name of the item to validate
+            
+        Returns:
+            Tuple of (is_valid, item_id) where is_valid is True if item exists,
+            and item_id is the database ID of the item or None if not found
+        """
         try:
             epic_items = await self.bot.cache.get_static_data('epic_items_t2')
             
@@ -193,7 +267,15 @@ class LootWishlist(commands.Cog):
             return False, None
     
     async def update_wishlist_message(self, guild_id: int) -> bool:
-        """Update the wishlist placeholder message with current data."""
+        """
+        Update the wishlist placeholder message with current data.
+        
+        Args:
+            guild_id: The Discord guild ID
+            
+        Returns:
+            True if the message was successfully updated, False otherwise
+        """
         try:
             await self.bot.cache_loader.ensure_guild_channels_loaded()
             loot_data = await self.bot.cache.get_guild_data(guild_id, 'loot_message')
@@ -225,10 +307,10 @@ class LootWishlist(commands.Cog):
             await self.bot.cache_loader.ensure_guild_settings_loaded()
             guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
-            title = get_user_message(guild_lang, "placeholder", "title")
-            description = get_user_message(guild_lang, "placeholder", "description")
-            empty_msg = get_user_message(guild_lang, "placeholder", "empty")
-            footer_text = get_user_message(guild_lang, "placeholder", "footer")
+            title = get_wishlist_message(guild_lang, "placeholder", "title")
+            description = get_wishlist_message(guild_lang, "placeholder", "description")
+            empty_msg = get_wishlist_message(guild_lang, "placeholder", "empty")
+            footer_text = get_wishlist_message(guild_lang, "placeholder", "footer")
 
             main_embed = discord.Embed(
                 title=f"⚔️ {title}",
@@ -394,7 +476,17 @@ class LootWishlist(commands.Cog):
             default="2"
         )
     ):
-        """Add an item to user's wishlist."""
+        """
+        Add an item to user's wishlist.
+        
+        Args:
+            ctx: The Discord application context
+            item_name: Name of the Epic T2 item to add (with autocomplete)
+            priority: Priority level as string ("1"=Low, "2"=Medium, "3"=High)
+            
+        Raises:
+            Various exceptions related to database operations or Discord API calls
+        """
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
@@ -403,19 +495,19 @@ class LootWishlist(commands.Cog):
         try:
             is_valid, item_id = await self.is_valid_epic_item(item_name)
             if not is_valid:
-                message = get_user_message(str(ctx.locale), "messages", "item_not_valid", item_name=item_name)
+                message = get_wishlist_message(str(ctx.locale), "messages", "item_not_valid", item_name=item_name)
                 await ctx.followup.send(message, ephemeral=True)
                 return
 
             current_items = await self.get_user_wishlist(guild_id, user_id)
             if len(current_items) >= 3:
-                message = get_user_message(str(ctx.locale), "messages", "wishlist_full")
+                message = get_wishlist_message(str(ctx.locale), "messages", "wishlist_full")
                 await ctx.followup.send(message, ephemeral=True)
                 return
 
             for item in current_items:
                 if item['item_name'].lower() == item_name.lower():
-                    message = get_user_message(str(ctx.locale), "messages", "item_already_exists", item_name=item_name)
+                    message = get_wishlist_message(str(ctx.locale), "messages", "item_already_exists", item_name=item_name)
                     await ctx.followup.send(message, ephemeral=True)
                     return
 
@@ -433,8 +525,8 @@ class LootWishlist(commands.Cog):
                 )
 
                 priority_key = {"1": "priority_low", "2": "priority_medium", "3": "priority_high"}[priority]
-                priority_text = get_user_message(str(ctx.locale), "messages", priority_key)
-                message = get_user_message(str(ctx.locale), "messages", "item_added", 
+                priority_text = get_wishlist_message(str(ctx.locale), "messages", priority_key)
+                message = get_wishlist_message(str(ctx.locale), "messages", "item_added", 
                                          item_name=item_name, priority=priority_text, count=len(current_items) + 1)
                 await ctx.followup.send(message, ephemeral=True)
 
@@ -442,12 +534,12 @@ class LootWishlist(commands.Cog):
                 
             except Exception as db_error:
                 logging.error(f"[LootWishlist] Database error adding item: {db_error}")
-                message = get_user_message(str(ctx.locale), "messages", "database_error_add")
+                message = get_wishlist_message(str(ctx.locale), "messages", "database_error_add")
                 await ctx.followup.send(message, ephemeral=True)
                 
         except Exception as e:
             logging.error(f"[LootWishlist] Error adding item to wishlist: {e}")
-            message = get_user_message(str(ctx.locale), "messages", "general_error", action="adding the item")
+            message = get_wishlist_message(str(ctx.locale), "messages", "general_error", action="adding the item")
             await ctx.followup.send(message, ephemeral=True)
 
     @wishlist_group.command(
@@ -467,7 +559,16 @@ class LootWishlist(commands.Cog):
             autocomplete=discord.utils.basic_autocomplete(lambda ctx: ctx.bot.get_cog('LootWishlist').autocomplete_remove_items(ctx))
         )
     ):
-        """Remove an item from user's wishlist."""
+        """
+        Remove an item from user's wishlist.
+        
+        Args:
+            ctx: The Discord application context
+            item_name: Name of the item to remove (with autocomplete from user's wishlist)
+            
+        Raises:
+            Various exceptions related to database operations or Discord API calls
+        """
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
@@ -483,7 +584,7 @@ class LootWishlist(commands.Cog):
                     break
             
             if not item_found:
-                message = get_user_message(str(ctx.locale), "messages", "item_not_in_wishlist", item_name=item_name)
+                message = get_wishlist_message(str(ctx.locale), "messages", "item_not_in_wishlist", item_name=item_name)
                 await ctx.followup.send(message, ephemeral=True)
                 return
 
@@ -499,7 +600,7 @@ class LootWishlist(commands.Cog):
                     commit=True
                 )
 
-                message = get_user_message(str(ctx.locale), "messages", "item_removed", 
+                message = get_wishlist_message(str(ctx.locale), "messages", "item_removed", 
                                          item_name=item_name, count=len(current_items) - 1)
                 await ctx.followup.send(message, ephemeral=True)
 
@@ -507,12 +608,12 @@ class LootWishlist(commands.Cog):
                 
             except Exception as db_error:
                 logging.error(f"[LootWishlist] Database error removing item: {db_error}")
-                message = get_user_message(str(ctx.locale), "messages", "database_error_remove")
+                message = get_wishlist_message(str(ctx.locale), "messages", "database_error_remove")
                 await ctx.followup.send(message, ephemeral=True)
                 
         except Exception as e:
             logging.error(f"[LootWishlist] Error removing item from wishlist: {e}")
-            message = get_user_message(str(ctx.locale), "messages", "general_error", action="removing the item")
+            message = get_wishlist_message(str(ctx.locale), "messages", "general_error", action="removing the item")
             await ctx.followup.send(message, ephemeral=True)
     
     @wishlist_group.command(
@@ -523,7 +624,15 @@ class LootWishlist(commands.Cog):
     )
     @discord_resilient(service_name='discord_api', max_retries=3)
     async def wishlist_list(self, ctx: discord.ApplicationContext):
-        """Show user's current wishlist."""
+        """
+        Show user's current wishlist.
+        
+        Args:
+            ctx: The Discord application context
+            
+        Raises:
+            Various exceptions related to database operations or Discord API calls
+        """
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
@@ -532,21 +641,21 @@ class LootWishlist(commands.Cog):
         try:
             current_items = await self.get_user_wishlist(guild_id, user_id)
             
-            title = get_user_message(str(ctx.locale), "messages", "wishlist_title", user=ctx.author.display_name)
+            title = get_wishlist_message(str(ctx.locale), "messages", "wishlist_title", user=ctx.author.display_name)
             embed = discord.Embed(
                 title=title,
                 color=discord.Color.gold()
             )
             
             if not current_items:
-                embed.description = get_user_message(str(ctx.locale), "messages", "wishlist_empty")
+                embed.description = get_wishlist_message(str(ctx.locale), "messages", "wishlist_empty")
             else:
                 wishlist_text = ""
                 priority_emojis = {1: "🔵", 2: "🟡", 3: "🔴"}
                 priority_names = {
-                    1: get_user_message(str(ctx.locale), "messages", "priority_low"),
-                    2: get_user_message(str(ctx.locale), "messages", "priority_medium"),
-                    3: get_user_message(str(ctx.locale), "messages", "priority_high")
+                    1: get_wishlist_message(str(ctx.locale), "messages", "priority_low"),
+                    2: get_wishlist_message(str(ctx.locale), "messages", "priority_medium"),
+                    3: get_wishlist_message(str(ctx.locale), "messages", "priority_high")
                 }
                 
                 for i, item in enumerate(current_items, 1):
@@ -556,20 +665,20 @@ class LootWishlist(commands.Cog):
                     wishlist_text += f"**{i}.** {item['item_name']}\n"
                     wishlist_text += f"└── {priority_emoji} **{priority_name}** priority\n\n"
                 
-                field_name = get_user_message(str(ctx.locale), "messages", "your_items", count=len(current_items))
+                field_name = get_wishlist_message(str(ctx.locale), "messages", "your_items", count=len(current_items))
                 embed.add_field(
                     name=field_name,
                     value=wishlist_text,
                     inline=False
                 )
             
-            footer_text = get_user_message(str(ctx.locale), "messages", "wishlist_footer")
+            footer_text = get_wishlist_message(str(ctx.locale), "messages", "wishlist_footer")
             embed.set_footer(text=footer_text)
             await ctx.followup.send(embed=embed, ephemeral=True)
             
         except Exception as e:
             logging.error(f"[LootWishlist] Error listing user wishlist: {e}")
-            message = get_user_message(str(ctx.locale), "messages", "general_error", action="retrieving your wishlist")
+            message = get_wishlist_message(str(ctx.locale), "messages", "general_error", action="retrieving your wishlist")
             await ctx.followup.send(message, ephemeral=True)
     
     @discord.slash_command(
@@ -581,7 +690,15 @@ class LootWishlist(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @discord_resilient(service_name='discord_api', max_retries=3)
     async def wishlist_admin(self, ctx: discord.ApplicationContext):
-        """Show global wishlist statistics for moderators."""
+        """
+        Show global wishlist statistics for moderators.
+        
+        Args:
+            ctx: The Discord application context
+            
+        Raises:
+            Various exceptions related to database operations or Discord API calls
+        """
         await ctx.defer()
         
         guild_id = ctx.guild.id
@@ -597,7 +714,7 @@ class LootWishlist(commands.Cog):
             results = await db.run_db_query(query, (guild_id,), fetch_all=True)
             
             if not results:
-                message = get_user_message(str(ctx.locale), "messages", "admin_no_wishlists")
+                message = get_wishlist_message(str(ctx.locale), "messages", "admin_no_wishlists")
                 await ctx.followup.send(message)
                 return
 
@@ -614,15 +731,15 @@ class LootWishlist(commands.Cog):
 
             stats = await self.get_wishlist_stats(guild_id)
 
-            title = get_user_message(str(ctx.locale), "messages", "admin_title")
+            title = get_wishlist_message(str(ctx.locale), "messages", "admin_title")
             stats_embed = discord.Embed(
                 title=f"📊 {title}",
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
 
-            overview_name = get_user_message(str(ctx.locale), "messages", "admin_overview")
-            overview_content = get_user_message(str(ctx.locale), "messages", "admin_overview_content",
+            overview_name = get_wishlist_message(str(ctx.locale), "messages", "admin_overview")
+            overview_content = get_wishlist_message(str(ctx.locale), "messages", "admin_overview_content",
                                               members=len(user_wishlists), total_items=len(results), unique_items=len(stats))
             stats_embed.add_field(
                 name=overview_name,
@@ -646,7 +763,7 @@ class LootWishlist(commands.Cog):
                     inline=True
                 )
             
-            footer_text = get_user_message(str(ctx.locale), "messages", "admin_footer")
+            footer_text = get_wishlist_message(str(ctx.locale), "messages", "admin_footer")
             stats_embed.set_footer(text=footer_text)
             
             await ctx.followup.send(embed=stats_embed)
@@ -764,9 +881,14 @@ class LootWishlist(commands.Cog):
             
         except Exception as e:
             logging.error(f"[LootWishlist] Error getting admin wishlist data: {e}")
-            message = get_user_message(str(ctx.locale), "messages", "general_error", action="retrieving wishlist data")
+            message = get_wishlist_message(str(ctx.locale), "messages", "general_error", action="retrieving wishlist data")
             await ctx.followup.send(message, ephemeral=True)
 
 def setup(bot: discord.Bot) -> None:
-    """Setup function for the cog."""
+    """
+    Setup function for the cog.
+    
+    Args:
+        bot: The Discord bot instance to add the cog to
+    """
     bot.add_cog(LootWishlist(bot))

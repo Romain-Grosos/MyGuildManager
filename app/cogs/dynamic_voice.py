@@ -2,33 +2,56 @@
 Dynamic Voice Cog - Manages temporary voice channel creation and cleanup.
 """
 
-import discord
-import logging
-from discord.ext import commands
 import asyncio
-import time
+import logging
 import re
-from ..core.translation from ..core import translations as global_translations
+import time
+
+import discord
+from discord.ext import commands
+
+from ..core.translation import translations as global_translations
 
 class DynamicVoice(commands.Cog):
     """Cog for managing dynamic temporary voice channels."""
     
     def __init__(self, bot):
-        """Initialize the DynamicVoice cog."""
+        """
+        Initialize the DynamicVoice cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self.max_channels_per_user = 10
         self.cool_down_seconds = 1
         self.user_cool_downs = {}
 
     def sanitize_channel_name(self, name: str) -> str:
-        """Sanitize channel name by removing invalid characters."""
+        """
+        Sanitize channel name by removing invalid characters.
+        
+        Args:
+            name: Raw channel name to sanitize
+            
+        Returns:
+            Sanitized channel name safe for Discord
+        """
         name = re.sub(r'[^\w\s-]', '', name)[:100]
         if not name.strip():
             return "Private Channel"
         return name.strip()
 
     def get_safe_username(self, member):
-        """Get safe username for logging purposes."""
+        """
+        Get safe username for logging purposes.
+        
+        Args:
+            member: Discord member object
+            
+        Returns:
+            Safe username string for logging
+        """
         return f"User#{member.discriminator}" if hasattr(member, 'discriminator') else f"User{member.id}"
 
     @commands.Cog.listener()
@@ -40,13 +63,22 @@ class DynamicVoice(commands.Cog):
         logging.debug("[DynamicVoice] 'load_persistent_channels' task started from on_ready")
 
     async def load_create_room_channels(self):
-        """Ensure create room channels are loaded via centralized cache loader."""
+        """
+        Ensure create room channels are loaded via centralized cache loader.
+        
+        Loads guild channel configurations needed for dynamic voice channel creation.
+        """
         logging.debug("[DynamicVoice] Loading create room channels via centralized cache")
         await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         logging.debug("[DynamicVoice] Create room channels loading completed")
 
     async def load_persistent_channels(self):
-        """Load persistent dynamic channels from database into cache."""
+        """
+        Load persistent dynamic channels from database into cache.
+        
+        Retrieves all existing dynamic voice channels from database and stores
+        them in cache for tracking and cleanup purposes.
+        """
         logging.debug("[DynamicVoice] Loading persistent dynamic channels from DB")
         query = "SELECT channel_id FROM dynamic_voice_channels;"
         try:
@@ -62,7 +94,14 @@ class DynamicVoice(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        """Handle voice state updates for dynamic channel creation and cleanup."""
+        """
+        Handle voice state updates for dynamic channel creation and cleanup.
+        
+        Args:
+            member: Discord member whose voice state changed
+            before: Previous voice state
+            after: New voice state
+        """
         guild = member.guild
         channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
         create_room_channel = channels_data.get('create_room_channel') if channels_data else None
@@ -214,5 +253,10 @@ class DynamicVoice(commands.Cog):
                     logging.error(f"[DynamicVoice] Error while deleting channel {channel.name}: {e}", exc_info=True)
 
 def setup(bot: discord.Bot):
-    """Setup function to add the DynamicVoice cog to the bot."""
+    """
+    Setup function to add the DynamicVoice cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(DynamicVoice(bot))

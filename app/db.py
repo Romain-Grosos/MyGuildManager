@@ -1,10 +1,12 @@
+import asyncio
+import contextlib
 import logging
 import sys
-import asyncio
 import time
-import contextlib
 from typing import Optional, Any
+
 import mariadb
+
 from . import config
 
 # #################################################################################### #
@@ -13,7 +15,12 @@ from . import config
 pool_connection = None
 
 def initialize_db_pool() -> bool:
-    """Initialize MariaDB connection pool."""
+    """
+    Initialize MariaDB connection pool with configuration settings.
+    
+    Returns:
+        True if pool initialization succeeded, False otherwise
+    """
     global pool_connection
     try:
         pool_connection = mariadb.connect(
@@ -39,13 +46,25 @@ if not initialize_db_pool():
 #                            Query Logging Utilities
 # #################################################################################### #
 def safe_log_query(query: str, params: tuple):
-    """Log query execution safely without exposing sensitive data."""
+    """
+    Log query execution safely without exposing sensitive data.
+    
+    Args:
+        query: SQL query string
+        params: Query parameters tuple
+    """
     safe_query = query[:100] + "..." if len(query) > 100 else query
     param_count = len(params) if params else 0
     logging.debug(f"[DBManager] Executing query (params: {param_count}): {safe_query}")
 
 def safe_log_error(error: Exception, query: str):
-    """Log query errors safely without exposing sensitive data."""
+    """
+    Log query errors safely without exposing sensitive data.
+    
+    Args:
+        error: Exception that occurred
+        query: SQL query that failed
+    """
     safe_query = query[:50] + "..." if len(query) > 50 else query
     logging.error(f"[DBManager] Query failed: {type(error).__name__} | Query: {safe_query}")
 
@@ -55,17 +74,29 @@ def safe_log_error(error: Exception, query: str):
 class CircuitBreaker:
     """Circuit breaker to prevent cascading failures when database is unavailable."""
     
-    def __init__(self, failure_threshold: int = None, timeout: int = 60):
+    def __init__(self, failure_threshold: int | None = None, timeout: int = 60):
+        """
+        Initialize circuit breaker with failure threshold and timeout.
+        
+        Args:
+            failure_threshold: Number of failures before opening circuit
+            timeout: Timeout in seconds before attempting to close circuit
+        """
         self.failure_threshold = failure_threshold or config.DB_CIRCUIT_BREAKER_THRESHOLD
         self.timeout = timeout
         self.failure_count = 0
-        self.last_failure_time = None
+        self.last_failure_time: float | None = None
         self.state = "CLOSED"
     
     def is_open(self) -> bool:
-        """Check if circuit breaker is open (blocking requests)."""
+        """
+        Check if circuit breaker is open (blocking requests).
+        
+        Returns:
+            True if circuit breaker is open, False otherwise
+        """
         if self.state == "OPEN":
-            if time.time() - self.last_failure_time > self.timeout:
+            if self.last_failure_time and time.time() - self.last_failure_time > self.timeout:
                 self.state = "HALF_OPEN"
                 logging.info("[DBManager] Circuit breaker entering HALF_OPEN state")
                 return False
@@ -73,14 +104,18 @@ class CircuitBreaker:
         return False
     
     def record_success(self):
-        """Record successful operation, potentially closing the breaker."""
+        """
+        Record successful operation, potentially closing the breaker.
+        """
         if self.state == "HALF_OPEN":
             logging.info("[DBManager] Circuit breaker CLOSED - DB recovered")
         self.failure_count = 0
         self.state = "CLOSED"
     
     def record_failure(self):
-        """Record failed operation, potentially opening the breaker."""
+        """
+        Record failed operation, potentially opening the breaker.
+        """
         self.failure_count += 1
         self.last_failure_time = time.time()
         if self.failure_count >= self.failure_threshold:
@@ -94,6 +129,9 @@ class DatabaseManager:
     """Manages database connections with proper pooling and timeout handling."""
     
     def __init__(self):
+        """
+        Initialize database manager with connection pooling and metrics.
+        """
         self.active_connections = 0
         self.max_active_connections = config.DB_POOL_SIZE
         self.connection_semaphore = asyncio.Semaphore(config.DB_POOL_SIZE)
@@ -103,7 +141,15 @@ class DatabaseManager:
     
     @contextlib.asynccontextmanager
     async def get_connection_with_timeout(self):
-        """Get database connection with timeout and proper resource management."""
+        """
+        Get database connection with timeout and proper resource management.
+        
+        Yields:
+            Database connection from the pool
+            
+        Raises:
+            asyncio.TimeoutError: If connection acquisition times out
+        """
         self.waiting_queue += 1
         
         try:
@@ -138,11 +184,22 @@ class DatabaseManager:
                 pass
     
     def _get_connection(self):
-        """Get connection from pool."""
+        """
+        Get connection from pool.
+        
+        Returns:
+            MariaDB connection from the pool
+        """
         return mariadb.connect(pool_name="secure_pool")
     
     def log_query_metrics(self, query: str, execution_time: float):
-        """Log query execution metrics and detect slow queries."""
+        """
+        Log query execution metrics and detect slow queries.
+        
+        Args:
+            query: SQL query that was executed
+            execution_time: Query execution time in seconds
+        """
         query_type = query.strip().split()[0].upper()
         
         if query_type not in self.query_metrics:
@@ -164,7 +221,12 @@ class DatabaseManager:
             logging.warning(f"[DBManager] Slow query detected ({execution_time:.2f}s): {safe_query}")
     
     def get_performance_metrics(self) -> dict:
-        """Get database performance metrics."""
+        """
+        Get database performance metrics.
+        
+        Returns:
+            Dictionary containing performance metrics
+        """
         return {
             'active_connections': self.active_connections,
             'waiting_queue': self.waiting_queue,
@@ -180,14 +242,31 @@ db_circuit_breaker = CircuitBreaker()
 db_manager = DatabaseManager()
 
 class DBQueryError(Exception):
-    """Custom exception for database query errors."""
+    """
+    Custom exception for database query errors.
+    """
     pass
 
 # #################################################################################### #
 #                            Main Database Query Function
 # #################################################################################### #
 async def run_db_query(query: str, params: tuple = (), commit: bool = False, fetch_one: bool = False, fetch_all: bool = False) -> Optional[Any]:
-    """Execute database query with resilience patterns and proper error handling."""
+    """
+    Execute database query with resilience patterns and proper error handling.
+    
+    Args:
+        query: SQL query string
+        params: Query parameters tuple (default: empty)
+        commit: Whether to commit the transaction (default: False)
+        fetch_one: Whether to fetch one row (default: False)
+        fetch_all: Whether to fetch all rows (default: False)
+        
+    Returns:
+        Query result or None depending on fetch parameters
+        
+    Raises:
+        DBQueryError: If query execution fails
+    """
     
     if db_circuit_breaker.is_open():
         logging.warning("[DBManager] Database circuit breaker is open - query blocked")

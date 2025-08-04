@@ -1,0 +1,30 @@
+{
+  "include": [
+    "app/**/*"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*"
+  ],
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "pythonVersion": "3.8",
+  "pythonPlatform": "Windows",
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportGeneralTypeIssues": false,
+  "reportOptionalMemberAccess": false,
+  "reportAttributeAccessIssue": false,
+  "reportUnusedCoroutine": false,
+  "reportCallInDefaultInitializer": false,
+  "reportUntypedFunctionDecorator": false,
+  "reportUntypedClassDecorator": false,
+  "executionEnvironments": [
+    {
+      "root": "app",
+      "pythonVersion": "3.8",
+      "extraPaths": []
+    }
+  ]
+}

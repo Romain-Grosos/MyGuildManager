@@ -1,10 +1,10 @@
+import asyncio
 import logging
 import time
-import asyncio
-from typing import Dict, Any, Optional, Set, List, Callable
 from collections import defaultdict, deque, Counter
-from functools import wraps
 from datetime import datetime
+from functools import wraps
+from typing import Dict, Any, Optional, Set, List, Callable
 
 # #################################################################################### #
 #                            Global Cache System Configuration
@@ -27,6 +27,14 @@ class CacheEntry:
     """Individual cache entry with TTL and metadata."""
     
     def __init__(self, value: Any, ttl: int, category: str):
+        """
+        Initialize cache entry with value, TTL and tracking metadata.
+        
+        Args:
+            value: Value to cache
+            ttl: Time to live in seconds
+            category: Cache category for organization
+        """
         self.value = value
         self.created_at = time.time()
         self.ttl = ttl
@@ -39,11 +47,21 @@ class CacheEntry:
         self.is_hot = False
     
     def is_expired(self) -> bool:
-        """Check if cache entry has expired."""
+        """
+        Check if cache entry has expired based on TTL.
+        
+        Returns:
+            True if entry has expired, False otherwise
+        """
         return time.time() - self.created_at > self.ttl
     
     def access(self) -> Any:
-        """Access entry and update metrics with smart tracking."""
+        """
+        Access entry and update metrics with smart tracking.
+        
+        Returns:
+            Cached value
+        """
         self.access_count += 1
         current_time = time.time()
         self.last_accessed = current_time
@@ -58,6 +76,12 @@ class CacheEntry:
         return self.value
     
     def _update_prediction(self, current_time: float):
+        """
+        Update prediction of next access time based on access patterns.
+        
+        Args:
+            current_time: Current timestamp
+        """
         """Update prediction of next access time."""
         if len(self.access_times) < 3:
             return
@@ -71,11 +95,21 @@ class CacheEntry:
             self.predicted_next_access = current_time + avg_interval
     
     def get_age(self) -> float:
-        """Get entry age in seconds."""
+        """
+        Get entry age in seconds since creation.
+        
+        Returns:
+            Age in seconds
+        """
         return time.time() - self.created_at
     
     def should_preload(self) -> bool:
-        """Determine if this entry should be preloaded."""
+        """
+        Determine if this entry should be preloaded based on predictions.
+        
+        Returns:
+            True if entry should be preloaded, False otherwise
+        """
         if not self.predicted_next_access or not self.is_hot:
             return False
         
@@ -91,6 +125,12 @@ class GlobalCacheSystem:
     """Centralized cache system for all bot components."""
     
     def __init__(self, bot=None):
+        """
+        Initialize global cache system with metrics and smart features.
+        
+        Args:
+            bot: Discord bot instance (optional)
+        """
         self._cache: Dict[str, CacheEntry] = {}
         self._locks: Dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._metrics = {
@@ -118,16 +158,42 @@ class GlobalCacheSystem:
         logging.info("[Cache] Global cache system initialized with smart features")
     
     def _generate_key(self, category: str, *args) -> str:
-        """Generate cache key from category and arguments."""
+        """
+        Generate cache key from category and arguments.
+        
+        Args:
+            category: Cache category
+            *args: Arguments to include in key
+            
+        Returns:
+            Generated cache key string
+        """
         key_parts = [str(arg) for arg in args if arg is not None]
         return f"{category}:{':'.join(key_parts)}"
     
     def _get_ttl_for_category(self, category: str) -> int:
-        """Get TTL for specific category."""
+        """
+        Get TTL for specific category.
+        
+        Args:
+            category: Cache category name
+            
+        Returns:
+            TTL in seconds for the category
+        """
         return CACHE_CATEGORIES.get(category, DEFAULT_TTL)
     
     async def get(self, category: str, *args) -> Optional[Any]:
-        """Get value from cache."""
+        """
+        Get value from cache with TTL validation.
+        
+        Args:
+            category: Cache category
+            *args: Arguments for cache key generation
+            
+        Returns:
+            Cached value or None if not found/expired
+        """
         key = self._generate_key(category, *args)
         
         async with self._locks[key]:
@@ -151,7 +217,15 @@ class GlobalCacheSystem:
             return entry.access()
     
     async def set(self, category: str, value: Any, *args, ttl: Optional[int] = None) -> None:
-        """Set value in cache."""
+        """
+        Set value in cache with optional custom TTL.
+        
+        Args:
+            category: Cache category
+            value: Value to cache
+            *args: Arguments for cache key generation
+            ttl: Custom TTL in seconds (optional)
+        """
         key = self._generate_key(category, *args)
         cache_ttl = ttl or self._get_ttl_for_category(category)
         
@@ -166,7 +240,16 @@ class GlobalCacheSystem:
                 self._category_metrics[category]['size'] += 1
     
     async def delete(self, category: str, *args) -> bool:
-        """Delete specific cache entry."""
+        """
+        Delete specific cache entry.
+        
+        Args:
+            category: Cache category
+            *args: Arguments for cache key generation
+            
+        Returns:
+            True if entry was deleted, False if not found
+        """
         key = self._generate_key(category, *args)
         
         async with self._locks[key]:
@@ -178,7 +261,15 @@ class GlobalCacheSystem:
             return False
     
     async def invalidate_category(self, category: str) -> int:
-        """Invalidate all entries in a category."""
+        """
+        Invalidate all entries in a specific category.
+        
+        Args:
+            category: Cache category to invalidate
+            
+        Returns:
+            Number of entries invalidated
+        """
         keys_to_remove = []
         
         for key, entry in self._cache.items():
@@ -199,13 +290,27 @@ class GlobalCacheSystem:
 #                            Cache Invalidation Rules
 # #################################################################################### #
     def add_invalidation_rule(self, trigger_category: str, affected_categories: List[str]):
-        """Add rule to invalidate categories when trigger category changes."""
+        """
+        Add rule to invalidate categories when trigger category changes.
+        
+        Args:
+            trigger_category: Category that triggers invalidation
+            affected_categories: Categories to invalidate when trigger changes
+        """
         if trigger_category not in self._invalidation_rules:
             self._invalidation_rules[trigger_category] = set()
         self._invalidation_rules[trigger_category].update(affected_categories)
     
     async def invalidate_related(self, category: str) -> int:
-        """Invalidate categories related to the changed category."""
+        """
+        Invalidate categories related to the changed category.
+        
+        Args:
+            category: Category that changed
+            
+        Returns:
+            Total number of entries invalidated
+        """
         total_invalidated = 0
         
         if category in self._invalidation_rules:
@@ -219,55 +324,149 @@ class GlobalCacheSystem:
 #                            Specialized Cache Methods
 # #################################################################################### #
     async def get_guild_data(self, guild_id: int, data_type: str) -> Optional[Any]:
-        """Get guild-specific data."""
+        """
+        Get guild-specific data from cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            data_type: Type of data to retrieve
+            
+        Returns:
+            Cached guild data or None
+        """
         return await self.get('guild_data', guild_id, data_type)
     
     async def set_guild_data(self, guild_id: int, data_type: str, value: Any) -> None:
-        """Set guild-specific data."""
+        """
+        Set guild-specific data in cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            data_type: Type of data to store
+            value: Data value to cache
+        """
         await self.set('guild_data', value, guild_id, data_type)
     
     async def delete_guild_data(self, guild_id: int, data_type: str) -> bool:
-        """Delete guild-specific data."""
+        """
+        Delete guild-specific data from cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            data_type: Type of data to delete
+            
+        Returns:
+            True if data was deleted, False if not found
+        """
         return await self.delete('guild_data', guild_id, data_type)
     
     async def get_user_data(self, guild_id: int, user_id: int, data_type: str) -> Optional[Any]:
-        """Get user-specific data."""
+        """
+        Get user-specific data from cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID
+            data_type: Type of data to retrieve
+            
+        Returns:
+            Cached user data or None
+        """
         return await self.get('user_data', guild_id, user_id, data_type)
     
     async def set_user_data(self, guild_id: int, user_id: int, data_type: str, value: Any) -> None:
-        """Set user-specific data."""
+        """
+        Set user-specific data in cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID
+            data_type: Type of data to store
+            value: Data value to cache
+        """
         await self.set('user_data', value, guild_id, user_id, data_type)
     
     async def get_guild_members(self, guild_id: int) -> Optional[Dict]:
-        """Get cached guild members."""
+        """
+        Get cached guild members data.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Cached guild members dictionary or None
+        """
         return await self.get('roster_data', guild_id, 'members')
     
     async def set_guild_members(self, guild_id: int, members_data: Dict) -> None:
-        """Cache guild members data."""
+        """
+        Cache guild members data and invalidate related caches.
+        
+        Args:
+            guild_id: Discord guild ID
+            members_data: Members data dictionary to cache
+        """
         await self.set('roster_data', members_data, guild_id, 'members')
         await self.invalidate_related('roster_data')
     
     async def get_event_data(self, guild_id: int, event_type: str = 'all') -> Optional[Any]:
-        """Get cached event data."""
+        """
+        Get cached event data for a guild.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_type: Type of event data to retrieve (default: 'all')
+            
+        Returns:
+            Cached event data or None
+        """
         return await self.get('events_data', guild_id, event_type)
     
     async def set_event_data(self, guild_id: int, event_type: str, data: Any) -> None:
-        """Cache event data."""
+        """
+        Cache event data for a guild.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_type: Type of event data
+            data: Event data to cache
+        """
         await self.set('events_data', data, guild_id, event_type)
     
     async def get_static_data(self, data_type: str, game_id: Optional[int] = None) -> Optional[Any]:
-        """Get static configuration data."""
+        """
+        Get static configuration data from cache.
+        
+        Args:
+            data_type: Type of static data to retrieve
+            game_id: Optional game ID for game-specific data
+            
+        Returns:
+            Cached static data or None
+        """
         return await self.get('static_data', data_type, game_id)
     
     async def set_static_data(self, data_type: str, value: Any, game_id: Optional[int] = None) -> None:
-        """Cache static configuration data."""
+        """
+        Cache static configuration data.
+        
+        Args:
+            data_type: Type of static data
+            value: Data value to cache
+            game_id: Optional game ID for game-specific data
+        """
         await self.set('static_data', value, data_type, game_id)
 
 # #################################################################################### #
 #                            Cache Maintenance and Monitoring
 # #################################################################################### #
     async def cleanup_expired(self) -> int:
-        """Remove all expired entries."""
+        """
+        Remove all expired entries from cache.
+        
+        Returns:
+            Number of entries cleaned up
+        """
         expired_keys = []
         current_time = time.time()
         
@@ -288,7 +487,12 @@ class GlobalCacheSystem:
         return len(expired_keys)
     
     def get_metrics(self) -> Dict[str, Any]:
-        """Get cache performance metrics."""
+        """
+        Get cache performance metrics.
+        
+        Returns:
+            Dictionary containing global and category-specific metrics
+        """
         total_requests = self._metrics['hits'] + self._metrics['misses']
         hit_rate = (self._metrics['hits'] / total_requests * 100) if total_requests > 0 else 0
         
@@ -303,7 +507,12 @@ class GlobalCacheSystem:
         }
     
     def get_cache_info(self) -> Dict[str, Any]:
-        """Get detailed cache information."""
+        """
+        Get detailed cache information and statistics.
+        
+        Returns:
+            Dictionary containing detailed cache information
+        """
         info = {
             'total_entries': len(self._cache),
             'categories': {},
@@ -353,7 +562,16 @@ class GlobalCacheSystem:
     # ==================================================================================== #
     
     async def get_bulk_guild_members(self, guild_id: int, force_refresh: bool = False) -> Dict[int, Dict]:
-        """Get all guild members with optimized cache and prediction."""
+        """
+        Get all guild members with optimized cache and database query.
+        
+        Args:
+            guild_id: Discord guild ID
+            force_refresh: Force refresh from database (default: False)
+            
+        Returns:
+            Dictionary mapping member IDs to member data
+        """
         cache_key = f"bulk_guild_members_{guild_id}"
         
         if not force_refresh:
@@ -404,7 +622,16 @@ class GlobalCacheSystem:
         return members_data
     
     async def get_cached_guild_roles(self, guild_id: int, force_refresh: bool = False) -> Dict[int, Any]:
-        """Get guild roles with cache."""
+        """
+        Get guild roles with cache optimization.
+        
+        Args:
+            guild_id: Discord guild ID
+            force_refresh: Force refresh from Discord API (default: False)
+            
+        Returns:
+            Dictionary mapping role IDs to role objects
+        """
         cache_key = f"guild_roles_{guild_id}"
         
         if not force_refresh:
@@ -425,7 +652,16 @@ class GlobalCacheSystem:
         return roles_dict
     
     async def get_role_members_optimized(self, guild_id: int, role_id: int) -> Set[int]:
-        """Get role members in an optimized way."""
+        """
+        Get role members in an optimized way with caching.
+        
+        Args:
+            guild_id: Discord guild ID
+            role_id: Discord role ID
+            
+        Returns:
+            Set of member IDs with the role
+        """
         cache_key = f"role_members_{guild_id}_{role_id}"
         
         cached_result = await self.get('discord_entities', cache_key)
@@ -449,7 +685,9 @@ class GlobalCacheSystem:
         return member_ids
     
     async def _smart_maintenance(self):
-        """Smart cache maintenance with predictions and preloading."""
+        """
+        Smart cache maintenance with predictions and preloading.
+        """
         try:
             for key, entry in list(self._cache.items()):
                 if entry.should_preload() and key not in self._preload_tasks:
@@ -464,7 +702,13 @@ class GlobalCacheSystem:
             logging.error(f"[Cache] Smart maintenance error: {e}")
     
     async def _schedule_preload(self, key: str, entry: CacheEntry):
-        """Schedule preloading of an entry."""
+        """
+        Schedule preloading of an entry based on predictions.
+        
+        Args:
+            key: Cache key
+            entry: Cache entry to preload
+        """
         async def preload_task():
             try:
                 if entry.predicted_next_access:
@@ -488,7 +732,16 @@ class GlobalCacheSystem:
         self._preload_tasks[key] = asyncio.create_task(preload_task())
     
     async def _preload_entry(self, key: str, entry: CacheEntry) -> bool:
-        """Preload a specific entry."""
+        """
+        Preload a specific entry by refreshing its data.
+        
+        Args:
+            key: Cache key
+            entry: Cache entry to preload
+            
+        Returns:
+            True if preload was successful, False otherwise
+        """
         try:
             category = entry.category
             
@@ -509,7 +762,9 @@ class GlobalCacheSystem:
             return False
     
     async def _update_hot_keys(self):
-        """Update the list of hot keys."""
+        """
+        Update the list of hot keys based on access patterns.
+        """
         hot_candidates = []
         for key, entry in self._cache.items():
             if entry.access_count > 3:
@@ -520,7 +775,9 @@ class GlobalCacheSystem:
         self._hot_keys = {key for key, _, _ in hot_candidates[:50]}
     
     async def _optimize_active_guilds(self):
-        """Optimize cache for the most active guilds."""
+        """
+        Optimize cache for the most active guilds by preloading data.
+        """
         if not self.bot:
             return
 
@@ -538,7 +795,12 @@ class GlobalCacheSystem:
             await self._preload_guild_data(guild_id)
     
     async def _preload_guild_data(self, guild_id: int):
-        """Preload commonly used guild data."""
+        """
+        Preload commonly used guild data for optimization.
+        
+        Args:
+            guild_id: Discord guild ID
+        """
         preload_tasks = []
  
         common_keys = [
@@ -557,7 +819,12 @@ class GlobalCacheSystem:
             await asyncio.gather(*preload_tasks, return_exceptions=True)
     
     def get_smart_stats(self) -> Dict[str, Any]:
-        """Return smart cache statistics."""
+        """
+        Return smart cache statistics including predictions and preloading.
+        
+        Returns:
+            Dictionary containing smart cache statistics
+        """
         total_requests = self._metrics['hits'] + self._metrics['misses']
         hit_rate = (self._metrics['hits'] / total_requests * 100) if total_requests > 0 else 0
         
@@ -584,7 +851,15 @@ class GlobalCacheSystem:
 _global_cache = None
 
 def get_global_cache(bot=None) -> GlobalCacheSystem:
-    """Get the global cache instance."""
+    """
+    Get the global cache instance (singleton pattern).
+    
+    Args:
+        bot: Discord bot instance (optional)
+        
+    Returns:
+        Global cache system instance
+    """
     global _global_cache
     if _global_cache is None:
         _global_cache = GlobalCacheSystem(bot)
@@ -594,13 +869,28 @@ def get_global_cache(bot=None) -> GlobalCacheSystem:
     return _global_cache
 
 def setup_invalidation_rules(cache: GlobalCacheSystem):
-    """Setup cache invalidation rules."""
+    """
+    Setup cache invalidation rules for automatic cache management.
+    
+    Args:
+        cache: Cache system instance
+    """
     cache.add_invalidation_rule('roster_data', ['events_data'])
     cache.add_invalidation_rule('guild_data', ['roster_data', 'events_data'])
     cache.add_invalidation_rule('user_data', ['roster_data'])
 
 def cache_method(category: str, key_generator: Optional[Callable] = None, ttl: Optional[int] = None):
-    """Decorator to automatically cache method results."""
+    """
+    Decorator to automatically cache method results.
+    
+    Args:
+        category: Cache category for the results
+        key_generator: Optional function to generate cache keys
+        ttl: Optional custom TTL for cached results
+        
+    Returns:
+        Decorated function with caching
+    """
     def decorator(func):
         @wraps(func)
         async def wrapper(self, *args, **kwargs):
@@ -625,7 +915,12 @@ def cache_method(category: str, key_generator: Optional[Callable] = None, ttl: O
     return decorator
 
 async def start_cache_maintenance_task(bot=None):
-    """Start background cache maintenance task."""
+    """
+    Start background cache maintenance task for cleanup and optimization.
+    
+    Args:
+        bot: Discord bot instance (optional)
+    """
     cache = get_global_cache()
     
     async def maintenance_loop():

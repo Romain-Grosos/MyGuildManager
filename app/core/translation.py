@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import sys
+
 from ..config import TRANSLATION_FILE, MAX_TRANSLATION_FILE_SIZE
 
 # #################################################################################### #
@@ -10,7 +11,16 @@ from ..config import TRANSLATION_FILE, MAX_TRANSLATION_FILE_SIZE
 translations = {}
 
 def load_translations():
-    """Load and validate translation file with comprehensive error handling."""
+    """
+    Load and validate translation file with comprehensive error handling.
+
+    Loads the JSON translation file, validates its structure and content,
+    and populates the global translations dictionary. Exits the program
+    if any critical errors occur during loading.
+
+    Raises:
+        SystemExit: If translation file is missing, invalid, or cannot be loaded
+    """
     global translations
     
     if not os.path.exists(TRANSLATION_FILE):
@@ -55,3 +65,4 @@ def load_translations():
         sys.exit(1)
 
 load_translations()
+

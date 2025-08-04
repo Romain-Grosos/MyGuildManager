@@ -5,7 +5,15 @@ import re
 #                            Translation System Utilities
 # #################################################################################### #
 def sanitize_kwargs(**kwargs):
-    """Sanitize kwargs for safe string formatting in translations."""
+    """
+    Sanitize kwargs for safe string formatting in translations.
+    
+    Args:
+        **kwargs: Keyword arguments to sanitize
+        
+    Returns:
+        Dictionary of sanitized key-value pairs safe for string formatting
+    """
     safe_kwargs = {}
     for k, v in kwargs.items():
         if isinstance(k, str) and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', k):
@@ -18,7 +26,17 @@ def sanitize_kwargs(**kwargs):
     return safe_kwargs
 
 def get_nested_value(data, keys, max_depth=5):
-    """Safely navigate nested dictionary structure with depth protection."""
+    """
+    Safely navigate nested dictionary structure with depth protection.
+    
+    Args:
+        data: Dictionary to navigate
+        keys: List of keys to traverse
+        max_depth: Maximum traversal depth for security (default: 5)
+        
+    Returns:
+        Retrieved value or None if not found or error occurred
+    """
     if len(keys) > max_depth:
         logging.warning(f"[Translation] Key depth exceeds limit: {'.'.join(keys)}")
         return None
@@ -40,7 +58,18 @@ def get_nested_value(data, keys, max_depth=5):
 #                            Main Translation Function
 # #################################################################################### #
 def get_user_message(ctx, translations, key, **kwargs):
-    """Get localized message from translations with safe formatting and fallbacks."""
+    """
+    Get localized message from translations with safe formatting and fallbacks.
+    
+    Args:
+        ctx: Discord context object with locale information
+        translations: Translation dictionary
+        key: Translation key in dot notation (e.g., 'commands.help.title')
+        **kwargs: Variables for string formatting
+        
+    Returns:
+        Formatted localized message string, empty string if error
+    """
     if not translations or not isinstance(translations, dict):
         logging.error("[Translation] Invalid translations dictionary")
         return ""

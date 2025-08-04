@@ -188,9 +188,8 @@ git commit -m "DOCS(readme): mise à jour instructions d'installation"
 
 ### Avant de créer une PR
 1. **Testez votre code** : `python -m pytest tests/`
-2. **Vérifiez les imports** : `python scripts/update_cog_imports.py`
-3. **Nettoyez** : `make clean`
-4. **Documentez** vos changements
+2. **Nettoyez** : `make clean`
+3. **Documentez** vos changements
 
 ### Template de PR
 ```markdown

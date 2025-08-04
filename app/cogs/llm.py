@@ -2,23 +2,35 @@
 LLM Interaction Cog - Manages AI-powered chat interactions and weapon name normalization.
 """
 
+import asyncio
+import logging
+import os
+import re
+import time
+from typing import List, Dict, Any, Optional
+
 import discord
 from discord.ext import commands
-import os
-from openai import OpenAI
 from dotenv import load_dotenv
-import re
-import logging
-import asyncio
-import time
-from ..core.translation from ..core import translations as global_translations
+from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
+
+from ..core.translation import translations as global_translations
 
 LLM_DATA = global_translations.get("llm", {})
 
 load_dotenv()
 
 def get_openai_client():
-    """Initialize and return OpenAI client with API key from environment."""
+    """
+    Initialize and return OpenAI client with API key from environment.
+    
+    Returns:
+        OpenAI client instance
+        
+    Raises:
+        ValueError: If API_KEY not found in environment variables
+    """
     api_key = os.getenv("API_KEY")
     if not api_key:
         raise ValueError("API_KEY not found in environment")
@@ -48,7 +60,15 @@ _FALLBACK = {
 }
 
 def _ask_ai(prompt: str) -> str:
-    """Query AI for weapon name normalization with specialized system prompt."""
+    """
+    Query AI for weapon name normalization with specialized system prompt.
+    
+    Args:
+        prompt: User input containing weapon names to normalize
+        
+    Returns:
+        Normalized weapon codes separated by '/'
+    """
     client = get_openai_client()
     system = (
         "You convert weapon names into standardized weapon codes for the game Throne and Liberty.\n"
@@ -64,12 +84,21 @@ def _ask_ai(prompt: str) -> str:
         "Given a list of weapon names, return only the corresponding codes (B, CB, DG, GS, S, SNS, SP, W) separated by '/'.\n"
         "Ignore any unknown weapons.\n"
     )
-    msgs = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+    msgs: List[ChatCompletionMessageParam] = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
     out = client.chat.completions.create(model="gpt-4o", messages=msgs, temperature=0)
     return out.choices[0].message.content.strip()
 
 def query_ai(prompt: str, model: str = "gpt-4o") -> str:
-    """Main AI query function for general chat interactions with specialized system prompt."""
+    """
+    Main AI query function for general chat interactions with specialized system prompt.
+    
+    Args:
+        prompt: User question or request
+        model: OpenAI model to use (default: gpt-4o)
+        
+    Returns:
+        AI-generated response text
+    """
     client = get_openai_client()
     system_prompt = (
         "You are the intellectual core of 'My Guild Manager', a Discord bot designed to assist guild members with "
@@ -114,12 +143,21 @@ def query_ai(prompt: str, model: str = "gpt-4o") -> str:
     ]
     completion = client.chat.completions.create(
         model=model,
-        messages=messages
+        messages=messages  # type: ignore
     )
-    return completion.choices[0].message.content
+    return completion.choices[0].message.content or ""
 
-def split_message(text: str, max_length: int = 2000) -> list[str]:
-    """Split long messages into chunks respecting Discord's message limit."""
+def split_message(text: str, max_length: int = 2000) -> "List[str]":
+    """
+    Split long messages into chunks respecting Discord's message limit.
+    
+    Args:
+        text: Text to split into chunks
+        max_length: Maximum length per chunk (default: 2000)
+        
+    Returns:
+        List of text chunks within size limits
+    """
     sentences = re.split(r'(?<=[.!?])\s+', text)
     chunks = []
     current_chunk = ""
@@ -146,7 +184,12 @@ class LLMInteraction(commands.Cog):
     """Cog for managing AI-powered chat interactions and weapon name normalization."""
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the LLMInteraction cog."""
+        """
+        Initialize the LLMInteraction cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self.user_requests = {}
         self.max_requests_per_minute = 6
@@ -158,7 +201,11 @@ class LLMInteraction(commands.Cog):
         logging.debug("[LLMInteraction] Cache loading tasks started in on_ready.")
 
     async def load_llm_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
+        """
+        Ensure all required data is loaded via centralized cache loader.
+        
+        Loads guild settings needed for premium status checks and language preferences.
+        """
         logging.debug("[LLMInteraction] Loading LLM data")
         
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -166,14 +213,30 @@ class LLMInteraction(commands.Cog):
         logging.debug("[LLMInteraction] LLM data loading completed")
 
     async def get_guild_premium_status(self, guild_id: int) -> bool:
-        """Check if guild has premium status from centralized cache."""
+        """
+        Check if guild has premium status from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID to check
+            
+        Returns:
+            True if guild has premium status, False otherwise
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         
         premium = await self.bot.cache.get_guild_data(guild_id, 'premium')
         return premium in [True, 1, "1"]
     
     def sanitize_prompt(self, prompt: str) -> str:
-        """Sanitize user input to prevent prompt injection attacks."""
+        """
+        Sanitize user input to prevent prompt injection attacks.
+        
+        Args:
+            prompt: Raw user input to sanitize
+            
+        Returns:
+            Sanitized prompt with dangerous patterns filtered
+        """
         prompt = prompt[:1000]
         dangerous_patterns = [
             r'ignore.{0,10}previous',
@@ -186,11 +249,27 @@ class LLMInteraction(commands.Cog):
         return prompt
     
     def get_safe_user_info(self, user):
-        """Get safe user information for logging purposes."""
+        """
+        Get safe user information for logging purposes.
+        
+        Args:
+            user: Discord user object
+            
+        Returns:
+            Safe user identifier string for logs
+        """
         return f"User{user.id}"
     
     def check_rate_limit(self, user_id: int) -> bool:
-        """Check if user has exceeded rate limit for AI requests."""
+        """
+        Check if user has exceeded rate limit for AI requests.
+        
+        Args:
+            user_id: Discord user ID to check
+            
+        Returns:
+            True if user can make request, False if rate limited
+        """
         now = time.time()
         if user_id not in self.user_requests:
             self.user_requests[user_id] = []
@@ -204,7 +283,16 @@ class LLMInteraction(commands.Cog):
         return True
     
     async def safe_ai_query(self, prompt: str, max_retries: int = 2) -> str:
-        """Execute AI query with timeout and retry logic."""
+        """
+        Execute AI query with timeout and retry logic.
+        
+        Args:
+            prompt: User prompt to send to AI
+            max_retries: Maximum number of retry attempts (default: 2)
+            
+        Returns:
+            AI response text or timeout message
+        """
         for attempt in range(max_retries):
             try:
                 return await asyncio.wait_for(
@@ -218,7 +306,15 @@ class LLMInteraction(commands.Cog):
         return "Request timed out after multiple attempts."
 
     async def normalize_weapons(self, raw: str) -> str:
-        """Normalize weapon names to standardized codes using AI and fallback logic."""
+        """
+        Normalize weapon names to standardized codes using AI and fallback logic.
+        
+        Args:
+            raw: Raw weapon names input from user
+            
+        Returns:
+            Normalized weapon codes separated by '/' (max 32 chars)
+        """
         try:
             sanitized_input = self.sanitize_prompt(raw)
             ai_out = await asyncio.wait_for(
@@ -240,7 +336,12 @@ class LLMInteraction(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Handle bot mentions for AI-powered chat interactions."""
+        """
+        Handle bot mentions for AI-powered chat interactions.
+        
+        Args:
+            message: Discord message object that potentially mentions the bot
+        """
         if message.author.bot or message.guild is None:
             return
 
@@ -293,5 +394,11 @@ class LLMInteraction(commands.Cog):
                 await message.reply(error_gen.format(error="Service temporarily unavailable"))
 
 def setup(bot: discord.Bot) -> None:
-    """Setup function to add the LLMInteraction cog to the bot."""
+    """
+    Setup function to add the LLMInteraction cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(LLMInteraction(bot))
+

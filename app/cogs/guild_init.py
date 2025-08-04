@@ -2,23 +2,35 @@
 Guild Init Cog - Manages Discord server initialization and setup processes.
 """
 
-import discord
-from discord.ext import commands
+import asyncio
 import logging
 from typing import Any, Dict, Tuple
+
+import discord
+from discord.ext import commands
+
 from ..core.functions import get_user_message
-from ..core.translation from ..core import translations as global_translations
 from ..core.rate_limiter import admin_rate_limit
 from ..core.reliability import discord_resilient
-import asyncio
+from ..core.translation import translations as global_translations
 
 GUILD_INIT_DATA = global_translations.get("guild_init", {})
 
 class GuildInit(commands.Cog):
-    """Cog for managing Discord server initialization and setup processes."""
+    """
+    Cog for managing Discord server initialization and setup processes.
+    
+    This cog provides functionality to initialize Discord servers with predefined
+    roles and channels structure for guild management.
+    """
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the GuildInit cog."""
+        """
+        Initialize the GuildInit cog.
+        
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
 
     @discord.slash_command(
@@ -42,7 +54,23 @@ class GuildInit(commands.Cog):
             ]
         )
     ):
-        """Initialize Discord server with roles and channels."""
+        """
+        Initialize Discord server with roles and channels.
+        
+        Creates a complete guild structure with predefined roles, channels, and categories
+        based on the selected configuration mode. Supports both existing configuration
+        preservation and complete server setup.
+        
+        Args:
+            ctx: The Discord application context
+            config_mode: Configuration mode ('existing' or 'complete')
+            
+        Returns:
+            None
+            
+        Raises:
+            Exception: When database operations fail or Discord API errors occur
+        """
         await ctx.defer(ephemeral=True)
         guild = ctx.guild
         guild_id = guild.id if guild else None
@@ -434,12 +462,31 @@ class GuildInit(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Initialize guild init data on bot ready."""
+        """
+        Initialize guild init data on bot ready.
+        
+        Creates a background task to load all required guild initialization data
+        when the bot becomes ready.
+        
+        Returns:
+            None
+        """
         asyncio.create_task(self.load_guild_init_data())
         logging.debug("[GuildInit] Cache loading tasks started in on_ready.")
 
     async def load_guild_init_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
+        """
+        Ensure all required data is loaded via centralized cache loader.
+        
+        Loads guild settings, channels, and roles data into the cache to ensure
+        all necessary information is available for guild initialization operations.
+        
+        Returns:
+            None
+            
+        Raises:
+            Exception: When cache loading operations fail
+        """
         logging.debug("[GuildInit] Loading guild init data")
         
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -449,5 +496,15 @@ class GuildInit(commands.Cog):
         logging.debug("[GuildInit] Guild init data loading completed")
 
 def setup(bot: discord.Bot) -> None:
-    """Setup function for the cog."""
+    """
+    Setup function for the cog.
+    
+    Registers the GuildInit cog with the Discord bot instance.
+    
+    Args:
+        bot: The Discord bot instance to add the cog to
+        
+    Returns:
+        None
+    """
     bot.add_cog(GuildInit(bot))

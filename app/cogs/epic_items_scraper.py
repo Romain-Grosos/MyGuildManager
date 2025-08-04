@@ -3,36 +3,41 @@ Epic Items Scraper Cog - Scrapes and manages Throne and Liberty Epic T2 items fr
 Uses Selenium for JavaScript-heavy site scraping with multilingual support
 """
 
-import discord
-from discord.ext import commands, tasks
 import asyncio
 import json
 import logging
-from datetime import datetime, time
-from typing import Dict, List, Optional, Any, Tuple
+import os
 import re
 import tempfile
-import os
-from ..core.reliability import discord_resilient
-import db
-from ..core.functions import get_user_message
-from ..core.translation from ..core import translations as global_translations
-
-EPIC_ITEMS_DATA = global_translations.get("epic_items", {})
-
+import time
+from datetime import datetime, time as datetime_time
+from typing import Dict, List, Optional, Any, Tuple
+import discord
+from discord.ext import commands, tasks
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from bs4 import BeautifulSoup
+from ..core.reliability import discord_resilient
+from ..db import run_db_query, run_db_transaction
+from ..core.functions import get_user_message
+from ..core.translation import translations as global_translations
+
+EPIC_ITEMS_DATA = global_translations.get("epic_items", {})
 
 class EpicItemsScraper(commands.Cog):
     """Cog for scraping and managing Epic T2 items from questlog.gg"""
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the Epic Items Scraper cog."""
+        """
+        Initialize the Epic Items Scraper cog.
+        
+        Args:
+            bot: Discord bot instance
+        """
         self.bot = bot
         self.base_urls = {
             'en': "https://questlog.gg/throne-and-liberty/en/db/items?grade=5",
@@ -43,7 +48,15 @@ class EpicItemsScraper(commands.Cog):
         self.languages = ['en', 'fr', 'es', 'de']
 
     async def scrape_epic_items(self) -> None:
-        """Main method to scrape Epic T2 items from questlog.gg using Selenium"""
+        """
+        Main method to scrape Epic T2 items from questlog.gg using Selenium.
+        
+        Scrapes items from all supported languages, processes them, and stores
+        them in the database with proper deduplication and caching.
+        
+        Raises:
+            Exception: If scraping fails or no items are found
+        """
         start_time = datetime.now()
         items_scraped = 0
         items_added = 0
@@ -59,7 +72,7 @@ class EpicItemsScraper(commands.Cog):
                 raise Exception("No items scraped from any language")
 
             existing_items_query = "SELECT item_id FROM epic_items_t2"
-            existing_result = await db.run_db_query(existing_items_query, fetch_all=True)
+            existing_result = await run_db_query(existing_items_query, fetch_all=True)
             existing_item_ids = {row[0] for row in existing_result} if existing_result else set()
             
             queries_and_params = []
@@ -105,7 +118,7 @@ class EpicItemsScraper(commands.Cog):
                 else:
                     items_added += 1
 
-            success = await db.run_db_transaction(queries_and_params)
+            success = await run_db_transaction(queries_and_params)
             
             if success:
                 logging.info(f"Successfully processed {items_scraped} Epic T2 items: {items_added} added, {items_updated} updated")
@@ -124,10 +137,23 @@ class EpicItemsScraper(commands.Cog):
             raise
 
     async def scrape_multilingual_items(self) -> List[Dict[str, Any]]:
-        """Scrape items from all language versions"""
+        """
+        Scrape items from all language versions and merge them into multilingual records.
+
+        Uses Selenium to scrape items from English (base), French, Spanish, and German
+        versions of questlog.gg, then merges the data to create multilingual item records.
+
+        Returns:
+            List of item dictionaries with multilingual names and metadata
+        """
         
         def run_selenium_scraper():
-            """Run Selenium scraper in separate thread with memory optimization"""
+            """
+            Run Selenium scraper in separate thread with memory optimization.
+            
+            Returns:
+                List of multilingual item dictionaries or empty list on failure
+            """
             try:
                 logging.info("Starting memory-optimized Epic T2 scraping")
 
@@ -187,7 +213,18 @@ class EpicItemsScraper(commands.Cog):
             return []
 
     def scrape_language_items_optimized(self, language: str) -> List[Dict[str, Any]]:
-        """Scrape items from a specific language with memory-optimized driver"""
+        """
+        Scrape items from a specific language with memory-optimized driver.
+
+        Creates a new Firefox WebDriver instance with memory optimizations and
+        scrapes all items from the specified language version of questlog.gg.
+
+        Args:
+            language: Language code ('en', 'fr', 'es', 'de')
+
+        Returns:
+            List of item dictionaries with metadata for the specified language
+        """
         driver = None
         try:
             options = Options()
@@ -232,7 +269,19 @@ class EpicItemsScraper(commands.Cog):
                     logging.warning(f"Error closing driver for {language}: {e}")
 
     def scrape_language_items(self, driver, language: str) -> List[Dict[str, Any]]:
-        """Scrape items from a specific language version with automatic pagination detection"""
+        """
+        Scrape items from a specific language version with automatic pagination detection.
+
+        Uses an existing WebDriver instance to scrape all pages for a language,
+        automatically detecting the total number of pages and handling pagination.
+
+        Args:
+            driver: WebDriver instance to use for scraping
+            language: Language code ('en', 'fr', 'es', 'de')
+
+        Returns:
+            List of item dictionaries scraped from all pages
+        """
         items = []
         base_url = self.base_urls[language]
         
@@ -251,7 +300,6 @@ class EpicItemsScraper(commands.Cog):
                         EC.presence_of_element_located((By.TAG_NAME, "body"))
                     )
 
-                    import time
                     time.sleep(2)
 
                     html_content = driver.page_source
@@ -284,7 +332,17 @@ class EpicItemsScraper(commands.Cog):
             return []
 
     def detect_total_pages(self, driver, base_url: str, language: str) -> int:
-        """Detect the total number of pages by examining pagination elements"""
+        """
+        Detect the total number of pages by examining pagination elements.
+        
+        Args:
+            driver: WebDriver instance to use
+            base_url: Base URL for the language version
+            language: Language code for logging
+            
+        Returns:
+            Total number of pages detected, defaults to 20 if detection fails
+        """
         try:
             first_page_url = f"{base_url}&page=1"
             driver.get(first_page_url)
@@ -317,14 +375,14 @@ class EpicItemsScraper(commands.Cog):
                     page_links = pagination_container.find_all('a', href=re.compile(r'page=\d+'))
                     for link in page_links:
                         href = link.get('href', '')
-                        page_match = re.search(r'page=(\d+)', href)
+                        page_match = re.search(r'page=(\d+)', str(href))
                         if page_match:
                             page_num = int(page_match.group(1))
                             max_page = max(max_page, page_num)
 
                     page_texts = pagination_container.find_all(text=re.compile(r'\d+'))
                     for text in page_texts:
-                        numbers = re.findall(r'\d+', text.strip())
+                        numbers = re.findall(r'\d+', str(text).strip())
                         for num_str in numbers:
                             try:
                                 num = int(num_str)
@@ -351,7 +409,17 @@ class EpicItemsScraper(commands.Cog):
             return 20
 
     def binary_search_last_page(self, driver, base_url: str, language: str) -> int:
-        """Use binary search to find the last page with Epic T2 items specifically"""
+        """
+        Use binary search to find the last page with Epic T2 items specifically.
+        
+        Args:
+            driver: WebDriver instance to use
+            base_url: Base URL for the language version
+            language: Language code for logging
+            
+        Returns:
+            Estimated number of pages with Epic T2 items
+        """
         try:
             low, high = 1, 30
             last_epic_page = 1
@@ -373,7 +441,7 @@ class EpicItemsScraper(commands.Cog):
                 for link in item_links:
                     try:
                         href = link.get('href', '')
-                        item_id_match = re.search(r'/items?/(?:[^/?]+/)*([^/?]+)', href)
+                        item_id_match = re.search(r'/items?/(?:[^/?]+/)*([^/?]+)', str(href))
                         if item_id_match:
                             item_id = item_id_match.group(1)
                             if self.should_include_item(item_id):
@@ -400,7 +468,16 @@ class EpicItemsScraper(commands.Cog):
             return 20
 
     def extract_item_from_link(self, link_element, language: str) -> Optional[Dict[str, Any]]:
-        """Extract item data from a link element"""
+        """
+        Extract item data from a link element.
+        
+        Args:
+            link_element: BeautifulSoup link element containing item data
+            language: Language code for the current scraping session
+            
+        Returns:
+            Dictionary with item data or None if extraction fails
+        """
         try:
             href = link_element.get('href', '')
             if not href:
@@ -444,7 +521,15 @@ class EpicItemsScraper(commands.Cog):
             return None
 
     def should_include_item(self, item_id: str) -> bool:
-        """Check if item should be included based on ID patterns"""
+        """
+        Check if item should be included based on ID patterns.
+        
+        Args:
+            item_id: Item identifier to check
+            
+        Returns:
+            True if item should be included, False otherwise
+        """
         if not item_id:
             return False
 
@@ -472,7 +557,15 @@ class EpicItemsScraper(commands.Cog):
         return False
     
     def classify_item_by_id(self, item_id: str) -> Tuple[Optional[str], Optional[str]]:
-        """Classify item type and category based on ID"""
+        """
+        Classify item type and category based on ID patterns.
+        
+        Args:
+            item_id: Item identifier to classify
+            
+        Returns:
+            Tuple of (item_type, item_category) or (None, None) if unrecognized
+        """
         if not item_id:
             return None, None
         
@@ -512,8 +605,18 @@ class EpicItemsScraper(commands.Cog):
         
         return None, None
 
-    def get_translated_item_info(self, ctx: discord.ApplicationContext, item_type: str, item_category: str) -> tuple[str, str]:
-        """Get translated item type and category based on user's locale"""
+    def get_translated_item_info(self, ctx: discord.ApplicationContext, item_type: str, item_category: str) -> "Tuple[str, str]":
+        """
+        Get translated item type and category based on user's locale.
+        
+        Args:
+            ctx: Discord application context with locale information
+            item_type: Item type to translate
+            item_category: Item category to translate
+            
+        Returns:
+            Tuple of (translated_type, translated_category)
+        """
         locale = getattr(ctx, "locale", "en-US") if ctx else "en-US"
 
         translated_type = EPIC_ITEMS_DATA.get("item_types", {}).get(item_type, {}).get(locale)
@@ -527,12 +630,26 @@ class EpicItemsScraper(commands.Cog):
         return translated_type or item_type, translated_category or item_category
 
     async def update_cache(self, items: List[Dict[str, Any]]) -> None:
-        """Update the cache with scraped items."""
+        """
+        Update the cache with scraped items.
+        
+        Args:
+            items: List of item dictionaries to cache
+        """
         await self.bot.cache.set_static_data('epic_items_t2', items)
         logging.info(f"Updated cache with {len(items)} Epic T2 items")
 
     async def log_scraping_success(self, items_scraped: int, items_added: int, items_updated: int, items_failed: int, execution_time: int) -> None:
-        """Log successful scraping to database."""
+        """
+        Log successful scraping to database.
+        
+        Args:
+            items_scraped: Total number of items scraped
+            items_added: Number of new items added
+            items_updated: Number of existing items updated
+            items_failed: Number of items that failed processing
+            execution_time: Total execution time in seconds
+        """
         try:
             status = 'success' if items_failed == 0 else 'partial' if items_failed < items_scraped else 'error'
             
@@ -543,7 +660,7 @@ class EpicItemsScraper(commands.Cog):
             ) VALUES (?, ?, ?, ?, ?, ?)
             """
             
-            await db.run_db_query(
+            await run_db_query(
                 query, 
                 (items_scraped, items_added, items_updated, 0, status, execution_time),
                 commit=True
@@ -555,7 +672,13 @@ class EpicItemsScraper(commands.Cog):
             logging.error(f"Failed to log scraping success: {e}")
 
     async def log_scraping_error(self, error_message: str, execution_time: int) -> None:
-        """Log scraping error to database."""
+        """
+        Log scraping error to database.
+        
+        Args:
+            error_message: Error message to log
+            execution_time: Total execution time in seconds before error
+        """
         try:
             query = """
             INSERT INTO epic_items_scraping_history (
@@ -564,7 +687,7 @@ class EpicItemsScraper(commands.Cog):
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """
             
-            await db.run_db_query(
+            await run_db_query(
                 query, 
                 (0, 0, 0, 0, 'error', execution_time, error_message),
                 commit=True
@@ -604,7 +727,15 @@ class EpicItemsScraper(commands.Cog):
             default="English"
         )
     ):
-        """Command to view Epic T2 items with multilingual support."""
+        """
+        Command to view Epic T2 items with multilingual support.
+        
+        Args:
+            ctx: Discord application context
+            search: Optional search filter for item names
+            item_type: Optional filter by item type (Weapon, Armor, Accessory, All)
+            language: Display language for item names
+        """
         await ctx.defer()
         
         try:
@@ -640,7 +771,7 @@ class EpicItemsScraper(commands.Cog):
                 
                 query += f" ORDER BY {name_column}"
                 
-                results = await db.run_db_query(query, tuple(params) if params else (), fetch_all=True)
+                results = await run_db_query(query, tuple(params) if params else (), fetch_all=True)
                 
                 if results:
                     items = []
@@ -761,5 +892,10 @@ class EpicItemsScraper(commands.Cog):
             await ctx.respond(error_msg, ephemeral=True)
 
 def setup(bot):
-    """Setup function to add this cog to the bot."""
+    """
+    Setup function to add this cog to the bot.
+    
+    Args:
+        bot: Discord bot instance
+    """
     bot.add_cog(EpicItemsScraper(bot))

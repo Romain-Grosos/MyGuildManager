@@ -2,21 +2,23 @@
 Guild Events Cog - Manages event creation, scheduling, and registration system.
 """
 
-import discord
-from discord import NotFound, HTTPException
-import logging
 import asyncio
-import pytz
-from discord.ext import commands, tasks
-from datetime import datetime, timedelta, time as dt_time
-import time
-from ..core.translation from ..core import translations as global_translations
-from typing import Optional, List, Dict, Set, Tuple, Any
 import json
-from ..core.performance_profiler import profile_performance
-from ..core.reliability import discord_resilient
+import logging
 import math
 import statistics
+import time
+from datetime import datetime, timedelta, time as dt_time
+from typing import Optional, List, Dict, Set, Tuple, Any
+
+import discord
+import pytz
+from discord import NotFound, HTTPException
+from discord.ext import commands, tasks
+
+from ..core.performance_profiler import profile_performance
+from ..core.reliability import discord_resilient
+from ..core.translation import translations as global_translations
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
 STATIC_GROUPS = global_translations.get("static_groups", {})
@@ -41,22 +43,61 @@ CLASS_EMOJIS = {
 }
 
 class GuildEvents(commands.Cog):
-    """Cog for managing event creation, scheduling, and registration system."""
+    """
+    Discord cog for managing guild events and group systems.
+    
+    This cog provides comprehensive event management functionality including:
+    - Automated event creation based on calendar schedules
+    - Manual event creation with custom parameters
+    - Event registration system with reaction-based interaction
+    - Automatic group formation for balanced team composition
+    - Static group management for recurring events
+    - Event confirmation, cancellation, and cleanup processes
+    - Integration with DKP (Dragon Kill Points) systems
+    - Multi-language support for international guilds
+    
+    The cog handles both premium and standard guild features, with enhanced
+    functionality available for premium subscribers.
+    """
     
     def __init__(self, bot: discord.Bot) -> None:
-        """Initialize the GuildEvents cog."""
+        """
+        Initialize the GuildEvents cog.
+        
+        Args:
+            bot: Discord bot instance to register the cog with
+            
+        Returns:
+            None
+        """
         self.bot = bot
         self.json_lock = asyncio.Lock()
         self.ignore_removals = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Initialize events data on bot ready."""
+        """
+        Initialize events data when bot is ready.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         asyncio.create_task(self.load_events_data())
         logging.debug("[GuildEvents] Cache loading tasks started in on_ready.")
 
     async def load_events_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
+        """
+        Ensure all required data is loaded via centralized cache loader.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         logging.debug("[GuildEvents] Loading events data")
         
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -70,7 +111,16 @@ class GuildEvents(commands.Cog):
         logging.debug("[GuildEvents] Events data loading completed")
 
     async def get_event_from_cache(self, guild_id: int, event_id: int) -> Optional[Dict]:
-        """Get event data from global cache."""
+        """
+        Get event data from global cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Unique event identifier
+            
+        Returns:
+            Dictionary containing event data if found, None otherwise
+        """
         try:
             event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
             if event_data:
@@ -85,7 +135,17 @@ class GuildEvents(commands.Cog):
             return None
 
     async def set_event_in_cache(self, guild_id: int, event_id: int, event_data: Dict) -> None:
-        """Set event data in global cache."""
+        """
+        Set event data in global cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Unique event identifier
+            event_data: Dictionary containing event information to store
+            
+        Returns:
+            None
+        """
         try:
             cache_data = event_data.copy()
             cache_data.pop('guild_id', None)
@@ -94,14 +154,31 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error storing event {event_id} for guild {guild_id}: {e}", exc_info=True)
 
     async def delete_event_from_cache(self, guild_id: int, event_id: int) -> None:
-        """Delete event data from global cache."""
+        """
+        Delete event data from global cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Unique event identifier
+            
+        Returns:
+            None
+        """
         try:
             await self.bot.cache.delete_guild_data(guild_id, f'event_{event_id}')
         except Exception as e:
             logging.error(f"[GuildEvents] Error deleting event {event_id} for guild {guild_id}: {e}", exc_info=True)
 
     async def get_all_guild_events(self, guild_id: int) -> List[Dict]:
-        """Get all events for a specific guild from global cache."""
+        """
+        Get all events for a specific guild from global cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            List of dictionaries containing event data for the guild
+        """
         try:
             query = """
                 SELECT event_id, name, event_date, event_time, duration, 
@@ -133,7 +210,16 @@ class GuildEvents(commands.Cog):
             return []
 
     async def get_static_group_data(self, guild_id: int, group_name: str) -> Optional[Dict]:
-        """Get static group data from centralized cache."""
+        """
+        Get static group data from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            group_name: Name of the static group to retrieve
+            
+        Returns:
+            Dictionary containing static group data if found, None otherwise
+        """
         await self.bot.cache_loader.ensure_category_loaded('static_groups')
         static_groups = await self.bot.cache.get_guild_data(guild_id, 'static_groups')
         if not static_groups:
@@ -141,7 +227,15 @@ class GuildEvents(commands.Cog):
         return static_groups.get(group_name)
 
     async def get_guild_settings(self, guild_id: int) -> Dict:
-        """Get guild settings from centralized cache."""
+        """
+        Get guild settings from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Dictionary containing guild configuration settings including language, channels, roles, and premium status
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         await self.bot.cache_loader.ensure_category_loaded('guild_roles')
@@ -168,41 +262,94 @@ class GuildEvents(commands.Cog):
 
 
     async def get_events_calendar_data(self, game_id: int) -> Dict:
-        """Get events calendar data from centralized cache."""
+        """
+        Get events calendar data from centralized cache.
+        
+        Args:
+            game_id: Unique game identifier
+            
+        Returns:
+            Dictionary containing events calendar data for the specified game
+        """
         await self.bot.cache_loader.ensure_category_loaded('static_data')
         
         calendar_data = await self.bot.cache.get('static_data', f'events_calendar_{game_id}')
         return calendar_data or {}
 
     async def get_event_data(self, guild_id: int, event_id: int) -> Dict:
-        """Get event data from centralized cache."""
+        """
+        Get event data from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Unique event identifier
+            
+        Returns:
+            Dictionary containing event data, empty dict if not found
+        """
         await self.bot.cache_loader.ensure_category_loaded('events_data')
         
         event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
         return event_data or {}
 
     async def get_guild_member_data(self, guild_id: int, member_id: int) -> Dict:
-        """Get guild member data from centralized cache."""
+        """
+        Get guild member data from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            member_id: Discord member ID
+            
+        Returns:
+            Dictionary containing member data, empty dict if not found
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_members')
         
         member_data = await self.bot.cache.get_guild_data(guild_id, f'member_{member_id}')
         return member_data or {}
 
     async def get_static_groups_data(self, guild_id: int) -> Dict:
-        """Get static groups data from centralized cache."""
+        """
+        Get static groups data from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Dictionary containing all static groups data for the guild, empty dict if not found
+        """
         await self.bot.cache_loader.ensure_category_loaded('static_groups')
         static_groups = await self.bot.cache.get_guild_data(guild_id, 'static_groups')
         return static_groups or {}
 
     async def get_ideal_staff_data(self, guild_id: int) -> Dict:
-        """Get ideal staff data from centralized cache."""
+        """
+        Get ideal staff data from centralized cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Dictionary containing ideal staff composition data for the guild, empty dict if not found
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_ideal_staff')
         
         staff_data = await self.bot.cache.get('guild_data', 'ideal_staff')
         return staff_data.get(guild_id, {}) if staff_data else {}
 
     def get_next_date_for_day(self, day_name: str, event_time_value, tz, tomorrow_only: bool = False) -> Optional[datetime]:
-        """Get next occurrence date for specified day of week."""
+        """
+        Get next occurrence date for specified day of week.
+        
+        Args:
+            day_name: Name of the day (e.g., 'monday', 'tuesday')
+            event_time_value: Time value as timedelta, string, or other format
+            tz: Timezone object for localization
+            tomorrow_only: If True, only return tomorrow's date if it matches the day
+            
+        Returns:
+            Localized datetime object for the next occurrence of the specified day, None if invalid day or no match
+        """
         if isinstance(event_time_value, timedelta):
             total_seconds = int(event_time_value.total_seconds())
             hours = total_seconds // 3600
@@ -257,7 +404,15 @@ class GuildEvents(commands.Cog):
         return tz.localize(naive_dt)
 
     async def create_events_for_all_premium_guilds(self) -> None:
-        """Create recurring events for all premium guilds based on calendar."""
+        """
+        Create recurring events for all premium guilds based on calendar.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         
         for guild in self.bot.guilds:
@@ -276,7 +431,15 @@ class GuildEvents(commands.Cog):
     @profile_performance(threshold_ms=200.0)
     @discord_resilient(service_name='discord_api', max_retries=2)
     async def create_events_for_guild(self, guild: discord.Guild) -> None:
-        """Create recurring events for a specific guild based on its game calendar."""
+        """
+        Create recurring events for a specific guild based on its game calendar.
+        
+        Args:
+            guild: Discord guild object to create events for
+            
+        Returns:
+            None
+        """
         guild_id = guild.id
         
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -515,7 +678,16 @@ class GuildEvents(commands.Cog):
     )
     @commands.has_permissions(manage_guild=True)
     async def event_confirm(self, ctx: discord.ApplicationContext, event_id: str):
-        """Confirm and close an event for registration."""
+        """
+        Confirm and close an event for registration.
+        
+        Args:
+            ctx: Discord application context from the command
+            event_id: String identifier of the event to confirm
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
 
         guild = ctx.guild
@@ -613,7 +785,16 @@ class GuildEvents(commands.Cog):
 
     @event_confirm.error
     async def event_confirm_error(self, ctx, error):
-        """Method: Event confirm error."""
+        """
+        Handle errors that occur during event confirmation.
+        
+        Args:
+            ctx: Discord application context from the command
+            error: Exception that occurred during event confirmation
+            
+        Returns:
+            None
+        """
         logging.error(f"❌ [GuildEvents] event_confirm error: {error}")
         follow_message = GUILD_EVENTS["event_confirm"]["event_ko"].get(ctx.locale,GUILD_EVENTS["event_confirm"]["event_ko"].get("en-US")).format(error=error)
         await ctx.send(follow_message, delete_after=10)
@@ -626,7 +807,16 @@ class GuildEvents(commands.Cog):
     )
     @commands.has_permissions(manage_guild=True)
     async def event_cancel(self, ctx: discord.ApplicationContext, event_id: str):
-        """Cancel an event and remove it from the system."""
+        """
+        Cancel an event and remove it from the system.
+        
+        Args:
+            ctx: Discord application context from the command
+            event_id: String identifier of the event to cancel
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
 
         guild = ctx.guild
@@ -731,14 +921,31 @@ class GuildEvents(commands.Cog):
 
     @event_cancel.error
     async def event_cancel_error(self, ctx, error):
-        """Method: Event cancel error."""
+        """
+        Handle errors that occur during event cancellation.
+        
+        Args:
+            ctx: Discord application context from the command
+            error: Exception that occurred during event cancellation
+            
+        Returns:
+            None
+        """
         logging.error(f"❌ [GuildEvents] event_cancel error: {error}")
         error_msg = GUILD_EVENTS["event_cancel"]["event_embed_ko"].get(ctx.locale,GUILD_EVENTS["event_cancel"]["event_embed_ko"].get("en-US")).format(error=error)
         await ctx.send(error_msg, delete_after=10)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
-        """Handle reaction additions for event registration."""
+        """
+        Handle reaction additions for event registration.
+        
+        Args:
+            payload: Discord raw reaction event payload containing reaction details
+            
+        Returns:
+            None
+        """
         logging.debug(f"[GuildEvents - on_raw_reaction_add] Starting with payload: {payload}")
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
@@ -756,7 +963,17 @@ class GuildEvents(commands.Cog):
             await self._handle_event_reaction(payload, guild, channels_data)
 
     async def _handle_event_reaction(self, payload: discord.RawReactionActionEvent, guild: discord.Guild, settings: dict) -> None:
-        """Handle reaction additions for event registration."""
+        """
+        Process event registration reactions and update participant lists.
+        
+        Args:
+            payload: Discord raw reaction event payload
+            guild: Discord guild object where the reaction occurred
+            settings: Dictionary containing guild configuration settings
+            
+        Returns:
+            None
+        """
         valid_emojis = [
             "<:_yes_:1340109996666388570>",
             "<:_attempt_:1340110058692018248>",
@@ -831,7 +1048,15 @@ class GuildEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
-        """Handle reaction removals for event registration."""
+        """
+        Handle reaction removals for event registration.
+        
+        Args:
+            payload: Discord raw reaction event payload containing reaction details
+            
+        Returns:
+            None
+        """
         key = (payload.message_id, payload.user_id, str(payload.emoji))
         if key in self.ignore_removals:
             ts = self.ignore_removals.pop(key)
@@ -883,7 +1108,16 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents - on_raw_reaction_remove] Error updating DB for registrations: {e}")
 
     async def update_event_embed(self, message, event_record):
-        """Update event embed with current registration information."""
+        """
+        Update event embed with current registration information.
+        
+        Args:
+            message: Discord message object containing the event embed
+            event_record: Dictionary containing event data and registrations
+            
+        Returns:
+            None
+        """
         logging.debug("✅ [GuildEvents] Starting embed update for event.")
         guild = self.bot.get_guild(message.guild.id)
         guild_id = guild.id
@@ -904,7 +1138,15 @@ class GuildEvents(commands.Cog):
             .get(guild_lang, GUILD_EVENTS["events_infos"]["none"]["en-US"])
 
         def format_list(id_list):
-            """Format member ID list for display in embed."""
+            """
+            Format member ID list for display in embed.
+            
+            Args:
+                id_list: List of Discord member IDs
+                
+            Returns:
+                String of formatted member mentions or "None" if empty
+            """
             members = [guild.get_member(uid) for uid in id_list if guild.get_member(uid)]
             return ", ".join(m.mention for m in members) if members else none_key
 
@@ -947,7 +1189,15 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error updating embed: {e}")
 
     async def event_delete_cron(self, ctx=None) -> None:
-        """Automated task to delete finished events."""
+        """
+        Automated task to delete finished events.
+        
+        Args:
+            ctx: Optional Discord application context (default: None)
+            
+        Returns:
+            None
+        """
         tz = pytz.timezone("Europe/Paris")
         now = datetime.now(tz)
 
@@ -1035,7 +1285,15 @@ class GuildEvents(commands.Cog):
             logging.info(f"[GuildEvents CRON] For guild {guild_id}, messages deleted: {total_deleted}")
 
     async def event_reminder_cron(self) -> None:
-        """Automated task to send event reminders."""
+        """
+        Automated task to send event reminders.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         tz = pytz.timezone("Europe/Paris")
         today_str = datetime.now(tz).strftime("%Y-%m-%d")
         overall_results = []
@@ -1175,7 +1433,15 @@ class GuildEvents(commands.Cog):
         logging.info("Reminder results:\n" + "\n".join(overall_results))
 
     async def event_close_cron(self) -> None:
-        """Automated task to close events and process registrations."""
+        """
+        Automated task to close events and process registrations.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         tz = pytz.timezone("Europe/Paris")
         now = datetime.now(tz)
 
@@ -1296,7 +1562,16 @@ class GuildEvents(commands.Cog):
 
     @staticmethod
     def group_members_by_class(member_ids, roster_data):
-        """Group members by their class for balanced team composition."""
+        """
+        Group members by their class for balanced team composition.
+        
+        Args:
+            member_ids: List of member IDs to group
+            roster_data: Dictionary containing member roster information
+            
+        Returns:
+            Tuple of (classes_dict, missing_list) where classes_dict contains members grouped by class and missing_list contains members without class data
+        """
         logging.debug("[Guild_Events - GroupsMembersByClass] Building class buckets…")
         classes = {c: [] for c in ("Tank", "Melee DPS", "Ranged DPS",
                                 "Healer", "Flanker")}
@@ -1315,10 +1590,10 @@ class GuildEvents(commands.Cog):
             weapons  = info.get("weapons", "")
             member_class = info.get("class", "Unknown")
 
-            emojis = " ".join(
-                WEAPON_EMOJIS.get(c.strip(), c.strip())
-                for c in weapons.split("/") if c.strip()
-            ) or "N/A"
+            weapon_parts = [c.strip() for c in (weapons or "").split("/") if c.strip()]
+            emojis = " ".join([
+                WEAPON_EMOJIS.get(c, c) for c in weapon_parts
+            ]) or "N/A"
 
             classes.setdefault(member_class, []).append(f"{pseudo} {emojis} - GS: {gs}")
 
@@ -1327,8 +1602,18 @@ class GuildEvents(commands.Cog):
         return classes, missing
 
     @staticmethod
-    def _get_optimal_grouping(n: int, min_size: int = 4, max_size: int = 6) -> list[int]:
-        """Internal method: Get optimal grouping."""
+    def _get_optimal_grouping(n: int, min_size: int = 4, max_size: int = 6) -> "list[int]":
+        """
+        Calculate optimal group sizes for a given number of participants.
+        
+        Args:
+            n: Total number of participants
+            min_size: Minimum group size (default: 4)
+            max_size: Maximum group size (default: 6)
+            
+        Returns:
+            List of integers representing optimal group sizes
+        """
         logging.debug(f"[Guild_Events - GetOptimalGrouping] Start – n={n}, min={min_size}, max={max_size}")
         possible = []
         try:
@@ -1358,7 +1643,15 @@ class GuildEvents(commands.Cog):
             return [min_size] * math.ceil(n / min_size)
 
     def _calculate_gs_ranges(self, members_data: List[Dict]) -> List[Tuple[int, int]]:
-        """Internal method: Calculate gs ranges."""
+        """
+        Calculate gear score ranges for balanced grouping.
+        
+        Args:
+            members_data: List of dictionaries containing member information including GS
+            
+        Returns:
+            List of tuples representing gear score ranges (min, max)
+        """
         gs_values = []
         for member in members_data:
             try:
@@ -1403,7 +1696,16 @@ class GuildEvents(commands.Cog):
         return ranges
 
     def _get_member_gs_range(self, member_gs, gs_ranges: List[Tuple[int, int]]) -> int:
-        """Internal method: Get member GS range."""
+        """
+        Determine which gear score range a member belongs to.
+        
+        Args:
+            member_gs: Member's gear score value
+            gs_ranges: List of gear score range tuples
+            
+        Returns:
+            Integer index of the appropriate gear score range
+        """
         try:
             if isinstance(member_gs, str) and member_gs.lower() in ["n/a", "na", ""]:
                 return 0
@@ -1421,7 +1723,17 @@ class GuildEvents(commands.Cog):
         return 0
 
     async def _format_static_group_members(self, member_ids: List[int], guild_obj, absent_text: str) -> List[str]:
-        """Internal method: Format static group members."""
+        """
+        Format static group members for display with class icons and status.
+        
+        Args:
+            member_ids: List of Discord member IDs
+            guild_obj: Discord guild object
+            absent_text: Text to display for absent members
+            
+        Returns:
+            List of formatted member strings with class icons and names
+        """
         member_info_list = []
 
         await self.bot.cache_loader.ensure_category_loaded('guild_members')
@@ -1473,7 +1785,7 @@ class GuildEvents(commands.Cog):
             weapons_emoji = ""
             if info["weapons"] and info["weapons"] != "N/A":
                 weapon_list = [w.strip() for w in info["weapons"].split("/") if w.strip()]
-                weapons_emoji = " ".join(WEAPON_EMOJIS.get(weapon, weapon) for weapon in weapon_list)
+                weapons_emoji = " ".join([str(WEAPON_EMOJIS.get(weapon, weapon)) for weapon in weapon_list]) if weapon_list else ""
 
             gs_display = f"({info['gs']})" if info["gs"] and info["gs"] != "N/A" else "(N/A)"
 
@@ -1488,7 +1800,19 @@ class GuildEvents(commands.Cog):
 
     def _calculate_member_score(self, member: Dict, target_class: str, target_gs_range: int, 
                                gs_ranges: List[Tuple[int, int]], is_tentative: bool = False) -> float:
-        """Internal method: Calculate member score."""
+        """
+        Calculate a score for how well a member fits a target group position.
+        
+        Args:
+            member: Dictionary containing member information
+            target_class: Target class for the position
+            target_gs_range: Target gear score range index
+            gs_ranges: List of gear score range tuples
+            is_tentative: Whether the member is tentative (default: False)
+            
+        Returns:
+            Float score representing member fit (higher is better)
+        """
         score = 0.0
         
         if member.get("class") == target_class:
@@ -1512,7 +1836,18 @@ class GuildEvents(commands.Cog):
         return score
 
     async def _assign_groups_enhanced(self, guild_id: int, presence_ids: List[int], tentative_ids: List[int], roster_data: Dict) -> List[List[Dict]]:
-        """Internal method: Assign groups enhanced."""
+        """
+        Assign members to balanced groups using enhanced algorithm with gear score and class balancing.
+        
+        Args:
+            guild_id: Discord guild ID
+            presence_ids: List of confirmed participant IDs
+            tentative_ids: List of tentative participant IDs
+            roster_data: Dictionary containing member roster information
+            
+        Returns:
+            List of groups, where each group is a list of member dictionaries
+        """
         logging.info("[GuildEvents - Groups Enhanced] Starting enhanced group assignment")
         
         all_inscribed = set(presence_ids + tentative_ids)
@@ -1521,13 +1856,22 @@ class GuildEvents(commands.Cog):
         incomplete_static_groups = []
         
         def get_member_info(uid: int, tentative: bool = False):
-            """Get formatted member information for event display."""
+            """
+            Get formatted member information for event display.
+            
+            Args:
+                uid: Discord user ID
+                tentative: Whether the member is tentative (default: False)
+                
+            Returns:
+                Dictionary with member information and tentative status, None if not found
+            """
             info = roster_data["members"].get(str(uid))
             if not info:
                 return None
             return {**info, "tentative": tentative, "user_id": uid}
         
-        all_members_data = [get_member_info(uid) for uid in all_inscribed if get_member_info(uid)]
+        all_members_data = [info for uid in all_inscribed if (info := get_member_info(uid)) is not None]
         gs_ranges = self._calculate_gs_ranges(all_members_data)
         logging.info(f"[GuildEvents - Groups Enhanced] GS ranges calculated: {gs_ranges}")
         
@@ -1611,10 +1955,11 @@ class GuildEvents(commands.Cog):
                         available_members.remove(best_candidate)
                         static_group["missing_slots"] -= 1
                         
-                        if missing_classes and member_info["class"] in missing_classes:
+                        if missing_classes and member_info and member_info.get("class") in missing_classes:
                             missing_classes.remove(member_info["class"])
                         
-                        logging.info(f"[GuildEvents - Groups Enhanced] Added {member_info['class']} to static '{static_group['name']}'")
+                        if member_info:
+                            logging.info(f"[GuildEvents - Groups Enhanced] Added {member_info.get('class', 'Unknown')} to static '{static_group['name']}'")
             
             final_groups.append(static_group["members"])
 
@@ -1755,15 +2100,34 @@ class GuildEvents(commands.Cog):
         logging.info(f"[GuildEvents - Groups Enhanced] Completed: {len(final_groups)} groups formed with enhanced logic")
         return final_groups
 
-    def _assign_groups_legacy(self, presence_ids: list[int], tentative_ids: list[int], roster_data: dict) -> list[list[dict]]:
-        """Internal method: Assign groups legacy."""
+    def _assign_groups_legacy(self, presence_ids: "list[int]", tentative_ids: "list[int]", roster_data: dict) -> "list[list[dict]]":
+        """
+        Assign members to groups using legacy algorithm for backward compatibility.
+        
+        Args:
+            presence_ids: List of confirmed participant IDs
+            tentative_ids: List of tentative participant IDs 
+            roster_data: Dictionary containing member roster information
+            
+        Returns:
+            List of groups, where each group is a list of member dictionaries
+        """
         logging.debug("[Guild_Events - AssignGroups] Starting group assignment…")
 
         buckets = {c: [] for c in ("Tank", "Healer",
                                    "Melee DPS", "Ranged DPS", "Flanker")}
 
         def _push(uid: int, tentative: bool):
-            """Internal method: Push."""
+            """
+            Add a member to the appropriate class bucket for group assignment.
+            
+            Args:
+                uid: Discord user ID
+                tentative: Whether the member is tentative
+                
+            Returns:
+                None
+            """
             info = roster_data["members"].get(str(uid))
             if not info:
                 logging.warning(f"[Guild_Events - AssignGroups] UID {uid} missing from roster, skipped.")
@@ -1796,7 +2160,16 @@ class GuildEvents(commands.Cog):
             sizes = self._get_optimal_grouping(len(presence_ids), 4, 6)
 
             def _pop(role, titular_first=True):
-                """Internal method: Pop."""
+                """
+                Remove and return a member from the specified role bucket.
+                
+                Args:
+                    role: Class role to pop from
+                    titular_first: Whether to prioritize confirmed members over tentative (default: True)
+                    
+                Returns:
+                    Member dictionary if found, None otherwise
+                """
                 pool = buckets[role]
                 for i, m in enumerate(pool):
                     if (titular_first and not m["tentative"]) or not titular_first:
@@ -1830,7 +2203,15 @@ class GuildEvents(commands.Cog):
             fill_order = ("Healer", "Tank", "Melee DPS", "Ranged DPS")
 
             def _need_role(g):
-                """Internal method: Need role."""
+                """
+                Determine which role is most needed for group balance.
+                
+                Args:
+                    g: Current group list of members
+                    
+                Returns:
+                    String role name that is most needed, None if group is balanced
+                """
                 classes = [m["class"] for m in g]
                 if "Healer" not in classes and buckets["Healer"]:
                     return "Healer"
@@ -1865,7 +2246,16 @@ class GuildEvents(commands.Cog):
             return []
 
     async def create_groups(self, guild_id: int, event_id: int) -> None:
-        """Create balanced groups for an event based on registrations."""
+        """
+        Create balanced groups for an event based on registrations.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Unique event identifier
+            
+        Returns:
+            None
+        """
         logging.info(f"[GuildEvent - Cron Create_Groups] Creating groups for guild {guild_id}, event {event_id}")
 
         guild = self.bot.get_guild(guild_id)
@@ -1970,10 +2360,10 @@ class GuildEvents(commands.Cog):
                 lines = []
                 for m in grp:
                     cls_emoji = CLASS_EMOJIS.get(m["class"], "")
-                    weapons_emoji = " ".join(
-                        WEAPON_EMOJIS.get(c.strip(), c.strip())
-                        for c in m["weapons"].split("/") if c.strip()
-                    )
+                    weapon_parts = [c.strip() for c in (m.get("weapons") or "").split("/") if c.strip()]
+                    weapons_emoji = " ".join([
+                        WEAPON_EMOJIS.get(c, c) for c in weapon_parts
+                    ])
                     if m.get("tentative"):
                         lines.append(f"{cls_emoji} {weapons_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
                     else:
@@ -2050,7 +2440,22 @@ class GuildEvents(commands.Cog):
             max_value=9999
         )
     ):
-        """Create a new event with specified parameters."""
+        """
+        Create a new event with specified parameters.
+        
+        Args:
+            ctx: Discord application context from the command
+            event_name: Name of the event to create
+            event_date: Date of the event in DD-MM-YYYY format
+            event_time: Start time of the event in HH:MM format
+            duration: Duration of the event in minutes (1-1440)
+            status: Event status (Confirmed, Cancelled, etc.)
+            dkp_value: DKP points awarded for event completion (0-9999)
+            dkp_ins: DKP points required for event inscription (0-9999)
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
 
         guild = ctx.guild
@@ -2297,7 +2702,16 @@ class GuildEvents(commands.Cog):
             max_length=50
         )
     ):
-        """Create a new static group."""
+        """
+        Create a new static group for recurring events.
+        
+        Args:
+            ctx: Discord application context from the command
+            group_name: Name of the static group to create (max 50 characters)
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
@@ -2352,7 +2766,17 @@ class GuildEvents(commands.Cog):
             description_localizations=STATIC_GROUPS["static_add"]["options"]["member"]["description"]
         )
     ):
-        """Add a member to a static group."""
+        """
+        Add a member to an existing static group.
+        
+        Args:
+            ctx: Discord application context from the command
+            group_name: Name of the static group to add member to
+            member: Discord member to add to the group
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
@@ -2424,7 +2848,17 @@ class GuildEvents(commands.Cog):
             description_localizations=STATIC_GROUPS["static_remove"]["options"]["member"]["description"]
         )
     ):
-        """Remove a member from a static group."""
+        """
+        Remove a member from an existing static group.
+        
+        Args:
+            ctx: Discord application context from the command
+            group_name: Name of the static group to remove member from
+            member: Discord member to remove from the group
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
@@ -2485,7 +2919,16 @@ class GuildEvents(commands.Cog):
             description_localizations=STATIC_GROUPS["preview_groups"]["options"]["event_id"]["description"]
         )
     ):
-        """Preview generated groups for an event."""
+        """
+        Preview auto-generated groups for an event before final creation.
+        
+        Args:
+            ctx: Discord application context from the command
+            event_id: Unique identifier of the event to preview groups for
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
@@ -2595,10 +3038,10 @@ class GuildEvents(commands.Cog):
             lines = []
             for m in grp:
                 cls_emoji = CLASS_EMOJIS.get(m["class"], "")
-                weapons_emoji = " ".join(
-                    WEAPON_EMOJIS.get(c.strip(), c.strip())
-                    for c in m["weapons"].split("/") if c.strip()
-                )
+                weapon_parts = [c.strip() for c in (m.get("weapons") or "").split("/") if c.strip()]
+                weapons_emoji = " ".join([
+                    WEAPON_EMOJIS.get(c, c) for c in weapon_parts
+                ])
                 if m.get("tentative"):
                     lines.append(f"{cls_emoji} {weapons_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
                 else:
@@ -2625,14 +3068,30 @@ class GuildEvents(commands.Cog):
         logging.info(f"[GuildEvents] Groups preview generated for event {event_id} in guild {guild_id}")
 
     async def update_static_groups_message_for_cron(self, guild_id: int) -> None:
-        """Update static groups message for automated tasks."""
+        """
+        Update static groups message for automated tasks.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            None
+        """
         try:
             await self.update_static_groups_message(guild_id)
         except Exception as e:
             logging.error(f"[GuildEvents] Error in cron static groups update for guild {guild_id}: {e}")
 
     async def update_static_groups_message(self, guild_id: int) -> bool:
-        """Update static groups message in the groups channel."""
+        """
+        Update static groups message in the groups channel.
+        
+        Args:
+            guild_id: Discord guild ID
+            
+        Returns:
+            Boolean indicating whether the update was successful
+        """
         try:
             guild_settings = await self.get_guild_settings(guild_id)
             guild_lang = guild_settings.get("guild_lang", "en-US")
@@ -2727,7 +3186,15 @@ class GuildEvents(commands.Cog):
     )
     @commands.has_permissions(manage_roles=True)
     async def static_update(self, ctx: discord.ApplicationContext):
-        """Update static groups message manually."""
+        """
+        Update static groups message manually via command.
+        
+        Args:
+            ctx: Discord application context from the command
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
@@ -2767,7 +3234,16 @@ class GuildEvents(commands.Cog):
             description_localizations=STATIC_GROUPS["static_delete"]["options"]["group_name"]["description"]
         )
     ):
-        """Delete a static group."""
+        """
+        Delete an existing static group permanently.
+        
+        Args:
+            ctx: Discord application context from the command
+            group_name: Name of the static group to delete
+            
+        Returns:
+            None
+        """
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
@@ -2796,7 +3272,17 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error deleting static group: {e}")
 
     async def _notify_ptb_groups(self, guild_id: int, event_id: int, all_groups: List) -> None:
-        """Internal method: Notify ptb groups."""
+        """
+        Notify the PTB (Pick The Best) system about created groups.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Unique event identifier
+            all_groups: List of created group assignments
+            
+        Returns:
+            None
+        """
         try:
             ptb_cog = self.bot.get_cog("GuildPTB")
             if not ptb_cog:
@@ -2832,7 +3318,16 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error notifying PTB groups: {e}", exc_info=True)
     
     async def _schedule_ptb_cleanup(self, guild_id: int, event_id: int) -> None:
-        """Internal method: Schedule ptb cleanup."""
+        """
+        Schedule cleanup of PTB data after event completion.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Unique event identifier
+            
+        Returns:
+            None
+        """
         try:
             event_data = await self.get_event_from_cache(guild_id, event_id)
             if not event_data:
@@ -2872,7 +3367,17 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error scheduling PTB cleanup: {e}", exc_info=True)
     
     async def _delayed_ptb_cleanup(self, guild_id: int, event_id: int, delay_seconds: float) -> None:
-        """Internal method: Delayed ptb cleanup."""
+        """
+        Execute delayed cleanup of PTB data after specified delay.
+        
+        Args:
+            guild_id: Discord guild ID
+            event_id: Unique event identifier
+            delay_seconds: Number of seconds to wait before cleanup
+            
+        Returns:
+            None
+        """
         try:
             if delay_seconds > 0:
                 await asyncio.sleep(delay_seconds)
@@ -2890,5 +3395,14 @@ class GuildEvents(commands.Cog):
 
 
 def setup(bot: discord.Bot):
-    """Setup function for the cog."""
+    """
+    Setup function for the cog.
+    
+    Args:
+        bot: Discord bot instance to add the cog to
+        
+    Returns:
+        None
+    """
     bot.add_cog(GuildEvents(bot))
+

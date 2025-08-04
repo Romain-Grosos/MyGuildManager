@@ -3,11 +3,12 @@ Rate Limiting System for Discord Bot Commands
 Provides protection against spam and abuse of administrative commands.
 """
 
-import time
-import logging
 import asyncio
-from typing import Dict, Tuple, Callable, Any
+import logging
+import time
 from functools import wraps
+from typing import Dict, Tuple, Callable, Any
+
 import discord
 from discord.ext import commands
 
@@ -15,24 +16,28 @@ class RateLimiter:
     """Thread-safe rate limiter with per-user and per-guild tracking."""
     
     def __init__(self):
+        """
+        Initialize rate limiter with tracking dictionaries for different scopes.
+        """
         self.user_limits: Dict[str, Dict[int, float]] = {}
         self.guild_limits: Dict[str, Dict[int, float]] = {}
         self.global_limits: Dict[str, float] = {}
         self._lock = asyncio.Lock()
     
-    async def is_rate_limited(self, command_name: str, user_id: int = None, guild_id: int = None, 
+    async def is_rate_limited(self, command_name: str, user_id: int | None = None, guild_id: int | None = None, 
                             cooldown_seconds: int = 60, scope: str = "user") -> Tuple[bool, float]:
-        """Check if a command is rate limited.
+        """
+        Check if a command is rate limited and update tracking.
         
         Args:
-            command_name: Name of the command
-            user_id: Discord user ID
-            guild_id: Discord guild ID
+            command_name: Name of the command to check
+            user_id: Discord user ID (required for user scope)
+            guild_id: Discord guild ID (required for guild scope)
             cooldown_seconds: Cooldown period in seconds
             scope: Rate limit scope ("user", "guild", or "global")
             
         Returns:
-            Tuple[bool, float]: (is_limited, remaining_time)
+            Tuple containing (is_limited: bool, remaining_time: float)
         """
         async with self._lock:
             now = time.time()
@@ -73,7 +78,12 @@ class RateLimiter:
             return False, 0.0
     
     async def cleanup_old_entries(self, max_age_hours: int = 24):
-        """Clean up old rate limit entries to prevent memory leaks."""
+        """
+        Clean up old rate limit entries to prevent memory leaks.
+        
+        Args:
+            max_age_hours: Maximum age in hours for entries to keep
+        """
         async with self._lock:
             cutoff_time = time.time() - (max_age_hours * 3600)
 
@@ -110,13 +120,17 @@ class RateLimiter:
 
 rate_limiter = RateLimiter()
 
-def rate_limit(cooldown_seconds: int = 60, scope: str = "user", error_message: str = None):
-    """Decorator to add rate limiting to Discord commands.
+def rate_limit(cooldown_seconds: int = 60, scope: str = "user", error_message: str | None = None):
+    """
+    Decorator to add rate limiting to Discord commands.
     
     Args:
         cooldown_seconds: Cooldown period in seconds
         scope: Rate limit scope ("user", "guild", or "global")
-        error_message: Custom error message (optional)
+        error_message: Custom error message with {remaining_time} placeholder
+        
+    Returns:
+        Decorated function with rate limiting applied
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -131,12 +145,12 @@ def rate_limit(cooldown_seconds: int = 60, scope: str = "user", error_message: s
                 logging.error(f"[RateLimiter] Could not find context in {func.__name__}")
                 return await func(*args, **kwargs)
             
-            user_id = ctx.author.id if hasattr(ctx, 'author') and ctx.author else None
-            guild_id = ctx.guild.id if hasattr(ctx, 'guild') and ctx.guild else None
+            user_id = ctx.author.id if hasattr(ctx, 'author') and ctx.author else 0
+            guild_id = ctx.guild.id if hasattr(ctx, 'guild') and ctx.guild else 0
             command_name = func.__name__
 
             is_limited, remaining_time = await rate_limiter.is_rate_limited(
-                command_name, user_id, guild_id, cooldown_seconds, scope
+                command_name, user_id if user_id != 0 else None, guild_id if guild_id != 0 else None, cooldown_seconds, scope
             )
             
             if is_limited:
@@ -160,7 +174,15 @@ def rate_limit(cooldown_seconds: int = 60, scope: str = "user", error_message: s
     return decorator
 
 def admin_rate_limit(cooldown_seconds: int = 300):
-    """Specialized rate limiter for admin commands with longer cooldowns."""
+    """
+    Specialized rate limiter for admin commands with longer cooldowns.
+    
+    Args:
+        cooldown_seconds: Cooldown period in seconds (default: 5 minutes)
+        
+    Returns:
+        Rate limit decorator configured for administrative commands
+    """
     return rate_limit(
         cooldown_seconds=cooldown_seconds,
         scope="user",
@@ -168,7 +190,15 @@ def admin_rate_limit(cooldown_seconds: int = 300):
     )
 
 def guild_rate_limit(cooldown_seconds: int = 120):
-    """Specialized rate limiter for guild-wide commands."""
+    """
+    Specialized rate limiter for guild-wide commands.
+    
+    Args:
+        cooldown_seconds: Cooldown period in seconds (default: 2 minutes)
+        
+    Returns:
+        Rate limit decorator configured for guild-scoped commands
+    """
     return rate_limit(
         cooldown_seconds=cooldown_seconds,
         scope="guild",
@@ -176,7 +206,15 @@ def guild_rate_limit(cooldown_seconds: int = 120):
     )
 
 def global_rate_limit(cooldown_seconds: int = 60):
-    """Specialized rate limiter for global commands affecting all guilds."""
+    """
+    Specialized rate limiter for global commands affecting all guilds.
+    
+    Args:
+        cooldown_seconds: Cooldown period in seconds (default: 1 minute)
+        
+    Returns:
+        Rate limit decorator configured for globally-scoped commands
+    """
     return rate_limit(
         cooldown_seconds=cooldown_seconds,
         scope="global",
@@ -184,7 +222,12 @@ def global_rate_limit(cooldown_seconds: int = 60):
     )
 
 async def start_cleanup_task(bot=None):
-    """Start the cleanup task for rate limiter."""
+    """
+    Start the background cleanup task for rate limiter maintenance.
+    
+    Args:
+        bot: Discord bot instance (optional, for task tracking)
+    """
     async def cleanup_loop():
         try:
             while True:
