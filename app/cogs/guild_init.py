@@ -33,13 +33,19 @@ class GuildInit(commands.Cog):
         """
         self.bot = bot
 
-    @discord.slash_command(
-        name=GUILD_INIT_DATA["name"]["en-US"],
-        description=GUILD_INIT_DATA["description"]["en-US"],
-        name_localizations=GUILD_INIT_DATA["name"],
-        description_localizations=GUILD_INIT_DATA["description"]
-    )
-    @commands.has_permissions(administrator=True)
+        self._register_admin_commands()
+    
+    def _register_admin_commands(self):
+        """Register guild init commands with the centralized admin_bot group."""
+        if hasattr(self.bot, 'admin_group'):
+
+            self.bot.admin_group.command(
+                name=GUILD_INIT_DATA["name"]["en-US"],
+                description=GUILD_INIT_DATA["description"]["en-US"],
+                name_localizations=GUILD_INIT_DATA["name"],
+                description_localizations=GUILD_INIT_DATA["description"]
+            )(self.discord_setup)
+
     @admin_rate_limit(cooldown_seconds=600)
     @discord_resilient(service_name='discord_api', max_retries=3)
     async def discord_setup(

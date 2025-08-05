@@ -1,5 +1,7 @@
 # 📊 Test Coverage Guide
 
+**Dernière mise à jour : Août 2025 - Post Architecture Centralisée**
+
 ## Quick Start
 
 ### Run Tests with Coverage
@@ -49,12 +51,18 @@ Configured in `.coveragerc`:
    - Test configuration edge cases
 
 3. **functions.py** (0% → target 90%)
-   - Test translation functions
+   - Test translation functions (`get_user_message`)
    - Test input sanitization
+   - Test centralized error handling
 
 4. **scheduler.py** (0% → target 60%)
    - Test cron job scheduling
    - Test task execution flows
+
+5. **bot.py** - Groupes centralisés (Post-Migration Août 2025)
+   - Test création des 7 groupes centralisés  
+   - Test gestion d'erreurs multilingue centralisée
+   - Test enregistrement des commandes par groupe
 
 ### Easy Wins:
 - Add unit tests for utility functions

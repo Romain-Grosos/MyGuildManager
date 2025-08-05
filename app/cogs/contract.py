@@ -369,6 +369,25 @@ class Contract(commands.Cog):
             bot: Discord bot instance
         """
         self.bot = bot
+
+        self._register_staff_commands()
+    
+    def _register_staff_commands(self):
+        """Register contract commands with the centralized staff group."""
+        if hasattr(self.bot, 'staff_group'):
+            self.bot.staff_group.command(
+                name=CONTRACT_DATA.get("command", {}).get("name", {}).get("en-US", "contract_add"),
+                description=CONTRACT_DATA.get("command", {}).get("description", {}).get("en-US", "Select and publish guild contracts."),
+                name_localizations=CONTRACT_DATA.get("command", {}).get("name", {}),
+                description_localizations=CONTRACT_DATA.get("command", {}).get("description", {})
+            )(self.contract)
+
+            self.bot.staff_group.command(
+                name=CONTRACT_DATA.get("command_delete", {}).get("name", {}).get("en-US", "contract_delete"),
+                description=CONTRACT_DATA.get("command_delete", {}).get("description", {}).get("en-US", "Delete the guild contract."),
+                name_localizations=CONTRACT_DATA.get("command_delete", {}).get("name", {}),
+                description_localizations=CONTRACT_DATA.get("command_delete", {}).get("description", {})
+            )(self.contract_delete)
     
     def _validate_author(self, interaction: discord.Interaction, original_author: discord.Member) -> bool:
         """
@@ -424,13 +443,6 @@ class Contract(commands.Cog):
             'guild_lang': guild_lang or 'en-US'
         }
 
-    @discord.slash_command(
-        name=CONTRACT_DATA.get("command", {}).get("name", {}).get("en-US", "contract"),
-        description=CONTRACT_DATA.get("command", {}).get("description", {}).get("en-US", "Select and publish guild contracts."),
-        name_localizations=CONTRACT_DATA.get("command", {}).get("name", {}),
-        description_localizations=CONTRACT_DATA.get("command", {}).get("description", {})
-    )
-    @commands.has_permissions(manage_messages=True)
     async def contract(self, ctx: discord.ApplicationContext):
         """
         Command to create and publish guild contracts.
@@ -468,13 +480,6 @@ class Contract(commands.Cog):
         view = ContractSelect(self.bot, ctx.author, guild_lang)
         await ctx.respond(embed=embed, view=view, delete_after=600)
 
-    @discord.slash_command(
-        name=CONTRACT_DATA.get("command_delete", {}).get("name", {}).get("en-US", "contract_delete"),
-        description=CONTRACT_DATA.get("command_delete", {}).get("description", {}).get("en-US", "Delete the guild contract."),
-        name_localizations=CONTRACT_DATA.get("command_delete", {}).get("name", {}),
-        description_localizations=CONTRACT_DATA.get("command_delete", {}).get("description", {})
-    )
-    @commands.has_permissions(manage_messages=True)
     async def contract_delete(self, ctx: discord.ApplicationContext):
         """
         Command to delete existing guild contracts.

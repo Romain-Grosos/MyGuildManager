@@ -33,6 +33,33 @@ class Core(commands.Cog):
         self._sync_lock = asyncio.Lock()
         if not hasattr(bot, "synced"):
             bot.synced = False
+
+        self._register_admin_commands()
+    
+    def _register_admin_commands(self):
+        """Register core commands with the centralized admin_bot group."""
+        if hasattr(self.bot, 'admin_group'):
+
+            self.bot.admin_group.command(
+                name=APP_INITIALIZE_DATA["name"]["en-US"],
+                description=APP_INITIALIZE_DATA["description"]["en-US"],
+                name_localizations=APP_INITIALIZE_DATA["name"],
+                description_localizations=APP_INITIALIZE_DATA["description"]
+            )(self.app_initialize)
+
+            self.bot.admin_group.command(
+                name=APP_MODIFICATION_DATA["name"]["en-US"],
+                description=APP_MODIFICATION_DATA["description"]["en-US"],
+                name_localizations=APP_MODIFICATION_DATA["name"],
+                description_localizations=APP_MODIFICATION_DATA["description"]
+            )(self.app_modify)
+
+            self.bot.admin_group.command(
+                name=APP_RESET_DATA["name"]["en-US"],
+                description=APP_RESET_DATA["description"]["en-US"],
+                name_localizations=APP_RESET_DATA["name"],
+                description_localizations=APP_RESET_DATA["description"]
+            )(self.app_reset)
     
     def _validate_guild_name(self, guild_name: str) -> Tuple[bool, str]:
         """
@@ -139,13 +166,6 @@ class Core(commands.Cog):
             logging.error("[CoreManager] Failed to send global error message.", exc_info=True)
         logging.error(f"[CoreManager] Global error in command: {error}", exc_info=True)
 
-    @discord.slash_command(
-        name=APP_INITIALIZE_DATA["name"]["en-US"],
-        description=APP_INITIALIZE_DATA["description"]["en-US"],
-        name_localizations=APP_INITIALIZE_DATA["name"],
-        description_localizations=APP_INITIALIZE_DATA["description"]
-    )
-    @commands.has_permissions(administrator=True)
     @admin_rate_limit(cooldown_seconds=300)
     async def app_initialize(
         self,
@@ -245,13 +265,6 @@ class Core(commands.Cog):
             response = get_user_message(ctx, APP_INITIALIZE_DATA, "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
-    @discord.slash_command(
-        name=APP_MODIFICATION_DATA["name"]["en-US"],
-        description=APP_MODIFICATION_DATA["description"]["en-US"],
-        name_localizations=APP_MODIFICATION_DATA["name"],
-        description_localizations=APP_MODIFICATION_DATA["description"]
-    )
-    @commands.has_permissions(administrator=True)
     @admin_rate_limit(cooldown_seconds=300)
     async def app_modify(
         self,
@@ -362,13 +375,6 @@ class Core(commands.Cog):
             response = get_user_message(ctx, APP_MODIFICATION_DATA, "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
-    @discord.slash_command(
-        name=APP_RESET_DATA["name"]["en-US"],
-        description=APP_RESET_DATA["description"]["en-US"],
-        name_localizations=APP_RESET_DATA["name"],
-        description_localizations=APP_RESET_DATA["description"]
-    )
-    @commands.has_permissions(administrator=True)
     @admin_rate_limit(cooldown_seconds=600)
     async def app_reset(
         self,

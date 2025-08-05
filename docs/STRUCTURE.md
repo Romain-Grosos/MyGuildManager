@@ -1,5 +1,7 @@
 # Structure du Projet MyGuildManager
 
+**Dernière mise à jour : Août 2025 - Architecture Centralisée**
+
 ## 📁 Organisation des répertoires
 
 ```
@@ -136,12 +138,72 @@ from ..db import run_db_query
 - `make clean` - Nettoyer les fichiers temporaires
 - `make update-imports` - Mettre à jour les imports des cogs
 
+## 🎯 Architecture des Commandes Slash - CENTRALISÉE (Août 2025)
+
+### Groupes de commandes centralisés
+
+Le bot utilise maintenant **7 groupes centralisés** créés dans `bot.py` pour organiser les 31+ commandes slash :
+
+```python
+# Dans bot.py - Groupes centralisés
+bot.admin_group     # Administration bot (5 commandes)
+bot.absence_group   # Gestion absences (2 commandes)  
+bot.member_group    # Profils membres (6 commandes)
+bot.loot_group      # Gestion loot & wishlists (4 commandes)
+bot.staff_group     # Modération & gestion (6 commandes)
+bot.events_group    # Événements guildes (4 commandes)
+bot.statics_group   # Groupes statiques (5 commandes)
+```
+
+### Mapping des commandes par groupe
+
+- **`/admin_bot`** : bot_initialize, bot_modify, bot_reset, discord_setup, ptb_init
+- **`/absence`** : absence_add, return  
+- **`/member`** : gs, weapons, build, username, show_build, change_language
+- **`/loot`** : epic_items, add_item, remove_item, show_wishlist
+- **`/staff`** : maj_effectifs, notify_profile, config_roster, contract, contract_delete, wishlist_admin
+- **`/events`** : create, confirm, cancel, preview_groups
+- **`/statics`** : group_create, player_add, player_remove, group_delete, update
+
+### Pattern d'implémentation dans les cogs
+
+```python
+class MyCog(commands.Cog):
+    def __init__(self, bot: discord.Bot):
+        self.bot = bot
+        self._register_my_commands()  # OBLIGATOIRE dans __init__
+    
+    def _register_my_commands(self):
+        """Register commands with the centralized group."""
+        if hasattr(self.bot, 'my_group'):
+            self.bot.my_group.command(
+                name=TRANSLATIONS["command"]["name"]["en-US"],
+                description=TRANSLATIONS["command"]["description"]["en-US"],
+                name_localizations=TRANSLATIONS["command"]["name"],
+                description_localizations=TRANSLATIONS["command"]["description"]
+            )(self.my_command_function)
+    
+    # ❌ SUPPRIMÉ : @discord.slash_command() décorateurs
+    # ✅ CONSERVÉ : @admin_rate_limit, @discord_resilient, etc.
+    async def my_command_function(self, ctx: discord.ApplicationContext):
+        pass
+```
+
+### Gestion d'erreurs centralisée
+
+- **Automatique** : Tous les groupes bénéficient de la gestion d'erreurs centralisée
+- **Multilingue** : Messages traduits selon `ctx.locale` avec fallback EN
+- **Robuste** : 6 types d'erreurs gérés (Permissions, NotFound, HTTP, etc.)
+- **Une seule fonction** dans `bot.py` pour tous les groupes
+
 ## 📝 Notes importantes
 
 1. **`.env` dans app/** - Pour simplifier le déploiement, le fichier .env est dans le dossier app/
 2. **Imports relatifs** - Utilisation d'imports relatifs pour la portabilité
 3. **Structure modulaire** - Chaque cog est indépendant et peut être activé/désactivé
 4. **Cache centralisé** - Toujours utiliser `self.bot.cache` et `self.bot.cache_loader`
+5. **Groupes centralisés** - OBLIGATOIRE : méthode `_register_*_commands()` dans chaque cog
+6. **Pas de décorateurs slash** - Suppression de tous les `@discord.slash_command()`
 
 ## 🔧 Maintenance
 

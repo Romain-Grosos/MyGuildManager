@@ -494,7 +494,95 @@ def create_command_groups(bot: discord.Bot) -> None:
     
     logging.info(f"[Bot] Successfully created and registered {len(groups)} command groups")
 
+def setup_global_group_error_handlers(bot: discord.Bot) -> None:
+    """
+    Setup centralized error handlers for all slash command groups.
+    
+    Args:
+        bot: Discord bot instance
+    """
+    from core.functions import get_user_message
+
+    groups = [
+        ("admin_bot", bot.admin_group),
+        ("absence", bot.absence_group),
+        ("member", bot.member_group),
+        ("loot", bot.loot_group),
+        ("staff", bot.staff_group),
+        ("events", bot.events_group),
+        ("statics", bot.statics_group)
+    ]
+    
+    async def global_group_error_handler(ctx: discord.ApplicationContext, error: Exception):
+        """
+        Centralized error handler for all slash command groups.
+        
+        Args:
+            ctx: Discord application context
+            error: Exception that occurred during command execution
+        """
+
+        group_name = "unknown"
+        command_name = "unknown"
+        
+        if hasattr(ctx.command, 'parent') and ctx.command.parent:
+            group_name = ctx.command.parent.name
+            command_name = ctx.command.name
+        elif hasattr(ctx.command, 'name'):
+            command_name = ctx.command.name
+        
+        logging.error(f"[Bot] Error in {group_name}/{command_name} command for guild {ctx.guild.id if ctx.guild else 'DM'}: {error}", exc_info=True)
+
+        error_key = "global_errors.unknown"
+        error_params = {"group": group_name, "command": command_name}
+        
+        if isinstance(error, discord.Forbidden):
+            error_key = "global_errors.forbidden"
+        elif isinstance(error, discord.NotFound):
+            error_key = "global_errors.not_found"
+        elif isinstance(error, discord.HTTPException):
+            error_key = "global_errors.http_exception"
+        elif isinstance(error, commands.MissingPermissions):
+            error_key = "global_errors.missing_permissions"
+        elif isinstance(error, commands.BotMissingPermissions):
+            error_key = "global_errors.bot_missing_permissions"
+        elif isinstance(error, commands.CommandOnCooldown):
+            error_key = "global_errors.cooldown"
+            error_params["retry_after"] = f"{error.retry_after:.1f}"
+
+        error_message = get_user_message(ctx, bot.translations, error_key, **error_params)
+
+        if not error_message:
+            fallback_messages = {
+                "global_errors.forbidden": "❌ Missing permissions to execute this command",
+                "global_errors.not_found": "❌ Required resource not found (channel, role, or message)",
+                "global_errors.http_exception": "❌ Discord API error occurred. Please try again",
+                "global_errors.missing_permissions": "❌ You don't have the necessary permissions",
+                "global_errors.bot_missing_permissions": "❌ The bot doesn't have the necessary permissions",
+                "global_errors.cooldown": f"❌ Command on cooldown. Try again in {error_params.get('retry_after', '?')}s",
+                "global_errors.unknown": f"❌ Unexpected error in {group_name}/{command_name}"
+            }
+            error_message = fallback_messages.get(error_key, "❌ An unexpected error occurred")
+        
+        try:
+            if ctx.response.is_done():
+                await ctx.followup.send(error_message, ephemeral=True)
+            else:
+                await ctx.respond(error_message, ephemeral=True)
+        except Exception as send_error:
+            logging.error(f"[Bot] Failed to send error message: {send_error}")
+
+    for group_name, group in groups:
+        try:
+            group.error(global_group_error_handler)
+            logging.debug(f"[Bot] Added global error handler to {group_name} group")
+        except Exception as e:
+            logging.error(f"[Bot] Failed to add error handler to {group_name}: {e}")
+    
+    logging.info("[Bot] Global group error handlers setup completed")
+
 create_command_groups(bot)
+setup_global_group_error_handlers(bot)
 
 EXTENSIONS: Final["list[str]"] = [
     "cogs.core",
