@@ -14,14 +14,65 @@
       "de": "❌ Ein unerwarteter Fehler ist aufgetreten: {error}",
       "it": "❌ Si è verificato un errore imprevisto: {error}"
     },
+    "global_errors": {
+        "forbidden": {
+            "en-US": "❌ Missing permissions to execute this command",
+            "fr": "❌ Permissions manquantes pour exécuter cette commande",
+            "es-ES": "❌ Permisos insuficientes para ejecutar este comando",
+            "de": "❌ Fehlende Berechtigungen zur Ausführung dieses Befehls",
+            "it": "❌ Permessi insufficienti per eseguire questo comando"
+        },
+        "not_found": {
+            "en-US": "❌ Required resource not found (channel, role, or message)",
+            "fr": "❌ Ressource introuvable (salon, rôle, ou message)",
+            "es-ES": "❌ Recurso requerido no encontrado (canal, rol o mensaje)",
+            "de": "❌ Erforderliche Ressource nicht gefunden (Kanal, Rolle oder Nachricht)",
+            "it": "❌ Risorsa richiesta non trovata (canale, ruolo o messaggio)"
+        },
+        "http_exception": {
+            "en-US": "❌ Discord API error occurred. Please try again",
+            "fr": "❌ Erreur API Discord. Veuillez réessayer",
+            "es-ES": "❌ Error de la API de Discord. Por favor, inténtelo de nuevo",
+            "de": "❌ Discord-API-Fehler aufgetreten. Bitte versuchen Sie es erneut",
+            "it": "❌ Errore API Discord. Riprova"
+        },
+        "missing_permissions": {
+            "en-US": "❌ You don't have the necessary permissions",
+            "fr": "❌ Vous n'avez pas les permissions nécessaires",
+            "es-ES": "❌ No tienes los permisos necesarios",
+            "de": "❌ Sie haben nicht die erforderlichen Berechtigungen",
+            "it": "❌ Non hai i permessi necessari"
+        },
+        "bot_missing_permissions": {
+            "en-US": "❌ The bot doesn't have the necessary permissions",
+            "fr": "❌ Le bot n'a pas les permissions nécessaires",
+            "es-ES": "❌ El bot no tiene los permisos necesarios",
+            "de": "❌ Der Bot hat nicht die erforderlichen Berechtigungen",
+            "it": "❌ Il bot non ha i permessi necessari"
+        },
+        "cooldown": {
+            "en-US": "❌ Command on cooldown. Try again in {retry_after}s",
+            "fr": "❌ Commande en cooldown. Réessayez dans {retry_after}s",
+            "es-ES": "❌ Comando en cooldown. Inténtalo de nuevo en {retry_after}s",
+            "de": "❌ Befehl im Cooldown. Versuchen Sie es in {retry_after}s erneut",
+            "it": "❌ Comando in cooldown. Riprova tra {retry_after}s"
+        },
+        "unknown": {
+            "en-US": "❌ Unexpected error in {group}/{command}",
+            "fr": "❌ Erreur inattendue dans {group}/{command}",
+            "es-ES": "❌ Error inesperado en {group}/{command}",
+            "de": "❌ Unerwarteter Fehler in {group}/{command}",
+            "it": "❌ Errore imprevisto in {group}/{command}"
+        }
+    },
     "commands": {
         "app_initialize": {
             "name": {
-                "en-US": "91_app_initialize",
-                "fr": "91_app_initialisation",
-                "es-ES": "91_app_inicializar",
-                "de": "91_app_initialisierung",
-                "it": "91_app_inizializza"
+                "en-US": "bot_initialize",
+                "fr": "bot_initialisation",
+                "es-ES": "bot_inicializar",
+                "de": "bot_initialisierung",
+                "it": "bot_inizializza"
             },
             "description": {
                 "en-US": "Initiates the bot installation on your Discord server.",
@@ -104,11 +155,11 @@
         },
         "app_modify": {
             "name": {
-                "en-US": "98_app_modify",
-                "fr": "98_app_modification",
-                "es-ES": "98_app_modificar",
-                "de": "98_app_modifikation",
-                "it": "98_app_modifica"
+                "en-US": "bot_modify",
+                "fr": "bot_modification",
+                "es-ES": "bot_modificar",
+                "de": "bot_modifikation",
+                "it": "bot_modifica"
             },
             "description": {
                 "en-US": "Allows you to modify the bot's settings.",
@@ -184,11 +235,11 @@
         },
         "app_reset": {
             "name": {
-                "en-US": "99_app_reset",
-                "fr": "99_app_reset",
-                "es-ES": "99_app_restablecer",
-                "de": "99_app_zuruecksetzen",
-                "it": "99_app_ripristina"
+                "en-US": "bot_reset",
+                "fr": "bot_reset",
+                "es-ES": "bot_restablecer",
+                "de": "bot_zuruecksetzen",
+                "it": "bot_ripristina"
             },
             "description": {
                 "en-US": "Resets all of the bot's settings, after which reinitialization is required.",
@@ -854,7 +905,7 @@
         "command": {
             "name": {
                 "en-US": "absence_add",
-                "fr": "absence_add",
+                "fr": "absence_ajout",
                 "es-ES": "agregar_ausencia",
                 "de": "abwesenheit_hinzufügen",
                 "it": "aggiungi_assenza"
@@ -865,6 +916,22 @@
                 "es-ES": "Marcar a un miembro como ausente.",
                 "de": "Ein Mitglied als abwesend markieren.",
                 "it": "Segnare un membro come assente."
+            }
+        },
+        "command_remove": {
+            "name": {
+                "en-US": "return",
+                "fr": "retour",
+                "es-ES": "regresar",
+                "de": "zurueck",
+                "it": "ritorno"
+            },
+            "description": {
+                "en-US": "Signal your return from absence.",
+                "fr": "Signaler votre retour d'absence.",
+                "es-ES": "Señalar tu regreso de la ausencia.",
+                "de": "Ihre Rückkehr aus der Abwesenheit signalisieren.",
+                "it": "Segnalare il vostro ritorno dall'assenza."
             }
         },
         "error_chan": {
@@ -894,6 +961,52 @@
             "es-ES": "✅ {member.mention} ha sido marcado como ausente.",
             "de": "✅ {member.mention} wurde als abwesend markiert.",
             "it": "✅ {member.mention} è stato segnato come assente."
+        },
+        "error": {
+            "roles_not_configured": {
+                "en-US": "Absence roles are not configured for this guild.",
+                "fr": "Les rôles d'absence ne sont pas configurés pour cette guilde.",
+                "es-ES": "Los roles de ausencia no están configurados para este gremio.",
+                "de": "Abwesenheitsrollen sind für diese Gilde nicht konfiguriert.",
+                "it": "I ruoli di assenza non sono configurati per questa gilda."
+            },
+            "not_absent": {
+                "en-US": "You are not currently marked as absent.",
+                "fr": "Vous n'êtes pas actuellement marqué comme absent.",
+                "es-ES": "Actualmente no estás marcado como ausente.",
+                "de": "Sie sind derzeit nicht als abwesend markiert.",
+                "it": "Attualmente non sei segnato come assente."
+            },
+            "no_permission": {
+                "en-US": "I don't have permission to manage your roles.",
+                "fr": "Je n'ai pas la permission de gérer vos rôles.",
+                "es-ES": "No tengo permisos para gestionar tus roles.",
+                "de": "Ich habe keine Berechtigung, Ihre Rollen zu verwalten.",
+                "it": "Non ho il permesso di gestire i tuoi ruoli."
+            },
+            "role_management": {
+                "en-US": "An error occurred while updating your roles.",
+                "fr": "Une erreur s'est produite lors de la mise à jour de vos rôles.",
+                "es-ES": "Ocurrió un error al actualizar tus roles.",
+                "de": "Beim Aktualisieren Ihrer Rollen ist ein Fehler aufgetreten.",
+                "it": "Si è verificato un errore durante l'aggiornamento dei tuoi ruoli."
+            },
+            "general": {
+                "en-US": "An error occurred while processing your return.",
+                "fr": "Une erreur s'est produite lors du traitement de votre retour.",
+                "es-ES": "Ocurrió un error al procesar tu regreso.",
+                "de": "Beim Verarbeiten Ihrer Rückkehr ist ein Fehler aufgetreten.",
+                "it": "Si è verificato un errore durante l'elaborazione del tuo ritorno."
+            }
+        },
+        "success": {
+            "returned": {
+                "en-US": "You have been marked as returned. Welcome back!",
+                "fr": "Vous avez été marqué comme de retour. Bon retour !",
+                "es-ES": "Has sido marcado como regresado. ¡Bienvenido de vuelta!",
+                "de": "Sie wurden als zurückgekehrt markiert. Willkommen zurück!",
+                "it": "Sei stato segnato come tornato. Bentornato!"
+            }
         }
     },
     "notification": {
@@ -2059,10 +2172,10 @@
         "maj_roster": {
             "name": {
                 "en-US": "update_roster",
-                "fr": "maj_roster",
-                "es-ES": "actualizar_roster",
-                "de": "roster_aktualisieren",
-                "it": "aggiorna_roster"
+                "fr": "maj_effectifs",
+                "es-ES": "actualizar_efectivos",
+                "de": "mitglieder_aktualisieren",
+                "it": "aggiorna_effettivi"
             },
             "description": {
                 "en-US": "Updates the roster and associated messages.",
@@ -4049,11 +4162,11 @@
             },
             "wishlist_list": {
                 "name": {
-                    "en-US": "show_items",
-                    "fr": "voir_objets",
-                    "es-ES": "mostrar_objetos",
-                    "de": "gegenstaende_anzeigen",
-                    "it": "mostra_oggetti"
+                    "en-US": "show_wishlist",
+                    "fr": "voir_wishlist",
+                    "es-ES": "mostrar_wishlist",
+                    "de": "wunschliste_anzeigen",
+                    "it": "mostra_wishlist"
                 },
                 "description": {
                     "en-US": "View your current wishlist",

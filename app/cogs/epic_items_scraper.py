@@ -47,6 +47,18 @@ class EpicItemsScraper(commands.Cog):
         }
         self.languages = ['en', 'fr', 'es', 'de']
 
+        self._register_loot_commands()
+    
+    def _register_loot_commands(self):
+        """Register epic items commands with the centralized loot group."""
+        if hasattr(self.bot, 'loot_group'):
+            self.bot.loot_group.command(
+                name=EPIC_ITEMS_DATA.get("name", {}).get("en-US", "search_item"),
+                description=EPIC_ITEMS_DATA.get("description", {}).get("en-US", "Search for Epic T2 items from Throne and Liberty"),
+                name_localizations=EPIC_ITEMS_DATA.get("name", {}),
+                description_localizations=EPIC_ITEMS_DATA.get("description", {})
+            )(self.epic_items)
+
     async def scrape_epic_items(self) -> None:
         """
         Main method to scrape Epic T2 items from questlog.gg using Selenium.
@@ -698,12 +710,6 @@ class EpicItemsScraper(commands.Cog):
         except Exception as e:
             logging.error(f"Failed to log scraping error: {e}")
 
-    @discord.slash_command(
-        name=EPIC_ITEMS_DATA.get("name", {}).get("en-US", "epic_items"),
-        description=EPIC_ITEMS_DATA.get("description", {}).get("en-US", "View Epic T2 items from Throne and Liberty"),
-        name_localizations=EPIC_ITEMS_DATA.get("name", {}),
-        description_localizations=EPIC_ITEMS_DATA.get("description", {})
-    )
     @discord_resilient(service_name='discord_api', max_retries=3)
     async def epic_items(
         self,

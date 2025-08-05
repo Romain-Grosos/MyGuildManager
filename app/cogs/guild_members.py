@@ -41,6 +41,80 @@ class GuildMembers(commands.Cog):
         self.max_username_length = 32
         self.max_gs_value = 9999
         self.min_gs_value = 500
+
+        self._register_member_commands()
+        self._register_staff_commands()
+    
+    def _register_member_commands(self):
+        """Register member commands with the centralized member group."""
+        if hasattr(self.bot, 'member_group'):
+
+            self.bot.member_group.command(
+                name=GUILD_MEMBERS.get("commands", {}).get("gs", {}).get("name", {}).get("en-US", "gs"),
+                description=GUILD_MEMBERS.get("commands", {}).get("gs", {}).get("description", {}).get("en-US", "Update your gear score (GS)"),
+                name_localizations=GUILD_MEMBERS.get("commands", {}).get("gs", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("commands", {}).get("gs", {}).get("description", {})
+            )(self.gs)
+
+            self.bot.member_group.command(
+                name=GUILD_MEMBERS.get("commands", {}).get("weapons", {}).get("name", {}).get("en-US", "weapons"),
+                description=GUILD_MEMBERS.get("commands", {}).get("weapons", {}).get("description", {}).get("en-US", "Update your weapon combination"),
+                name_localizations=GUILD_MEMBERS.get("commands", {}).get("weapons", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("commands", {}).get("weapons", {}).get("description", {})
+            )(self.weapons)
+
+            self.bot.member_group.command(
+                name=GUILD_MEMBERS.get("commands", {}).get("build", {}).get("name", {}).get("en-US", "build"),
+                description=GUILD_MEMBERS.get("commands", {}).get("build", {}).get("description", {}).get("en-US", "Update your build URL"),
+                name_localizations=GUILD_MEMBERS.get("commands", {}).get("build", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("commands", {}).get("build", {}).get("description", {})
+            )(self.build)
+
+            self.bot.member_group.command(
+                name=GUILD_MEMBERS.get("commands", {}).get("username", {}).get("name", {}).get("en-US", "username"),
+                description=GUILD_MEMBERS.get("commands", {}).get("username", {}).get("description", {}).get("en-US", "Update your username"),
+                name_localizations=GUILD_MEMBERS.get("commands", {}).get("username", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("commands", {}).get("username", {}).get("description", {})
+            )(self.username)
+
+            self.bot.member_group.command(
+                name=GUILD_MEMBERS.get("commands", {}).get("show_build", {}).get("name", {}).get("en-US", "show_build"),
+                description=GUILD_MEMBERS.get("commands", {}).get("show_build", {}).get("description", {}).get("en-US", "Show another member's build"),
+                name_localizations=GUILD_MEMBERS.get("commands", {}).get("show_build", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("commands", {}).get("show_build", {}).get("description", {})
+            )(self.show_build)
+
+            self.bot.member_group.command(
+                name=GUILD_MEMBERS.get("commands", {}).get("change_language", {}).get("name", {}).get("en-US", "change_language"),
+                description=GUILD_MEMBERS.get("commands", {}).get("change_language", {}).get("description", {}).get("en-US", "Change your preferred language"),
+                name_localizations=GUILD_MEMBERS.get("commands", {}).get("change_language", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("commands", {}).get("change_language", {}).get("description", {})
+            )(self.change_language)
+    
+    def _register_staff_commands(self):
+        """Register staff commands with the centralized staff group."""
+        if hasattr(self.bot, 'staff_group'):
+
+            self.bot.staff_group.command(
+                name=GUILD_MEMBERS.get("commands", {}).get("maj_roster", {}).get("name", {}).get("en-US", "maj_roster"),
+                description=GUILD_MEMBERS.get("commands", {}).get("maj_roster", {}).get("description", {}).get("en-US", "Update guild roster"),
+                name_localizations=GUILD_MEMBERS.get("commands", {}).get("maj_roster", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("commands", {}).get("maj_roster", {}).get("description", {})
+            )(self.maj_roster)
+
+            self.bot.staff_group.command(
+                name=GUILD_MEMBERS.get("commands", {}).get("notify_profile", {}).get("name", {}).get("en-US", "notify_profile"),
+                description=GUILD_MEMBERS.get("commands", {}).get("notify_profile", {}).get("description", {}).get("en-US", "Notify members with incomplete profiles"),
+                name_localizations=GUILD_MEMBERS.get("commands", {}).get("notify_profile", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("commands", {}).get("notify_profile", {}).get("description", {})
+            )(self.notify_incomplete_profiles)
+
+            self.bot.staff_group.command(
+                name=CONFIG_ROSTER_DATA.get("name", {}).get("en-US", "config_roster"),
+                description=CONFIG_ROSTER_DATA.get("description", {}).get("en-US", "Configure ideal roster sizes"),
+                name_localizations=CONFIG_ROSTER_DATA.get("name", {}),
+                description_localizations=CONFIG_ROSTER_DATA.get("description", {})
+            )(self.config_roster)
     
     def _sanitize_string(self, text: str, max_length: int = 100) -> str:
         """
@@ -349,12 +423,6 @@ class GuildMembers(commands.Cog):
             valid.add(combo["weapon2"])
         return valid
 
-    @discord.slash_command(
-        name=GUILD_MEMBERS["gs"]["name"]["en-US"],
-        description=GUILD_MEMBERS["gs"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["gs"]["name"],
-        description_localizations=GUILD_MEMBERS["gs"]["description"]
-    )
     async def gs(
         self,
         ctx: discord.ApplicationContext,
@@ -445,12 +513,6 @@ class GuildMembers(commands.Cog):
             logging.exception(f"[GuildMembers - GS] Error updating GS for {ctx.author} (ID: {member_id}): {e}")
             await ctx.followup.send("❌ Database error occurred", ephemeral=True)
 
-    @discord.slash_command(
-        name=GUILD_MEMBERS["weapons"]["name"]["en-US"],
-        description=GUILD_MEMBERS["weapons"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["weapons"]["name"],
-        description_localizations=GUILD_MEMBERS["weapons"]["description"]
-    )
     async def weapons(
         self,
         ctx: discord.ApplicationContext,
@@ -561,12 +623,6 @@ class GuildMembers(commands.Cog):
             logging.exception(f"[GuildMembers - Weapons] Error updating weapons for {ctx.author} (ID: {member_id}): {e}")
             await ctx.followup.send("❌ Database error occurred", ephemeral=True)
 
-    @discord.slash_command(
-        name=GUILD_MEMBERS["build"]["name"]["en-US"],
-        description=GUILD_MEMBERS["build"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["build"]["name"],
-        description_localizations=GUILD_MEMBERS["build"]["description"]
-    )
     async def build(
         self,
         ctx: discord.ApplicationContext,
@@ -648,12 +704,6 @@ class GuildMembers(commands.Cog):
             logging.exception(f"[GuildMembers - Build] Error updating build for {ctx.author} (ID: {member_id}): {e}")
             await ctx.followup.send("❌ Database error occurred", ephemeral=True)
 
-    @discord.slash_command(
-        name=GUILD_MEMBERS["username"]["name"]["en-US"],
-        description=GUILD_MEMBERS["username"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["username"]["name"],
-        description_localizations=GUILD_MEMBERS["username"]["description"]
-    )
     async def username(
         self,
         ctx: discord.ApplicationContext,
@@ -742,13 +792,6 @@ class GuildMembers(commands.Cog):
             logging.exception(f"[GuildMembers - Username] Error updating username for {ctx.author} (ID: {member_id}): {e}")
             await ctx.followup.send("❌ Database error occurred", ephemeral=True)
 
-    @discord.slash_command(
-        name=GUILD_MEMBERS["maj_roster"]["name"]["en-US"],
-        description=GUILD_MEMBERS["maj_roster"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["maj_roster"]["name"],
-        description_localizations=GUILD_MEMBERS["maj_roster"]["description"]
-    )
-    @commands.has_permissions(manage_roles=True)
     async def maj_roster(self, ctx: discord.ApplicationContext):
         """
         Optimized roster update command - reduces DB queries by 90%.
@@ -1423,12 +1466,6 @@ class GuildMembers(commands.Cog):
             logging.exception(f"[GuildMembers] Error updating member messages: {e}")
         logging.info("[GuildMembers] Member message update completed")
 
-    @discord.slash_command(
-        name=GUILD_MEMBERS["show_build"]["name"]["en-US"],
-        description=GUILD_MEMBERS["show_build"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["show_build"]["name"],
-        description_localizations=GUILD_MEMBERS["show_build"]["description"]
-    )
     async def show_build(
         self,
         ctx: discord.ApplicationContext,
@@ -1487,13 +1524,6 @@ class GuildMembers(commands.Cog):
             msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "cannot_send")
             await ctx.followup.send(msg, ephemeral=True)
 
-    @discord.slash_command(
-        name=GUILD_MEMBERS["notify_profile"]["name"]["en-US"],
-        description=GUILD_MEMBERS["notify_profile"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["notify_profile"]["name"],
-        description_localizations=GUILD_MEMBERS["notify_profile"]["description"]
-    )
-    @commands.has_permissions(manage_roles=True)
     async def notify_incomplete_profiles(self, ctx: discord.ApplicationContext):
         """
         Send notifications to members with incomplete profiles.
@@ -1551,13 +1581,6 @@ class GuildMembers(commands.Cog):
         msg = get_user_message(ctx, GUILD_MEMBERS["notify_profile"], "success", successes=successes, failures=failures)
         await ctx.followup.send(msg,ephemeral=True)
 
-    @discord.slash_command(
-        name=CONFIG_ROSTER_DATA.get("name", {}).get("en-US", "config_roster"),
-        description=CONFIG_ROSTER_DATA.get("description", {}).get("en-US", "Configure ideal roster sizes by class for the guild"),
-        name_localizations=CONFIG_ROSTER_DATA.get("name", {}),
-        description_localizations=CONFIG_ROSTER_DATA.get("description", {})
-    )
-    @commands.has_permissions(administrator=True)
     @admin_rate_limit(cooldown_seconds=300)
     async def config_roster(
         self,
@@ -1659,12 +1682,6 @@ class GuildMembers(commands.Cog):
             error_msg = get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.update_error")
             await ctx.followup.send(error_msg, ephemeral=True)
 
-    @discord.slash_command(
-        name=GUILD_MEMBERS["change_language"]["name"]["en-US"],
-        description=GUILD_MEMBERS["change_language"]["description"]["en-US"],
-        name_localizations=GUILD_MEMBERS["change_language"]["name"],
-        description_localizations=GUILD_MEMBERS["change_language"]["description"]
-    )
     async def change_language(
         self,
         ctx: discord.ApplicationContext,

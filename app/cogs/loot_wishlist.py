@@ -58,6 +58,48 @@ class LootWishlist(commands.Cog):
             bot: The Discord bot instance
         """
         self.bot = bot
+        
+        # Register commands with centralized groups
+        self._register_loot_commands()
+        self._register_staff_commands()
+    
+    def _register_loot_commands(self):
+        """Register loot wishlist commands with the centralized loot group."""
+        if hasattr(self.bot, 'loot_group'):
+            # Register wishlist add command
+            self.bot.loot_group.command(
+                name=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("name", {}).get("en-US", "wishlist_add"),
+                description=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("description", {}).get("en-US", "Add an Epic T2 item to your wishlist"),
+                name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("name", {}),
+                description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("description", {})
+            )(self.wishlist_add)
+            
+            # Register wishlist remove command
+            self.bot.loot_group.command(
+                name=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("name", {}).get("en-US", "wishlist_remove"),
+                description=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("description", {}).get("en-US", "Remove an item from your wishlist"),
+                name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("name", {}),
+                description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("description", {})
+            )(self.wishlist_remove)
+            
+            # Register wishlist show command
+            self.bot.loot_group.command(
+                name=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("name", {}).get("en-US", "wishlist_show"),
+                description=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("description", {}).get("en-US", "View your current wishlist"),
+                name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("name", {}),
+                description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("description", {})
+            )(self.wishlist_list)
+    
+    def _register_staff_commands(self):
+        """Register staff wishlist commands with the centralized staff group."""
+        if hasattr(self.bot, 'staff_group'):
+            # Register wishlist admin command
+            self.bot.staff_group.command(
+                name=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("name", {}).get("en-US", "wishlist_mod"),
+                description=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("description", {}).get("en-US", "[MOD] View global wishlist statistics"),
+                name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("name", {}),
+                description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("description", {})
+            )(self.wishlist_admin)
     
     def sanitize_for_discord(self, text: str) -> str:
         """
@@ -435,19 +477,6 @@ class LootWishlist(commands.Cog):
             logging.error(f"[LootWishlist] Error updating wishlist message: {e}")
             return False
     
-    wishlist_group = discord.SlashCommandGroup(
-        name="wishlist",
-        description="Manage your Epic T2 items wishlist",
-        name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist", {}).get("name", {}),
-        description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist", {}).get("description", {})
-    )
-    
-    @wishlist_group.command(
-        name="add_item",
-        description="Add an Epic T2 item to your wishlist",
-        name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("name", {}),
-        description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("description", {})
-    )
     @discord_resilient(service_name='discord_api', max_retries=3)
     async def wishlist_add(
         self,
@@ -547,12 +576,6 @@ class LootWishlist(commands.Cog):
             message = get_wishlist_message(str(ctx.locale), "messages", "general_error", action="adding the item")
             await ctx.followup.send(message, ephemeral=True)
 
-    @wishlist_group.command(
-        name="remove_item",
-        description="Remove an item from your wishlist",
-        name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("name", {}),
-        description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("description", {})
-    )
     @discord_resilient(service_name='discord_api', max_retries=3)
     async def wishlist_remove(
         self,
@@ -621,12 +644,6 @@ class LootWishlist(commands.Cog):
             message = get_wishlist_message(str(ctx.locale), "messages", "general_error", action="removing the item")
             await ctx.followup.send(message, ephemeral=True)
     
-    @wishlist_group.command(
-        name="show_items",
-        description="View your current wishlist",
-        name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("name", {}),
-        description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("description", {})
-    )
     @discord_resilient(service_name='discord_api', max_retries=3)
     async def wishlist_list(self, ctx: discord.ApplicationContext):
         """
@@ -686,13 +703,6 @@ class LootWishlist(commands.Cog):
             message = get_wishlist_message(str(ctx.locale), "messages", "general_error", action="retrieving your wishlist")
             await ctx.followup.send(message, ephemeral=True)
     
-    @discord.slash_command(
-        name="wishlist_admin",
-        description="[MOD] View global wishlist statistics",
-        name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("name", {}),
-        description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("description", {})
-    )
-    @commands.has_permissions(manage_guild=True)
     @discord_resilient(service_name='discord_api', max_retries=3)
     async def wishlist_admin(self, ctx: discord.ApplicationContext):
         """

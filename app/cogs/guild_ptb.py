@@ -35,6 +35,19 @@ class GuildPTB(commands.Cog):
         """
         self.bot = bot
 
+        self._register_admin_commands()
+    
+    def _register_admin_commands(self):
+        """Register PTB commands with the centralized admin_bot group."""
+        if hasattr(self.bot, 'admin_group'):
+
+            self.bot.admin_group.command(
+                name=GUILD_PTB["commands"]["ptb_init"]["name"]["en-US"],
+                description=GUILD_PTB["commands"]["ptb_init"]["description"]["en-US"],
+                name_localizations=GUILD_PTB["commands"]["ptb_init"]["name"],
+                description_localizations=GUILD_PTB["commands"]["ptb_init"]["description"]
+            )(self.ptb_init)
+
     @commands.Cog.listener()
     async def on_ready(self):
         """
@@ -785,13 +798,6 @@ class GuildPTB(commands.Cog):
         except Exception as e:
             logging.error(f"[GuildPTB] Error synchronizing nickname: {e}", exc_info=True)
     
-    @discord.slash_command(
-        name=GUILD_PTB["commands"]["ptb_init"]["name"]["en-US"],
-        description=GUILD_PTB["commands"]["ptb_init"]["description"]["en-US"],
-        name_localizations=GUILD_PTB["commands"]["ptb_init"]["name"],
-        description_localizations=GUILD_PTB["commands"]["ptb_init"]["description"]
-    )
-    @commands.has_permissions(manage_guild=True)
     async def ptb_init(self, 
                       ctx: discord.ApplicationContext, 
                       main_guild_id: str = discord.Option(

@@ -71,8 +71,82 @@ class GuildEvents(commands.Cog):
             None
         """
         self.bot = bot
+
+        self._register_events_commands()
+        self._register_statics_commands()
         self.json_lock = asyncio.Lock()
         self.ignore_removals = {}
+    
+    def _register_events_commands(self):
+        """Register event commands with the centralized events group."""
+        if hasattr(self.bot, 'events_group'):
+            
+            self.bot.events_group.command(
+                name=GUILD_EVENTS.get("commands", {}).get("event_create", {}).get("name", {}).get("en-US", "create"),
+                description=GUILD_EVENTS.get("commands", {}).get("event_create", {}).get("description", {}).get("en-US", "Create a guild event"),
+                name_localizations=GUILD_EVENTS.get("commands", {}).get("event_create", {}).get("name", {}),
+                description_localizations=GUILD_EVENTS.get("commands", {}).get("event_create", {}).get("description", {})
+            )(self.event_create)
+
+            self.bot.events_group.command(
+                name=GUILD_EVENTS.get("commands", {}).get("event_confirm", {}).get("name", {}).get("en-US", "confirm"),
+                description=GUILD_EVENTS.get("commands", {}).get("event_confirm", {}).get("description", {}).get("en-US", "Confirm an event"),
+                name_localizations=GUILD_EVENTS.get("commands", {}).get("event_confirm", {}).get("name", {}),
+                description_localizations=GUILD_EVENTS.get("commands", {}).get("event_confirm", {}).get("description", {})
+            )(self.event_confirm)
+
+            self.bot.events_group.command(
+                name=GUILD_EVENTS.get("commands", {}).get("event_cancel", {}).get("name", {}).get("en-US", "cancel"),
+                description=GUILD_EVENTS.get("commands", {}).get("event_cancel", {}).get("description", {}).get("en-US", "Cancel an event"),
+                name_localizations=GUILD_EVENTS.get("commands", {}).get("event_cancel", {}).get("name", {}),
+                description_localizations=GUILD_EVENTS.get("commands", {}).get("event_cancel", {}).get("description", {})
+            )(self.event_cancel)
+
+            self.bot.events_group.command(
+                name=GUILD_EVENTS.get("commands", {}).get("preview_groups", {}).get("name", {}).get("en-US", "preview_groups"),
+                description=GUILD_EVENTS.get("commands", {}).get("preview_groups", {}).get("description", {}).get("en-US", "Preview groups before creation"),
+                name_localizations=GUILD_EVENTS.get("commands", {}).get("preview_groups", {}).get("name", {}),
+                description_localizations=GUILD_EVENTS.get("commands", {}).get("preview_groups", {}).get("description", {})
+            )(self.preview_groups)
+    
+    def _register_statics_commands(self):
+        """Register static group commands with the centralized statics group."""
+        if hasattr(self.bot, 'statics_group'):
+
+            self.bot.statics_group.command(
+                name=STATIC_GROUPS.get("commands", {}).get("static_create", {}).get("name", {}).get("en-US", "group_create"),
+                description=STATIC_GROUPS.get("commands", {}).get("static_create", {}).get("description", {}).get("en-US", "Create a static group"),
+                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_create", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_create", {}).get("description", {})
+            )(self.static_create)
+
+            self.bot.statics_group.command(
+                name=STATIC_GROUPS.get("commands", {}).get("static_add", {}).get("name", {}).get("en-US", "player_add"),
+                description=STATIC_GROUPS.get("commands", {}).get("static_add", {}).get("description", {}).get("en-US", "Add player to static group"),
+                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_add", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_add", {}).get("description", {})
+            )(self.static_add)
+
+            self.bot.statics_group.command(
+                name=STATIC_GROUPS.get("commands", {}).get("static_remove", {}).get("name", {}).get("en-US", "player_remove"),
+                description=STATIC_GROUPS.get("commands", {}).get("static_remove", {}).get("description", {}).get("en-US", "Remove player from static group"),
+                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_remove", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_remove", {}).get("description", {})
+            )(self.static_remove)
+
+            self.bot.statics_group.command(
+                name=STATIC_GROUPS.get("commands", {}).get("static_delete", {}).get("name", {}).get("en-US", "group_delete"),
+                description=STATIC_GROUPS.get("commands", {}).get("static_delete", {}).get("description", {}).get("en-US", "Delete a static group"),
+                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_delete", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_delete", {}).get("description", {})
+            )(self.static_delete)
+
+            self.bot.statics_group.command(
+                name=STATIC_GROUPS.get("commands", {}).get("static_update", {}).get("name", {}).get("en-US", "update"),
+                description=STATIC_GROUPS.get("commands", {}).get("static_update", {}).get("description", {}).get("en-US", "Update static groups message"),
+                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_update", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_update", {}).get("description", {})
+            )(self.static_update)
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -671,13 +745,6 @@ class GuildEvents(commands.Cog):
             except Exception as outer_e:
                 logging.error(f"[GuildEvents - create_events_for_guild] Unexpected error in create_events_for_guild for guild {guild_id}: {outer_e}", exc_info=True)
 
-    @discord.slash_command(
-        name=GUILD_EVENTS.get("event_confirm", {}).get("name", {}).get("en-US", "event_confirm"),
-        description=GUILD_EVENTS.get("event_confirm", {}).get("description", {}).get("en-US", "Confirm a guild event."),
-        name_localizations=GUILD_EVENTS.get("event_confirm", {}).get("name", {}),
-        description_localizations=GUILD_EVENTS.get("event_confirm", {}).get("description", {})
-    )
-    @commands.has_permissions(manage_guild=True)
     async def event_confirm(self, ctx: discord.ApplicationContext, event_id: str):
         """
         Confirm and close an event for registration.
@@ -784,29 +851,7 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-    @event_confirm.error
-    async def event_confirm_error(self, ctx, error):
-        """
-        Handle errors that occur during event confirmation.
-        
-        Args:
-            ctx: Discord application context from the command
-            error: Exception that occurred during event confirmation
-            
-        Returns:
-            None
-        """
-        logging.error(f"❌ [GuildEvents] event_confirm error: {error}")
-        follow_message = GUILD_EVENTS["event_confirm"]["event_ko"].get(ctx.locale,GUILD_EVENTS["event_confirm"]["event_ko"].get("en-US")).format(error=error)
-        await ctx.send(follow_message, delete_after=10)
 
-    @discord.slash_command(
-        name=GUILD_EVENTS.get("event_cancel", {}).get("name", {}).get("en-US", "event_cancel"),
-        description=GUILD_EVENTS.get("event_cancel", {}).get("description", {}).get("en-US", "Cancel a guild event."),
-        name_localizations=GUILD_EVENTS.get("event_cancel", {}).get("name", {}),
-        description_localizations=GUILD_EVENTS.get("event_cancel", {}).get("description", {})
-    )
-    @commands.has_permissions(manage_guild=True)
     async def event_cancel(self, ctx: discord.ApplicationContext, event_id: str):
         """
         Cancel an event and remove it from the system.
@@ -920,21 +965,6 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-    @event_cancel.error
-    async def event_cancel_error(self, ctx, error):
-        """
-        Handle errors that occur during event cancellation.
-        
-        Args:
-            ctx: Discord application context from the command
-            error: Exception that occurred during event cancellation
-            
-        Returns:
-            None
-        """
-        logging.error(f"❌ [GuildEvents] event_cancel error: {error}")
-        error_msg = GUILD_EVENTS["event_cancel"]["event_embed_ko"].get(ctx.locale,GUILD_EVENTS["event_cancel"]["event_embed_ko"].get("en-US")).format(error=error)
-        await ctx.send(error_msg, delete_after=10)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -2382,13 +2412,6 @@ class GuildEvents(commands.Cog):
         except Exception as exc:
             logging.exception("[GuildEvents - Create_Groups] Failed to send embeds.", exc_info=exc)
 
-    @discord.slash_command(
-        name=GUILD_EVENTS.get("event_create", {}).get("name", {}).get("en-US", "event_create"),
-        description=GUILD_EVENTS.get("event_create", {}).get("description", {}).get("en-US", "Create a guild event manually."),
-        name_localizations=GUILD_EVENTS.get("event_create", {}).get("name", {}),
-        description_localizations=GUILD_EVENTS.get("event_create", {}).get("description", {})
-    )
-    @commands.has_permissions(manage_guild=True)
     async def event_create(
         self, 
         ctx: discord.ApplicationContext, 
@@ -2685,13 +2708,6 @@ class GuildEvents(commands.Cog):
             follow_message = GUILD_EVENTS["event_create"]["event_ko"].get(user_locale,GUILD_EVENTS["event_create"]["event_ko"].get("en-US")).format(e=e)
             await ctx.followup.send(follow_message, ephemeral=True)
 
-    @discord.slash_command(
-        name=STATIC_GROUPS["static_create"]["name"]["en-US"],
-        description=STATIC_GROUPS["static_create"]["description"]["en-US"],
-        name_localizations=STATIC_GROUPS["static_create"]["name"],
-        description_localizations=STATIC_GROUPS["static_create"]["description"]
-    )
-    @commands.has_permissions(manage_roles=True)
     async def static_create(
         self,
         ctx: discord.ApplicationContext,
@@ -2746,13 +2762,6 @@ class GuildEvents(commands.Cog):
                 await ctx.followup.send(general_error_msg, ephemeral=True)
                 logging.error(f"[GuildEvents] Error creating static group: {e}")
 
-    @discord.slash_command(
-        name=STATIC_GROUPS["static_add"]["name"]["en-US"],
-        description=STATIC_GROUPS["static_add"]["description"]["en-US"],
-        name_localizations=STATIC_GROUPS["static_add"]["name"],
-        description_localizations=STATIC_GROUPS["static_add"]["description"]
-    )
-    @commands.has_permissions(manage_roles=True)
     async def static_add(
         self,
         ctx: discord.ApplicationContext,
@@ -2828,13 +2837,6 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(error_msg, ephemeral=True)
             logging.error(f"[GuildEvents] Error adding member to static group: {e}")
 
-    @discord.slash_command(
-        name=STATIC_GROUPS["static_remove"]["name"]["en-US"],
-        description=STATIC_GROUPS["static_remove"]["description"]["en-US"],
-        name_localizations=STATIC_GROUPS["static_remove"]["name"],
-        description_localizations=STATIC_GROUPS["static_remove"]["description"]
-    )
-    @commands.has_permissions(manage_roles=True)
     async def static_remove(
         self,
         ctx: discord.ApplicationContext,
@@ -2904,13 +2906,6 @@ class GuildEvents(commands.Cog):
             await ctx.followup.send(error_msg, ephemeral=True)
             logging.error(f"[GuildEvents] Error removing member from static group: {e}")
 
-    @discord.slash_command(
-        name=STATIC_GROUPS.get("preview_groups", {}).get("name", {}).get("en-US", "preview_groups"),
-        description=STATIC_GROUPS.get("preview_groups", {}).get("description", {}).get("en-US", "Preview groups before automatic creation for an event"),
-        name_localizations=STATIC_GROUPS.get("preview_groups", {}).get("name", {}),
-        description_localizations=STATIC_GROUPS.get("preview_groups", {}).get("description", {})
-    )
-    @commands.has_permissions(manage_guild=True)
     async def preview_groups(
         self,
         ctx: discord.ApplicationContext,
@@ -3184,13 +3179,6 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents] Error updating static groups message for guild {guild_id}: {e}")
             return False
 
-    @discord.slash_command(
-        name=STATIC_GROUPS["static_update"]["name"]["en-US"],
-        description=STATIC_GROUPS["static_update"]["description"]["en-US"],
-        name_localizations=STATIC_GROUPS["static_update"]["name"],
-        description_localizations=STATIC_GROUPS["static_update"]["description"]
-    )
-    @commands.has_permissions(manage_roles=True)
     async def static_update(self, ctx: discord.ApplicationContext):
         """
         Update static groups message manually via command.
@@ -3224,13 +3212,6 @@ class GuildEvents(commands.Cog):
             error_msg = STATIC_GROUPS["static_update"]["messages"]["no_message"].get(guild_lang, STATIC_GROUPS["static_update"]["messages"]["no_message"].get("en-US"))
             await ctx.followup.send(error_msg, ephemeral=True)
 
-    @discord.slash_command(
-        name=STATIC_GROUPS["static_delete"]["name"]["en-US"],
-        description=STATIC_GROUPS["static_delete"]["description"]["en-US"],
-        name_localizations=STATIC_GROUPS["static_delete"]["name"],
-        description_localizations=STATIC_GROUPS["static_delete"]["description"]
-    )
-    @commands.has_permissions(manage_roles=True)
     async def static_delete(
         self,
         ctx: discord.ApplicationContext,
