@@ -9,6 +9,7 @@ import discord
 from discord.ext import commands
 
 from core.translation import translations as global_translations
+from core.functions import get_user_message, get_guild_message
 
 ABSENCE_TRANSLATIONS = global_translations.get("absence", {})
 
@@ -268,29 +269,29 @@ class AbsenceManager(commands.Cog):
         """
         await ctx.defer(ephemeral=True)
 
-        loc = ctx.locale or "en-US"
+        # Locale will be handled by get_user_message automatically
 
         cfg = await self.bot.cache.get_guild_data(ctx.guild_id, 'absence_channels')
         if not cfg:
-            msg = ABSENCE_TRANSLATIONS["error_chan"].get(loc,ABSENCE_TRANSLATIONS["error_chan"]["en-US"])
+            msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error_chan")
             await ctx.respond(msg, ephemeral=True)
             return
 
         abs_chan = ctx.guild.get_channel(cfg["abs_channel"])
         if abs_chan is None:
-            msg = ABSENCE_TRANSLATIONS["error_chan"].get(loc,ABSENCE_TRANSLATIONS["error_chan"]["en-US"])
+            msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error_chan")
             await ctx.respond(msg, ephemeral=True)
             return
         
         lang = await self.bot.cache.get_guild_data(ctx.guild.id, 'guild_lang') or "en-US"
 
-        reason_text = ABSENCE_TRANSLATIONS["away_ok"].get(lang, ABSENCE_TRANSLATIONS["away_ok"]["en-US"]).format(member=member.display_name)
+        reason_text = await get_guild_message(self.bot, ctx.guild.id, ABSENCE_TRANSLATIONS, "away_ok", member=member.display_name)
         if return_date:
-            back_text = ABSENCE_TRANSLATIONS["back_time"].get(lang, ABSENCE_TRANSLATIONS["back_time"]["en-US"]).format(return_date=return_date)
+            back_text = await get_guild_message(self.bot, ctx.guild.id, ABSENCE_TRANSLATIONS, "back_time", return_date=return_date)
             reason_text = f"{reason_text} {back_text}"
 
         await self._set_absent(ctx.guild, member, abs_chan, reason_text)
-        resp = ABSENCE_TRANSLATIONS["absence_ok"].get(loc,ABSENCE_TRANSLATIONS["absence_ok"]["en-US"]).format(member=member)
+        resp = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "absence_ok", member=member)
         await ctx.respond(resp, ephemeral=True)
 
     async def notify_absence(self, member: discord.Member, action: str, channel_id: int, guild_lang: str) -> None:
@@ -315,11 +316,11 @@ class AbsenceManager(commands.Cog):
             logging.error("[AbsenceManager] Failed to access the members notification channel.")
             return
 
-        title = ABSENCE_TRANSLATIONS.get("title", {}).get(guild_lang, "Notification")
-        member_label = ABSENCE_TRANSLATIONS.get("member_label", {}).get(guild_lang, "Member")
-        status_label = ABSENCE_TRANSLATIONS.get("status_label", {}).get(guild_lang, "Status")
-        absent_text = ABSENCE_TRANSLATIONS.get("absent", {}).get(guild_lang, "Absent")
-        returned_text = ABSENCE_TRANSLATIONS.get("returned", {}).get(guild_lang, "Returned")
+        title = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "title")
+        member_label = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "member_label")
+        status_label = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "status_label")
+        absent_text = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "absent")
+        returned_text = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "returned")
 
         status_text = absent_text if action == "addition" else returned_text
 
@@ -361,17 +362,13 @@ class AbsenceManager(commands.Cog):
         try:
             role_member, role_absent = await self._get_guild_roles(guild)
             if not role_member or not role_absent:
-                await ctx.followup.send(
-                    ABSENCE_TRANSLATIONS.get("error", {}).get("roles_not_configured", {}).get(str(ctx.locale), "Absence roles are not configured for this guild."),
-                    ephemeral=True
-                )
+                error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.roles_not_configured")
+                await ctx.followup.send(error_msg, ephemeral=True)
                 return
 
             if role_absent not in member.roles:
-                await ctx.followup.send(
-                    ABSENCE_TRANSLATIONS.get("error", {}).get("not_absent", {}).get(str(ctx.locale), "You are not currently marked as absent."),
-                    ephemeral=True
-                )
+                error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.not_absent")
+                await ctx.followup.send(error_msg, ephemeral=True)
                 return
 
             try:
@@ -400,27 +397,21 @@ class AbsenceManager(commands.Cog):
                                             channels_data['forum_members_channel'], 
                                             guild_lang)
                 
-                success_msg = ABSENCE_TRANSLATIONS.get("success", {}).get("returned", {}).get(str(ctx.locale), "You have been marked as returned. Welcome back!")
+                success_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "success.returned")
                 await ctx.followup.send(success_msg, ephemeral=True)
                 
             except discord.Forbidden:
-                await ctx.followup.send(
-                    ABSENCE_TRANSLATIONS.get("error", {}).get("no_permission", {}).get(str(ctx.locale), "I don't have permission to manage your roles."),
-                    ephemeral=True
-                )
+                error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.no_permission")
+                await ctx.followup.send(error_msg, ephemeral=True)
             except Exception as role_error:
                 logging.error(f"[AbsenceManager] Error managing roles for {member.name}: {role_error}")
-                await ctx.followup.send(
-                    ABSENCE_TRANSLATIONS.get("error", {}).get("role_management", {}).get(str(ctx.locale), "An error occurred while updating your roles."),
-                    ephemeral=True
-                )
+                error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.role_management")
+                await ctx.followup.send(error_msg, ephemeral=True)
                 
         except Exception as e:
             logging.error(f"[AbsenceManager] Error in absence_remove for {member.name}: {e}")
-            await ctx.followup.send(
-                ABSENCE_TRANSLATIONS.get("error", {}).get("general", {}).get(str(ctx.locale), "An error occurred while processing your return."),
-                ephemeral=True
-            )
+            error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.general")
+            await ctx.followup.send(error_msg, ephemeral=True)
 
 def setup(bot: discord.Bot):
     """

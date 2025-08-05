@@ -16,6 +16,7 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
 from core.translation import translations as global_translations
+from core.functions import get_user_message, get_effective_locale
 
 LLM_DATA = global_translations.get("llm", {})
 
@@ -350,12 +351,12 @@ class LLMInteraction(commands.Cog):
 
             if not self.check_rate_limit(message.author.id):
                 logging.warning(f"[LLMInteraction] Rate limit exceeded for {safe_user}")
-                locale = message.guild.preferred_locale or "en-US"
+                locale = await get_effective_locale(self.bot, message.guild.id, message.author.id)
                 rate_limit_msg = LLM_DATA.get("rate_limit", {}).get(locale, LLM_DATA.get("rate_limit", {}).get("en-US", "⚠️ Too many requests. Please wait before asking again."))
                 await message.reply(rate_limit_msg)
                 return
             
-            locale = message.guild.preferred_locale or "en-US"
+            locale = await get_effective_locale(self.bot, message.guild.id, message.author.id)
             try:
                 is_premium = await self.get_guild_premium_status(message.guild.id)
             except Exception as e:

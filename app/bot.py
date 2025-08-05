@@ -550,7 +550,7 @@ def setup_global_group_error_handlers(bot: discord.Bot) -> None:
             error_key = "global_errors.cooldown"
             error_params["retry_after"] = f"{error.retry_after:.1f}"
 
-        error_message = get_user_message(ctx, bot.translations, error_key, **error_params)
+        error_message = await get_user_message(ctx, bot.translations, error_key, **error_params)
 
         if not error_message:
             fallback_messages = {

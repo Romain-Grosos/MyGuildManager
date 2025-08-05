@@ -455,7 +455,7 @@ class GuildMembers(commands.Cog):
         validated_value = self._validate_integer(value, self.min_gs_value, self.max_gs_value)
         if validated_value is None:
             logging.debug(f"[GuildMembers - GS] Invalid GS value provided by {ctx.author}: {value}")
-            msg = get_user_message(ctx, GUILD_MEMBERS["gs"], "not_positive")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["gs"], "not_positive")
             try:
                 await ctx.followup.send(msg, ephemeral=True)
             except Exception as ex:
@@ -493,12 +493,12 @@ class GuildMembers(commands.Cog):
                     logging.info(f"[GuildMembers - GS] Created guild_members cache entry for {key}")
                 else:
                     logging.debug(f"[GuildMembers - GS] Profile not found anywhere for key {key}")
-                    msg = get_user_message(ctx, GUILD_MEMBERS["gs"], "not_registered")
+                    msg = await get_user_message(ctx, GUILD_MEMBERS["gs"], "not_registered")
                     await ctx.followup.send(msg, ephemeral=True)
                     return
             except Exception as e:
                 logging.error(f"[GuildMembers - GS] Error in fallback logic: {e}")
-                msg = get_user_message(ctx, GUILD_MEMBERS["gs"], "not_registered")
+                msg = await get_user_message(ctx, GUILD_MEMBERS["gs"], "not_registered")
                 await ctx.followup.send(msg, ephemeral=True)
                 return
 
@@ -507,7 +507,7 @@ class GuildMembers(commands.Cog):
             await self.bot.run_db_query(query, (validated_value, guild_id, member_id), commit=True)
             await self.update_guild_member_cache(guild_id, member_id, "GS", validated_value)
             logging.debug(f"[GuildMembers - GS] Successfully updated GS for {ctx.author} (ID: {member_id}) to {validated_value}")
-            msg = get_user_message(ctx, GUILD_MEMBERS["gs"], "updated", username=ctx.author.display_name, value=validated_value)
+            msg = await get_user_message(ctx, GUILD_MEMBERS["gs"], "updated", username=ctx.author.display_name, value=validated_value)
             await ctx.followup.send(msg, ephemeral=True)
         except Exception as e:
             logging.exception(f"[GuildMembers - GS] Error updating GS for {ctx.author} (ID: {member_id}): {e}")
@@ -578,12 +578,12 @@ class GuildMembers(commands.Cog):
                     logging.info(f"[GuildMembers - Weapons] Created guild_members cache entry for {key}")
                 else:
                     logging.debug(f"[GuildMembers - Weapons] Profile not found anywhere for key {key}")
-                    msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_registered")
+                    msg = await get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_registered")
                     await ctx.followup.send(msg, ephemeral=True)
                     return
             except Exception as e:
                 logging.error(f"[GuildMembers - Weapons] Error in fallback logic: {e}")
-                msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_registered")
+                msg = await get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_registered")
                 await ctx.followup.send(msg, ephemeral=True)
                 return
 
@@ -591,18 +591,18 @@ class GuildMembers(commands.Cog):
         weapon2_code = self._validate_weapon_code(weapon2)
         
         if not weapon1_code or not weapon2_code:
-            msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_valid")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_valid")
             await ctx.followup.send(msg, ephemeral=True)
             return
         
         if weapon1_code == weapon2_code:
-            msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_valid_same")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_valid_same")
             await ctx.followup.send(msg, ephemeral=True)
             return
 
         valid_weapons = await self.get_valid_weapons(guild_id)
         if weapon1_code not in valid_weapons or weapon2_code not in valid_weapons:
-            msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_valid")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["weapons"], "not_valid")
             await ctx.followup.send(msg, ephemeral=True)
             return
 
@@ -617,7 +617,7 @@ class GuildMembers(commands.Cog):
             await self.update_guild_member_cache(guild_id, member_id, "weapons", weapons_str)
             await self.update_guild_member_cache(guild_id, member_id, "class", player_class)
 
-            msg = get_user_message(ctx, GUILD_MEMBERS["weapons"], "updated", username=ctx.author.display_name, weapons_str=weapons_str)
+            msg = await get_user_message(ctx, GUILD_MEMBERS["weapons"], "updated", username=ctx.author.display_name, weapons_str=weapons_str)
             await ctx.followup.send(msg, ephemeral=True)
         except Exception as e:
             logging.exception(f"[GuildMembers - Weapons] Error updating weapons for {ctx.author} (ID: {member_id}): {e}")
@@ -649,7 +649,7 @@ class GuildMembers(commands.Cog):
             return
 
         if not self._validate_url(url):
-            msg = get_user_message(ctx, GUILD_MEMBERS["build"], "not_correct")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["build"], "not_correct")
             await ctx.followup.send(msg, ephemeral=True)
             return
         
@@ -684,12 +684,12 @@ class GuildMembers(commands.Cog):
                     logging.info(f"[GuildMembers - Build] Created guild_members cache entry for {key}")
                 else:
                     logging.debug(f"[GuildMembers - Build] Profile not found anywhere for key {key}")
-                    msg = get_user_message(ctx, GUILD_MEMBERS["build"], "not_registered")
+                    msg = await get_user_message(ctx, GUILD_MEMBERS["build"], "not_registered")
                     await ctx.followup.send(msg, ephemeral=True)
                     return
             except Exception as e:
                 logging.error(f"[GuildMembers - Build] Error in fallback logic: {e}")
-                msg = get_user_message(ctx, GUILD_MEMBERS["build"], "not_registered")
+                msg = await get_user_message(ctx, GUILD_MEMBERS["build"], "not_registered")
                 await ctx.followup.send(msg, ephemeral=True)
                 return
 
@@ -698,7 +698,7 @@ class GuildMembers(commands.Cog):
             query = "UPDATE guild_members SET build = %s WHERE guild_id = %s AND member_id = %s"
             await self.bot.run_db_query(query, (sanitized_url, guild_id, member_id), commit=True)
             await self.update_guild_member_cache(guild_id, member_id, "build", sanitized_url)
-            msg = get_user_message(ctx, GUILD_MEMBERS["build"], "updated", username=ctx.author.display_name)
+            msg = await get_user_message(ctx, GUILD_MEMBERS["build"], "updated", username=ctx.author.display_name)
             await ctx.followup.send(msg, ephemeral=True)
         except Exception as e:
             logging.exception(f"[GuildMembers - Build] Error updating build for {ctx.author} (ID: {member_id}): {e}")
@@ -760,12 +760,12 @@ class GuildMembers(commands.Cog):
                     logging.info(f"[GuildMembers - Username] Created guild_members cache entry for {key}")
                 else:
                     logging.debug(f"[GuildMembers - Username] Profile not found anywhere for key {key}")
-                    msg = get_user_message(ctx, GUILD_MEMBERS["username"], "not_registered")
+                    msg = await get_user_message(ctx, GUILD_MEMBERS["username"], "not_registered")
                     await ctx.followup.send(msg, ephemeral=True)
                     return
             except Exception as e:
                 logging.error(f"[GuildMembers - Username] Error in fallback logic: {e}")
-                msg = get_user_message(ctx, GUILD_MEMBERS["username"], "not_registered")
+                msg = await get_user_message(ctx, GUILD_MEMBERS["username"], "not_registered")
                 await ctx.followup.send(msg, ephemeral=True)
                 return
 
@@ -786,7 +786,7 @@ class GuildMembers(commands.Cog):
             except Exception as e:
                 logging.warning(f"[GuildMembers - Username] Error updating nickname for {ctx.author.display_name}: {e}")
             
-            msg = get_user_message(ctx, GUILD_MEMBERS["username"], "updated", username=new_username)
+            msg = await get_user_message(ctx, GUILD_MEMBERS["username"], "updated", username=new_username)
             await ctx.followup.send(msg, ephemeral=True)
         except Exception as e:
             logging.exception(f"[GuildMembers - Username] Error updating username for {ctx.author} (ID: {member_id}): {e}")
@@ -815,14 +815,14 @@ class GuildMembers(commands.Cog):
         locale = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
         
         if not roles_config:
-            msg = get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "not_config")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "not_config")
             await ctx.followup.send(msg, ephemeral=True)
             return
         
         members_role_id = roles_config.get("members")
         absent_role_id = roles_config.get("absent_members")
         if not members_role_id:
-            msg = get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "roles_ko")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "roles_ko")
             await ctx.followup.send(msg, ephemeral=True)
             return
 
@@ -837,7 +837,7 @@ class GuildMembers(commands.Cog):
             user_setup_db = await self._get_user_setup_bulk(guild_id)
         except Exception as e:
             logging.error(f"[GuildMembers] Error loading member data for guild {guild_id}: {e}", exc_info=True)
-            msg = get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "database_error")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "database_error")
             if not msg:
                 msg = "Database error occurred. Please try again later."
             await ctx.followup.send(msg, ephemeral=True)
@@ -1504,24 +1504,24 @@ class GuildMembers(commands.Cog):
                    if g == guild_id and m.get("username", "").lower().startswith(sanitized_username.lower())]
 
         if not matching:
-            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "not_found", username=username)
+            msg = await get_user_message(ctx, GUILD_MEMBERS["show_build"], "not_found", username=username)
             await ctx.followup.send(msg, ephemeral=True)
             return
 
         member_data = matching[0]
         build_url = member_data.get("build")
         if not build_url or build_url in ("NULL", None, "", "None"):
-            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "no_build", username=username)
+            msg = await get_user_message(ctx, GUILD_MEMBERS["show_build"], "no_build", username=username)
             await ctx.followup.send(msg, ephemeral=True)
             return
 
         try:
-            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "build_sent", member=member_data.get('username'), build_url=build_url)
+            msg = await get_user_message(ctx, GUILD_MEMBERS["show_build"], "build_sent", member=member_data.get('username'), build_url=build_url)
             await ctx.author.send(msg)
-            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "sent")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["show_build"], "sent")
             await ctx.followup.send(msg, ephemeral=True)
         except discord.Forbidden:
-            msg = get_user_message(ctx, GUILD_MEMBERS["show_build"], "cannot_send")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["show_build"], "cannot_send")
             await ctx.followup.send(msg, ephemeral=True)
 
     async def notify_incomplete_profiles(self, ctx: discord.ApplicationContext):
@@ -1559,7 +1559,7 @@ class GuildMembers(commands.Cog):
         logging.debug(f"[GuildMembers] notify_incomplete_profiles: Found {len(incomplete_members)} incomplete members")
 
         if not incomplete_members:
-            msg = get_user_message(ctx, GUILD_MEMBERS["notify_profile"], "no_inc_profiles")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["notify_profile"], "no_inc_profiles")
             await ctx.followup.send(msg, ephemeral=True)
             return
 
@@ -1567,7 +1567,7 @@ class GuildMembers(commands.Cog):
         failures = 0
         for member_id in incomplete_members:
             member = guild.get_member(member_id)
-            msg = get_user_message(ctx, GUILD_MEMBERS["notify_profile"], "mp_sent")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["notify_profile"], "mp_sent")
             if member:
                 try:
                     await member.send(msg)
@@ -1578,7 +1578,7 @@ class GuildMembers(commands.Cog):
             else:
                 failures += 1
 
-        msg = get_user_message(ctx, GUILD_MEMBERS["notify_profile"], "success", successes=successes, failures=failures)
+        msg = await get_user_message(ctx, GUILD_MEMBERS["notify_profile"], "success", successes=successes, failures=failures)
         await ctx.followup.send(msg,ephemeral=True)
 
     @admin_rate_limit(cooldown_seconds=300)
@@ -1644,7 +1644,7 @@ class GuildMembers(commands.Cog):
         
         if not ctx.guild or not ctx.author:
             logging.error("[GuildMembers - ConfigRoster] Invalid context: missing guild or author")
-            invalid_context_msg = get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.invalid_context")
+            invalid_context_msg = await get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.invalid_context")
             await ctx.followup.send(invalid_context_msg, ephemeral=True)
             return
         
@@ -1672,14 +1672,14 @@ class GuildMembers(commands.Cog):
             await self.update_recruitment_message(ctx)
             
             config_summary = "\n".join([f"- **{class_name}** : {count}" for class_name, count in class_config.items()])
-            success_msg = get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.success", config_summary=config_summary)
+            success_msg = await get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.success", config_summary=config_summary)
             
             await ctx.followup.send(success_msg, ephemeral=True)
             logging.debug(f"[GuildMembers - ConfigRoster] Ideal staff configuration updated for guild {guild_id}: {class_config}")
             
         except Exception as e:
             logging.exception(f"[GuildMembers - ConfigRoster] Error updating ideal staff config for guild {guild_id}: {e}")
-            error_msg = get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.update_error")
+            error_msg = await get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.update_error")
             await ctx.followup.send(error_msg, ephemeral=True)
 
     async def change_language(
@@ -1742,33 +1742,32 @@ class GuildMembers(commands.Cog):
                     logging.info(f"[GuildMembers - ChangeLanguage] Created guild_members cache entry for {key}")
                 else:
                     logging.debug(f"[GuildMembers - ChangeLanguage] Profile not found anywhere for key {key}")
-                    not_registered_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.not_registered")
+                    not_registered_msg = await get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.not_registered")
                     await ctx.followup.send(not_registered_msg, ephemeral=True)
                     return
             except Exception as e:
                 logging.error(f"[GuildMembers - ChangeLanguage] Error in fallback logic: {e}")
-                not_registered_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.not_registered")
+                not_registered_msg = await get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.not_registered")
                 await ctx.followup.send(not_registered_msg, ephemeral=True)
                 return
         
         try:
-            short_language = language[:2] if len(language) >= 2 else language
-            
+            # Store full locale instead of truncated version
             query = "UPDATE guild_members SET language = %s WHERE guild_id = %s AND member_id = %s"
-            await self.bot.run_db_query(query, (short_language, guild_id, member_id), commit=True)
+            await self.bot.run_db_query(query, (language, guild_id, member_id), commit=True)
             
-            await self.update_guild_member_cache(guild_id, member_id, "language", short_language)
+            await self.update_guild_member_cache(guild_id, member_id, "language", language)
             
             language_name = global_translations.get("language_names", {}).get(language, language)
             
-            success_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.success", language_name=language_name)
+            success_msg = await get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.success", language_name=language_name)
             await ctx.followup.send(success_msg, ephemeral=True)
             
             logging.debug(f"[GuildMembers - ChangeLanguage] Language updated for user {member_id} in guild {guild_id}: {language}")
             
         except Exception as e:
             logging.exception(f"[GuildMembers - ChangeLanguage] Error updating language for user {member_id} in guild {guild_id}: {e}")
-            error_msg = get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.error", error=str(e))
+            error_msg = await get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.error", error=str(e))
             await ctx.followup.send(error_msg, ephemeral=True)
 
     async def run_maj_roster(self, guild_id: int) -> None:

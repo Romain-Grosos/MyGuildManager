@@ -621,6 +621,48 @@ class GlobalCacheSystem:
         
         return members_data
     
+    async def get_guild_member_data(self, guild_id: int, user_id: int) -> Optional[Dict]:
+        """
+        Get individual guild member data from cache.
+        
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID
+            
+        Returns:
+            Member data dictionary or None if not found
+        """
+        try:
+            bulk_members = await self.get_bulk_guild_members(guild_id)
+            return bulk_members.get(user_id)
+        except Exception as e:
+            logging.error(f"[Cache] Error getting guild member data for {guild_id}/{user_id}: {e}")
+            return None
+    
+    async def get_user_setup_data(self, guild_id: int, user_id: int) -> Optional[Dict]:
+        """
+        Get user setup data from cache via bulk guild members.
+        
+        Args:
+            guild_id: Discord guild ID
+            user_id: Discord user ID
+            
+        Returns:
+            User setup data dictionary or None if not found
+        """
+        try:
+            member_data = await self.get_guild_member_data(guild_id, user_id)
+            if member_data and 'locale' in member_data:
+                return {
+                    'locale': member_data['locale'],
+                    'gs': member_data.get('GS'),
+                    'weapons': member_data.get('weapons')
+                }
+            return None
+        except Exception as e:
+            logging.error(f"[Cache] Error getting user setup data for {guild_id}/{user_id}: {e}")
+            return None
+
     async def get_cached_guild_roles(self, guild_id: int, force_refresh: bool = False) -> Dict[int, Any]:
         """
         Get guild roles with cache optimization.

@@ -19,6 +19,7 @@ from discord.ext import commands, tasks
 from core.performance_profiler import profile_performance
 from core.reliability import discord_resilient
 from core.translation import translations as global_translations
+from core.functions import get_user_message, get_guild_message, get_effective_locale
 
 GUILD_EVENTS = global_translations.get("guild_events", {})
 STATIC_GROUPS = global_translations.get("static_groups", {})
@@ -762,24 +763,24 @@ class GuildEvents(commands.Cog):
         guild_id = ctx.guild.id
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
-        user_locale = ctx.locale if hasattr(ctx, "locale") and ctx.locale else "en-US"
+        user_locale = await get_effective_locale(self.bot, guild_id, ctx.user.id)
         guild_locale = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
 
         try:
             event_id_int = int(event_id)
         except ValueError:
-            follow_message = GUILD_EVENTS["events_infos"]["id_ko"].get(user_locale,GUILD_EVENTS["events_infos"]["id_ko"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "events_infos.id_ko")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         if not settings:
-            follow_message = GUILD_EVENTS["event_confirm"]["no_settings"].get(user_locale,GUILD_EVENTS["event_confirm"]["no_settings"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_settings")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         target_event = await self.get_event_from_cache(guild.id, event_id_int)
         if not target_event:
-            follow_message = GUILD_EVENTS["event_confirm"]["no_events"].get(user_locale,GUILD_EVENTS["event_confirm"]["no_events"].get("en-US")).format(event_id=event_id)
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_events", event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -799,7 +800,7 @@ class GuildEvents(commands.Cog):
         
         events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
         if not events_channel:
-            follow_message = GUILD_EVENTS["event_confirm"]["no_events_canal"].get(user_locale,GUILD_EVENTS["event_confirm"]["no_events_canal"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_events_canal")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -807,21 +808,21 @@ class GuildEvents(commands.Cog):
             message = await events_channel.fetch_message(event_id)
         except (discord.NotFound, discord.Forbidden, discord.HTTPException) as e:
             logging.warning(f"[GuildEvents] Cannot fetch event message {event_id}: {e}")
-            follow_message = GUILD_EVENTS["event_confirm"]["no_events_message"].get(user_locale,GUILD_EVENTS["event_confirm"]["no_events_message"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_events_message")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         if not message.embeds:
-            follow_message = GUILD_EVENTS["event_confirm"]["no_events_message_embed"].get(user_locale,GUILD_EVENTS["event_confirm"]["no_events_message_embed"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_events_message_embed")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         new_embed = message.embeds[0]
         new_embed.color = discord.Color.green()
 
-        status_key   = GUILD_EVENTS["events_infos"]["status"].get(guild_locale, GUILD_EVENTS["events_infos"]["status"].get("en-US")).lower()
-        status_name  = GUILD_EVENTS["events_infos"]["status"].get(guild_locale, GUILD_EVENTS["events_infos"]["status"].get("en-US"))
-        status_localized = GUILD_EVENTS["event_confirm"]["confirmed"].get(guild_locale,GUILD_EVENTS["event_confirm"]["confirmed"].get("en-US"))
+        status_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.status")).lower()
+        status_name  = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.status")
+        status_localized = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_confirm.confirmed")
 
         new_fields = []
         status_found = False
@@ -842,12 +843,12 @@ class GuildEvents(commands.Cog):
             roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
             
             members_role = roles_data.get("members") if roles_data else None
-            update_message = GUILD_EVENTS["event_confirm"]["confirmed_notif"].get(user_locale,GUILD_EVENTS["event_confirm"]["confirmed_notif"].get("en-US")).format(role=members_role)
+            update_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.confirmed_notif", role=members_role)
             await message.edit(content=update_message,embed=new_embed)
-            follow_message = GUILD_EVENTS["event_confirm"]["event_updated"].get(user_locale,GUILD_EVENTS["event_confirm"]["event_updated"].get("en-US")).format(event_id=event_id)
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.event_updated", event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
-            follow_message = GUILD_EVENTS["event_confirm"]["event_embed_ko"].get(user_locale,GUILD_EVENTS["event_confirm"]["event_embed_ko"].get("en-US")).format(e=e)
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.event_embed_ko", e=str(e))
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -869,24 +870,24 @@ class GuildEvents(commands.Cog):
         guild_id = ctx.guild.id
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
-        user_locale = ctx.locale if hasattr(ctx, "locale") and ctx.locale else "en-US"
+        user_locale = await get_effective_locale(self.bot, guild_id, ctx.user.id)
         guild_locale = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
 
         try:
             event_id_int = int(event_id)
         except ValueError:
-            follow_message = GUILD_EVENTS["events_infos"]["id_ko"].get(user_locale,GUILD_EVENTS["events_infos"]["id_ko"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "events_infos.id_ko")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         if not settings:
-            follow_message = GUILD_EVENTS["event_cancel"]["no_settings"].get(user_locale,GUILD_EVENTS["event_cancel"]["no_settings"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_settings")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         target_event = await self.get_event_from_cache(guild.id, event_id_int)
         if not target_event:
-            follow_message = GUILD_EVENTS["event_cancel"]["no_events"].get(user_locale,GUILD_EVENTS["event_cancel"]["no_events"].get("en-US")).format(event_id=event_id)
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_events", event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -905,14 +906,14 @@ class GuildEvents(commands.Cog):
         
         events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
         if not events_channel:
-            follow_message = GUILD_EVENTS["event_cancel"]["no_settings"].get(user_locale,GUILD_EVENTS["event_cancel"]["no_settings"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_settings")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         try:
             message = await events_channel.fetch_message(event_id_int)
         except Exception as e:
-            follow_message = GUILD_EVENTS["event_cancel"]["no_events_message"].get(user_locale,GUILD_EVENTS["event_cancel"]["no_events_message"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_events_message")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -922,23 +923,23 @@ class GuildEvents(commands.Cog):
             logging.error(f"❌ [GuildEvents] Error clearing reactions in event_cancel: {e}", exc_info=True)
 
         if not message.embeds:
-            follow_message = GUILD_EVENTS["event_cancel"]["no_events_message_embed"].get(user_locale,GUILD_EVENTS["event_cancel"]["no_events_message_embed"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_events_message_embed")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         embed = message.embeds[0]
         embed.color = discord.Color.red()
 
-        status_key   = GUILD_EVENTS["events_infos"]["status"].get(guild_locale, GUILD_EVENTS["events_infos"]["status"].get("en-US")).lower()
-        status_name  = GUILD_EVENTS["events_infos"]["status"].get(guild_locale, GUILD_EVENTS["events_infos"]["status"].get("en-US"))
-        status_localized = GUILD_EVENTS["event_cancel"]["canceled"].get(guild_locale,GUILD_EVENTS["event_cancel"]["canceled"].get("en-US"))
-        present_key   = GUILD_EVENTS["events_infos"]["present"].get(guild_locale, GUILD_EVENTS["events_infos"]["present"].get("en-US")).lower()
-        tentative_key = GUILD_EVENTS["events_infos"]["attempt"].get(guild_locale, GUILD_EVENTS["events_infos"]["attempt"].get("en-US")).lower()
-        absence_key   = GUILD_EVENTS["events_infos"]["absence"].get(guild_locale, GUILD_EVENTS["events_infos"]["absence"].get("en-US")).lower()
-        dkp_v_key   = GUILD_EVENTS["events_infos"]["dkp_v"].get(guild_locale, GUILD_EVENTS["events_infos"]["dkp_v"].get("en-US")).lower()
-        dkp_i_key   = GUILD_EVENTS["events_infos"]["dkp_i"].get(guild_locale, GUILD_EVENTS["events_infos"]["dkp_i"].get("en-US")).lower()
-        groups_key   = GUILD_EVENTS["events_infos"]["groups"].get(guild_locale, GUILD_EVENTS["events_infos"]["groups"].get("en-US")).lower()
-        chan_key   = GUILD_EVENTS["events_infos"]["voice_channel"].get(guild_locale, GUILD_EVENTS["events_infos"]["voice_channel"].get("en-US")).lower()
+        status_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.status")).lower()
+        status_name  = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.status")
+        status_localized = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_cancel.canceled")
+        present_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.present")).lower()
+        tentative_key = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.attempt")).lower()
+        absence_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.absence")).lower()
+        dkp_v_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.dkp_v")).lower()
+        dkp_i_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.dkp_i")).lower()
+        groups_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.groups")).lower()
+        chan_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.voice_channel")).lower()
 
         new_fields = []
         for field in embed.fields:
@@ -958,10 +959,10 @@ class GuildEvents(commands.Cog):
 
         try:
             await message.edit(content="", embed=embed)
-            follow_message = GUILD_EVENTS["event_cancel"]["event_updated"].get(user_locale,GUILD_EVENTS["event_cancel"]["event_updated"].get("en-US")).format(event_id=event_id)
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.event_updated", event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
-            follow_message = GUILD_EVENTS["event_cancel"]["event_embed_ko"].get(user_locale,GUILD_EVENTS["event_cancel"]["event_embed_ko"].get("en-US")).format(e=e)
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.event_embed_ko", e=str(e))
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -1408,7 +1409,7 @@ class GuildEvents(commands.Cog):
                 to_remind = list(updated_initial - registrations)
                 reminded = []
                 event_link = f"https://discord.com/channels/{guild.id}/{events_channel.id}/{event['event_id']}"
-                dm_template = GUILD_EVENTS.get("event_reminder", {}).get("dm_message", {}).get(guild_locale,GUILD_EVENTS.get("event_reminder", {}).get("dm_message", {}).get("en-US"))
+                dm_template = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_reminder.dm_message")
                 logging.debug(f"[GuildEvents - event_reminder_cron] For event {event['event_id']}, initial members: {initial}, registered: {registrations}, to remind: {to_remind}")
                 for member_id in to_remind:
                     member = guild.get_member(member_id)
@@ -1431,7 +1432,7 @@ class GuildEvents(commands.Cog):
 
                 try:
                     if reminded:
-                        reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_reminded", {}).get(guild_locale)
+                        reminder_template = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_reminder.notification_reminded")
                         if reminder_template is None:
                             reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_reminded", {}).get("en-US", 
                                 "## :bell: Event Reminder\nFor event **{event}**\n({event_link})\n\n{len} member(s) were reminded: {members}"
@@ -1445,7 +1446,7 @@ class GuildEvents(commands.Cog):
                         await notifications_channel.send(reminder_msg)
                         overall_results.append(result)
                     else:
-                        reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_all_OK", {}).get(guild_locale)
+                        reminder_template = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_reminder.notification_all_OK")
                         if reminder_template is None:
                             reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_all_OK", {}).get("en-US", 
                                 "## :bell: Event Reminder\nFor event **{event}**\n({event_link})\n\nAll members have responded."
@@ -2487,40 +2488,40 @@ class GuildEvents(commands.Cog):
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         
-        user_locale = ctx.locale if hasattr(ctx, "locale") and ctx.locale else "en-US"
+        user_locale = await get_effective_locale(self.bot, guild_id, ctx.user.id)
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
         
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         if not settings:
-            follow_message = GUILD_EVENTS["event_create"]["no_settings"].get(user_locale,GUILD_EVENTS["event_create"]["no_settings"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.no_settings")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         logging.debug(f"[GuildEvents - event_create] Received parameters: event_name={event_name}, event_date={event_date}, event_time={event_time}, duration={duration}, status={status}, dkp_value={dkp_value}, dkp_ins={dkp_ins}")
         
         if not event_name or not event_name.strip():
-            follow_message = GUILD_EVENTS.get("event_create", {}).get("name_empty", {}).get(user_locale, "❌ Event name cannot be empty.")
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.name_empty")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
             
         event_name = event_name.strip()
         if len(event_name) > 100:
-            follow_message = GUILD_EVENTS.get("event_create", {}).get("name_too_long", {}).get(user_locale, "❌ Event name is too long (max 100 characters).")
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.name_too_long")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
             
         if dkp_value < 0 or dkp_value > 9999:
-            follow_message = GUILD_EVENTS.get("event_create", {}).get("dkp_value_invalid", {}).get(user_locale, "❌ DKP value must be between 0 and 9999.")
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.dkp_value_invalid")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
             
         if dkp_ins < 0 or dkp_ins > 9999:
-            follow_message = GUILD_EVENTS.get("event_create", {}).get("dkp_ins_invalid", {}).get(user_locale, "❌ DKP inscription value must be between 0 and 9999.")
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.dkp_ins_invalid")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
             
         if duration <= 0 or duration > 1440:
-            follow_message = GUILD_EVENTS.get("event_create", {}).get("duration_invalid", {}).get(user_locale, "❌ Duration must be between 1 and 1440 minutes (24 hours).")
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.duration_invalid")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
         
@@ -2532,7 +2533,7 @@ class GuildEvents(commands.Cog):
             logging.debug(f"[GuildEvents - event_create] Parsed dates: start_date={start_date}, start_time={start_time_obj}")
         except Exception as e:
             logging.error("[GuildEvents - event_create] Error parsing date or time.", exc_info=True)
-            follow_message = GUILD_EVENTS["event_create"]["date_ko"].get(user_locale,GUILD_EVENTS["event_create"]["date_ko"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.date_ko")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -2543,7 +2544,7 @@ class GuildEvents(commands.Cog):
             logging.debug(f"[GuildEvents - event_create] Calculated start_dt: {start_dt}, end_dt: {end_dt}")
         except Exception as e:
             logging.error("[GuildEvents - event_create] Error localizing or calculating end date.", exc_info=True)
-            follow_message = GUILD_EVENTS["event_create"]["date_ko_2"].get(user_locale,GUILD_EVENTS["event_create"]["date_ko_2"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.date_ko_2")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -2563,7 +2564,7 @@ class GuildEvents(commands.Cog):
         events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
         if not events_channel or not conference_channel:
             logging.error(f"[GuildEvents - event_create] Channels not found: events_channel={events_channel}, conference_channel={conference_channel}")
-            follow_message = GUILD_EVENTS["event_create"]["no_events_canal"].get(user_locale,GUILD_EVENTS["event_create"]["no_events_canal"].get("en-US"))
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.no_events_canal")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -2604,7 +2605,7 @@ class GuildEvents(commands.Cog):
             await announcement.add_reaction("<:_no_:1340110124521357313>")
         except Exception as e:
             logging.error(f"[GuildEvents - event_create] Error sending announcement: {e}", exc_info=True)
-            follow_message = GUILD_EVENTS["event_create"]["error_event"].get(user_locale,GUILD_EVENTS["event_create"]["error_event"].get("en-US")).format(e=e)
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.error_event", e=str(e))
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -2701,11 +2702,11 @@ class GuildEvents(commands.Cog):
             logging.info(f"[GuildEvents - event_create] Event saved in DB successfully: {announcement.id}")
 
             
-            follow_message = GUILD_EVENTS["event_create"]["events_created"].get(user_locale,GUILD_EVENTS["event_create"]["events_created"].get("en-US")).format(event_id=announcement.id)
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.events_created", event_id=announcement.id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
             logging.error(f"[GuildEvents - event_create] Error saving event in DB for guild {guild.id}: {e}", exc_info=True)
-            follow_message = GUILD_EVENTS["event_create"]["event_ko"].get(user_locale,GUILD_EVENTS["event_create"]["event_ko"].get("en-US")).format(e=e)
+            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.event_ko", e=str(e))
             await ctx.followup.send(follow_message, ephemeral=True)
 
     async def static_create(
@@ -2932,24 +2933,24 @@ class GuildEvents(commands.Cog):
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         
-        user_locale = ctx.locale if hasattr(ctx, "locale") and ctx.locale else "en-US"
+        user_locale = await get_effective_locale(self.bot, guild_id, ctx.user.id)
         guild_lang = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
         
         if not settings:
-            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["no_guild_config"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["no_guild_config"].get("en-US"))
+            error_msg = await get_user_message(ctx, STATIC_GROUPS, "preview_groups.messages.no_guild_config")
             await ctx.followup.send(error_msg, ephemeral=True)
             return
         
         try:
             event_id_int = int(event_id)
         except ValueError:
-            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["invalid_event_id"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["invalid_event_id"].get("en-US"))
+            error_msg = await get_user_message(ctx, STATIC_GROUPS, "preview_groups.messages.invalid_event_id")
             await ctx.followup.send(error_msg, ephemeral=True)
             return
 
         event = await self.get_event_from_cache(guild_id, event_id_int)
         if not event:
-            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["event_not_found"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["event_not_found"].get("en-US"))
+            error_msg = await get_user_message(ctx, STATIC_GROUPS, "preview_groups.messages.event_not_found")
             await ctx.followup.send(error_msg, ephemeral=True)
             return
         
@@ -2965,7 +2966,7 @@ class GuildEvents(commands.Cog):
         tentative_ids = registrations.get("tentative", [])
         
         if not presence_ids and not tentative_ids:
-            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["no_registrations"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["no_registrations"].get("en-US"))
+            error_msg = await get_user_message(ctx, STATIC_GROUPS, "preview_groups.messages.no_registrations")
             await ctx.followup.send(error_msg, ephemeral=True)
             return
 
@@ -2986,7 +2987,7 @@ class GuildEvents(commands.Cog):
                 }
         except Exception as exc:
             logging.error(f"[GuildEvents] Error building roster for guild {guild_id}: {exc}")
-            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["error_building_roster"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["error_building_roster"].get("en-US")).format(error=exc)
+            error_msg = await get_user_message(ctx, STATIC_GROUPS, "preview_groups.messages.error_building_roster", error=str(exc))
             await ctx.followup.send(error_msg, ephemeral=True)
             return
 
@@ -2994,12 +2995,12 @@ class GuildEvents(commands.Cog):
             all_groups = await self._assign_groups_enhanced(guild_id, presence_ids, tentative_ids, roster_data)
         except Exception as exc:
             logging.error(f"[GuildEvents] Error generating groups for event {event_id}: {exc}")
-            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["error_generating_groups"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["error_generating_groups"].get("en-US")).format(error=exc)
+            error_msg = await get_user_message(ctx, STATIC_GROUPS, "preview_groups.messages.error_generating_groups", error=str(exc))
             await ctx.followup.send(error_msg, ephemeral=True)
             return
         
         if not all_groups:
-            error_msg = STATIC_GROUPS["preview_groups"]["messages"]["no_groups_formed"].get(user_locale, STATIC_GROUPS["preview_groups"]["messages"]["no_groups_formed"].get("en-US"))
+            error_msg = await get_user_message(ctx, STATIC_GROUPS, "preview_groups.messages.no_groups_formed")
             await ctx.followup.send(error_msg, ephemeral=True)
             return
 

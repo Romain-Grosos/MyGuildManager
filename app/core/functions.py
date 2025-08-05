@@ -55,9 +55,60 @@ def get_nested_value(data, keys, max_depth=5):
     return entry
 
 # #################################################################################### #
+#                            Locale Management System
+# #################################################################################### #
+async def get_effective_locale(bot, guild_id: int, user_id: int) -> str:
+    """
+    Get effective locale for a user with hierarchical fallback system.
+    
+    Priority order:
+    1. guild_members.language (user preference in guild context)
+    2. user_setup.locale (global user preference)
+    3. guild_settings.guild_lang (guild default)
+    4. "en-US" (system fallback)
+    
+    Args:
+        bot: Discord bot instance with cache system
+        guild_id: Guild ID
+        user_id: User ID
+        
+    Returns:
+        Effective locale string (e.g., "en-US", "fr", "es-ES")
+    """
+    try:
+        await bot.cache_loader.ensure_guild_settings_loaded()
+        await bot.cache_loader.ensure_user_setup_loaded()
+
+        guild_member_data = await bot.cache.get_guild_member_data(guild_id, user_id)
+        if guild_member_data and guild_member_data.get('language'):
+            member_language = guild_member_data.get('language')
+            locale_mapping = {
+                'en': 'en-US',
+                'fr': 'fr', 
+                'es': 'es-ES',
+                'de': 'de',
+                'it': 'it'
+            }
+            return locale_mapping.get(member_language) or member_language
+
+        user_setup_data = await bot.cache.get_user_setup_data(guild_id, user_id)
+        if user_setup_data and user_setup_data.get('locale'):
+            return user_setup_data.get('locale')
+
+        guild_lang = await bot.cache.get_guild_data(guild_id, 'guild_lang')
+        if guild_lang:
+            return guild_lang
+
+        return "en-US"
+        
+    except Exception as e:
+        logging.error(f"[LocaleManager] Error getting effective locale for guild {guild_id}, user {user_id}: {e}")
+        return "en-US"
+
+# #################################################################################### #
 #                            Main Translation Function
 # #################################################################################### #
-def get_user_message(ctx, translations, key, **kwargs):
+async def get_user_message(ctx, translations, key, **kwargs):
     """
     Get localized message from translations with safe formatting and fallbacks.
     
@@ -86,8 +137,15 @@ def get_user_message(ctx, translations, key, **kwargs):
     if not re.match(r'^[a-zA-Z0-9_.]+$', key):
         logging.error(f"[Translation] Invalid key format: {repr(key)}")
         return ""
-    
-    locale = getattr(ctx, "locale", "en-US") if ctx else "en-US"
+
+    if ctx and hasattr(ctx, 'bot') and hasattr(ctx, 'guild') and hasattr(ctx, 'author'):
+        try:
+            locale = await get_effective_locale(ctx.bot, ctx.guild.id, ctx.author.id)
+        except Exception as e:
+            logging.warning(f"[Translation] Failed to get effective locale, using ctx.locale: {e}")
+            locale = getattr(ctx, "locale", "en-US")
+    else:
+        locale = getattr(ctx, "locale", "en-US") if ctx else "en-US"
 
     keys = key.split(".")
     entry = get_nested_value(translations, keys)
@@ -123,3 +181,45 @@ def get_user_message(ctx, translations, key, **kwargs):
         formatted_message = message
 
     return formatted_message
+
+async def get_guild_message(bot, guild_id: int, translations, key, **kwargs) -> str:
+    """
+    Get localized message for guild-wide announcements using guild language.
+    
+    Args:
+        bot: Discord bot instance with cache system
+        guild_id: Guild ID to get language preference for
+        translations: Translation dictionary
+        key: Translation key in dot notation
+        **kwargs: Variables for string formatting
+        
+    Returns:
+        Formatted localized message string using guild language
+    """
+    try:
+        await bot.cache_loader.ensure_guild_settings_loaded()
+
+        guild_lang = await bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
+
+        keys = key.split(".")
+        entry = get_nested_value(translations, keys)
+        
+        if entry is None or not isinstance(entry, dict):
+            logging.warning(f"[Translation] Guild message key not found: {key}")
+            return ""
+
+        message = entry.get(guild_lang) or entry.get("en-US") or ""
+        
+        if not message:
+            return ""
+
+        try:
+            safe_kwargs = sanitize_kwargs(**kwargs)
+            return message.format(**safe_kwargs)
+        except Exception as e:
+            logging.error(f"[Translation] Guild message formatting error for key '{key}': {e}")
+            return message
+            
+    except Exception as e:
+        logging.error(f"[Translation] Error getting guild message for guild {guild_id}, key '{key}': {e}")
+        return ""

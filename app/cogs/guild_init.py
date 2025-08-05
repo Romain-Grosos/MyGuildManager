@@ -83,7 +83,7 @@ class GuildInit(commands.Cog):
 
         if not guild_id:
             logging.error("[GuildInit] No guild context available")
-            msg = get_user_message(
+            msg = await get_user_message(
                 ctx, GUILD_INIT_DATA, "messages.error_no_guild"
             )
             return await ctx.followup.send(msg, ephemeral=True)
@@ -92,11 +92,11 @@ class GuildInit(commands.Cog):
             await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             guild_settings = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
             if not guild_settings:
-                response = get_user_message(ctx, GUILD_INIT_DATA, "messages.not_initialized")
+                response = await get_user_message(ctx, GUILD_INIT_DATA, "messages.not_initialized")
                 return await ctx.followup.send(response, ephemeral=True)
         except Exception as e:
             logging.error("[GuildInit] Cache check failed for guild %s: %s", guild_id, e)
-            response = get_user_message(ctx, GUILD_INIT_DATA, "messages.error", error="Database error")
+            response = await get_user_message(ctx, GUILD_INIT_DATA, "messages.error", error="Database error")
             return await ctx.followup.send(response, ephemeral=True)
 
         community_mode = "COMMUNITY" in guild.features
@@ -112,7 +112,7 @@ class GuildInit(commands.Cog):
             roles = ctx.guild.roles
             channels = ctx.guild.channels
 
-            response = get_user_message(ctx, GUILD_INIT_DATA, "messages.setup_existing")
+            response = await get_user_message(ctx, GUILD_INIT_DATA, "messages.setup_existing")
 
         elif config_mode == "complete":
             try:
@@ -271,7 +271,7 @@ class GuildInit(commands.Cog):
                 await guild.create_voice_channel(name=channel_names["ami_tavern_voc"].get(guild_lang),category=ami_cat)
 
                 if not community_mode:
-                    await ctx.followup.send(get_user_message(ctx, GUILD_INIT_DATA,"messages.community_required"))
+                    await ctx.followup.send(await get_user_message(ctx, GUILD_INIT_DATA,"messages.community_required"))
                     try:
                         await guild.edit(
                             community=True,
@@ -284,7 +284,7 @@ class GuildInit(commands.Cog):
                         logging.info("[GuildInit] Set server to community mode")
                     except Exception as e:
                         logging.error("[GuildInit] Failed to enable community mode: %s", e)
-                        response = get_user_message(ctx, GUILD_INIT_DATA,"messages.error", error="Discord configuration error")
+                        response = await get_user_message(ctx, GUILD_INIT_DATA,"messages.error", error="Discord configuration error")
                         return await ctx.followup.send(response, ephemeral=True)
 
                 war_conf = await guild.create_voice_channel("⚔️ WAR",type=discord.ChannelType.stage_voice,category=guild_cat)
@@ -456,13 +456,13 @@ class GuildInit(commands.Cog):
                 except Exception as e:
                     logging.error("[GuildInit] Error reloading caches: %s", e)
 
-                response = get_user_message(ctx, GUILD_INIT_DATA, "messages.setup_complete")
+                response = await get_user_message(ctx, GUILD_INIT_DATA, "messages.setup_complete")
             except Exception as e:
                 logging.error("[GuildInit] Error during complete config for guild %s: %s",guild_id,e)
-                response = get_user_message(ctx, GUILD_INIT_DATA, "messages.error", error="Configuration error")
+                response = await get_user_message(ctx, GUILD_INIT_DATA, "messages.error", error="Configuration error")
         else:
             logging.warning("[GuildInit] Unknown config mode '%s' for guild %s",config_mode,guild_id,)
-            response = get_user_message(ctx, GUILD_INIT_DATA, "messages.unknown_mode")
+            response = await get_user_message(ctx, GUILD_INIT_DATA, "messages.unknown_mode")
 
         await ctx.followup.send(response, ephemeral=True)
 
