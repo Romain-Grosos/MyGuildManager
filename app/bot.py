@@ -398,6 +398,104 @@ bot.scheduler = setup_task_scheduler(bot)
 bot.cache = get_global_cache(bot)
 bot.cache_loader = get_cache_loader(bot)
 
+# #################################################################################### #
+#                           Command Groups Creation
+# #################################################################################### #
+def create_command_groups(bot: discord.Bot) -> None:
+    """
+    Create all slash command groups and inject them into bot instance.
+    Must be called BEFORE loading cogs to ensure groups are available.
+    
+    Args:
+        bot: Discord bot instance
+    """
+    logging.info("[Bot] Creating slash command groups")
+
+    ADMIN_DATA = translations.get("commands", {})
+    ABSENCE_DATA = translations.get("absence", {})
+    LOOT_DATA = translations.get("loot_wishlist", {})
+    MEMBER_DATA = translations.get("members", {})
+    STAFF_DATA = translations.get("staff", {})
+    EVENTS_DATA = translations.get("events", {})
+    STATICS_DATA = translations.get("statics", {})
+
+    bot.admin_group = discord.SlashCommandGroup(
+        name=ADMIN_DATA.get("group", {}).get("name", {}).get("en-US", "admin_bot"),
+        description=ADMIN_DATA.get("group", {}).get("description", {}).get("en-US", "Bot administration commands"),
+        name_localizations=ADMIN_DATA.get("group", {}).get("name", {}),
+        description_localizations=ADMIN_DATA.get("group", {}).get("description", {}),
+        default_member_permissions=discord.Permissions(administrator=True)
+    )
+
+    bot.absence_group = discord.SlashCommandGroup(
+        name=ABSENCE_DATA.get("group", {}).get("name", {}).get("en-US", "absence"),
+        description=ABSENCE_DATA.get("group", {}).get("description", {}).get("en-US", "Manage member absence status"),
+        name_localizations=ABSENCE_DATA.get("group", {}).get("name", {}),
+        description_localizations=ABSENCE_DATA.get("group", {}).get("description", {}),
+        default_member_permissions=discord.Permissions(manage_guild=True)
+    )
+
+    bot.member_group = discord.SlashCommandGroup(
+        name=MEMBER_DATA.get("group", {}).get("name", {}).get("en-US", "member"),
+        description=MEMBER_DATA.get("group", {}).get("description", {}).get("en-US", "Member profile and stats management"),
+        name_localizations=MEMBER_DATA.get("group", {}).get("name", {}),
+        description_localizations=MEMBER_DATA.get("group", {}).get("description", {}),
+        default_member_permissions=discord.Permissions(manage_guild=True)
+    )
+
+    bot.loot_group = discord.SlashCommandGroup(
+        name=LOOT_DATA.get("group", {}).get("name", {}).get("en-US", "loot"),
+        description=LOOT_DATA.get("group", {}).get("description", {}).get("en-US", "Epic T2 loot wishlist management"),
+        name_localizations=LOOT_DATA.get("group", {}).get("name", {}),
+        description_localizations=LOOT_DATA.get("group", {}).get("description", {}),
+        default_member_permissions=discord.Permissions(send_messages=True)
+    )
+
+    bot.staff_group = discord.SlashCommandGroup(
+        name=STAFF_DATA.get("group", {}).get("name", {}).get("en-US", "staff"),
+        description=STAFF_DATA.get("group", {}).get("description", {}).get("en-US", "Staff management commands"),
+        name_localizations=STAFF_DATA.get("group", {}).get("name", {}),
+        description_localizations=STAFF_DATA.get("group", {}).get("description", {}),
+        default_member_permissions=discord.Permissions(manage_roles=True)
+    )
+
+    bot.events_group = discord.SlashCommandGroup(
+        name=EVENTS_DATA.get("group", {}).get("name", {}).get("en-US", "events"),
+        description=EVENTS_DATA.get("group", {}).get("description", {}).get("en-US", "Guild event management"),
+        name_localizations=EVENTS_DATA.get("group", {}).get("name", {}),
+        description_localizations=EVENTS_DATA.get("group", {}).get("description", {}),
+        default_member_permissions=discord.Permissions(manage_events=True)
+    )
+
+    bot.statics_group = discord.SlashCommandGroup(
+        name=STATICS_DATA.get("group", {}).get("name", {}).get("en-US", "statics"),
+        description=STATICS_DATA.get("group", {}).get("description", {}).get("en-US", "Static group management"),
+        name_localizations=STATICS_DATA.get("group", {}).get("name", {}),
+        description_localizations=STATICS_DATA.get("group", {}).get("description", {}),
+        default_member_permissions=discord.Permissions(manage_roles=True)
+    )
+
+    groups = [
+        ("admin_bot", bot.admin_group),
+        ("absence", bot.absence_group),
+        ("member", bot.member_group),
+        ("loot", bot.loot_group),
+        ("staff", bot.staff_group),
+        ("events", bot.events_group),
+        ("statics", bot.statics_group)
+    ]
+    
+    for group_name, group in groups:
+        try:
+            bot.add_application_command(group)
+            logging.debug(f"[Bot] Registered {group_name} command group")
+        except Exception as e:
+            logging.error(f"[Bot] Failed to register {group_name} group: {e}", exc_info=True)
+    
+    logging.info(f"[Bot] Successfully created and registered {len(groups)} command groups")
+
+create_command_groups(bot)
+
 EXTENSIONS: Final["list[str]"] = [
     "cogs.core",
     "cogs.llm",
