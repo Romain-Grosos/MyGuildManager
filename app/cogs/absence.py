@@ -11,7 +11,7 @@ from discord.ext import commands
 from core.translation import translations as global_translations
 from core.functions import get_user_message, get_guild_message
 
-ABSENCE_TRANSLATIONS = global_translations.get("absence", {})
+ABSENCE_TRANSLATIONS = global_translations.get("absence_system", {})
 
 class AbsenceManager(commands.Cog):
     """Cog for managing member absence status and notifications."""
@@ -31,17 +31,17 @@ class AbsenceManager(commands.Cog):
         """Register absence commands with the centralized absence group."""
         if hasattr(self.bot, 'absence_group'):
             self.bot.absence_group.command(
-                name=ABSENCE_TRANSLATIONS.get("command", {}).get("name", {}).get("en-US", "absence_add"),
-                description=ABSENCE_TRANSLATIONS.get("command", {}).get("description", {}).get("en-US", "Mark a member as absent."),
-                name_localizations=ABSENCE_TRANSLATIONS.get("command", {}).get("name", {}),
-                description_localizations=ABSENCE_TRANSLATIONS.get("command", {}).get("description", {})
+                name=ABSENCE_TRANSLATIONS.get("absence_add", {}).get("name", {}).get("en-US", "absence_add"),
+                description=ABSENCE_TRANSLATIONS.get("absence_add", {}).get("description", {}).get("en-US", "Mark a member as absent."),
+                name_localizations=ABSENCE_TRANSLATIONS.get("absence_add", {}).get("name", {}),
+                description_localizations=ABSENCE_TRANSLATIONS.get("absence_add", {}).get("description", {})
             )(self.absence_add)
 
             self.bot.absence_group.command(
-                name=ABSENCE_TRANSLATIONS.get("command_remove", {}).get("name", {}).get("en-US", "return"),
-                description=ABSENCE_TRANSLATIONS.get("command_remove", {}).get("description", {}).get("en-US", "Signal your return from absence."),
-                name_localizations=ABSENCE_TRANSLATIONS.get("command_remove", {}).get("name", {}),
-                description_localizations=ABSENCE_TRANSLATIONS.get("command_remove", {}).get("description", {})
+                name=ABSENCE_TRANSLATIONS.get("return", {}).get("name", {}).get("en-US", "return"),
+                description=ABSENCE_TRANSLATIONS.get("return", {}).get("description", {}).get("en-US", "Signal your return from absence."),
+                name_localizations=ABSENCE_TRANSLATIONS.get("return", {}).get("name", {}),
+                description_localizations=ABSENCE_TRANSLATIONS.get("return", {}).get("description", {})
             )(self.absence_remove)
 
     @commands.Cog.listener()
@@ -268,8 +268,6 @@ class AbsenceManager(commands.Cog):
             return_date: Optional return date for the absence
         """
         await ctx.defer(ephemeral=True)
-
-        # Locale will be handled by get_user_message automatically
 
         cfg = await self.bot.cache.get_guild_data(ctx.guild_id, 'absence_channels')
         if not cfg:

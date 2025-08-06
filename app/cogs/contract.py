@@ -10,9 +10,9 @@ from typing import Optional, Dict, Any
 import discord
 from discord.ext import commands
 
-from core.translation import translations
+from core.translation import translations as global_translations
 
-CONTRACT_DATA = translations.get("contract", {})
+STAFF_TOOLS = global_translations.get("staff_tools", {})
 
 async def get_guild_event_channel(bot, guild_id):
     """
@@ -106,7 +106,7 @@ class ContractSelect(discord.ui.View):
             "dynamic_events": None,
             "open_dungeon": None
         }
-        contracts_data = CONTRACT_DATA.get("options", {})
+        contracts_data = STAFF_TOOLS.get("contract_data", {}).get("options", {})
 
         options_monster = []
         for option in contracts_data.get("monster_elimination", []):
@@ -114,7 +114,7 @@ class ContractSelect(discord.ui.View):
                 localized_label = value.get(self.guild_lang, value.get("en-US", key))
                 options_monster.append(discord.SelectOption(label=localized_label, value=key))
         if options_monster:
-            placeholder_monster = CONTRACT_DATA.get("events", {})\
+            placeholder_monster = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                 .get("placeholders", {})\
                 .get("monster_elimination", {})\
                 .get(self.guild_lang, "Choose up to 2 monster types...")
@@ -128,7 +128,7 @@ class ContractSelect(discord.ui.View):
             async def monster_callback(interaction: discord.Interaction):
                 """Handle monster callback."""
                 if not self._validate_author_interaction(interaction):
-                    error_msg = CONTRACT_DATA.get("events", {})\
+                    error_msg = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                         .get("errors", {})\
                         .get("not_author", {})\
                         .get(self.guild_lang, "You did not initiate this command.")
@@ -136,7 +136,7 @@ class ContractSelect(discord.ui.View):
                     return
                 selected = interaction.data.get("values", [])
                 if "all" in selected and len(selected) > 1:
-                    error_invalid = CONTRACT_DATA.get("events", {})\
+                    error_invalid = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                         .get("errors", {})\
                         .get("invalid_selection_all", {})\
                         .get(self.guild_lang, "If you select 'All', you cannot choose other options!")
@@ -155,7 +155,7 @@ class ContractSelect(discord.ui.View):
                 localized_label = value.get(self.guild_lang, value.get("en-US", key))
                 options_dynamic.append(discord.SelectOption(label=localized_label, value=key))
         if options_dynamic:
-            placeholder_dynamic = CONTRACT_DATA.get("events", {})\
+            placeholder_dynamic = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                 .get("placeholders", {})\
                 .get("dynamic_events", {})\
                 .get(self.guild_lang, "Choose a dynamic event...")
@@ -167,7 +167,7 @@ class ContractSelect(discord.ui.View):
             async def dynamic_callback(interaction: discord.Interaction):
                 """Handle dynamic callback."""
                 if not self._validate_author_interaction(interaction):
-                    error_msg = CONTRACT_DATA.get("events", {})\
+                    error_msg = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                         .get("errors", {})\
                         .get("not_author", {})\
                         .get(self.guild_lang, "You did not initiate this command.")
@@ -188,7 +188,7 @@ class ContractSelect(discord.ui.View):
                 localized_label = value.get(self.guild_lang, value.get("en-US", key))
                 options_dungeon.append(discord.SelectOption(label=localized_label, value=key))
         if options_dungeon:
-            placeholder_dungeon = CONTRACT_DATA.get("events", {})\
+            placeholder_dungeon = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                 .get("placeholders", {})\
                 .get("open_dungeon", {})\
                 .get(self.guild_lang, "Choose an open dungeon...")
@@ -200,7 +200,7 @@ class ContractSelect(discord.ui.View):
             async def dungeon_callback(interaction: discord.Interaction):
                 """Handle dungeon selection callback."""
                 if not self._validate_author_interaction(interaction):
-                    error_msg = CONTRACT_DATA.get("events", {})\
+                    error_msg = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                         .get("errors", {})\
                         .get("not_author", {})\
                         .get(self.guild_lang, "You did not initiate this command.")
@@ -219,7 +219,7 @@ class ContractSelect(discord.ui.View):
         async def validate_callback(interaction: discord.Interaction):
             """Handle validate callback."""
             if not self._validate_author_interaction(interaction):
-                error_msg = CONTRACT_DATA.get("events", {})\
+                error_msg = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                     .get("errors", {})\
                     .get("not_author", {})\
                     .get(self.guild_lang, "You did not initiate this command.")
@@ -228,7 +228,7 @@ class ContractSelect(discord.ui.View):
             if (self.selected_contracts["dynamic_events"] is None or
                 self.selected_contracts["open_dungeon"] is None or
                 not self.selected_contracts["monster_elimination"]):
-                error_required = CONTRACT_DATA.get("events", {})\
+                error_required = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                     .get("errors", {})\
                     .get("all_options_required", {})\
                     .get(self.guild_lang, "All selections must be made before validation.")
@@ -236,7 +236,7 @@ class ContractSelect(discord.ui.View):
                 return
             await interaction.response.defer(ephemeral=True)
             await self.post_event_message(interaction)
-            success_msg = CONTRACT_DATA.get("user_messages", {})\
+            success_msg = STAFF_TOOLS.get("contract_data", {}).get("user_messages", {})\
                 .get("notifications", {})\
                 .get("contract_published", {})\
                 .get(self.guild_lang, "Guild contract published successfully.")
@@ -278,7 +278,7 @@ class ContractSelect(discord.ui.View):
             True if interaction is from original author, False otherwise
         """
         if interaction.user != self.author:
-            error_msg = CONTRACT_DATA.get("events", {})\
+            error_msg = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                 .get("errors", {})\
                 .get("not_author", {})\
                 .get(self.guild_lang, "You did not initiate this command.")
@@ -296,7 +296,7 @@ class ContractSelect(discord.ui.View):
         guild_id = guild.id
         channel_id = await get_guild_event_channel(self.bot, guild_id)
         if not channel_id:
-            error_channel = CONTRACT_DATA.get("events", {})\
+            error_channel = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                 .get("errors", {})\
                 .get("no_channel", {})\
                 .get(self.guild_lang, "No event channel configured for this guild.")
@@ -304,15 +304,15 @@ class ContractSelect(discord.ui.View):
             return
         channel = await self._get_channel_safe(channel_id)
         if not channel:
-            error_msg = CONTRACT_DATA.get("events", {}).get("errors", {}).get("channel_not_found", {}).get(self.guild_lang, "Event channel not found.")
+            error_msg = STAFF_TOOLS.get("contract_data", {}).get("events", {}).get("errors", {}).get("channel_not_found", {}).get(self.guild_lang, "Event channel not found.")
             await interaction.followup.send(error_msg, ephemeral=True)
             return
 
-        contracts_data = CONTRACT_DATA.get("options", {})
+        contracts_data = STAFF_TOOLS.get("contract_data", {}).get("options", {})
         today_date = datetime.now().strftime("%d/%m/%Y")
         description = f"📆 {today_date}\n\n"
         for category_key, selection in self.selected_contracts.items():
-            category_name = CONTRACT_DATA.get("categories", {})\
+            category_name = STAFF_TOOLS.get("contract_data", {}).get("categories", {})\
                 .get(category_key, {})\
                 .get(self.guild_lang, category_key)
             if isinstance(selection, list):
@@ -331,9 +331,9 @@ class ContractSelect(discord.ui.View):
                         localized_label = option[selection].get(self.guild_lang, option[selection].get("en-US", selection))
                         break
                 description += f"### **{category_name}**\n{localized_label}\n\n"
-        published_by_template = CONTRACT_DATA.get("published_by", {}).get(self.guild_lang, "Published by")
+        published_by_template = STAFF_TOOLS.get("contract_data", {}).get("published_by", {}).get(self.guild_lang, "Published by")
         description += f"\n*{published_by_template} {self.author.display_name}*"
-        title = CONTRACT_DATA.get("title", {}).get(self.guild_lang, "Guild Contracts")
+        title = STAFF_TOOLS.get("contract_data", {}).get("title", {}).get(self.guild_lang, "Guild Contracts")
         embed = discord.Embed(title=title, description=description, color=discord.Color.green())
         try:
             event_message = await channel.send(embed=embed)
@@ -348,11 +348,11 @@ class ContractSelect(discord.ui.View):
                 raise db_error
         except Exception as e:
             logging.error(f"[ContractManager] Failed to post or save contract message for guild {guild_id}: {e}", exc_info=True)
-            error_msg = CONTRACT_DATA.get("events", {}).get("errors", {}).get("post_failed", {}).get(self.guild_lang, "Failed to publish contract.")
+            error_msg = STAFF_TOOLS.get("contract_data", {}).get("events", {}).get("errors", {}).get("post_failed", {}).get(self.guild_lang, "Failed to publish contract.")
             await interaction.followup.send(error_msg, ephemeral=True)
             return
 
-        success_msg = CONTRACT_DATA.get("user_messages", {})\
+        success_msg = STAFF_TOOLS.get("contract_data", {}).get("user_messages", {})\
             .get("notifications", {})\
             .get("contract_published", {})\
             .get(self.guild_lang, "Guild contract published successfully.")
@@ -376,17 +376,17 @@ class Contract(commands.Cog):
         """Register contract commands with the centralized staff group."""
         if hasattr(self.bot, 'staff_group'):
             self.bot.staff_group.command(
-                name=CONTRACT_DATA.get("command", {}).get("name", {}).get("en-US", "contract_add"),
-                description=CONTRACT_DATA.get("command", {}).get("description", {}).get("en-US", "Select and publish guild contracts."),
-                name_localizations=CONTRACT_DATA.get("command", {}).get("name", {}),
-                description_localizations=CONTRACT_DATA.get("command", {}).get("description", {})
+                name=STAFF_TOOLS.get("contract", {}).get("name", {}).get("en-US", "contract_add"),
+                description=STAFF_TOOLS.get("contract", {}).get("description", {}).get("en-US", "Select and publish guild contracts."),
+                name_localizations=STAFF_TOOLS.get("contract", {}).get("name", {}),
+                description_localizations=STAFF_TOOLS.get("contract", {}).get("description", {})
             )(self.contract)
 
             self.bot.staff_group.command(
-                name=CONTRACT_DATA.get("command_delete", {}).get("name", {}).get("en-US", "contract_delete"),
-                description=CONTRACT_DATA.get("command_delete", {}).get("description", {}).get("en-US", "Delete the guild contract."),
-                name_localizations=CONTRACT_DATA.get("command_delete", {}).get("name", {}),
-                description_localizations=CONTRACT_DATA.get("command_delete", {}).get("description", {})
+                name=STAFF_TOOLS.get("contract_delete", {}).get("name", {}).get("en-US", "contract_delete"),
+                description=STAFF_TOOLS.get("contract_delete", {}).get("description", {}).get("en-US", "Delete the guild contract."),
+                name_localizations=STAFF_TOOLS.get("contract_delete", {}).get("name", {}),
+                description_localizations=STAFF_TOOLS.get("contract_delete", {}).get("description", {})
             )(self.contract_delete)
     
     def _validate_author(self, interaction: discord.Interaction, original_author: discord.Member) -> bool:
@@ -456,19 +456,19 @@ class Contract(commands.Cog):
             
         settings = await self._get_guild_settings(ctx.guild.id)
         guild_lang = settings['guild_lang']
-        contracts_options = CONTRACT_DATA.get("options", {})
+        contracts_options = STAFF_TOOLS.get("contract_data", {}).get("options", {})
         if not contracts_options:
-            error_loading = CONTRACT_DATA.get("user_messages", {})\
+            error_loading = STAFF_TOOLS.get("contract_data", {}).get("user_messages", {})\
                 .get("command_usage", {})\
                 .get("select_contract", {})\
                 .get(guild_lang, "Unable to load contract options. Please check translations.")
             await ctx.respond(error_loading, ephemeral=True)
             return
-        command_name = CONTRACT_DATA.get("command", {})\
+        command_name = STAFF_TOOLS.get("contract_data", {}).get("command", {})\
             .get("name", {})\
             .get(guild_lang, "Contract")
         command_name = command_name[0].upper() + command_name[1:]
-        usage_msg = CONTRACT_DATA.get("user_messages", {})\
+        usage_msg = STAFF_TOOLS.get("contract_data", {}).get("user_messages", {})\
             .get("command_usage", {})\
             .get("select_contract", {})\
             .get(guild_lang, "Please select a contract for each category. Click ✅ to validate the announcement.")
@@ -498,7 +498,7 @@ class Contract(commands.Cog):
             guild_lang = settings['guild_lang']
             channel_id = settings['events_channel']
             if not channel_id:
-                error_channel = CONTRACT_DATA.get("events", {})\
+                error_channel = STAFF_TOOLS.get("contract_data", {}).get("events", {})\
                     .get("errors", {})\
                     .get("no_channel", {})\
                     .get(guild_lang, "No event channel configured for this guild.")
@@ -506,7 +506,7 @@ class Contract(commands.Cog):
                 return
             channel = await self._get_channel_safe(channel_id)
             if not channel:
-                error_msg = CONTRACT_DATA.get("events", {}).get("errors", {}).get("channel_not_found", {}).get(guild_lang, "Event channel not found.")
+                error_msg = STAFF_TOOLS.get("contract_data", {}).get("events", {}).get("errors", {}).get("channel_not_found", {}).get(guild_lang, "Event channel not found.")
                 await ctx.followup.send(error_msg, ephemeral=True)
                 return
             message_id = await load_contract_message(self.bot, guild_id)
@@ -519,7 +519,7 @@ class Contract(commands.Cog):
                     except Exception as db_error:
                         logging.error(f"[ContractManager] DB cleanup failed after message deletion: {db_error}")
                     
-                    success_deleted = CONTRACT_DATA.get("user_messages", {})\
+                    success_deleted = STAFF_TOOLS.get("contract_data", {}).get("user_messages", {})\
                         .get("notifications", {})\
                         .get("contract_deleted", {})\
                         .get(guild_lang, "Guild contract deleted successfully.")
@@ -531,13 +531,13 @@ class Contract(commands.Cog):
                     except:
                         pass
                     logging.warning("[ContractManager] Contract already deleted.")
-                    already_deleted_msg = CONTRACT_DATA.get("user_messages", {})\
+                    already_deleted_msg = STAFF_TOOLS.get("contract_data", {}).get("user_messages", {})\
                         .get("notifications", {})\
                         .get("contract_already_deleted", {})\
                         .get(guild_lang, "Contract already deleted.")
                     await ctx.followup.send(already_deleted_msg, ephemeral=True)
             else:
-                no_contract_msg = CONTRACT_DATA.get("user_messages", {})\
+                no_contract_msg = STAFF_TOOLS.get("contract_data", {}).get("user_messages", {})\
                     .get("notifications", {})\
                     .get("no_contract_to_delete", {})\
                     .get(guild_lang, "No contract to delete.")
@@ -550,7 +550,7 @@ class Contract(commands.Cog):
             except:
                 guild_lang = "en-US"
             
-            error_msg = CONTRACT_DATA.get("user_messages", {})\
+            error_msg = STAFF_TOOLS.get("contract_data", {}).get("user_messages", {})\
                 .get("notifications", {})\
                 .get("delete_error", {})\
                 .get(guild_lang, "An error occurred while deleting the contract.")

@@ -12,6 +12,8 @@ from discord.ext import commands
 
 from core.translation import translations as global_translations
 
+DYNAMIC_VOICE = global_translations.get("dynamic_voice", {})
+
 class DynamicVoice(commands.Cog):
     """Cog for managing dynamic temporary voice channels."""
     
@@ -161,7 +163,7 @@ class DynamicVoice(commands.Cog):
             role_members_id = roles_data.get('members') if roles_data else None
             role_absent_members_id = roles_data.get('absent_members') if roles_data else None
             
-            room_name_template = global_translations.get("dynamic_voice", {}).get(guild_lang, "Channel of {username}")
+            room_name_template = DYNAMIC_VOICE.get("channel_name", {}).get(guild_lang, DYNAMIC_VOICE.get("channel_name", {}).get("en-US", "Channel of {username}"))
             try:
                 channel_name = room_name_template.format(username=member.display_name)
             except Exception as e:

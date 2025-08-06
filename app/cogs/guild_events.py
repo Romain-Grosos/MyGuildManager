@@ -21,7 +21,7 @@ from core.reliability import discord_resilient
 from core.translation import translations as global_translations
 from core.functions import get_user_message, get_guild_message, get_effective_locale
 
-GUILD_EVENTS = global_translations.get("guild_events", {})
+EVENT_MANAGEMENT = global_translations.get("event_management", {})
 STATIC_GROUPS = global_translations.get("static_groups", {})
 
 WEAPON_EMOJIS = {
@@ -83,31 +83,31 @@ class GuildEvents(commands.Cog):
         if hasattr(self.bot, 'events_group'):
             
             self.bot.events_group.command(
-                name=GUILD_EVENTS.get("event_create", {}).get("name", {}).get("en-US", "create"),
-                description=GUILD_EVENTS.get("event_create", {}).get("description", {}).get("en-US", "Create a guild event"),
-                name_localizations=GUILD_EVENTS.get("event_create", {}).get("name", {}),
-                description_localizations=GUILD_EVENTS.get("event_create", {}).get("description", {})
+                name=EVENT_MANAGEMENT.get("event_create", {}).get("name", {}).get("en-US", "create"),
+                description=EVENT_MANAGEMENT.get("event_create", {}).get("description", {}).get("en-US", "Create a guild event"),
+                name_localizations=EVENT_MANAGEMENT.get("event_create", {}).get("name", {}),
+                description_localizations=EVENT_MANAGEMENT.get("event_create", {}).get("description", {})
             )(self.event_create)
 
             self.bot.events_group.command(
-                name=GUILD_EVENTS.get("event_confirm", {}).get("name", {}).get("en-US", "confirm"),
-                description=GUILD_EVENTS.get("event_confirm", {}).get("description", {}).get("en-US", "Confirm an event"),
-                name_localizations=GUILD_EVENTS.get("event_confirm", {}).get("name", {}),
-                description_localizations=GUILD_EVENTS.get("event_confirm", {}).get("description", {})
+                name=EVENT_MANAGEMENT.get("event_confirm", {}).get("name", {}).get("en-US", "confirm"),
+                description=EVENT_MANAGEMENT.get("event_confirm", {}).get("description", {}).get("en-US", "Confirm an event"),
+                name_localizations=EVENT_MANAGEMENT.get("event_confirm", {}).get("name", {}),
+                description_localizations=EVENT_MANAGEMENT.get("event_confirm", {}).get("description", {})
             )(self.event_confirm)
 
             self.bot.events_group.command(
-                name=GUILD_EVENTS.get("event_cancel", {}).get("name", {}).get("en-US", "cancel"),
-                description=GUILD_EVENTS.get("event_cancel", {}).get("description", {}).get("en-US", "Cancel an event"),
-                name_localizations=GUILD_EVENTS.get("event_cancel", {}).get("name", {}),
-                description_localizations=GUILD_EVENTS.get("event_cancel", {}).get("description", {})
+                name=EVENT_MANAGEMENT.get("event_cancel", {}).get("name", {}).get("en-US", "cancel"),
+                description=EVENT_MANAGEMENT.get("event_cancel", {}).get("description", {}).get("en-US", "Cancel an event"),
+                name_localizations=EVENT_MANAGEMENT.get("event_cancel", {}).get("name", {}),
+                description_localizations=EVENT_MANAGEMENT.get("event_cancel", {}).get("description", {})
             )(self.event_cancel)
 
             self.bot.events_group.command(
-                name=GUILD_EVENTS.get("preview_groups", {}).get("name", {}).get("en-US", "preview_groups"),
-                description=GUILD_EVENTS.get("preview_groups", {}).get("description", {}).get("en-US", "Preview groups before creation"),
-                name_localizations=GUILD_EVENTS.get("preview_groups", {}).get("name", {}),
-                description_localizations=GUILD_EVENTS.get("preview_groups", {}).get("description", {})
+                name=EVENT_MANAGEMENT.get("preview_groups", {}).get("name", {}).get("en-US", "preview_groups"),
+                description=EVENT_MANAGEMENT.get("preview_groups", {}).get("description", {}).get("en-US", "Preview groups before creation"),
+                name_localizations=EVENT_MANAGEMENT.get("preview_groups", {}).get("name", {}),
+                description_localizations=EVENT_MANAGEMENT.get("preview_groups", {}).get("description", {})
             )(self.preview_groups)
     
     def _register_statics_commands(self):
@@ -115,38 +115,38 @@ class GuildEvents(commands.Cog):
         if hasattr(self.bot, 'statics_group'):
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("static_create", {}).get("name", {}).get("en-US", "group_create"),
-                description=STATIC_GROUPS.get("static_create", {}).get("description", {}).get("en-US", "Create a static group"),
-                name_localizations=STATIC_GROUPS.get("static_create", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("static_create", {}).get("description", {})
+                name=EVENT_MANAGEMENT.get("static_create", {}).get("name", {}).get("en-US", "group_create"),
+                description=EVENT_MANAGEMENT.get("static_create", {}).get("description", {}).get("en-US", "Create a static group"),
+                name_localizations=EVENT_MANAGEMENT.get("static_create", {}).get("name", {}),
+                description_localizations=EVENT_MANAGEMENT.get("static_create", {}).get("description", {})
             )(self.static_create)
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("static_add", {}).get("name", {}).get("en-US", "player_add"),
-                description=STATIC_GROUPS.get("static_add", {}).get("description", {}).get("en-US", "Add player to static group"),
-                name_localizations=STATIC_GROUPS.get("static_add", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("static_add", {}).get("description", {})
+                name=EVENT_MANAGEMENT.get("static_add", {}).get("name", {}).get("en-US", "player_add"),
+                description=EVENT_MANAGEMENT.get("static_add", {}).get("description", {}).get("en-US", "Add player to static group"),
+                name_localizations=EVENT_MANAGEMENT.get("static_add", {}).get("name", {}),
+                description_localizations=EVENT_MANAGEMENT.get("static_add", {}).get("description", {})
             )(self.static_add)
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("static_remove", {}).get("name", {}).get("en-US", "player_remove"),
-                description=STATIC_GROUPS.get("static_remove", {}).get("description", {}).get("en-US", "Remove player from static group"),
-                name_localizations=STATIC_GROUPS.get("static_remove", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("static_remove", {}).get("description", {})
+                name=EVENT_MANAGEMENT.get("static_remove", {}).get("name", {}).get("en-US", "player_remove"),
+                description=EVENT_MANAGEMENT.get("static_remove", {}).get("description", {}).get("en-US", "Remove player from static group"),
+                name_localizations=EVENT_MANAGEMENT.get("static_remove", {}).get("name", {}),
+                description_localizations=EVENT_MANAGEMENT.get("static_remove", {}).get("description", {})
             )(self.static_remove)
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("static_delete", {}).get("name", {}).get("en-US", "group_delete"),
-                description=STATIC_GROUPS.get("static_delete", {}).get("description", {}).get("en-US", "Delete a static group"),
-                name_localizations=STATIC_GROUPS.get("static_delete", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("static_delete", {}).get("description", {})
+                name=EVENT_MANAGEMENT.get("static_delete", {}).get("name", {}).get("en-US", "group_delete"),
+                description=EVENT_MANAGEMENT.get("static_delete", {}).get("description", {}).get("en-US", "Delete a static group"),
+                name_localizations=EVENT_MANAGEMENT.get("static_delete", {}).get("name", {}),
+                description_localizations=EVENT_MANAGEMENT.get("static_delete", {}).get("description", {})
             )(self.static_delete)
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("static_update", {}).get("name", {}).get("en-US", "update"),
-                description=STATIC_GROUPS.get("static_update", {}).get("description", {}).get("en-US", "Update static groups message"),
-                name_localizations=STATIC_GROUPS.get("static_update", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("static_update", {}).get("description", {})
+                name=EVENT_MANAGEMENT.get("static_update", {}).get("name", {}).get("en-US", "update"),
+                description=EVENT_MANAGEMENT.get("static_update", {}).get("description", {}).get("en-US", "Update static groups message"),
+                name_localizations=EVENT_MANAGEMENT.get("static_update", {}).get("name", {}),
+                description_localizations=EVENT_MANAGEMENT.get("static_update", {}).get("description", {})
             )(self.static_update)
 
     @commands.Cog.listener()
@@ -582,24 +582,24 @@ class GuildEvents(commands.Cog):
                         continue
 
                 event_key = cal_event.get("name")
-                event_info = GUILD_EVENTS["events_infos"].get(event_key)
+                event_info = EVENT_MANAGEMENT["events_infos"].get(event_key)
                 event_name = event_info.get(guild_lang, event_info.get("en-US")) if event_info else event_key
-                event_date = GUILD_EVENTS["events_infos"]["date"].get(guild_lang,GUILD_EVENTS["events_infos"]["date"].get("en-US"))
-                event_hour = GUILD_EVENTS["events_infos"]["hour"].get(guild_lang,GUILD_EVENTS["events_infos"]["hour"].get("en-US"))
-                event_duration = GUILD_EVENTS["events_infos"]["duration"].get(guild_lang,GUILD_EVENTS["events_infos"]["duration"].get("en-US"))
-                event_status = GUILD_EVENTS["events_infos"]["status"].get(guild_lang,GUILD_EVENTS["events_infos"]["status"].get("en-US"))
-                event_dkp_v = GUILD_EVENTS["events_infos"]["dkp_v"].get(guild_lang,GUILD_EVENTS["events_infos"]["dkp_v"].get("en-US"))
-                event_dkp_i = GUILD_EVENTS["events_infos"]["dkp_i"].get(guild_lang,GUILD_EVENTS["events_infos"]["dkp_i"].get("en-US"))
-                event_present = GUILD_EVENTS["events_infos"]["present"].get(guild_lang,GUILD_EVENTS["events_infos"]["present"].get("en-US"))
-                event_attempt = GUILD_EVENTS["events_infos"]["attempt"].get(guild_lang,GUILD_EVENTS["events_infos"]["attempt"].get("en-US"))
-                event_absence = GUILD_EVENTS["events_infos"]["absence"].get(guild_lang,GUILD_EVENTS["events_infos"]["absence"].get("en-US"))
-                event_voice_channel = GUILD_EVENTS["events_infos"]["voice_channel"].get(guild_lang,GUILD_EVENTS["events_infos"]["voice_channel"].get("en-US"))
-                event_groups = GUILD_EVENTS["events_infos"]["groups"].get(guild_lang,GUILD_EVENTS["events_infos"]["groups"].get("en-US"))
-                event_auto_grouping = GUILD_EVENTS["events_infos"]["auto_grouping"].get(guild_lang,GUILD_EVENTS["events_infos"]["auto_grouping"].get("en-US"))
+                event_date = EVENT_MANAGEMENT["events_infos"]["date"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["date"].get("en-US"))
+                event_hour = EVENT_MANAGEMENT["events_infos"]["hour"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["hour"].get("en-US"))
+                event_duration = EVENT_MANAGEMENT["events_infos"]["duration"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["duration"].get("en-US"))
+                event_status = EVENT_MANAGEMENT["events_infos"]["status"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["status"].get("en-US"))
+                event_dkp_v = EVENT_MANAGEMENT["events_infos"]["dkp_v"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["dkp_v"].get("en-US"))
+                event_dkp_i = EVENT_MANAGEMENT["events_infos"]["dkp_i"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["dkp_i"].get("en-US"))
+                event_present = EVENT_MANAGEMENT["events_infos"]["present"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["present"].get("en-US"))
+                event_attempt = EVENT_MANAGEMENT["events_infos"]["attempt"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["attempt"].get("en-US"))
+                event_absence = EVENT_MANAGEMENT["events_infos"]["absence"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["absence"].get("en-US"))
+                event_voice_channel = EVENT_MANAGEMENT["events_infos"]["voice_channel"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["voice_channel"].get("en-US"))
+                event_groups = EVENT_MANAGEMENT["events_infos"]["groups"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["groups"].get("en-US"))
+                event_auto_grouping = EVENT_MANAGEMENT["events_infos"]["auto_grouping"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["auto_grouping"].get("en-US"))
 
-                status = GUILD_EVENTS["events_infos"]["status_planned"].get(guild_lang,GUILD_EVENTS["events_infos"]["status_planned"].get("en-US"))
-                status_db = GUILD_EVENTS["events_infos"]["status_planned"].get("en-US")
-                description = GUILD_EVENTS["events_infos"]["description"].get(guild_lang,GUILD_EVENTS["events_infos"]["description"].get("en-US"))
+                status = EVENT_MANAGEMENT["events_infos"]["status_planned"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["status_planned"].get("en-US"))
+                status_db = EVENT_MANAGEMENT["events_infos"]["status_planned"].get("en-US")
+                description = EVENT_MANAGEMENT["events_infos"]["description"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["description"].get("en-US"))
 
                 try:
                     embed = discord.Embed(
@@ -613,7 +613,7 @@ class GuildEvents(commands.Cog):
                     embed.add_field(name=event_status, value=status, inline=True)
                     embed.add_field(name=event_dkp_v, value=str(cal_event.get("dkp_value", 0)), inline=True)
                     embed.add_field(name=event_dkp_i, value=str(cal_event.get("dkp_ins", 0)), inline=True)
-                    none_text = GUILD_EVENTS["events_infos"]["none"].get(guild_lang, "None")
+                    none_text = EVENT_MANAGEMENT["events_infos"]["none"].get(guild_lang, "None")
                     embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value=none_text, inline=False)
                     embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value=none_text, inline=False)
                     embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value=none_text, inline=False)
@@ -638,7 +638,7 @@ class GuildEvents(commands.Cog):
                     continue
 
                 try:
-                    description_scheduled = GUILD_EVENTS["events_infos"]["description_scheduled"].get(guild_lang,GUILD_EVENTS["events_infos"]["description_scheduled"].get("en-US")).format(link=message_link)
+                    description_scheduled = EVENT_MANAGEMENT["events_infos"]["description_scheduled"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["description_scheduled"].get("en-US")).format(link=message_link)
                     scheduled_event = await guild.create_scheduled_event(
                         name=event_name,
                         description=description_scheduled,
@@ -769,18 +769,18 @@ class GuildEvents(commands.Cog):
         try:
             event_id_int = int(event_id)
         except ValueError:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "events_infos.id_ko")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "events_infos.id_ko")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         if not settings:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_settings")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_confirm_messages.no_settings")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         target_event = await self.get_event_from_cache(guild.id, event_id_int)
         if not target_event:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_events", event_id=event_id)
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_confirm_messages.no_events", event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -800,7 +800,7 @@ class GuildEvents(commands.Cog):
         
         events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
         if not events_channel:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_events_canal")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_confirm_messages.no_events_canal")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -808,21 +808,21 @@ class GuildEvents(commands.Cog):
             message = await events_channel.fetch_message(event_id)
         except (discord.NotFound, discord.Forbidden, discord.HTTPException) as e:
             logging.warning(f"[GuildEvents] Cannot fetch event message {event_id}: {e}")
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_events_message")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_confirm_messages.no_events_message")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         if not message.embeds:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.no_events_message_embed")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_confirm_messages.no_events_message_embed")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         new_embed = message.embeds[0]
         new_embed.color = discord.Color.green()
 
-        status_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.status")).lower()
-        status_name  = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.status")
-        status_localized = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_confirm.confirmed")
+        status_key   = (await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.status")).lower()
+        status_name  = await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.status")
+        status_localized = await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "event_confirm_messages.confirmed")
 
         new_fields = []
         status_found = False
@@ -843,12 +843,12 @@ class GuildEvents(commands.Cog):
             roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
             
             members_role = roles_data.get("members") if roles_data else None
-            update_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.confirmed_notif", role=members_role)
+            update_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_confirm_messages.confirmed_notif", role=members_role)
             await message.edit(content=update_message,embed=new_embed)
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.event_updated", event_id=event_id)
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_confirm_messages.event_updated", event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_confirm.event_embed_ko", e=str(e))
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_confirm_messages.event_embed_ko", e=str(e))
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -876,18 +876,18 @@ class GuildEvents(commands.Cog):
         try:
             event_id_int = int(event_id)
         except ValueError:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "events_infos.id_ko")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "events_infos.id_ko")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         if not settings:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_settings")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_cancel_messages.no_settings")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         target_event = await self.get_event_from_cache(guild.id, event_id_int)
         if not target_event:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_events", event_id=event_id)
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_cancel_messages.no_events", event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -906,14 +906,14 @@ class GuildEvents(commands.Cog):
         
         events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
         if not events_channel:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_settings")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_cancel_messages.no_settings")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         try:
             message = await events_channel.fetch_message(event_id_int)
         except Exception as e:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_events_message")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_cancel_messages.no_events_message")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -923,23 +923,23 @@ class GuildEvents(commands.Cog):
             logging.error(f"❌ [GuildEvents] Error clearing reactions in event_cancel: {e}", exc_info=True)
 
         if not message.embeds:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.no_events_message_embed")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_cancel_messages.no_events_message_embed")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         embed = message.embeds[0]
         embed.color = discord.Color.red()
 
-        status_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.status")).lower()
-        status_name  = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.status")
-        status_localized = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_cancel.canceled")
-        present_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.present")).lower()
-        tentative_key = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.attempt")).lower()
-        absence_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.absence")).lower()
-        dkp_v_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.dkp_v")).lower()
-        dkp_i_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.dkp_i")).lower()
-        groups_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.groups")).lower()
-        chan_key   = (await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "events_infos.voice_channel")).lower()
+        status_key   = (await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.status")).lower()
+        status_name  = await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.status")
+        status_localized = await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "event_cancel_messages.canceled")
+        present_key   = (await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.present")).lower()
+        tentative_key = (await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.attempt")).lower()
+        absence_key   = (await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.absence")).lower()
+        dkp_v_key   = (await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.dkp_v")).lower()
+        dkp_i_key   = (await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.dkp_i")).lower()
+        groups_key   = (await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.groups")).lower()
+        chan_key   = (await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "events_infos.voice_channel")).lower()
 
         new_fields = []
         for field in embed.fields:
@@ -959,10 +959,10 @@ class GuildEvents(commands.Cog):
 
         try:
             await message.edit(content="", embed=embed)
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.event_updated", event_id=event_id)
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_cancel_messages.event_updated", event_id=event_id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_cancel.event_embed_ko", e=str(e))
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_cancel_messages.event_embed_ko", e=str(e))
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -1157,17 +1157,17 @@ class GuildEvents(commands.Cog):
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
-        present_key = GUILD_EVENTS["events_infos"]["present"] \
-            .get(guild_lang, GUILD_EVENTS["events_infos"]["present"]["en-US"]) \
+        present_key = EVENT_MANAGEMENT["events_infos"]["present"] \
+            .get(guild_lang, EVENT_MANAGEMENT["events_infos"]["present"]["en-US"]) \
             .lower()
-        attempt_key = GUILD_EVENTS["events_infos"]["attempt"] \
-            .get(guild_lang, GUILD_EVENTS["events_infos"]["attempt"]["en-US"]) \
+        attempt_key = EVENT_MANAGEMENT["events_infos"]["attempt"] \
+            .get(guild_lang, EVENT_MANAGEMENT["events_infos"]["attempt"]["en-US"]) \
             .lower()
-        absence_key = GUILD_EVENTS["events_infos"]["absence"] \
-            .get(guild_lang, GUILD_EVENTS["events_infos"]["absence"]["en-US"]) \
+        absence_key = EVENT_MANAGEMENT["events_infos"]["absence"] \
+            .get(guild_lang, EVENT_MANAGEMENT["events_infos"]["absence"]["en-US"]) \
             .lower()
-        none_key = GUILD_EVENTS["events_infos"]["none"] \
-            .get(guild_lang, GUILD_EVENTS["events_infos"]["none"]["en-US"])
+        none_key = EVENT_MANAGEMENT["events_infos"]["none"] \
+            .get(guild_lang, EVENT_MANAGEMENT["events_infos"]["none"]["en-US"])
 
         def format_list(id_list):
             """
@@ -1199,13 +1199,13 @@ class GuildEvents(commands.Cog):
         for field in embed.fields:
             lower_name = field.name.lower()
             if lower_name.startswith(present_key):
-                new_name = f"{GUILD_EVENTS['events_infos']['present'][guild_lang]} <:_yes_:1340109996666388570> ({len(presence_ids)})"
+                new_name = f"{EVENT_MANAGEMENT['events_infos']['present'][guild_lang]} <:_yes_:1340109996666388570> ({len(presence_ids)})"
                 new_fields.append((new_name, presence_str, field.inline))
             elif lower_name.startswith(attempt_key):
-                new_name = f"{GUILD_EVENTS['events_infos']['attempt'][guild_lang]} <:_attempt_:1340110058692018248> ({len(tentative_ids)})"
+                new_name = f"{EVENT_MANAGEMENT['events_infos']['attempt'][guild_lang]} <:_attempt_:1340110058692018248> ({len(tentative_ids)})"
                 new_fields.append((new_name, tentative_str, field.inline))
             elif lower_name.startswith(absence_key):
-                new_name = f"{GUILD_EVENTS['events_infos']['absence'][guild_lang]} <:_no_:1340110124521357313> ({len(absence_ids)})"
+                new_name = f"{EVENT_MANAGEMENT['events_infos']['absence'][guild_lang]} <:_no_:1340110124521357313> ({len(absence_ids)})"
                 new_fields.append((new_name, absence_str, field.inline))
             else:
                 new_fields.append((field.name, field.value, field.inline))
@@ -1409,7 +1409,7 @@ class GuildEvents(commands.Cog):
                 to_remind = list(updated_initial - registrations)
                 reminded = []
                 event_link = f"https://discord.com/channels/{guild.id}/{events_channel.id}/{event['event_id']}"
-                dm_template = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_reminder.dm_message")
+                dm_template = await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "event_reminder.dm_message")
                 logging.debug(f"[GuildEvents - event_reminder_cron] For event {event['event_id']}, initial members: {initial}, registered: {registrations}, to remind: {to_remind}")
                 for member_id in to_remind:
                     member = guild.get_member(member_id)
@@ -1432,9 +1432,9 @@ class GuildEvents(commands.Cog):
 
                 try:
                     if reminded:
-                        reminder_template = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_reminder.notification_reminded")
+                        reminder_template = await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "event_reminder.notification_reminded")
                         if reminder_template is None:
-                            reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_reminded", {}).get("en-US", 
+                            reminder_template = EVENT_MANAGEMENT.get("event_reminder", {}).get("notification_reminded", {}).get("en-US", 
                                 "## :bell: Event Reminder\nFor event **{event}**\n({event_link})\n\n{len} member(s) were reminded: {members}"
                             )
                         try:
@@ -1446,9 +1446,9 @@ class GuildEvents(commands.Cog):
                         await notifications_channel.send(reminder_msg)
                         overall_results.append(result)
                     else:
-                        reminder_template = await get_guild_message(self.bot, guild_id, GUILD_EVENTS, "event_reminder.notification_all_OK")
+                        reminder_template = await get_guild_message(self.bot, guild_id, EVENT_MANAGEMENT, "event_reminder.notification_all_OK")
                         if reminder_template is None:
-                            reminder_template = GUILD_EVENTS.get("event_reminder", {}).get("notification_all_OK", {}).get("en-US", 
+                            reminder_template = EVENT_MANAGEMENT.get("event_reminder", {}).get("notification_all_OK", {}).get("en-US", 
                                 "## :bell: Event Reminder\nFor event **{event}**\n({event_link})\n\nAll members have responded."
                             )
                         try:
@@ -1538,8 +1538,8 @@ class GuildEvents(commands.Cog):
                         await self.load_guild_members()
                     except Exception as e:
                         logging.error(f"[GuildEvents CRON] Error loading guild members for guild {guild_id}: {e}", exc_info=True)
-                    closed_localized = GUILD_EVENTS["events_infos"]["status_closed"].get(guild_lang, GUILD_EVENTS["events_infos"]["status_closed"].get("en-US"))
-                    closed_db = GUILD_EVENTS["events_infos"]["status_closed"].get("en-US")
+                    closed_localized = EVENT_MANAGEMENT["events_infos"]["status_closed"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["status_closed"].get("en-US"))
+                    closed_db = EVENT_MANAGEMENT["events_infos"]["status_closed"].get("en-US")
                     try:
                         msg = await events_channel.fetch_message(ev["event_id"])
                     except Exception as e:
@@ -1550,7 +1550,7 @@ class GuildEvents(commands.Cog):
                         embed = msg.embeds[0]
                         new_fields = []
                         for field in embed.fields:
-                            expected_field_name = GUILD_EVENTS["events_infos"]["status"].get(guild_lang, GUILD_EVENTS["events_infos"]["status"].get("en-US"))
+                            expected_field_name = EVENT_MANAGEMENT["events_infos"]["status"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["status"].get("en-US"))
                             if field.name.lower() == expected_field_name.lower():
                                 new_fields.append({"name": field.name, "value": closed_localized, "inline": field.inline})
                             else:
@@ -2340,11 +2340,11 @@ class GuildEvents(commands.Cog):
         event_link = f"https://discord.com/channels/{guild.id}/{events_channel.id}/{event_id}"
         header = (
             f"{mention_role}\n\n"
-            f"**__{GUILD_EVENTS['events_infos']['event_name'].get(guild_lang, 'Event')} :__ {event['name']}**\n"
-            f"{event['event_date']} {GUILD_EVENTS['events_infos']['time_at'].get(guild_lang, 'at')} {event['event_time']}\n"
-            f"{GUILD_EVENTS['events_infos']['present_count'].get(guild_lang, 'Present')} : {presence_count}\n{GUILD_EVENTS['events_infos']['attempt_count'].get(guild_lang, 'Attempts')} : {tentative_count}\n\n"
-            f"[{GUILD_EVENTS['events_infos']['view_event'].get(guild_lang, 'View Event and registrations')}]({event_link})\n\n"
-            f"{GUILD_EVENTS['events_infos']['groups_below'].get(guild_lang, 'Groups below')}\n"
+            f"**__{EVENT_MANAGEMENT['events_infos']['event_name'].get(guild_lang, 'Event')} :__ {event['name']}**\n"
+            f"{event['event_date']} {EVENT_MANAGEMENT['events_infos']['time_at'].get(guild_lang, 'at')} {event['event_time']}\n"
+            f"{EVENT_MANAGEMENT['events_infos']['present_count'].get(guild_lang, 'Present')} : {presence_count}\n{EVENT_MANAGEMENT['events_infos']['attempt_count'].get(guild_lang, 'Attempts')} : {tentative_count}\n\n"
+            f"[{EVENT_MANAGEMENT['events_infos']['view_event'].get(guild_lang, 'View Event and registrations')}]({event_link})\n\n"
+            f"{EVENT_MANAGEMENT['events_infos']['groups_below'].get(guild_lang, 'Groups below')}\n"
         )
 
         try:
@@ -2400,7 +2400,7 @@ class GuildEvents(commands.Cog):
                         lines.append(f"{cls_emoji} {weapons_emoji} *{m['pseudo']}* ({m['GS']}) 🔶")
                     else:
                         lines.append(f"{cls_emoji} {weapons_emoji} {m['pseudo']} ({m['GS']})")
-                no_member_text = GUILD_EVENTS.get("no_member", {}).get(guild_lang, "No member")
+                no_member_text = EVENT_MANAGEMENT.get("no_member", {}).get(guild_lang, "No member")
                 e.description = "\n".join(lines) or no_member_text
                 embeds.append(e)
 
@@ -2417,50 +2417,50 @@ class GuildEvents(commands.Cog):
         self, 
         ctx: discord.ApplicationContext, 
         event_name: str = discord.Option(
-            description=GUILD_EVENTS["event_create"]["event_name"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["event_name"]
+            description=EVENT_MANAGEMENT["event_create_options"]["event_name"]["en-US"],
+            description_localizations=EVENT_MANAGEMENT["event_create_options"]["event_name"]
         ),
         event_date: str = discord.Option(
-            description=GUILD_EVENTS["event_create"]["event_date"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["event_date"]
+            description=EVENT_MANAGEMENT["event_create_options"]["event_date"]["en-US"],
+            description_localizations=EVENT_MANAGEMENT["event_create_options"]["event_date"]
         ),
         event_time: str = discord.Option(
-            description=GUILD_EVENTS["event_create"]["event_hour"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["event_hour"]
+            description=EVENT_MANAGEMENT["event_create_options"]["event_hour"]["en-US"],
+            description_localizations=EVENT_MANAGEMENT["event_create_options"]["event_hour"]
         ),
         duration: int = discord.Option(
             int,
-            description=GUILD_EVENTS["event_create"]["event_time"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["event_time"],
+            description=EVENT_MANAGEMENT["event_create_options"]["event_time"]["en-US"],
+            description_localizations=EVENT_MANAGEMENT["event_create_options"]["event_time"],
             min_value=1,
             max_value=1440
         ),
         status: str = discord.Option(
             default="Confirmed",
-            description=GUILD_EVENTS["event_create"]["status"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["status"],
+            description=EVENT_MANAGEMENT["event_create_options"]["status"]["en-US"],
+            description_localizations=EVENT_MANAGEMENT["event_create_options"]["status"],
             choices=[
                 discord.OptionChoice(
-                    name=choice_data["name_localizations"].get("en-US", key),
+                    name=choice_data["name"].get("en-US", key),
                     value=choice_data["value"],
-                    name_localizations=choice_data["name_localizations"]
+                    name_localizations=choice_data["name"]
                 )
-                for key, choice_data in GUILD_EVENTS["event_create"]["choices"].items()
+                for key, choice_data in EVENT_MANAGEMENT["event_create_options"]["choices"].items()
             ]
         ),
         dkp_value: int = discord.Option(
             int,
             default=0,
-            description=GUILD_EVENTS["event_create"]["dkp_value"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["dkp_value"],
+            description=EVENT_MANAGEMENT["event_create_options"]["dkp_value"]["en-US"],
+            description_localizations=EVENT_MANAGEMENT["event_create_options"]["dkp_value"],
             min_value=0,
             max_value=9999
         ),
         dkp_ins: int = discord.Option(
             int,
             default=0,
-            description=GUILD_EVENTS["event_create"]["dkp_ins"]["en-US"],
-            description_localizations=GUILD_EVENTS["event_create"]["dkp_ins"],
+            description=EVENT_MANAGEMENT["event_create_options"]["dkp_ins"]["en-US"],
+            description_localizations=EVENT_MANAGEMENT["event_create_options"]["dkp_ins"],
             min_value=0,
             max_value=9999
         )
@@ -2493,35 +2493,35 @@ class GuildEvents(commands.Cog):
         
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         if not settings:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.no_settings")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.no_settings")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         logging.debug(f"[GuildEvents - event_create] Received parameters: event_name={event_name}, event_date={event_date}, event_time={event_time}, duration={duration}, status={status}, dkp_value={dkp_value}, dkp_ins={dkp_ins}")
         
         if not event_name or not event_name.strip():
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.name_empty")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.name_empty")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
             
         event_name = event_name.strip()
         if len(event_name) > 100:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.name_too_long")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.name_too_long")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
             
         if dkp_value < 0 or dkp_value > 9999:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.dkp_value_invalid")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.dkp_value_invalid")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
             
         if dkp_ins < 0 or dkp_ins > 9999:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.dkp_ins_invalid")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.dkp_ins_invalid")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
             
         if duration <= 0 or duration > 1440:
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.duration_invalid")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.duration_invalid")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
         
@@ -2533,7 +2533,7 @@ class GuildEvents(commands.Cog):
             logging.debug(f"[GuildEvents - event_create] Parsed dates: start_date={start_date}, start_time={start_time_obj}")
         except Exception as e:
             logging.error("[GuildEvents - event_create] Error parsing date or time.", exc_info=True)
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.date_ko")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.date_ko")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
@@ -2544,39 +2544,39 @@ class GuildEvents(commands.Cog):
             logging.debug(f"[GuildEvents - event_create] Calculated start_dt: {start_dt}, end_dt: {end_dt}")
         except Exception as e:
             logging.error("[GuildEvents - event_create] Error localizing or calculating end date.", exc_info=True)
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.date_ko_2")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.date_ko_2")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
-        description = GUILD_EVENTS["events_infos"]["description"].get(guild_lang, GUILD_EVENTS["events_infos"]["description"].get("en-US"))
+        description = EVENT_MANAGEMENT["events_infos"]["description"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["description"].get("en-US"))
         if status.lower() == "confirmed":
-            localized_status = GUILD_EVENTS["events_infos"]["status_confirmed"].get(guild_lang, GUILD_EVENTS["events_infos"]["status_confirmed"].get("en-US"))
+            localized_status = EVENT_MANAGEMENT["events_infos"]["status_confirmed"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["status_confirmed"].get("en-US"))
         else:
-            localized_status = GUILD_EVENTS["events_infos"]["status_planned"].get(guild_lang, GUILD_EVENTS["events_infos"]["status_planned"].get("en-US"))
-        event_present = GUILD_EVENTS["events_infos"]["present"].get(guild_lang,GUILD_EVENTS["events_infos"]["present"].get("en-US"))
-        event_attempt = GUILD_EVENTS["events_infos"]["attempt"].get(guild_lang,GUILD_EVENTS["events_infos"]["attempt"].get("en-US"))
-        event_absence = GUILD_EVENTS["events_infos"]["absence"].get(guild_lang,GUILD_EVENTS["events_infos"]["absence"].get("en-US"))
-        event_voice_channel = GUILD_EVENTS["events_infos"]["voice_channel"].get(guild_lang,GUILD_EVENTS["events_infos"]["voice_channel"].get("en-US"))
-        event_groups = GUILD_EVENTS["events_infos"]["groups"].get(guild_lang,GUILD_EVENTS["events_infos"]["groups"].get("en-US"))
-        event_auto_grouping = GUILD_EVENTS["events_infos"]["auto_grouping"].get(guild_lang,GUILD_EVENTS["events_infos"]["auto_grouping"].get("en-US"))
+            localized_status = EVENT_MANAGEMENT["events_infos"]["status_planned"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["status_planned"].get("en-US"))
+        event_present = EVENT_MANAGEMENT["events_infos"]["present"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["present"].get("en-US"))
+        event_attempt = EVENT_MANAGEMENT["events_infos"]["attempt"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["attempt"].get("en-US"))
+        event_absence = EVENT_MANAGEMENT["events_infos"]["absence"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["absence"].get("en-US"))
+        event_voice_channel = EVENT_MANAGEMENT["events_infos"]["voice_channel"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["voice_channel"].get("en-US"))
+        event_groups = EVENT_MANAGEMENT["events_infos"]["groups"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["groups"].get("en-US"))
+        event_auto_grouping = EVENT_MANAGEMENT["events_infos"]["auto_grouping"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["auto_grouping"].get("en-US"))
         channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
         conference_channel = guild.get_channel(channels_data.get("voice_war_channel")) if channels_data else None
         events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
         if not events_channel or not conference_channel:
             logging.error(f"[GuildEvents - event_create] Channels not found: events_channel={events_channel}, conference_channel={conference_channel}")
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.no_events_canal")
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.no_events_canal")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         embed_color = discord.Color.green() if status.lower() == "confirmed" else discord.Color.blue()
         embed = discord.Embed(title=event_name, description=description, color=embed_color)
-        embed.add_field(name=GUILD_EVENTS["events_infos"]["date"].get(guild_lang, GUILD_EVENTS["events_infos"]["date"].get("en-US")), value=event_date, inline=True)
-        embed.add_field(name=GUILD_EVENTS["events_infos"]["hour"].get(guild_lang, GUILD_EVENTS["events_infos"]["hour"].get("en-US")), value=event_time, inline=True)
-        embed.add_field(name=GUILD_EVENTS["events_infos"]["duration"].get(guild_lang, GUILD_EVENTS["events_infos"]["duration"].get("en-US")), value=str(duration), inline=True)
-        embed.add_field(name=GUILD_EVENTS["events_infos"]["status"].get(guild_lang, GUILD_EVENTS["events_infos"]["status"].get("en-US")), value=localized_status, inline=True)
-        embed.add_field(name=GUILD_EVENTS["events_infos"]["dkp_v"].get(guild_lang, GUILD_EVENTS["events_infos"]["dkp_v"].get("en-US")), value=str(dkp_value), inline=True)
-        embed.add_field(name=GUILD_EVENTS["events_infos"]["dkp_i"].get(guild_lang, GUILD_EVENTS["events_infos"]["dkp_i"].get("en-US")), value=str(dkp_ins), inline=True)
-        none_text = GUILD_EVENTS["events_infos"]["none"].get(guild_lang, "None")
+        embed.add_field(name=EVENT_MANAGEMENT["events_infos"]["date"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["date"].get("en-US")), value=event_date, inline=True)
+        embed.add_field(name=EVENT_MANAGEMENT["events_infos"]["hour"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["hour"].get("en-US")), value=event_time, inline=True)
+        embed.add_field(name=EVENT_MANAGEMENT["events_infos"]["duration"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["duration"].get("en-US")), value=str(duration), inline=True)
+        embed.add_field(name=EVENT_MANAGEMENT["events_infos"]["status"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["status"].get("en-US")), value=localized_status, inline=True)
+        embed.add_field(name=EVENT_MANAGEMENT["events_infos"]["dkp_v"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["dkp_v"].get("en-US")), value=str(dkp_value), inline=True)
+        embed.add_field(name=EVENT_MANAGEMENT["events_infos"]["dkp_i"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["dkp_i"].get("en-US")), value=str(dkp_ins), inline=True)
+        none_text = EVENT_MANAGEMENT["events_infos"]["none"].get(guild_lang, "None")
         embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value=none_text, inline=False)
         embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value=none_text, inline=False)
         embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value=none_text, inline=False)
@@ -2589,9 +2589,9 @@ class GuildEvents(commands.Cog):
                 await self.bot.cache_loader.ensure_category_loaded('guild_roles')
                 roles_data = await self.bot.cache.get_guild_data(guild.id, 'roles')
                 members_role = roles_data.get("members") if roles_data else None
-                update_message = GUILD_EVENTS["event_confirm"]["confirmed_notif"].get(
+                update_message = EVENT_MANAGEMENT["event_confirm"]["confirmed_notif"].get(
                     user_locale,
-                    GUILD_EVENTS["event_confirm"]["confirmed_notif"].get("en-US")
+                    EVENT_MANAGEMENT["event_confirm"]["confirmed_notif"].get("en-US")
                 ).format(role=members_role)
                 announcement = await events_channel.send(content=update_message, embed=embed)
             else:
@@ -2605,12 +2605,12 @@ class GuildEvents(commands.Cog):
             await announcement.add_reaction("<:_no_:1340110124521357313>")
         except Exception as e:
             logging.error(f"[GuildEvents - event_create] Error sending announcement: {e}", exc_info=True)
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.error_event", e=str(e))
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.error_event", e=str(e))
             await ctx.followup.send(follow_message, ephemeral=True)
             return
 
         try:
-            description_scheduled = GUILD_EVENTS["events_infos"]["description_scheduled"].get(guild_lang, GUILD_EVENTS["events_infos"]["description_scheduled"].get("en-US")).format(link=message_link)
+            description_scheduled = EVENT_MANAGEMENT["events_infos"]["description_scheduled"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["description_scheduled"].get("en-US")).format(link=message_link)
             scheduled_event = await guild.create_scheduled_event(
                 name=event_name,
                 description=description_scheduled,
@@ -2702,11 +2702,11 @@ class GuildEvents(commands.Cog):
             logging.info(f"[GuildEvents - event_create] Event saved in DB successfully: {announcement.id}")
 
             
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.events_created", event_id=announcement.id)
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.events_created", event_id=announcement.id)
             await ctx.followup.send(follow_message, ephemeral=True)
         except Exception as e:
             logging.error(f"[GuildEvents - event_create] Error saving event in DB for guild {guild.id}: {e}", exc_info=True)
-            follow_message = await get_user_message(ctx, GUILD_EVENTS, "event_create.event_ko", e=str(e))
+            follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.event_ko", e=str(e))
             await ctx.followup.send(follow_message, ephemeral=True)
 
     async def static_create(

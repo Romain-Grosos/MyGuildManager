@@ -39,6 +39,7 @@ for key, value in env_vars.items():
     os.environ[key] = value
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app'))
 
 # Mock discord.Bot to point to commands.Bot for compatibility
 import discord
@@ -352,10 +353,112 @@ mock_translations.update(flexible_base)
 
 # Mock the translation module directly in sys.modules BEFORE any imports
 import types
-translation_module = types.ModuleType('translation')
+translation_module = types.ModuleType('core.translation')
 translation_module.translations = mock_translations
 translation_module.load_translations = lambda: None
-sys.modules['translation'] = translation_module
+sys.modules['core.translation'] = translation_module
+
+# Also create the core module
+core_module = types.ModuleType('core')
+sys.modules['core'] = core_module
+
+# Create core.functions module with necessary functions
+core_functions_module = types.ModuleType('core.functions')
+from unittest.mock import Mock
+
+def mock_get_user_message(ctx, translations, key, **kwargs):
+    """Mock get_user_message function."""
+    if not translations or not isinstance(translations, dict):
+        return ''
+    if not key or not isinstance(key, str):
+        return ''
+    
+    keys = key.split('.')
+    current = translations
+    for k in keys:
+        if isinstance(current, dict) and k in current:
+            current = current[k]
+        else:
+            return ''
+    
+    if isinstance(current, dict):
+        locale = getattr(ctx, 'locale', 'en-US') if ctx else 'en-US'
+        message = current.get(locale, current.get('en-US', ''))
+        if isinstance(message, str):
+            try:
+                return message.format(**kwargs) if kwargs else message
+            except (KeyError, ValueError):
+                return message
+    
+    return ''
+
+async def mock_get_guild_message(bot, guild_id, translations, key, **kwargs):
+    """Mock get_guild_message function."""
+    if not bot or not guild_id:
+        return ''
+    if not translations or not isinstance(translations, dict):
+        return ''
+    if not key or not isinstance(key, str):
+        return ''
+    
+    keys = key.split('.')
+    current = translations
+    for k in keys:
+        if isinstance(current, dict) and k in current:
+            current = current[k]
+        else:
+            return ''
+    
+    if isinstance(current, dict):
+        # Mock guild locale retrieval
+        locale = 'en-US'  # Default
+        if bot and hasattr(bot, 'cache'):
+            try:
+                guild_data = await bot.cache.get_guild_data(guild_id, 'locale', default='en-US')
+                if isinstance(guild_data, dict) and 'locale' in guild_data:
+                    locale = guild_data['locale']
+            except:
+                pass
+        
+        message = current.get(locale, current.get('en-US', ''))
+        if isinstance(message, str):
+            try:
+                return message.format(**kwargs) if kwargs else message
+            except (KeyError, ValueError):
+                return message
+    
+    return ''
+
+def mock_sanitize_kwargs(**kwargs):
+    """Mock sanitize_kwargs function."""
+    result = {}
+    for key, value in kwargs.items():
+        if isinstance(key, str) and key.isidentifier():
+            if isinstance(value, str):
+                result[key] = value[:200]  # Truncate long strings
+            else:
+                result[key] = str(value)
+    return result
+
+def mock_get_nested_value(data, keys, max_depth=10):
+    """Mock get_nested_value function."""
+    if len(keys) > max_depth:
+        return None
+    
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return None
+    return current
+
+core_functions_module.get_user_message = mock_get_user_message
+core_functions_module.get_guild_message = mock_get_guild_message
+core_functions_module.sanitize_kwargs = mock_sanitize_kwargs
+core_functions_module.get_nested_value = mock_get_nested_value
+
+sys.modules['core.functions'] = core_functions_module
 
 temp_translation_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
 json.dump(base_translations, temp_translation_file)
@@ -366,8 +469,8 @@ os.environ['TRANSLATION_FILE'] = temp_translation_file.name
 def mock_translation_loading():
     """Mock translation loading during module import."""
     # Mock the entire translation loading process
-    with patch('translation.load_translations') as mock_load:
-        with patch('translation.translations', mock_translations):
+    with patch('core.translation.load_translations') as mock_load:
+        with patch('core.translation.translations', mock_translations):
             mock_load.return_value = None  # load_translations returns nothing
             yield
 

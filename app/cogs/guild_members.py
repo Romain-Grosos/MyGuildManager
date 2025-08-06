@@ -19,8 +19,7 @@ from core.rate_limiter import admin_rate_limit
 from core.translation import translations as global_translations
 from db import run_db_transaction
 
-GUILD_MEMBERS = global_translations.get("guild_members", {})
-CONFIG_ROSTER_DATA = global_translations.get("commands", {}).get("config_roster", {})
+GUILD_MEMBERS = global_translations.get("member_management", {})
 
 class GuildMembers(commands.Cog):
     """Cog for managing guild member profiles, roster updates, and member data."""
@@ -50,45 +49,45 @@ class GuildMembers(commands.Cog):
         if hasattr(self.bot, 'member_group'):
 
             self.bot.member_group.command(
-                name=GUILD_MEMBERS.get("commands", {}).get("gs", {}).get("name", {}).get("en-US", "gs"),
-                description=GUILD_MEMBERS.get("commands", {}).get("gs", {}).get("description", {}).get("en-US", "Update your gear score (GS)"),
-                name_localizations=GUILD_MEMBERS.get("commands", {}).get("gs", {}).get("name", {}),
-                description_localizations=GUILD_MEMBERS.get("commands", {}).get("gs", {}).get("description", {})
+                name=GUILD_MEMBERS.get("gs", {}).get("name", {}).get("en-US", "gs"),
+                description=GUILD_MEMBERS.get("gs", {}).get("description", {}).get("en-US", "Update your gear score (GS)"),
+                name_localizations=GUILD_MEMBERS.get("gs", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("gs", {}).get("description", {})
             )(self.gs)
 
             self.bot.member_group.command(
-                name=GUILD_MEMBERS.get("commands", {}).get("weapons", {}).get("name", {}).get("en-US", "weapons"),
-                description=GUILD_MEMBERS.get("commands", {}).get("weapons", {}).get("description", {}).get("en-US", "Update your weapon combination"),
-                name_localizations=GUILD_MEMBERS.get("commands", {}).get("weapons", {}).get("name", {}),
-                description_localizations=GUILD_MEMBERS.get("commands", {}).get("weapons", {}).get("description", {})
+                name=GUILD_MEMBERS.get("weapons", {}).get("name", {}).get("en-US", "weapons"),
+                description=GUILD_MEMBERS.get("weapons", {}).get("description", {}).get("en-US", "Update your weapon combination"),
+                name_localizations=GUILD_MEMBERS.get("weapons", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("weapons", {}).get("description", {})
             )(self.weapons)
 
             self.bot.member_group.command(
-                name=GUILD_MEMBERS.get("commands", {}).get("build", {}).get("name", {}).get("en-US", "build"),
-                description=GUILD_MEMBERS.get("commands", {}).get("build", {}).get("description", {}).get("en-US", "Update your build URL"),
-                name_localizations=GUILD_MEMBERS.get("commands", {}).get("build", {}).get("name", {}),
-                description_localizations=GUILD_MEMBERS.get("commands", {}).get("build", {}).get("description", {})
+                name=GUILD_MEMBERS.get("build", {}).get("name", {}).get("en-US", "build"),
+                description=GUILD_MEMBERS.get("build", {}).get("description", {}).get("en-US", "Update your build URL"),
+                name_localizations=GUILD_MEMBERS.get("build", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("build", {}).get("description", {})
             )(self.build)
 
             self.bot.member_group.command(
-                name=GUILD_MEMBERS.get("commands", {}).get("username", {}).get("name", {}).get("en-US", "username"),
-                description=GUILD_MEMBERS.get("commands", {}).get("username", {}).get("description", {}).get("en-US", "Update your username"),
-                name_localizations=GUILD_MEMBERS.get("commands", {}).get("username", {}).get("name", {}),
-                description_localizations=GUILD_MEMBERS.get("commands", {}).get("username", {}).get("description", {})
+                name=GUILD_MEMBERS.get("username", {}).get("name", {}).get("en-US", "username"),
+                description=GUILD_MEMBERS.get("username", {}).get("description", {}).get("en-US", "Update your username"),
+                name_localizations=GUILD_MEMBERS.get("username", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("username", {}).get("description", {})
             )(self.username)
 
             self.bot.member_group.command(
-                name=GUILD_MEMBERS.get("commands", {}).get("show_build", {}).get("name", {}).get("en-US", "show_build"),
-                description=GUILD_MEMBERS.get("commands", {}).get("show_build", {}).get("description", {}).get("en-US", "Show another member's build"),
-                name_localizations=GUILD_MEMBERS.get("commands", {}).get("show_build", {}).get("name", {}),
-                description_localizations=GUILD_MEMBERS.get("commands", {}).get("show_build", {}).get("description", {})
+                name=GUILD_MEMBERS.get("show_build", {}).get("name", {}).get("en-US", "show_build"),
+                description=GUILD_MEMBERS.get("show_build", {}).get("description", {}).get("en-US", "Show another member's build"),
+                name_localizations=GUILD_MEMBERS.get("show_build", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("show_build", {}).get("description", {})
             )(self.show_build)
 
             self.bot.member_group.command(
-                name=GUILD_MEMBERS.get("commands", {}).get("change_language", {}).get("name", {}).get("en-US", "change_language"),
-                description=GUILD_MEMBERS.get("commands", {}).get("change_language", {}).get("description", {}).get("en-US", "Change your preferred language"),
-                name_localizations=GUILD_MEMBERS.get("commands", {}).get("change_language", {}).get("name", {}),
-                description_localizations=GUILD_MEMBERS.get("commands", {}).get("change_language", {}).get("description", {})
+                name=GUILD_MEMBERS.get("change_language", {}).get("name", {}).get("en-US", "change_language"),
+                description=GUILD_MEMBERS.get("change_language", {}).get("description", {}).get("en-US", "Change your preferred language"),
+                name_localizations=GUILD_MEMBERS.get("change_language", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("change_language", {}).get("description", {})
             )(self.change_language)
     
     def _register_staff_commands(self):
@@ -96,24 +95,24 @@ class GuildMembers(commands.Cog):
         if hasattr(self.bot, 'staff_group'):
 
             self.bot.staff_group.command(
-                name=GUILD_MEMBERS.get("commands", {}).get("maj_roster", {}).get("name", {}).get("en-US", "maj_roster"),
-                description=GUILD_MEMBERS.get("commands", {}).get("maj_roster", {}).get("description", {}).get("en-US", "Update guild roster"),
-                name_localizations=GUILD_MEMBERS.get("commands", {}).get("maj_roster", {}).get("name", {}),
-                description_localizations=GUILD_MEMBERS.get("commands", {}).get("maj_roster", {}).get("description", {})
+                name=GUILD_MEMBERS.get("maj_roster", {}).get("name", {}).get("en-US", "maj_roster"),
+                description=GUILD_MEMBERS.get("maj_roster", {}).get("description", {}).get("en-US", "Update guild roster"),
+                name_localizations=GUILD_MEMBERS.get("maj_roster", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("maj_roster", {}).get("description", {})
             )(self.maj_roster)
 
             self.bot.staff_group.command(
-                name=GUILD_MEMBERS.get("commands", {}).get("notify_profile", {}).get("name", {}).get("en-US", "notify_profile"),
-                description=GUILD_MEMBERS.get("commands", {}).get("notify_profile", {}).get("description", {}).get("en-US", "Notify members with incomplete profiles"),
-                name_localizations=GUILD_MEMBERS.get("commands", {}).get("notify_profile", {}).get("name", {}),
-                description_localizations=GUILD_MEMBERS.get("commands", {}).get("notify_profile", {}).get("description", {})
+                name=GUILD_MEMBERS.get("notify_profile", {}).get("name", {}).get("en-US", "notify_profile"),
+                description=GUILD_MEMBERS.get("notify_profile", {}).get("description", {}).get("en-US", "Notify members with incomplete profiles"),
+                name_localizations=GUILD_MEMBERS.get("notify_profile", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("notify_profile", {}).get("description", {})
             )(self.notify_incomplete_profiles)
 
             self.bot.staff_group.command(
-                name=CONFIG_ROSTER_DATA.get("name", {}).get("en-US", "config_roster"),
-                description=CONFIG_ROSTER_DATA.get("description", {}).get("en-US", "Configure ideal roster sizes"),
-                name_localizations=CONFIG_ROSTER_DATA.get("name", {}),
-                description_localizations=CONFIG_ROSTER_DATA.get("description", {})
+                name=GUILD_MEMBERS.get("config_roster", {}).get("name", {}).get("en-US", "config_roster"),
+                description=GUILD_MEMBERS.get("config_roster", {}).get("description", {}).get("en-US", "Configure ideal roster sizes"),
+                name_localizations=GUILD_MEMBERS.get("config_roster", {}).get("name", {}),
+                description_localizations=GUILD_MEMBERS.get("config_roster", {}).get("description", {})
             )(self.config_roster)
     
     def _sanitize_string(self, text: str, max_length: int = 100) -> str:
@@ -1587,40 +1586,40 @@ class GuildMembers(commands.Cog):
         ctx: discord.ApplicationContext,
         tank: int = discord.Option(
             int,
-            description=CONFIG_ROSTER_DATA.get("options", {}).get("tank", {}).get("description", {}).get("en-US", "Ideal number of Tanks"),
-            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("tank", {}).get("description", {}),
+            description=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("tank", {}).get("description", {}).get("en-US", "Ideal number of Tanks"),
+            description_localizations=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("tank", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=20
         ),
         healer: int = discord.Option(
             int,
-            description=CONFIG_ROSTER_DATA.get("options", {}).get("healer", {}).get("description", {}).get("en-US", "Ideal number of Healers"),
-            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("healer", {}).get("description", {}),
+            description=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("healer", {}).get("description", {}).get("en-US", "Ideal number of Healers"),
+            description_localizations=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("healer", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=20
         ),
         flanker: int = discord.Option(
             int,
-            description=CONFIG_ROSTER_DATA.get("options", {}).get("flanker", {}).get("description", {}).get("en-US", "Ideal number of Flankers"),
-            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("flanker", {}).get("description", {}),
+            description=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("flanker", {}).get("description", {}).get("en-US", "Ideal number of Flankers"),
+            description_localizations=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("flanker", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=10
         ),
         ranged_dps: int = discord.Option(
             int,
-            description=CONFIG_ROSTER_DATA.get("options", {}).get("ranged_dps", {}).get("description", {}).get("en-US", "Ideal number of Ranged DPS"),
-            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("ranged_dps", {}).get("description", {}),
+            description=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("ranged_dps", {}).get("description", {}).get("en-US", "Ideal number of Ranged DPS"),
+            description_localizations=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("ranged_dps", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=10
         ),
         melee_dps: int = discord.Option(
             int,
-            description=CONFIG_ROSTER_DATA.get("options", {}).get("melee_dps", {}).get("description", {}).get("en-US", "Ideal number of Melee DPS"),
-            description_localizations=CONFIG_ROSTER_DATA.get("options", {}).get("melee_dps", {}).get("description", {}),
+            description=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("melee_dps", {}).get("description", {}).get("en-US", "Ideal number of Melee DPS"),
+            description_localizations=GUILD_MEMBERS.get("config_roster", {}).get("options", {}).get("melee_dps", {}).get("description", {}),
             min_value=0,
             max_value=100,
             default=10
@@ -1644,7 +1643,7 @@ class GuildMembers(commands.Cog):
         
         if not ctx.guild or not ctx.author:
             logging.error("[GuildMembers - ConfigRoster] Invalid context: missing guild or author")
-            invalid_context_msg = await get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.invalid_context")
+            invalid_context_msg = await get_user_message(ctx, GUILD_MEMBERS["config_roster"], "messages.invalid_context")
             await ctx.followup.send(invalid_context_msg, ephemeral=True)
             return
         
@@ -1672,14 +1671,14 @@ class GuildMembers(commands.Cog):
             await self.update_recruitment_message(ctx)
             
             config_summary = "\n".join([f"- **{class_name}** : {count}" for class_name, count in class_config.items()])
-            success_msg = await get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.success", config_summary=config_summary)
+            success_msg = await get_user_message(ctx, GUILD_MEMBERS["config_roster"], "messages.success", config_summary=config_summary)
             
             await ctx.followup.send(success_msg, ephemeral=True)
             logging.debug(f"[GuildMembers - ConfigRoster] Ideal staff configuration updated for guild {guild_id}: {class_config}")
             
         except Exception as e:
             logging.exception(f"[GuildMembers - ConfigRoster] Error updating ideal staff config for guild {guild_id}: {e}")
-            error_msg = await get_user_message(ctx, CONFIG_ROSTER_DATA, "messages.update_error")
+            error_msg = await get_user_message(ctx, GUILD_MEMBERS["config_roster"], "messages.update_error")
             await ctx.followup.send(error_msg, ephemeral=True)
 
     async def change_language(
@@ -1690,8 +1689,8 @@ class GuildMembers(commands.Cog):
             description=GUILD_MEMBERS["change_language"]["options"]["language"]["description"]["en-US"],
             description_localizations=GUILD_MEMBERS["change_language"]["options"]["language"]["description"],
             choices=[
-                discord.OptionChoice(name=global_translations["language_names"][locale], value=locale)
-                for locale in global_translations.get("supported_locales", ["en-US"])
+                discord.OptionChoice(name=global_translations["global"]["language_names"][locale], value=locale)
+                for locale in global_translations["global"].get("supported_locales", ["en-US"])
             ]
         )
     ):
@@ -1758,7 +1757,7 @@ class GuildMembers(commands.Cog):
             
             await self.update_guild_member_cache(guild_id, member_id, "language", language)
             
-            language_name = global_translations.get("language_names", {}).get(language, language)
+            language_name = global_translations["global"].get("language_names", {}).get(language, language)
             
             success_msg = await get_user_message(ctx, GUILD_MEMBERS["change_language"], "messages.success", language_name=language_name)
             await ctx.followup.send(success_msg, ephemeral=True)

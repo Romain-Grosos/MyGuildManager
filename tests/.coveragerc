@@ -1,0 +1,50 @@
+# Coverage configuration for Discord Bot MGM
+[run]
+source = app, run_bot.py
+branch = True
+parallel = True
+omit = 
+    */tests/*
+    */migrations/*
+    */logs/*
+    */__pycache__/*
+    */venv/*
+    */env/*
+    .pytest_cache/*
+    htmlcov/*
+    */typings/*
+    */scripts/*
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain about missing debug-only code:
+    def __repr__
+    if self\.debug
+
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+
+    # Don't complain about abstract methods, they aren't run:
+    @(abc\.)?abstractmethod
+
+ignore_errors = True
+show_missing = True
+precision = 2
+skip_covered = True
+
+[html]
+directory = htmlcov
+title = Discord Bot MGM - Coverage Report
+
+[xml]
+output = coverage.xml

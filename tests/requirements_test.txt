@@ -1,0 +1,42 @@
+# Test dependencies for Discord Bot MGM
+# Core testing framework
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.0.0
+pytest-mock>=3.12.0
+pytest-xdist>=3.5.0
+
+# Coverage reporting
+coverage>=7.4.0
+
+# Mocking and testing utilities
+responses>=0.24.0
+faker>=22.0.0
+factory-boy>=3.3.0
+
+# Async testing support
+pytest-timeout>=2.2.0
+pytest-benchmark>=4.0.0
+
+# Code quality and linting for tests
+black>=24.0.0
+isort>=5.13.0
+flake8>=7.0.0
+
+# Discord.py and related for testing
+discord.py>=2.3.0
+aiohttp>=3.9.0
+
+# Database testing
+# pytest-postgresql>=5.0.0  # DÉSACTIVÉ - libpq manquant sur Windows
+# sqlalchemy>=2.0.0         # DÉSACTIVÉ - non nécessaire
+
+# Redis testing (if needed)
+fakeredis>=2.20.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+
+# Additional utilities
+pydantic>=2.5.0
+loguru>=0.7.0

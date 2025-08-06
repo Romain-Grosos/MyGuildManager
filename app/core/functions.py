@@ -82,14 +82,14 @@ async def get_effective_locale(bot, guild_id: int, user_id: int) -> str:
         guild_member_data = await bot.cache.get_guild_member_data(guild_id, user_id)
         if guild_member_data and guild_member_data.get('language'):
             member_language = guild_member_data.get('language')
-            locale_mapping = {
-                'en': 'en-US',
-                'fr': 'fr', 
-                'es': 'es-ES',
-                'de': 'de',
-                'it': 'it'
-            }
-            return locale_mapping.get(member_language) or member_language
+            supported_locales = bot.translations.get('global', {}).get('supported_locales', [])
+            
+            if member_language == 'en' and 'en-US' in supported_locales:
+                return 'en-US'
+            elif member_language in supported_locales:
+                return member_language
+            else:
+                return member_language
 
         user_setup_data = await bot.cache.get_user_setup_data(guild_id, user_id)
         if user_setup_data and user_setup_data.get('locale'):

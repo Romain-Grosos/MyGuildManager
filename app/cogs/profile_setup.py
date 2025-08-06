@@ -16,8 +16,8 @@ from core.translation import translations as global_translations
 from db import DBQueryError
 
 MAX_PLAYTIME_LEN = 64
-SUPPORTED_LOCALES = global_translations.get("supported_locales", {})
-LANGUAGE_NAMES = global_translations.get("language_names", {})
+SUPPORTED_LOCALES = global_translations.get("global", {}).get("supported_locales", ["en-US", "fr", "es-ES", "de", "it"])
+LANGUAGE_NAMES = global_translations.get("global", {}).get("language_names", {})
 WELCOME_MP = global_translations.get("welcome_mp", {})
 PROFILE_SETUP_DATA = global_translations.get("profile_setup", {})
 

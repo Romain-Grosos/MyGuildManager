@@ -17,7 +17,8 @@ from core.translation import translations as global_translations
 from core.reliability import discord_resilient
 from core.functions import get_user_message, get_guild_message
 
-LOOT_WISHLIST_DATA = global_translations.get("loot_wishlist", {})
+LOOT_SYSTEM = global_translations.get("loot_system", {})
+LOOT_WISHLIST_DATA = LOOT_SYSTEM
 
 
 class LootWishlist(commands.Cog):
@@ -47,26 +48,26 @@ class LootWishlist(commands.Cog):
         if hasattr(self.bot, 'loot_group'):
             # Register wishlist add command
             self.bot.loot_group.command(
-                name=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("name", {}).get("en-US", "wishlist_add"),
-                description=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("description", {}).get("en-US", "Add an Epic T2 item to your wishlist"),
-                name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("name", {}),
-                description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_add", {}).get("description", {})
+                name=LOOT_SYSTEM.get("wishlist_add", {}).get("name", {}).get("en-US", "wishlist_add"),
+                description=LOOT_SYSTEM.get("wishlist_add", {}).get("description", {}).get("en-US", "Add an Epic T2 item to your wishlist"),
+                name_localizations=LOOT_SYSTEM.get("wishlist_add", {}).get("name", {}),
+                description_localizations=LOOT_SYSTEM.get("wishlist_add", {}).get("description", {})
             )(self.wishlist_add)
             
             # Register wishlist remove command
             self.bot.loot_group.command(
-                name=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("name", {}).get("en-US", "wishlist_remove"),
-                description=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("description", {}).get("en-US", "Remove an item from your wishlist"),
-                name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("name", {}),
-                description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_remove", {}).get("description", {})
+                name=LOOT_SYSTEM.get("wishlist_remove", {}).get("name", {}).get("en-US", "wishlist_remove"),
+                description=LOOT_SYSTEM.get("wishlist_remove", {}).get("description", {}).get("en-US", "Remove an item from your wishlist"),
+                name_localizations=LOOT_SYSTEM.get("wishlist_remove", {}).get("name", {}),
+                description_localizations=LOOT_SYSTEM.get("wishlist_remove", {}).get("description", {})
             )(self.wishlist_remove)
             
             # Register wishlist show command
             self.bot.loot_group.command(
-                name=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("name", {}).get("en-US", "wishlist_show"),
-                description=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("description", {}).get("en-US", "View your current wishlist"),
-                name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("name", {}),
-                description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_list", {}).get("description", {})
+                name=LOOT_SYSTEM.get("wishlist_list", {}).get("name", {}).get("en-US", "wishlist_show"),
+                description=LOOT_SYSTEM.get("wishlist_list", {}).get("description", {}).get("en-US", "View your current wishlist"),
+                name_localizations=LOOT_SYSTEM.get("wishlist_list", {}).get("name", {}),
+                description_localizations=LOOT_SYSTEM.get("wishlist_list", {}).get("description", {})
             )(self.wishlist_list)
     
     def _register_staff_commands(self):
@@ -74,10 +75,10 @@ class LootWishlist(commands.Cog):
         if hasattr(self.bot, 'staff_group'):
             # Register wishlist admin command
             self.bot.staff_group.command(
-                name=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("name", {}).get("en-US", "wishlist_mod"),
-                description=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("description", {}).get("en-US", "[MOD] View global wishlist statistics"),
-                name_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("name", {}),
-                description_localizations=LOOT_WISHLIST_DATA.get("commands", {}).get("wishlist_admin", {}).get("description", {})
+                name=LOOT_SYSTEM.get("wishlist_admin", {}).get("name", {}).get("en-US", "wishlist_mod"),
+                description=LOOT_SYSTEM.get("wishlist_admin", {}).get("description", {}).get("en-US", "[MOD] View global wishlist statistics"),
+                name_localizations=LOOT_SYSTEM.get("wishlist_admin", {}).get("name", {}),
+                description_localizations=LOOT_SYSTEM.get("wishlist_admin", {}).get("description", {})
             )(self.wishlist_admin)
     
     def sanitize_for_discord(self, text: str) -> str:

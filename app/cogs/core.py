@@ -15,9 +15,7 @@ from core.rate_limiter import admin_rate_limit, start_cleanup_task
 from core.reliability import discord_resilient
 from core.translation import translations as global_translations
 
-APP_INITIALIZE_DATA = global_translations.get("commands", {}).get("app_initialize", {})
-APP_MODIFICATION_DATA = global_translations.get("commands", {}).get("app_modify", {})
-APP_RESET_DATA = global_translations.get("commands", {}).get("app_reset", {})
+ADMIN_COMMANDS = global_translations.get("admin_commands", {})
 
 class Core(commands.Cog):
     """Cog for managing core guild operations and bot initialization."""
@@ -41,24 +39,24 @@ class Core(commands.Cog):
         if hasattr(self.bot, 'admin_group'):
 
             self.bot.admin_group.command(
-                name=APP_INITIALIZE_DATA["name"]["en-US"],
-                description=APP_INITIALIZE_DATA["description"]["en-US"],
-                name_localizations=APP_INITIALIZE_DATA["name"],
-                description_localizations=APP_INITIALIZE_DATA["description"]
+                name=ADMIN_COMMANDS.get("bot_initialize", {})["name"]["en-US"],
+                description=ADMIN_COMMANDS.get("bot_initialize", {})["description"]["en-US"],
+                name_localizations=ADMIN_COMMANDS.get("bot_initialize", {})["name"],
+                description_localizations=ADMIN_COMMANDS.get("bot_initialize", {})["description"]
             )(self.app_initialize)
 
             self.bot.admin_group.command(
-                name=APP_MODIFICATION_DATA["name"]["en-US"],
-                description=APP_MODIFICATION_DATA["description"]["en-US"],
-                name_localizations=APP_MODIFICATION_DATA["name"],
-                description_localizations=APP_MODIFICATION_DATA["description"]
+                name=ADMIN_COMMANDS.get("bot_modify", {})["name"]["en-US"],
+                description=ADMIN_COMMANDS.get("bot_modify", {})["description"]["en-US"],
+                name_localizations=ADMIN_COMMANDS.get("bot_modify", {})["name"],
+                description_localizations=ADMIN_COMMANDS.get("bot_modify", {})["description"]
             )(self.app_modify)
 
             self.bot.admin_group.command(
-                name=APP_RESET_DATA["name"]["en-US"],
-                description=APP_RESET_DATA["description"]["en-US"],
-                name_localizations=APP_RESET_DATA["name"],
-                description_localizations=APP_RESET_DATA["description"]
+                name=ADMIN_COMMANDS.get("bot_reset", {})["name"]["en-US"],
+                description=ADMIN_COMMANDS.get("bot_reset", {})["description"]["en-US"],
+                name_localizations=ADMIN_COMMANDS.get("bot_reset", {})["name"],
+                description_localizations=ADMIN_COMMANDS.get("bot_reset", {})["description"]
             )(self.app_reset)
     
     def _validate_guild_name(self, guild_name: str) -> Tuple[bool, str]:
@@ -156,7 +154,7 @@ class Core(commands.Cog):
             ctx: Discord application context
             error: Exception that occurred during command execution
         """
-        response = await get_user_message(ctx, global_translations, "global_error", error=error)
+        response = await get_user_message(ctx, global_translations.get("global", {}), "errors.unknown", error=error)
         try:
             if ctx.response.is_done():
                 await ctx.followup.send(response, ephemeral=True)
@@ -171,25 +169,29 @@ class Core(commands.Cog):
         self,
         ctx: discord.ApplicationContext,
         guild_name: str = discord.Option(
-            description=APP_INITIALIZE_DATA["options"]["guild_name"]["description"]["en-US"],
-            description_localizations=APP_INITIALIZE_DATA["options"]["guild_name"]["description"]
+            description=global_translations.get("global", {}).get("common_options", {}).get("guild_name", {}).get("description", {}).get("en-US", "Guild name"),
+            description_localizations=global_translations.get("global", {}).get("common_options", {}).get("guild_name", {}).get("description", {})
         ),
         guild_lang: str = discord.Option(
-            description=APP_INITIALIZE_DATA["options"]["guild_lang"]["description"]["en-US"],
-            description_localizations=APP_INITIALIZE_DATA["options"]["guild_lang"]["description"],
+            description=global_translations.get("global", {}).get("common_options", {}).get("guild_lang", {}).get("description", {}).get("en-US", "Language"),
+            description_localizations=global_translations.get("global", {}).get("common_options", {}).get("guild_lang", {}).get("description", {}),
             choices=["en-US", "fr", "es-ES", "de", "it"]
         ),
         guild_game: int = discord.Option(
-            description=APP_INITIALIZE_DATA["options"]["guild_game"]["description"]["en-US"],
-            description_localizations=APP_INITIALIZE_DATA["options"]["guild_game"]["description"],
+            description=global_translations.get("global", {}).get("common_options", {}).get("guild_game", {}).get("description", {}).get("en-US", "Game"),
+            description_localizations=global_translations.get("global", {}).get("common_options", {}).get("guild_game", {}).get("description", {}),
             choices=[
-                discord.OptionChoice(choice_name, choice_value)
-                for choice_name, choice_value in APP_INITIALIZE_DATA["options"]["guild_game"]["choices"].items()
+                discord.OptionChoice(
+                    name=choice_data["name"].get("en-US", choice_name),
+                    value=choice_data["value"],
+                    name_localizations=choice_data["name"]
+                )
+                for choice_name, choice_data in global_translations.get("global", {}).get("common_options", {}).get("guild_game", {}).get("choices", {}).items()
             ]
         ),
         guild_server: str = discord.Option(
-            description=APP_INITIALIZE_DATA["options"]["guild_server"]["description"]["en-US"],
-            description_localizations=APP_INITIALIZE_DATA["options"]["guild_server"]["description"]
+            description=global_translations.get("global", {}).get("common_options", {}).get("guild_server", {}).get("description", {}).get("en-US", "Server"),
+            description_localizations=global_translations.get("global", {}).get("common_options", {}).get("guild_server", {}).get("description", {})
         )
     ):
         """
@@ -221,7 +223,7 @@ class Core(commands.Cog):
             
             if existing_settings:
                 logging.info(f"[CoreManager] Guild {guild_id} already exists in the database.")
-                response = await get_user_message(ctx, APP_INITIALIZE_DATA, "messages.already_declared")
+                response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_initialize", {}), "messages.already_declared")
             else:
                 insert_query = """
                     INSERT INTO guild_settings 
@@ -250,7 +252,7 @@ class Core(commands.Cog):
                 except Exception as cache_error:
                     logging.error(f"[CoreManager] Error updating global cache: {cache_error}")
 
-                rename_templates = APP_INITIALIZE_DATA.get("rename_templates", {})
+                rename_templates = ADMIN_COMMANDS.get("bot_initialize", {}).get("rename_templates", {})
                 template = rename_templates.get(guild_lang, rename_templates.get("en-US", "MGM - {guild_name}"))
                 new_nickname = template.format(guild_name=guild_name.strip())
                 nickname_success = await self._safe_edit_nickname(ctx.guild, new_nickname)
@@ -258,11 +260,11 @@ class Core(commands.Cog):
                 if not nickname_success:
                     logging.warning(f"[CoreManager] Could not change nickname for guild {guild_id}, but initialization succeeded")
 
-                response = await get_user_message(ctx, APP_INITIALIZE_DATA, "messages.success")
+                response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_initialize", {}), "messages.success")
 
         except Exception as e:
             logging.error("[CoreManager] Error during guild initialization: %s", e, exc_info=True)
-            response = await get_user_message(ctx, APP_INITIALIZE_DATA, "messages.error", error="Database error")
+            response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_initialize", {}), "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
     @admin_rate_limit(cooldown_seconds=300)
@@ -271,28 +273,32 @@ class Core(commands.Cog):
         ctx: discord.ApplicationContext,
         guild_name: str = discord.Option(
             default=None,
-            description=APP_MODIFICATION_DATA["options"]["guild_name"]["description"]["en-US"],
-            description_localizations=APP_MODIFICATION_DATA["options"]["guild_name"]["description"]
+            description=global_translations.get("global", {}).get("common_options", {}).get("guild_name", {}).get("description", {}).get("en-US", "Guild name"),
+            description_localizations=global_translations.get("global", {}).get("common_options", {}).get("guild_name", {}).get("description", {})
         ),
         guild_lang: str = discord.Option(
             default=None,
-            description=APP_MODIFICATION_DATA["options"]["guild_lang"]["description"]["en-US"],
-            description_localizations=APP_MODIFICATION_DATA["options"]["guild_lang"]["description"],
+            description=global_translations.get("global", {}).get("common_options", {}).get("guild_lang", {}).get("description", {}).get("en-US", "Language"),
+            description_localizations=global_translations.get("global", {}).get("common_options", {}).get("guild_lang", {}).get("description", {}),
             choices=["en-US", "fr", "es-ES", "de", "it"]
         ),
         guild_game: int = discord.Option(
             default=None,
-            description=APP_MODIFICATION_DATA["options"]["guild_game"]["description"]["en-US"],
-            description_localizations=APP_MODIFICATION_DATA["options"]["guild_game"]["description"],
+            description=global_translations.get("global", {}).get("common_options", {}).get("guild_game", {}).get("description", {}).get("en-US", "Game"),
+            description_localizations=global_translations.get("global", {}).get("common_options", {}).get("guild_game", {}).get("description", {}),
             choices=[
-                discord.OptionChoice(choice_name, choice_value)
-                for choice_name, choice_value in APP_MODIFICATION_DATA["options"]["guild_game"]["choices"].items()
+                discord.OptionChoice(
+                    name=choice_data["name"].get("en-US", choice_name),
+                    value=choice_data["value"],
+                    name_localizations=choice_data["name"]
+                )
+                for choice_name, choice_data in global_translations.get("global", {}).get("common_options", {}).get("guild_game", {}).get("choices", {}).items()
             ]
         ),
         guild_server: str = discord.Option(
             default=None,
-            description=APP_MODIFICATION_DATA["options"]["guild_server"]["description"]["en-US"],
-            description_localizations=APP_MODIFICATION_DATA["options"]["guild_server"]["description"]
+            description=global_translations.get("global", {}).get("common_options", {}).get("guild_server", {}).get("description", {}).get("en-US", "Server"),
+            description_localizations=global_translations.get("global", {}).get("common_options", {}).get("guild_server", {}).get("description", {})
         )
     ):
         """
@@ -327,7 +333,7 @@ class Core(commands.Cog):
             current_guild_server = await self.bot.cache.get_guild_data(guild_id, 'guild_server')
             
             if not current_guild_lang:
-                response = await get_user_message(ctx, APP_MODIFICATION_DATA, "messages.need_init")
+                response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_modify", {}), "messages.need_init")
                 return await ctx.respond(response, ephemeral=True)
             
             new_guild_name = guild_name.strip() if guild_name is not None else current_guild_name
@@ -360,7 +366,7 @@ class Core(commands.Cog):
             except Exception as cache_error:
                 logging.error(f"[CoreManager] Error updating global cache: {cache_error}")
 
-            rename_templates = APP_MODIFICATION_DATA.get("rename_templates", APP_INITIALIZE_DATA.get("rename_templates", {}))
+            rename_templates = ADMIN_COMMANDS.get("bot_modify", {}).get("rename_templates", ADMIN_COMMANDS.get("bot_initialize", {}).get("rename_templates", {}))
             template = rename_templates.get(new_guild_lang, rename_templates.get("en-US", "MGM - {guild_name}"))
             new_nickname = template.format(guild_name=new_guild_name)
             nickname_success = await self._safe_edit_nickname(ctx.guild, new_nickname)
@@ -368,11 +374,11 @@ class Core(commands.Cog):
             if not nickname_success:
                 logging.warning(f"[CoreManager] Could not change nickname for guild {guild_id}, but modification succeeded")
 
-            response = await get_user_message(ctx, APP_MODIFICATION_DATA, "messages.success")
+            response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_modify", {}), "messages.success")
             
         except Exception as e:
             logging.error(f"[CoreManager] Error during guild modification: {e}", exc_info=True)
-            response = await get_user_message(ctx, APP_MODIFICATION_DATA, "messages.error", error="Database error")
+            response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_modify", {}), "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
     @admin_rate_limit(cooldown_seconds=600)
@@ -380,8 +386,8 @@ class Core(commands.Cog):
         self,
         ctx: discord.ApplicationContext,
         confirmation: str = discord.Option(
-            description=APP_RESET_DATA["options"]["confirmation"]["description"]["en-US"],
-            description_localizations=APP_RESET_DATA["options"]["confirmation"]["description"]
+            description=ADMIN_COMMANDS.get("bot_reset", {})["options"]["confirmation"]["description"]["en-US"],
+            description_localizations=ADMIN_COMMANDS.get("bot_reset", {})["options"]["confirmation"]["description"]
         )
     ):
         """
@@ -394,7 +400,7 @@ class Core(commands.Cog):
         guild_id = ctx.guild.id
 
         if confirmation != "DELETE":
-            response = await get_user_message(ctx, APP_RESET_DATA, "messages.bad_parameter")
+            response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_reset", {}), "messages.bad_parameter")
             return await ctx.respond(response, ephemeral=True)
 
         try:
@@ -402,7 +408,7 @@ class Core(commands.Cog):
             existing_settings = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
             
             if not existing_settings:
-                response = await get_user_message(ctx, APP_RESET_DATA, "messages.need_init")
+                response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_reset", {}), "messages.need_init")
                 return await ctx.respond(response, ephemeral=True)
 
             success = await self._delete_guild_data_atomic(guild_id)
@@ -428,13 +434,13 @@ class Core(commands.Cog):
                 await self._safe_edit_nickname(ctx.guild, "My Guild Manager")
                 
                 logging.info(f"[CoreManager] Guild {guild_id} data has been deleted from the database.")
-                response = await get_user_message(ctx, APP_RESET_DATA, "messages.success")
+                response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_reset", {}), "messages.success")
             else:
-                response = await get_user_message(ctx, APP_RESET_DATA, "messages.error", error="Database deletion failed")
+                response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_reset", {}), "messages.error", error="Database deletion failed")
                 
         except Exception as e:
             logging.error("[CoreManager] Error during guild reset: %s", e, exc_info=True)
-            response = await get_user_message(ctx, APP_RESET_DATA, "messages.error", error="Database error")
+            response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_reset", {}), "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
     async def _delete_guild_data_atomic(self, guild_id: int) -> bool:

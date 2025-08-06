@@ -14,6 +14,8 @@ from discord.ext import commands
 from core.reliability import discord_resilient
 from core.translation import translations as global_translations
 
+NOTIFICATION_DATA = global_translations.get("notification", {})
+
 def create_embed(title: str, description: str, color: discord.Color, member: discord.Member) -> discord.Embed:
     """
     Create a Discord embed with member information.
@@ -243,11 +245,11 @@ class Notification(commands.Cog):
                         return
                     
                     guild_lang = await self.get_guild_lang(guild)
-                    notif_trans = global_translations["notification"]["member_join"]
-                    title = notif_trans["title"][guild_lang]
+                    notif_trans = NOTIFICATION_DATA.get("member_join", {})
+                    title = notif_trans.get("title", {}).get(guild_lang, "Welcome!")
                     
                     safe_name = self.sanitize_user_data(member.name)
-                    description = notif_trans["description"][guild_lang].format(
+                    description = notif_trans.get("description", {}).get(guild_lang, "Member {member_mention} joined").format(
                         member_mention=member.mention,
                         member_name=safe_name,
                         member_id=member.id
@@ -330,11 +332,11 @@ class Notification(commands.Cog):
                         original_message = await asyncio.wait_for(
                             channel.fetch_message(message_id), timeout=10.0
                         )
-                        notif_trans = global_translations["notification"]["member_leave"]
-                        title = notif_trans["title"][guild_lang]
+                        notif_trans = NOTIFICATION_DATA.get("member_leave", {})
+                        title = notif_trans.get("title", {}).get(guild_lang, "Goodbye!")
                         
                         safe_name = self.sanitize_user_data(member.name)
-                        description = notif_trans["description"][guild_lang].format(
+                        description = notif_trans.get("description", {}).get(guild_lang, "Member {member_name} left").format(
                             member_name=safe_name,
                             member_id=member.id
                         )
@@ -393,11 +395,11 @@ class Notification(commands.Cog):
                 if notif_channel_id:
                     channel = await self.get_safe_channel(notif_channel_id)
                     if channel:
-                        notif_trans = global_translations["notification"]["member_leave"]
-                        title = notif_trans["title"][guild_lang]
+                        notif_trans = NOTIFICATION_DATA.get("member_leave", {})
+                        title = notif_trans.get("title", {}).get(guild_lang, "Goodbye!")
                         
                         safe_name = self.sanitize_user_data(member.name)
-                        description = notif_trans["description"][guild_lang].format(
+                        description = notif_trans.get("description", {}).get(guild_lang, "Member {member_name} left").format(
                             member_name=safe_name,
                             member_id=member.id
                         )

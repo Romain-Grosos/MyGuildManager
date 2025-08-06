@@ -838,7 +838,7 @@ class EpicItemsScraper(commands.Cog):
                 items = filtered_items
             
             if not items:
-                no_items_msg = await get_user_message(ctx, self.bot.translations, "epic_items.messages.no_items_found")
+                no_items_msg = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.no_items_found")
                 await ctx.respond(no_items_msg)
                 return
 
@@ -846,8 +846,8 @@ class EpicItemsScraper(commands.Cog):
             items_per_page = 5
             
             for i in range(0, len(items), items_per_page):
-                title = await get_user_message(ctx, self.bot.translations, "epic_items.messages.embed_title", language=language)
-                description = await get_user_message(ctx, self.bot.translations, "epic_items.messages.embed_description", 
+                title = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.embed_title", language=language)
+                description = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.embed_description", 
                                                start=str(min(i+1, len(items))), 
                                                end=str(min(i+items_per_page, len(items))), 
                                                total=str(len(items)))
@@ -858,9 +858,9 @@ class EpicItemsScraper(commands.Cog):
                     color=discord.Color.purple()
                 )
                 
-                type_label = await get_user_message(ctx, self.bot.translations, "epic_items.messages.item_type_label")
-                category_label = await get_user_message(ctx, self.bot.translations, "epic_items.messages.item_category_label")
-                view_label = await get_user_message(ctx, self.bot.translations, "epic_items.messages.view_on_questlog")
+                type_label = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.item_type_label")
+                category_label = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.item_category_label")
+                view_label = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.view_on_questlog")
                 
                 page_items = items[i:i+items_per_page]
                 for item in page_items:
@@ -889,7 +889,7 @@ class EpicItemsScraper(commands.Cog):
                 
                 current_page = (i//items_per_page)+1
                 total_pages = ((len(items)-1)//items_per_page)+1
-                footer_text = await get_user_message(ctx, self.bot.translations, "epic_items.messages.embed_footer", 
+                footer_text = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.embed_footer", 
                                                current=str(current_page), total=str(total_pages))
                 embed.set_footer(text=footer_text)
                 embeds.append(embed)
@@ -898,7 +898,7 @@ class EpicItemsScraper(commands.Cog):
                 
         except Exception as e:
             logging.error(f"Error in epic_items command: {e}")
-            error_msg = await get_user_message(ctx, self.bot.translations, "epic_items.messages.error")
+            error_msg = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.error")
             await ctx.respond(error_msg, ephemeral=True)
 
 def setup(bot):

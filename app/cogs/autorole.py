@@ -15,16 +15,16 @@ from discord.ext import commands
 from core.reliability import discord_resilient
 from core.translation import translations as global_translations
 
-WELCOME_MP_DATA = global_translations.get("welcome_mp", {})
+AUTOROLE_TRANSLATIONS = global_translations.get("autorole_system", {})
 
-def update_welcome_embed(embed: discord.Embed, lang: str, translations: dict) -> discord.Embed:
+def update_welcome_embed(embed: discord.Embed, lang: str, autorole_translations: dict) -> discord.Embed:
     """
     Update welcome embed with acceptance timestamp and language-specific text.
     
     Args:
         embed: Discord embed to update
         lang: Language code for translations
-        translations: Translation dictionary
+        autorole_translations: AutoRole translation dictionary
         
     Returns:
         Updated Discord embed with acceptance timestamp
@@ -32,8 +32,8 @@ def update_welcome_embed(embed: discord.Embed, lang: str, translations: dict) ->
     try:
         tz_france = pytz.timezone("Europe/Paris")
         now = datetime.now(pytz.utc).astimezone(tz_france).strftime("%d/%m/%Y at %Hh%M")
-        pending_text = translations["welcome"]["pending"].get(lang)
-        accepted_template = translations["welcome"]["accepted"].get(lang)
+        pending_text = autorole_translations.get("welcome", {}).get("pending", {}).get(lang)
+        accepted_template = autorole_translations.get("welcome", {}).get("accepted", {}).get(lang)
         if not pending_text or not accepted_template:
             logging.error(f"[AutoRole] Missing translation keys for language '{lang}'.")
             return embed
@@ -208,7 +208,7 @@ class AutoRole(commands.Cog):
                         return
                         
                     lang = await self.bot.cache.get_guild_data(guild.id, 'guild_lang') or "en-US"
-                    embed = update_welcome_embed(message.embeds[0], lang, global_translations)
+                    embed = update_welcome_embed(message.embeds[0], lang, AUTOROLE_TRANSLATIONS)
                     await message.edit(embed=embed)
                     logging.debug(f"[AutoRole] Welcome message updated for {member.name} (ID: {member.id}).")
                 except discord.Forbidden:
