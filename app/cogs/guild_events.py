@@ -83,31 +83,31 @@ class GuildEvents(commands.Cog):
         if hasattr(self.bot, 'events_group'):
             
             self.bot.events_group.command(
-                name=GUILD_EVENTS.get("commands", {}).get("event_create", {}).get("name", {}).get("en-US", "create"),
-                description=GUILD_EVENTS.get("commands", {}).get("event_create", {}).get("description", {}).get("en-US", "Create a guild event"),
-                name_localizations=GUILD_EVENTS.get("commands", {}).get("event_create", {}).get("name", {}),
-                description_localizations=GUILD_EVENTS.get("commands", {}).get("event_create", {}).get("description", {})
+                name=GUILD_EVENTS.get("event_create", {}).get("name", {}).get("en-US", "create"),
+                description=GUILD_EVENTS.get("event_create", {}).get("description", {}).get("en-US", "Create a guild event"),
+                name_localizations=GUILD_EVENTS.get("event_create", {}).get("name", {}),
+                description_localizations=GUILD_EVENTS.get("event_create", {}).get("description", {})
             )(self.event_create)
 
             self.bot.events_group.command(
-                name=GUILD_EVENTS.get("commands", {}).get("event_confirm", {}).get("name", {}).get("en-US", "confirm"),
-                description=GUILD_EVENTS.get("commands", {}).get("event_confirm", {}).get("description", {}).get("en-US", "Confirm an event"),
-                name_localizations=GUILD_EVENTS.get("commands", {}).get("event_confirm", {}).get("name", {}),
-                description_localizations=GUILD_EVENTS.get("commands", {}).get("event_confirm", {}).get("description", {})
+                name=GUILD_EVENTS.get("event_confirm", {}).get("name", {}).get("en-US", "confirm"),
+                description=GUILD_EVENTS.get("event_confirm", {}).get("description", {}).get("en-US", "Confirm an event"),
+                name_localizations=GUILD_EVENTS.get("event_confirm", {}).get("name", {}),
+                description_localizations=GUILD_EVENTS.get("event_confirm", {}).get("description", {})
             )(self.event_confirm)
 
             self.bot.events_group.command(
-                name=GUILD_EVENTS.get("commands", {}).get("event_cancel", {}).get("name", {}).get("en-US", "cancel"),
-                description=GUILD_EVENTS.get("commands", {}).get("event_cancel", {}).get("description", {}).get("en-US", "Cancel an event"),
-                name_localizations=GUILD_EVENTS.get("commands", {}).get("event_cancel", {}).get("name", {}),
-                description_localizations=GUILD_EVENTS.get("commands", {}).get("event_cancel", {}).get("description", {})
+                name=GUILD_EVENTS.get("event_cancel", {}).get("name", {}).get("en-US", "cancel"),
+                description=GUILD_EVENTS.get("event_cancel", {}).get("description", {}).get("en-US", "Cancel an event"),
+                name_localizations=GUILD_EVENTS.get("event_cancel", {}).get("name", {}),
+                description_localizations=GUILD_EVENTS.get("event_cancel", {}).get("description", {})
             )(self.event_cancel)
 
             self.bot.events_group.command(
-                name=GUILD_EVENTS.get("commands", {}).get("preview_groups", {}).get("name", {}).get("en-US", "preview_groups"),
-                description=GUILD_EVENTS.get("commands", {}).get("preview_groups", {}).get("description", {}).get("en-US", "Preview groups before creation"),
-                name_localizations=GUILD_EVENTS.get("commands", {}).get("preview_groups", {}).get("name", {}),
-                description_localizations=GUILD_EVENTS.get("commands", {}).get("preview_groups", {}).get("description", {})
+                name=GUILD_EVENTS.get("preview_groups", {}).get("name", {}).get("en-US", "preview_groups"),
+                description=GUILD_EVENTS.get("preview_groups", {}).get("description", {}).get("en-US", "Preview groups before creation"),
+                name_localizations=GUILD_EVENTS.get("preview_groups", {}).get("name", {}),
+                description_localizations=GUILD_EVENTS.get("preview_groups", {}).get("description", {})
             )(self.preview_groups)
     
     def _register_statics_commands(self):
@@ -115,38 +115,38 @@ class GuildEvents(commands.Cog):
         if hasattr(self.bot, 'statics_group'):
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("commands", {}).get("static_create", {}).get("name", {}).get("en-US", "group_create"),
-                description=STATIC_GROUPS.get("commands", {}).get("static_create", {}).get("description", {}).get("en-US", "Create a static group"),
-                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_create", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_create", {}).get("description", {})
+                name=STATIC_GROUPS.get("static_create", {}).get("name", {}).get("en-US", "group_create"),
+                description=STATIC_GROUPS.get("static_create", {}).get("description", {}).get("en-US", "Create a static group"),
+                name_localizations=STATIC_GROUPS.get("static_create", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("static_create", {}).get("description", {})
             )(self.static_create)
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("commands", {}).get("static_add", {}).get("name", {}).get("en-US", "player_add"),
-                description=STATIC_GROUPS.get("commands", {}).get("static_add", {}).get("description", {}).get("en-US", "Add player to static group"),
-                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_add", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_add", {}).get("description", {})
+                name=STATIC_GROUPS.get("static_add", {}).get("name", {}).get("en-US", "player_add"),
+                description=STATIC_GROUPS.get("static_add", {}).get("description", {}).get("en-US", "Add player to static group"),
+                name_localizations=STATIC_GROUPS.get("static_add", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("static_add", {}).get("description", {})
             )(self.static_add)
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("commands", {}).get("static_remove", {}).get("name", {}).get("en-US", "player_remove"),
-                description=STATIC_GROUPS.get("commands", {}).get("static_remove", {}).get("description", {}).get("en-US", "Remove player from static group"),
-                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_remove", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_remove", {}).get("description", {})
+                name=STATIC_GROUPS.get("static_remove", {}).get("name", {}).get("en-US", "player_remove"),
+                description=STATIC_GROUPS.get("static_remove", {}).get("description", {}).get("en-US", "Remove player from static group"),
+                name_localizations=STATIC_GROUPS.get("static_remove", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("static_remove", {}).get("description", {})
             )(self.static_remove)
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("commands", {}).get("static_delete", {}).get("name", {}).get("en-US", "group_delete"),
-                description=STATIC_GROUPS.get("commands", {}).get("static_delete", {}).get("description", {}).get("en-US", "Delete a static group"),
-                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_delete", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_delete", {}).get("description", {})
+                name=STATIC_GROUPS.get("static_delete", {}).get("name", {}).get("en-US", "group_delete"),
+                description=STATIC_GROUPS.get("static_delete", {}).get("description", {}).get("en-US", "Delete a static group"),
+                name_localizations=STATIC_GROUPS.get("static_delete", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("static_delete", {}).get("description", {})
             )(self.static_delete)
 
             self.bot.statics_group.command(
-                name=STATIC_GROUPS.get("commands", {}).get("static_update", {}).get("name", {}).get("en-US", "update"),
-                description=STATIC_GROUPS.get("commands", {}).get("static_update", {}).get("description", {}).get("en-US", "Update static groups message"),
-                name_localizations=STATIC_GROUPS.get("commands", {}).get("static_update", {}).get("name", {}),
-                description_localizations=STATIC_GROUPS.get("commands", {}).get("static_update", {}).get("description", {})
+                name=STATIC_GROUPS.get("static_update", {}).get("name", {}).get("en-US", "update"),
+                description=STATIC_GROUPS.get("static_update", {}).get("description", {}).get("en-US", "Update static groups message"),
+                name_localizations=STATIC_GROUPS.get("static_update", {}).get("name", {}),
+                description_localizations=STATIC_GROUPS.get("static_update", {}).get("description", {})
             )(self.static_update)
 
     @commands.Cog.listener()

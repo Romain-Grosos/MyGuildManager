@@ -416,8 +416,8 @@ def create_command_groups(bot: discord.Bot) -> None:
     LOOT_DATA = translations.get("loot_wishlist", {})
     MEMBER_DATA = translations.get("members", {})
     STAFF_DATA = translations.get("staff", {})
-    EVENTS_DATA = translations.get("events", {})
-    STATICS_DATA = translations.get("statics", {})
+    EVENTS_DATA = translations.get("guild_events", {})
+    STATICS_DATA = translations.get("static_groups", {})
 
     bot.admin_group = discord.SlashCommandGroup(
         name=ADMIN_DATA.get("group", {}).get("name", {}).get("en-US", "admin_bot"),

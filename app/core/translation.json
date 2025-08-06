@@ -66,6 +66,22 @@
         }
     },
     "commands": {
+        "group": {
+            "name": {
+                "en-US": "admin_bot",
+                "fr": "admin_bot",
+                "es-ES": "admin_bot",
+                "de": "admin_bot",
+                "it": "admin_bot"
+            },
+            "description": {
+                "en-US": "Bot administration commands",
+                "fr": "Commandes d'administration du bot",
+                "es-ES": "Comandos de administración del bot",
+                "de": "Bot-Verwaltungsbefehle",
+                "it": "Comandi di amministrazione del bot"
+            }
+        },
         "app_initialize": {
             "name": {
                 "en-US": "bot_initialize",
@@ -867,6 +883,22 @@
         "it": "Canale di {username}"
     },
     "absence": {
+        "group": {
+            "name": {
+                "en-US": "absence",
+                "fr": "absence",
+                "es-ES": "ausencia",
+                "de": "abwesenheit",
+                "it": "assenza"
+            },
+            "description": {
+                "en-US": "Manage member absence status",
+                "fr": "Gérer le statut d'absence des membres",
+                "es-ES": "Gestionar el estado de ausencia de los miembros",
+                "de": "Abwesenheitsstatus der Mitglieder verwalten",
+                "it": "Gestire lo stato di assenza dei membri"
+            }
+        },
         "title": {
             "en-US": "📢 Member status update",
             "fr": "📢 Changement d'état d'un membre",
@@ -2392,6 +2424,22 @@
         }
     },
     "guild_events": {
+        "group": {
+            "name": {
+                "en-US": "events",
+                "fr": "evenements",
+                "es-ES": "eventos",
+                "de": "ereignisse",
+                "it": "eventi"
+            },
+            "description": {
+                "en-US": "Guild event management",
+                "fr": "Gestion des événements de guilde",
+                "es-ES": "Gestión de eventos del gremio",
+                "de": "Gildenereignis-Verwaltung",
+                "it": "Gestione eventi della gilda"
+            }
+        },
         "events_infos": {
             "boonstone": {
                 "en-US": "Boonstone",
@@ -2627,11 +2675,11 @@
         },
         "event_confirm": {
             "name": {
-                "en-US": "event_confirm",
-                "fr": "event_confirm",
-                "es-ES": "confirmar_evento",
-                "de": "event_bestätigen",
-                "it": "conferma_evento"
+                "en-US": "confirm",
+                "fr": "confirmer",
+                "es-ES": "confirmar",
+                "de": "bestaetigen",
+                "it": "conferma"
             },
             "description": {
                 "en-US": "Confirm a guild event.",
@@ -2748,11 +2796,11 @@
         },
         "event_cancel": {
             "name": {
-                "en-US": "event_cancel",
-                "fr": "event_cancel",
-                "es-ES": "cancelar_evento",
-                "de": "event_absagen",
-                "it": "annulla_evento"
+                "en-US": "cancel",
+                "fr": "annuler",
+                "es-ES": "cancelar",
+                "de": "absagen",
+                "it": "annulla"
             },
             "description": {
                 "en-US": "Cancel a guild event.",
@@ -2825,6 +2873,22 @@
                 "it": "❌ Errore durante l'annullamento dell'evento: {error}"
             }
         },
+        "preview_groups": {
+            "name": {
+                "en-US": "preview_groups",
+                "fr": "apercu_groupes",
+                "es-ES": "vista_previa_grupos",
+                "de": "gruppen_vorschau",
+                "it": "anteprima_gruppi"
+            },
+            "description": {
+                "en-US": "Preview group composition before event creation",
+                "fr": "Aperçu de la composition des groupes avant création de l'événement",
+                "es-ES": "Vista previa de la composición de grupos antes de crear el evento",
+                "de": "Vorschau der Gruppenzusammensetzung vor Ereigniserstellung",
+                "it": "Anteprima della composizione dei gruppi prima della creazione dell'evento"
+            }
+        },
         "event_reminder": {
             "dm_message": {
                 "en-US": "Hello {member_name},\n\nYou have not yet confirmed your registration for the event **{event_name}** scheduled on {date} at {time}.\nTo sign up, click here: {link}\n\nThank you!",
@@ -2850,11 +2914,11 @@
         },
         "event_create": {
             "name": {
-                "en-US": "event_create",
-                "fr": "event_create",
-                "es-ES": "crear_evento",
-                "de": "event_erstellen",
-                "it": "crea_evento"
+                "en-US": "create",
+                "fr": "creer",
+                "es-ES": "crear",
+                "de": "erstellen",
+                "it": "crea"
             },
             "description": {
                 "en-US": "Create a guild event manually.",
@@ -3016,6 +3080,22 @@
         }
     },
     "static_groups": {
+        "group": {
+            "name": {
+                "en-US": "statics",
+                "fr": "statiques",
+                "es-ES": "estaticos",
+                "de": "statische",
+                "it": "statici"
+            },
+            "description": {
+                "en-US": "Static group management",
+                "fr": "Gestion des groupes statiques",
+                "es-ES": "Gestión de grupos estáticos",
+                "de": "Verwaltung statischer Gruppen",
+                "it": "Gestione gruppi statici"
+            }
+        },
         "static_create": {
             "name": {
                 "en-US": "static_create",
@@ -4080,6 +4160,22 @@
         }
     },
     "loot_wishlist": {
+        "group": {
+            "name": {
+                "en-US": "loot",
+                "fr": "butin",
+                "es-ES": "botin",
+                "de": "beute",
+                "it": "bottino"
+            },
+            "description": {
+                "en-US": "Epic T2 loot wishlist management",
+                "fr": "Gestion des wishlists de butin Epic T2",
+                "es-ES": "Gestión de listas de deseos de botín Épico T2",
+                "de": "Verwaltung der Epic T2 Beute-Wunschlisten",
+                "it": "Gestione delle liste dei desideri del bottino Epico T2"
+            }
+        },
         "commands": {
             "wishlist": {
                 "name": {
@@ -4426,6 +4522,42 @@
                 "es-ES": "y {count} más",
                 "de": "und {count} weitere",
                 "it": "e altri {count}"
+            }
+        }
+    },
+    "members": {
+        "group": {
+            "name": {
+                "en-US": "member",
+                "fr": "membre",
+                "es-ES": "miembro",
+                "de": "mitglied",
+                "it": "membro"
+            },
+            "description": {
+                "en-US": "Member profile and stats management",
+                "fr": "Gestion des profils et statistiques des membres",
+                "es-ES": "Gestión de perfiles y estadísticas de miembros",
+                "de": "Verwaltung von Mitgliederprofilen und Statistiken",
+                "it": "Gestione profili e statistiche dei membri"
+            }
+        }
+    },
+    "staff": {
+        "group": {
+            "name": {
+                "en-US": "staff",
+                "fr": "staff",
+                "es-ES": "staff",
+                "de": "staff",
+                "it": "staff"
+            },
+            "description": {
+                "en-US": "Staff management commands",
+                "fr": "Commandes de gestion du staff",
+                "es-ES": "Comandos de gestión del personal",
+                "de": "Personalverwaltungsbefehle",
+                "it": "Comandi di gestione dello staff"
             }
         }
     }
