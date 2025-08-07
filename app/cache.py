@@ -614,7 +614,7 @@ class GlobalCacheSystem:
                     'locale': locale
                 }
         
-        await self.set('roster_data', cache_key, members_data, ttl=600)
+        await self.set('roster_data', members_data, cache_key, ttl=600)
         
         if query_time > 0.1:
             logging.warning(f"[Cache] Slow bulk guild members query: {query_time:.3f}s, {len(members_data)} members")

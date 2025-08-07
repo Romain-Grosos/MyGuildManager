@@ -124,6 +124,13 @@
                 "de": "❌ Unerwarteter Fehler in {group}/{command}",
                 "it": "❌ Errore imprevisto in {group}/{command}"
             }
+        },
+        "rename_templates": {
+            "en-US": "{guild_name} - Management",
+            "fr": "{guild_name} - Gestion",
+            "es-ES": "{guild_name} - Gestión",
+            "de": "{guild_name} - Verwaltung",
+            "it": "{guild_name} - Gestione"
         }
     },
     "slash_command_groups": {
@@ -280,8 +287,7 @@
                     "de": "❌ Fehler bei der Initialisierung: {error}",
                     "it": "❌ Errore durante l'inizializzazione: {error}"
                 }
-            },
-            "rename_templates": {}
+            }
         },
         "bot_modify": {
             "name": {
@@ -321,8 +327,7 @@
                     "de": "❌ Fehler bei der Änderung: {error}",
                     "it": "❌ Errore durante la modifica: {error}"
                 }
-            },
-            "rename_templates": {}
+            }
         },
         "bot_reset": {
             "name": {
@@ -839,6 +844,36 @@
                 "es-ES": "Actualizar el roster del gremio",
                 "de": "Gilde Roster aktualisieren",
                 "it": "Aggiorna il roster della gilda"
+            },
+            "messages": {
+                "success": {
+                    "en-US": "✅ Roster updated in {execution_time}ms - {deleted} deleted, {updated} modified, {inserted} added",
+                    "fr": "✅ Effectifs mis à jour en {execution_time}ms - {deleted} supprimés, {updated} modifiés, {inserted} ajoutés",
+                    "es-ES": "✅ Roster actualizado en {execution_time}ms - {deleted} eliminados, {updated} modificados, {inserted} agregados",
+                    "de": "✅ Roster in {execution_time}ms aktualisiert - {deleted} gelöscht, {updated} geändert, {inserted} hinzugefügt",
+                    "it": "✅ Roster aggiornato in {execution_time}ms - {deleted} eliminati, {updated} modificati, {inserted} aggiunti"
+                },
+                "not_config": {
+                    "en-US": "❌ Guild roles not configured",
+                    "fr": "❌ Rôles de la guilde non configurés",
+                    "es-ES": "❌ Roles del gremio no configurados", 
+                    "de": "❌ Gilde-Rollen nicht konfiguriert",
+                    "it": "❌ Ruoli della gilda non configurati"
+                },
+                "roles_ko": {
+                    "en-US": "❌ Members role not configured",
+                    "fr": "❌ Rôle membres non configuré",
+                    "es-ES": "❌ Rol de miembros no configurado",
+                    "de": "❌ Mitglieder-Rolle nicht konfiguriert", 
+                    "it": "❌ Ruolo membri non configurato"
+                },
+                "database_error": {
+                    "en-US": "❌ Database error occurred. Please try again later.",
+                    "fr": "❌ Erreur de base de données. Veuillez réessayer plus tard.",
+                    "es-ES": "❌ Error de base de datos. Inténtalo de nuevo más tarde.",
+                    "de": "❌ Datenbankfehler aufgetreten. Bitte später erneut versuchen.",
+                    "it": "❌ Errore del database. Riprova più tardi."
+                }
             }
         },
         "notify_profile": {
@@ -1015,6 +1050,29 @@
                 "es-ES": "Flanqueador",
                 "de": "Flanker",
                 "it": "Flanker"
+            }
+        },
+        "table": {
+            "header": {
+                "en-US": ["Username", "Lang", "GS", "Build", "Weapons", "Class", "DKP", "Reg.", "Att."],
+                "fr": ["Pseudo", "Lang", "GS", "Build", "Armes", "Classe", "DKP", "Ins.", "Pré."],
+                "es-ES": ["Usuario", "Lang", "GS", "Build", "Armas", "Clase", "DKP", "Reg.", "Ast."],
+                "de": ["Benutzername", "Spr", "GS", "Build", "Waffen", "Klasse", "DKP", "Reg.", "Anw."],
+                "it": ["Username", "Ling", "GS", "Build", "Armi", "Classe", "DKP", "Reg.", "Pre."]
+            },
+            "role_stats": {
+                "en-US": ["Tank", "Melee DPS", "Ranged DPS", "Healer", "Flanker"],
+                "fr": ["Tank", "DPS Mêlée", "DPS Distance", "Heal", "Flanker"],
+                "es-ES": ["Tanque", "DPS Cuerpo a cuerpo", "DPS A distancia", "Sanador", "Flanqueador"],
+                "de": ["Tank", "Nahkampf-DPS", "Fernkampf-DPS", "Heiler", "Flanker"],
+                "it": ["Tank", "DPS Mischia", "DPS A distanza", "Guaritore", "Flanker"]
+            },
+            "footer": {
+                "en-US": "### Number of members: {count}\\n\\n{stats}\\n\\n*Updated {date}*",
+                "fr": "### Nombre de membres : {count}\\n\\n{stats}\\n\\n*Mis à jour le {date}*",
+                "es-ES": "### Número de miembros: {count}\\n\\n{stats}\\n\\n*Actualizado {date}*",
+                "de": "### Anzahl Mitglieder: {count}\\n\\n{stats}\\n\\n*Aktualisiert {date}*",
+                "it": "### Numero di membri: {count}\\n\\n{stats}\\n\\n*Aggiornato {date}*"
             }
         }
     },
@@ -1745,18 +1803,18 @@
                     "it": "⚠️ {member} è già nel gruppo **{group_name}**"
                 },
                 "group_full": {
-                    "en-US": "❌ Group **{group_name}** is full (maximum 5 members)",
-                    "fr": "❌ Le groupe **{group_name}** est plein (maximum 5 membres)",
-                    "es-ES": "❌ El grupo **{group_name}** está lleno (máximo 5 miembros)",
-                    "de": "❌ Gruppe **{group_name}** ist voll (maximal 5 Mitglieder)",
-                    "it": "❌ Il gruppo **{group_name}** è pieno (massimo 5 membri)"
+                    "en-US": "❌ Group **{group_name}** is full (maximum 6 members)",
+                    "fr": "❌ Le groupe **{group_name}** est plein (maximum 6 membres)",
+                    "es-ES": "❌ El grupo **{group_name}** está lleno (máximo 6 miembros)",
+                    "de": "❌ Gruppe **{group_name}** ist voll (maximal 6 Mitglieder)",
+                    "it": "❌ Il gruppo **{group_name}** è pieno (massimo 6 membri)"
                 },
                 "success": {
-                    "en-US": "✅ {member} added to group **{group_name}** ({count}/5 members)",
-                    "fr": "✅ {member} ajouté au groupe **{group_name}** ({count}/5 membres)",
-                    "es-ES": "✅ {member} agregado al grupo **{group_name}** ({count}/5 miembros)",
-                    "de": "✅ {member} zu Gruppe **{group_name}** hinzugefügt ({count}/5 Mitglieder)",
-                    "it": "✅ {member} aggiunto al gruppo **{group_name}** ({count}/5 membri)"
+                    "en-US": "✅ {member} added to group **{group_name}** ({count}/6 members)",
+                    "fr": "✅ {member} ajouté au groupe **{group_name}** ({count}/6 membres)",
+                    "es-ES": "✅ {member} agregado al grupo **{group_name}** ({count}/6 miembros)",
+                    "de": "✅ {member} zu Gruppe **{group_name}** hinzugefügt ({count}/6 Mitglieder)",
+                    "it": "✅ {member} aggiunto al gruppo **{group_name}** ({count}/6 membri)"
                 },
                 "error": {
                     "en-US": "❌ Error adding member to group: {error}",
@@ -1879,11 +1937,11 @@
                     "it": "👑 Leader"
                 },
                 "members_count": {
-                    "en-US": "Members ({count}/5)",
-                    "fr": "Membres ({count}/5)",
-                    "es-ES": "Miembros ({count}/5)",
-                    "de": "Mitglieder ({count}/5)",
-                    "it": "Membri ({count}/5)"
+                    "en-US": "Members ({count}/6)",
+                    "fr": "Membres ({count}/6)",
+                    "es-ES": "Miembros ({count}/6)",
+                    "de": "Mitglieder ({count}/6)",
+                    "it": "Membri ({count}/6)"
                 },
                 "no_members": {
                     "en-US": "No members",

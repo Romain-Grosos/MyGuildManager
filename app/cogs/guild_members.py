@@ -801,6 +801,7 @@ class GuildMembers(commands.Cog):
         Returns:
             None
         """
+        logging.info(f"[GuildMembers] Starting maj_roster command for guild {ctx.guild.id}")
         start_time = time.time()
         
         await ctx.defer(ephemeral=True)
@@ -814,14 +815,14 @@ class GuildMembers(commands.Cog):
         locale = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
         
         if not roles_config:
-            msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "not_config")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "messages.not_config")
             await ctx.followup.send(msg, ephemeral=True)
             return
         
         members_role_id = roles_config.get("members")
         absent_role_id = roles_config.get("absent_members")
         if not members_role_id:
-            msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "roles_ko")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "messages.roles_ko")
             await ctx.followup.send(msg, ephemeral=True)
             return
 
@@ -836,7 +837,7 @@ class GuildMembers(commands.Cog):
             user_setup_db = await self._get_user_setup_bulk(guild_id)
         except Exception as e:
             logging.error(f"[GuildMembers] Error loading member data for guild {guild_id}: {e}", exc_info=True)
-            msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "database_error")
+            msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "messages.database_error")
             if not msg:
                 msg = "Database error occurred. Please try again later."
             await ctx.followup.send(msg, ephemeral=True)
@@ -850,20 +851,29 @@ class GuildMembers(commands.Cog):
             guild_id, to_delete, to_update, to_insert
         )
 
+        await self.bot.cache.invalidate_category('roster_data')
         await self._load_user_setup_members()
         await self.bot.cache_loader.reload_category('guild_members')
 
+        logging.info("[GuildMembers] Starting parallel message updates (recruitment + members)")
         try:
-            await asyncio.gather(
+            results = await asyncio.gather(
                 self.update_recruitment_message(ctx),
                 self.update_members_message(ctx),
                 return_exceptions=True
             )
+            logging.info(f"[GuildMembers] Message update results: {results}")
         except Exception as e:
             logging.warning(f"[GuildMembers] Message update failed: {e}")
 
         execution_time = (time.time() - start_time) * 1000
-        msg = f"✅ Roster updated in {execution_time:.0f}ms - {deleted} deleted, {updated} modified, {inserted} added"
+        
+        msg = await get_user_message(ctx, GUILD_MEMBERS["maj_roster"], "messages.success", 
+                                    execution_time=f"{execution_time:.0f}",
+                                    deleted=deleted, 
+                                    updated=updated, 
+                                    inserted=inserted)
+        
         await ctx.followup.send(msg, ephemeral=True)
         
         logging.info(f"[GuildMembers] Optimized maj_roster completed in {execution_time:.0f}ms: -{deleted} +{inserted} ~{updated}")
@@ -986,8 +996,38 @@ class GuildMembers(commands.Cog):
         for member_id, discord_member in actual_members.items():
             if member_id in guild_members_db:
                 db_member = guild_members_db[member_id]
+                user_setup = user_setup_db.get(member_id, {})
+
+                weapons_normalized, computed_class = await self._process_weapons_optimized(
+                    user_setup.get('weapons'), guild_id
+                )
+                
+                language = user_setup.get('locale', locale)
+                if language and '-' in language:
+                    language = language.split('-')[0]
+                
+                gs_value = user_setup.get('gs') or 0
+                if gs_value in (None, "", "NULL"):
+                    gs_value = 0
+
+                changes = []
                 if db_member.get('username') != discord_member.display_name:
-                    to_update.append((member_id, 'username', discord_member.display_name))
+                    changes.append(('username', discord_member.display_name))
+                if db_member.get('language') != language:
+                    changes.append(('language', language))
+                if int(db_member.get('GS', 0) or 0) != int(gs_value):
+                    changes.append(('GS', gs_value))
+                if (db_member.get('build') or '').strip() != (user_setup.get('build', '') or '').strip():
+                    changes.append(('build', user_setup.get('build', '')))
+                if (db_member.get('weapons') or '').strip() != (weapons_normalized or '').strip():
+                    changes.append(('weapons', weapons_normalized))
+                if (db_member.get('class') or '').strip() != (computed_class or '').strip():
+                    changes.append(('class', computed_class))
+
+                if changes:
+                    logging.info(f"[GuildMembers] Detected changes for member {member_id}: {changes}")
+                    to_update.append((member_id, changes))
+                    
             else:
                 user_setup = user_setup_db.get(member_id, {})
                 
@@ -1066,7 +1106,7 @@ class GuildMembers(commands.Cog):
         Args:
             guild_id: The ID of the guild
             to_delete: List of member IDs to delete
-            to_update: List of update tuples (member_id, field, value)
+            to_update: List of update tuples (member_id, changes) where changes is [(field, value), ...]
             to_insert: List of member data dictionaries to insert
             
         Returns:
@@ -1102,16 +1142,25 @@ class GuildMembers(commands.Cog):
                 deleted_count = len(to_delete)
 
             if to_update:
-                for member_id, field, value in to_update:
-                    allowed_fields = {'username', 'language', 'GS', 'build', 'weapons', 'DKP', 'nb_events', 'registrations', 'attendances', 'class'}
-                    if field not in allowed_fields:
-                        raise ValueError(f"Invalid field name for update: {field}")
-
+                allowed_fields = {'username', 'language', 'GS', 'build', 'weapons', 'DKP', 'nb_events', 'registrations', 'attendances', 'class'}
+                for member_id, changes in to_update:
                     if not isinstance(member_id, int) or member_id <= 0:
                         raise ValueError(f"Invalid member ID format in update: {member_id}")
+                    
+                    # Build update query for all changed fields
+                    set_clauses = []
+                    params = []
+                    for field, value in changes:
+                        if field not in allowed_fields:
+                            raise ValueError(f"Invalid field name for update: {field}")
+                        set_clauses.append(f"{field} = %s")
+                        params.append(value)
+                    
+                    if set_clauses:
+                        update_query = f"UPDATE guild_members SET {', '.join(set_clauses)} WHERE guild_id = %s AND member_id = %s"
+                        params.extend([guild_id, member_id])
+                        transaction_queries.append((update_query, tuple(params)))
                         
-                    update_query = f"UPDATE guild_members SET {field} = %s WHERE guild_id = %s AND member_id = %s"
-                    transaction_queries.append((update_query, (value, guild_id, member_id)))
                 updated_count = len(to_update)
 
             if to_insert:
@@ -1294,21 +1343,29 @@ class GuildMembers(commands.Cog):
         Returns:
             None
         """
+        logging.info("[GuildMembers] Starting update_members_message function")
+        
         if hasattr(ctx, "guild"):
             guild_obj = ctx.guild
         else:
             guild_obj = ctx
         guild_id = guild_obj.id
+        
+        logging.info(f"[GuildMembers] Processing update_members_message for guild {guild_id}")
         await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         
         locale = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
+        logging.info(f"[GuildMembers] Guild locale: {locale}")
+        
         channel_id = await self.bot.cache.get_guild_data(guild_id, 'members_channel')
+        logging.info(f"[GuildMembers] Retrieved members_channel ID: {channel_id}")
         
         message_ids = []
         for i in range(1, 6):
             msg_id = await self.bot.cache.get_guild_data(guild_id, f'members_m{i}')
             message_ids.append(msg_id)
+            logging.debug(f"[GuildMembers] Message {i}: {msg_id}")
 
         logging.info(f"[GuildMembers] Channel ID: {channel_id}, Message IDs: {message_ids}")
 
@@ -1316,6 +1373,8 @@ class GuildMembers(commands.Cog):
         if not channel:
             logging.error(f"[GuildMembers] Unable to retrieve roster channel with ID {channel_id}")
             return
+        
+        logging.info(f"[GuildMembers] Successfully retrieved channel: {channel.name}")
 
         guild_members = await self.get_guild_members()
         members_in_roster = [v for (g, _), v in guild_members.items() if g == guild_id]
@@ -1360,6 +1419,10 @@ class GuildMembers(commands.Cog):
         att_width = 8
 
         header_labels = GUILD_MEMBERS.get("table", {}).get("header", {}).get(locale)
+        
+        if not header_labels:
+            logging.error(f"[GuildMembers] No header labels found for locale {locale}")
+            return
         
         header = (
             f"{header_labels[0].ljust(username_width)}│"
@@ -1411,6 +1474,10 @@ class GuildMembers(commands.Cog):
         now_str = datetime.now().strftime("%d/%m/%Y à %H:%M")
         role_labels = GUILD_MEMBERS.get("table", {}).get("role_stats", {}).get(locale)
         
+        if not role_labels:
+            logging.error(f"[GuildMembers] No role labels found for locale {locale}")
+            return
+        
         role_stats = (
             f"{role_labels[0]}: {tank_count}\n"
             f"{role_labels[1]}: {dps_melee_count}\n"
@@ -1437,6 +1504,8 @@ class GuildMembers(commands.Cog):
 
         try:
             logging.info(f"[GuildMembers] Starting message updates for {len(message_contents)} message contents")
+            logging.info(f"[GuildMembers] Will update {len(message_ids)} messages in channel {channel.name}")
+            
             for i in range(5):
                 try:
                     message_id = message_ids[i]
@@ -1444,11 +1513,11 @@ class GuildMembers(commands.Cog):
                         logging.warning(f"[GuildMembers] Message ID {i+1}/5 is None, skipping")
                         continue
                         
-                    logging.debug(f"[GuildMembers] Fetching message {i+1}/5 with ID {message_id}")
+                    logging.info(f"[GuildMembers] Fetching message {i+1}/5 with ID {message_id}")
                     message = await channel.fetch_message(message_id)
                     new_content = message_contents[i] if i < len(message_contents) else "."
 
-                    logging.debug(f"[GuildMembers] Message {i+1}/5 content length: old={len(message.content)}, new={len(new_content)}")
+                    logging.info(f"[GuildMembers] Message {i+1}/5 content length: old={len(message.content)}, new={len(new_content)}")
                     if message.content != new_content:
                         logging.info(f"[GuildMembers] Updating message {i+1}/5 (content changed)")
                         await message.edit(content=new_content)
@@ -1456,7 +1525,7 @@ class GuildMembers(commands.Cog):
                         if i < 4:
                             await asyncio.sleep(0.25)
                     else:
-                        logging.debug(f"[GuildMembers] Message {i+1}/5 content unchanged, skipping update")
+                        logging.info(f"[GuildMembers] Message {i+1}/5 content unchanged, skipping update")
                 except discord.NotFound:
                     logging.warning(f"[GuildMembers] Roster message {i+1}/5 not found (ID: {message_ids[i]})")
                 except Exception as e:

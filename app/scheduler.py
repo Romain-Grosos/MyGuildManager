@@ -292,7 +292,7 @@ class TaskScheduler:
         async def process_guild(guild_id):
             async with semaphore:
                 try:
-                    guild_ptb_config = await self.bot.cache.get('guild_ptb_settings', guild_id)
+                    guild_ptb_config = await self.bot.cache.get_guild_data(guild_id, 'ptb_settings')
                     if guild_ptb_config and guild_ptb_config.get('ptb_guild_id') == guild_id:
                         logging.debug(f"[Scheduler] Skipping roster update for PTB guild {guild_id}")
                         return

@@ -665,6 +665,7 @@ class CacheLoader:
             self.ensure_guild_ideal_staff_loaded(),
             self.ensure_games_list_loaded(),
             self.ensure_epic_items_t2_loaded(),
+            self.ensure_guild_ptb_settings_loaded(),
             return_exceptions=True
         )
         

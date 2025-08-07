@@ -252,8 +252,8 @@ class Core(commands.Cog):
                 except Exception as cache_error:
                     logging.error(f"[CoreManager] Error updating global cache: {cache_error}")
 
-                rename_templates = ADMIN_COMMANDS.get("bot_initialize", {}).get("rename_templates", {})
-                template = rename_templates.get(guild_lang, rename_templates.get("en-US", "MGM - {guild_name}"))
+                rename_templates = self.bot.translations.get("global", {}).get("rename_templates", {})
+                template = rename_templates.get(guild_lang, rename_templates.get("en-US", "{guild_name} - Management"))
                 new_nickname = template.format(guild_name=guild_name.strip())
                 nickname_success = await self._safe_edit_nickname(ctx.guild, new_nickname)
                 
@@ -366,8 +366,8 @@ class Core(commands.Cog):
             except Exception as cache_error:
                 logging.error(f"[CoreManager] Error updating global cache: {cache_error}")
 
-            rename_templates = ADMIN_COMMANDS.get("bot_modify", {}).get("rename_templates", ADMIN_COMMANDS.get("bot_initialize", {}).get("rename_templates", {}))
-            template = rename_templates.get(new_guild_lang, rename_templates.get("en-US", "MGM - {guild_name}"))
+            rename_templates = self.bot.translations.get("global", {}).get("rename_templates", {})
+            template = rename_templates.get(new_guild_lang, rename_templates.get("en-US", "{guild_name} - Management"))
             new_nickname = template.format(guild_name=new_guild_name)
             nickname_success = await self._safe_edit_nickname(ctx.guild, new_nickname)
             

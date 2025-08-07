@@ -90,7 +90,7 @@ class Notification(commands.Cog):
             return False
         
         member_events.append(now)
-        await self.bot.cache.set('temporary', f'member_events_{guild_id}', member_events)
+        await self.bot.cache.set('temporary', member_events, f'member_events_{guild_id}')
         return True
     
     async def is_ptb_guild(self, guild_id: int) -> bool:
@@ -224,7 +224,7 @@ class Notification(commands.Cog):
         lock = await self.bot.cache.get('temporary', lock_key)
         if not lock:
             lock = asyncio.Lock()
-            await self.bot.cache.set('temporary', lock_key, lock)
+            await self.bot.cache.set('temporary', lock, lock_key)
         
         async with lock:
             if not await self.check_event_rate_limit(guild.id):

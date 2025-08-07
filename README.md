@@ -59,7 +59,7 @@ app/                    # 🎯 Code applicatif principal
 └── cogs/              # 📦 Extensions Discord modulaires
     ├── epic_items_scraper.py
     ├── loot_wishlist.py
-    └── [15 autres modules]
+    └── [10+ autres modules]
 ```
 
 **Architecture highlights :**
@@ -80,7 +80,7 @@ app/                    # 🎯 Code applicatif principal
 ### 1. Installation
 ```bash
 # Cloner le projet
-git clone https://github.com/votre-username/discord-bot-mgm.git
+git clone https://github.com/Romain-Grosos/discord-bot-mgm.git
 cd discord-bot-mgm
 
 # Installer les dépendances
@@ -145,7 +145,7 @@ run_bot.bat
 
 ## 📊 Statut du projet
 
-### 🎯 Version actuelle : **v1.0.0-MVP**
+### 🎯 Version actuelle : **v1.2.0-Stable**
 
 | Module | Statut | Couverture Tests | Notes |
 |--------|--------|------------------|-------|
