@@ -219,10 +219,14 @@ class AutoRole(commands.Cog):
                 logging.debug(f"[AutoRole] No welcome message in cache for member {member.id} in guild {guild.id}.")
 
             try:
+                await self.bot.cache_loader.ensure_category_loaded('user_data')
                 user_setup = await self.bot.cache.get_user_data(guild.id, member.id, 'setup')
+                
                 if user_setup is not None:
                     logging.debug(f"[AutoRole] Profile already exists for {guild.id}_{member.id}; no DM sent for registration.")
                     return
+                    
+                logging.debug(f"[AutoRole] No profile found for {guild.id}_{member.id}; will send DM for registration.")
             except Exception as e:
                 logging.error(f"[AutoRole] Error checking user profile for {guild.id}_{member.id}: {e}", exc_info=True)
                 return

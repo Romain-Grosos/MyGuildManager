@@ -168,7 +168,7 @@ class Core(commands.Cog):
             logging.error("[CoreManager] Failed to send global error message.", exc_info=True)
         logging.error(f"[CoreManager] Global error in command: {error}", exc_info=True)
 
-    @admin_rate_limit(cooldown_seconds=300)
+    @admin_rate_limit(cooldown_seconds=60)
     async def app_initialize(
         self,
         ctx: discord.ApplicationContext,
@@ -282,7 +282,7 @@ class Core(commands.Cog):
             response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_initialize", {}), "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
-    @admin_rate_limit(cooldown_seconds=300)
+    @admin_rate_limit(cooldown_seconds=60)
     async def app_modify(
         self,
         ctx: discord.ApplicationContext,
@@ -399,7 +399,7 @@ class Core(commands.Cog):
             response = await get_user_message(ctx, ADMIN_COMMANDS.get("bot_modify", {}), "messages.error", error="Database error")
         await ctx.respond(response, ephemeral=True)
 
-    @admin_rate_limit(cooldown_seconds=600)
+    @admin_rate_limit(cooldown_seconds=60)
     async def app_reset(
         self,
         ctx: discord.ApplicationContext,
@@ -479,6 +479,14 @@ class Core(commands.Cog):
                 "DELETE FROM events_data WHERE guild_id = %s",
                 "DELETE FROM user_setup WHERE guild_id = %s",
                 "DELETE FROM guild_members WHERE guild_id = %s",
+                "DELETE FROM guild_static_members WHERE group_id IN (SELECT id FROM guild_static_groups WHERE guild_id = %s)",
+                "DELETE FROM guild_static_groups WHERE guild_id = %s",
+                "DELETE FROM pending_diplomat_validations WHERE guild_id = %s",
+                "DELETE FROM loot_wishlist_history WHERE guild_id = %s",
+                "DELETE FROM loot_wishlist WHERE guild_id = %s",
+                "DELETE FROM dynamic_voice_channels WHERE guild_id = %s",
+                "DELETE FROM guild_ptb_settings WHERE guild_id = %s",
+                "DELETE FROM guild_ideal_staff WHERE guild_id = %s",
                 "DELETE FROM guild_roles WHERE guild_id = %s",
                 "DELETE FROM guild_channels WHERE guild_id = %s",
                 "DELETE FROM guild_settings WHERE guild_id = %s"

@@ -11,7 +11,13 @@ from discord.ext import commands
 from core.translation import translations as global_translations
 from core.functions import get_user_message, get_guild_message
 
-ABSENCE_TRANSLATIONS = global_translations.get("absence_system", {})
+ABSENCE_TRANSLATIONS = global_translations.get("absence_system", {}).get("messages", {})
+logging.debug(f"[AbsenceManager] Loaded ABSENCE_TRANSLATIONS keys: {list(ABSENCE_TRANSLATIONS.keys())}")
+if "title" in ABSENCE_TRANSLATIONS:
+    logging.debug(f"[AbsenceManager] Title translation keys: {list(ABSENCE_TRANSLATIONS['title'].keys())}")
+else:
+    logging.error(f"[AbsenceManager] No 'title' key in ABSENCE_TRANSLATIONS!")
+    logging.debug(f"[AbsenceManager] Full absence_system structure: {list(global_translations.get('absence_system', {}).keys())}")
 
 class AbsenceManager(commands.Cog):
     """Cog for managing member absence status and notifications."""
@@ -198,7 +204,7 @@ class AbsenceManager(commands.Cog):
             try:
                 await member.add_roles(role_member)
                 guild_lang = await self.bot.cache.get_guild_data(member.guild.id, 'guild_lang') or "en-US"
-                await self.notify_absence( member, "removal", cfg["forum_members_channel"], guild_lang)
+                await self.notify_absence(member, "removal", cfg["forum_members_channel"], guild_lang)
             except Exception as e:
                 logging.error("[AbsenceManager] Error adding member role: %s", e)
 
@@ -271,25 +277,26 @@ class AbsenceManager(commands.Cog):
 
         cfg = await self.bot.cache.get_guild_data(ctx.guild_id, 'absence_channels')
         if not cfg:
-            msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error_chan")
+            msg = await get_user_message(ctx, global_translations.get("absence_system", {}), "error_chan")
             await ctx.respond(msg, ephemeral=True)
             return
 
         abs_chan = ctx.guild.get_channel(cfg["abs_channel"])
         if abs_chan is None:
-            msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error_chan")
+            msg = await get_user_message(ctx, global_translations.get("absence_system", {}), "error_chan")
             await ctx.respond(msg, ephemeral=True)
             return
         
-        lang = await self.bot.cache.get_guild_data(ctx.guild.id, 'guild_lang') or "en-US"
-
-        reason_text = await get_guild_message(self.bot, ctx.guild.id, ABSENCE_TRANSLATIONS, "away_ok", member=member.display_name)
+        guild_lang = await self.bot.cache.get_guild_data(ctx.guild.id, 'guild_lang') or "en-US"
+        logging.debug(f"[AbsenceManager] Guild lang: {guild_lang}, Available translations: {list(ABSENCE_TRANSLATIONS.get('away_ok', {}).keys())}")
+        reason_text = ABSENCE_TRANSLATIONS.get("away_ok", {}).get(guild_lang, ABSENCE_TRANSLATIONS.get("away_ok", {}).get("en-US", "**{member}** is now marked as away.")).format(member=member.display_name)
+        logging.debug(f"[AbsenceManager] reason_text: {reason_text}")
         if return_date:
-            back_text = await get_guild_message(self.bot, ctx.guild.id, ABSENCE_TRANSLATIONS, "back_time", return_date=return_date)
+            back_text = ABSENCE_TRANSLATIONS.get("back_time", {}).get(guild_lang, ABSENCE_TRANSLATIONS.get("back_time", {}).get("en-US", "Expected return: {return_date}")).format(return_date=return_date)
             reason_text = f"{reason_text} {back_text}"
 
         await self._set_absent(ctx.guild, member, abs_chan, reason_text)
-        resp = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "absence_ok", member=member)
+        resp = await get_user_message(ctx, global_translations.get("absence_system", {}), "messages.absence_ok", member_mention=member.mention)
         await ctx.respond(resp, ephemeral=True)
 
     async def notify_absence(self, member: discord.Member, action: str, channel_id: int, guild_lang: str) -> None:
@@ -314,11 +321,14 @@ class AbsenceManager(commands.Cog):
             logging.error("[AbsenceManager] Failed to access the members notification channel.")
             return
 
-        title = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "title")
-        member_label = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "member_label")
-        status_label = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "status_label")
-        absent_text = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "absent")
-        returned_text = await get_guild_message(self.bot, member.guild.id, ABSENCE_TRANSLATIONS, "returned")
+        guild_lang = await self.bot.cache.get_guild_data(member.guild.id, 'guild_lang') or "en-US"
+        logging.debug(f"[AbsenceManager] Embed guild_lang: {guild_lang}, Available title translations: {list(ABSENCE_TRANSLATIONS.get('title', {}).keys())}")
+        title = ABSENCE_TRANSLATIONS.get("title", {}).get(guild_lang, ABSENCE_TRANSLATIONS.get("title", {}).get("en-US", "📢 Member status update"))
+        logging.debug(f"[AbsenceManager] Retrieved title: {title}")
+        member_label = ABSENCE_TRANSLATIONS.get("member_label", {}).get(guild_lang, ABSENCE_TRANSLATIONS.get("member_label", {}).get("en-US", "Member"))
+        status_label = ABSENCE_TRANSLATIONS.get("status_label", {}).get(guild_lang, ABSENCE_TRANSLATIONS.get("status_label", {}).get("en-US", "Status"))
+        absent_text = ABSENCE_TRANSLATIONS.get("absent", {}).get(guild_lang, ABSENCE_TRANSLATIONS.get("absent", {}).get("en-US", "🚨 Absent"))
+        returned_text = ABSENCE_TRANSLATIONS.get("returned", {}).get(guild_lang, ABSENCE_TRANSLATIONS.get("returned", {}).get("en-US", "✅ Returned"))
 
         status_text = absent_text if action == "addition" else returned_text
 
@@ -360,12 +370,12 @@ class AbsenceManager(commands.Cog):
         try:
             role_member, role_absent = await self._get_guild_roles(guild)
             if not role_member or not role_absent:
-                error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.roles_not_configured")
+                error_msg = await get_user_message(ctx, global_translations.get("absence_system", {}), "error.roles_not_configured")
                 await ctx.followup.send(error_msg, ephemeral=True)
                 return
 
             if role_absent not in member.roles:
-                error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.not_absent")
+                error_msg = await get_user_message(ctx, global_translations.get("absence_system", {}), "error.not_absent")
                 await ctx.followup.send(error_msg, ephemeral=True)
                 return
 
@@ -378,6 +388,28 @@ class AbsenceManager(commands.Cog):
                     logging.debug(f"[AbsenceManager] Added member role to {member.name}")
 
                 try:
+                    # Get all absence messages before deleting from DB
+                    select_query = "SELECT message_id FROM absence_messages WHERE guild_id = %s AND member_id = %s"
+                    message_ids = await self.bot.run_db_query(select_query, (guild.id, member.id), fetch_all=True)
+                    
+                    # Delete messages from absence channel
+                    if message_ids:
+                        channels_data = await self.bot.cache.get_guild_data(guild.id, 'absence_channels')
+                        if channels_data and channels_data.get('abs_channel'):
+                            abs_channel = self.bot.get_channel(channels_data['abs_channel'])
+                            if abs_channel:
+                                for row in message_ids:
+                                    message_id = row[0]
+                                    try:
+                                        message = await abs_channel.fetch_message(message_id)
+                                        await message.delete()
+                                        logging.debug(f"[AbsenceManager] Deleted absence message {message_id}")
+                                    except discord.NotFound:
+                                        logging.debug(f"[AbsenceManager] Absence message {message_id} already deleted")
+                                    except Exception as msg_error:
+                                        logging.error(f"[AbsenceManager] Error deleting message {message_id}: {msg_error}")
+                    
+                    # Now delete from database
                     delete_query = "DELETE FROM absence_messages WHERE guild_id = %s AND member_id = %s"
                     await self.bot.run_db_query(delete_query, (guild.id, member.id), commit=True)
                     logging.debug(f"[AbsenceManager] Removed absence record for {member.name}")
@@ -385,7 +417,7 @@ class AbsenceManager(commands.Cog):
                     logging.error(f"[AbsenceManager] Error removing absence record: {db_error}")
 
                 await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-                channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
+                channels_data = await self.bot.cache.get_guild_data(guild.id, 'absence_channels')
                 
                 if channels_data and channels_data.get('forum_members_channel'):
                     await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -395,20 +427,20 @@ class AbsenceManager(commands.Cog):
                                             channels_data['forum_members_channel'], 
                                             guild_lang)
                 
-                success_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "success.returned")
+                success_msg = await get_user_message(ctx, global_translations.get("absence_system", {}), "success.returned")
                 await ctx.followup.send(success_msg, ephemeral=True)
                 
             except discord.Forbidden:
-                error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.no_permission")
+                error_msg = await get_user_message(ctx, global_translations.get("absence_system", {}), "error.no_permission")
                 await ctx.followup.send(error_msg, ephemeral=True)
             except Exception as role_error:
                 logging.error(f"[AbsenceManager] Error managing roles for {member.name}: {role_error}")
-                error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.role_management")
+                error_msg = await get_user_message(ctx, global_translations.get("absence_system", {}), "error.role_management")
                 await ctx.followup.send(error_msg, ephemeral=True)
                 
         except Exception as e:
             logging.error(f"[AbsenceManager] Error in absence_remove for {member.name}: {e}")
-            error_msg = await get_user_message(ctx, ABSENCE_TRANSLATIONS, "error.general")
+            error_msg = await get_user_message(ctx, global_translations.get("absence_system", {}), "error.general")
             await ctx.followup.send(error_msg, ephemeral=True)
 
 def setup(bot: discord.Bot):

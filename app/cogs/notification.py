@@ -45,7 +45,7 @@ class Notification(commands.Cog):
             bot: Discord bot instance
         """
         self.bot = bot
-        self.max_events_per_minute = 10
+        self.max_events_per_minute = 60
     
     def get_safe_user_info(self, member):
         """
@@ -246,10 +246,11 @@ class Notification(commands.Cog):
                     
                     guild_lang = await self.get_guild_lang(guild)
                     notif_trans = NOTIFICATION_DATA.get("member_join", {})
-                    title = notif_trans.get("title", {}).get(guild_lang, "Welcome!")
+                    title = notif_trans.get("title", {}).get(guild_lang, notif_trans.get("title", {}).get("en-US", "🟢 New Member!"))
                     
                     safe_name = self.sanitize_user_data(member.name)
-                    description = notif_trans.get("description", {}).get(guild_lang, "Member {member_mention} joined").format(
+                    description_template = notif_trans.get("description", {}).get(guild_lang, notif_trans.get("description", {}).get("en-US", "Welcome {member_mention}!\n**Discord Name:** {member_name}\n**Discord ID:** `{member_id}`\n📜 **Pending rules acceptance**\n🚀 Pending configuration..."))
+                    description = description_template.format(
                         member_mention=member.mention,
                         member_name=safe_name,
                         member_id=member.id
@@ -333,10 +334,11 @@ class Notification(commands.Cog):
                             channel.fetch_message(message_id), timeout=10.0
                         )
                         notif_trans = NOTIFICATION_DATA.get("member_leave", {})
-                        title = notif_trans.get("title", {}).get(guild_lang, "Goodbye!")
+                        title = notif_trans.get("title", {}).get(guild_lang, notif_trans.get("title", {}).get("en-US", "🔴 Member Left"))
                         
                         safe_name = self.sanitize_user_data(member.name)
-                        description = notif_trans.get("description", {}).get(guild_lang, "Member {member_name} left").format(
+                        description_template = notif_trans.get("description", {}).get(guild_lang, notif_trans.get("description", {}).get("en-US", "**{member_name}** left the server\n**Discord ID:** `{member_id}`"))
+                        description = description_template.format(
                             member_name=safe_name,
                             member_id=member.id
                         )
@@ -396,10 +398,11 @@ class Notification(commands.Cog):
                     channel = await self.get_safe_channel(notif_channel_id)
                     if channel:
                         notif_trans = NOTIFICATION_DATA.get("member_leave", {})
-                        title = notif_trans.get("title", {}).get(guild_lang, "Goodbye!")
+                        title = notif_trans.get("title", {}).get(guild_lang, notif_trans.get("title", {}).get("en-US", "🔴 Member Left"))
                         
                         safe_name = self.sanitize_user_data(member.name)
-                        description = notif_trans.get("description", {}).get(guild_lang, "Member {member_name} left").format(
+                        description_template = notif_trans.get("description", {}).get(guild_lang, notif_trans.get("description", {}).get("en-US", "**{member_name}** left the server\n**Discord ID:** `{member_id}`"))
+                        description = description_template.format(
                             member_name=safe_name,
                             member_id=member.id
                         )

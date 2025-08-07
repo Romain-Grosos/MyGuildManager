@@ -650,15 +650,15 @@ class ProfileSetup(commands.Cog):
                 return
 
             if motif == "member":
-                embed_color = discord.Color.gold()
+                embed_color = discord.Color.blue()
             elif motif == "application":
                 embed_color = discord.Color.purple()
             elif motif == "diplomat":
-                embed_color = discord.Color.dark_blue()
+                embed_color = discord.Color.red()
             elif motif == "allies":
                 embed_color = discord.Color.green()
             elif motif == "friends":
-                embed_color = discord.Color.blue()
+                embed_color = discord.Color.gold()
             else:
                 embed_color = discord.Color.blue()
             
@@ -799,11 +799,11 @@ class ProfileSetup(commands.Cog):
                     return
                 embed = message.embeds[0]
                 colors = {
-                    "member": discord.Color.gold(),
+                    "member": discord.Color.blue(),
                     "application": discord.Color.purple(),
-                    "diplomat": discord.Color.dark_blue(),
+                    "diplomat": discord.Color.red(),
                     "allies": discord.Color.green(),
-                    "friends": discord.Color.blue(),
+                    "friends": discord.Color.gold(),
                 }
                 motif_value = session.get("motif")
                 embed.color = colors.get(str(motif_value) if motif_value else "", discord.Color.default())

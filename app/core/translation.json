@@ -337,21 +337,21 @@
             "options": {
                 "confirmation": {
                     "description": {
-                        "en-US": "Type 'CONFIRM' to proceed with the reset",
-                        "fr": "Tapez 'CONFIRM' pour procéder à la réinitialisation",
-                        "es-ES": "Escribe 'CONFIRM' para proceder con el restablecimiento",
-                        "de": "Geben Sie 'CONFIRM' ein, um mit dem Reset fortzufahren",
-                        "it": "Digita 'CONFIRM' per procedere con il ripristino"
+                        "en-US": "Type 'DELETE' to proceed with the reset",
+                        "fr": "Tapez 'DELETE' pour procéder à la réinitialisation",
+                        "es-ES": "Escribe 'DELETE' para proceder con el restablecimiento",
+                        "de": "Geben Sie 'DELETE' ein, um mit dem Reset fortzufahren",
+                        "it": "Digita 'DELETE' per procedere con il ripristino"
                     }
                 }
             },
             "messages": {
                 "bad_parameter": {
-                    "en-US": "❌ You must type 'CONFIRM' to proceed with the reset.",
-                    "fr": "❌ Vous devez taper 'CONFIRM' pour procéder à la réinitialisation.",
-                    "es-ES": "❌ Debes escribir 'CONFIRM' para proceder con el restablecimiento.",
-                    "de": "❌ Sie müssen 'CONFIRM' eingeben, um mit dem Reset fortzufahren.",
-                    "it": "❌ Devi digitare 'CONFIRM' per procedere con il ripristino."
+                    "en-US": "❌ You must type 'DELETE' to proceed with the reset.",
+                    "fr": "❌ Vous devez taper 'DELETE' pour procéder à la réinitialisation.",
+                    "es-ES": "❌ Debes escribir 'DELETE' para proceder con el restablecimiento.",
+                    "de": "❌ Sie müssen 'DELETE' eingeben, um mit dem Reset fortzufahren.",
+                    "it": "❌ Devi digitare 'DELETE' per procedere con il ripristino."
                 },
                 "need_init": {
                     "en-US": "❌ Guild not initialized. Use `/bot_initialize` first.",
@@ -508,11 +508,11 @@
                 "it": "Ritorno previsto: {return_date}"
             },
             "absence_ok": {
-                "en-US": "✅ {member.mention} has been marked as absent.",
-                "fr": "✅ {member.mention} a été marqué absent.",
-                "es-ES": "✅ {member.mention} ha sido marcado como ausente.",
-                "de": "✅ {member.mention} wurde als abwesend markiert.",
-                "it": "✅ {member.mention} è stato segnato come assente."
+                "en-US": "✅ {member_mention} has been marked as absent.",
+                "fr": "✅ {member_mention} a été marqué absent.",
+                "es-ES": "✅ {member_mention} ha sido marcado como ausente.",
+                "de": "✅ {member_mention} wurde als abwesend markiert.",
+                "it": "✅ {member_mention} è stato segnato come assente."
             },
             "title": {
                 "en-US": "📢 Member status update",
@@ -1583,25 +1583,25 @@
                 "it": "❌ Il messaggio evento non ha embed"
             },
             "confirmed": {
-                "en-US": "🟢 Confirmed",
-                "fr": "🟢 Confirmé",
-                "es-ES": "🟢 Confirmado",
-                "de": "🟢 Bestätigt",
-                "it": "🟢 Confermato"
+                "en-US": "Confirmed",
+                "fr": "Confirmé",
+                "es-ES": "Confirmado",
+                "de": "Bestätigt",
+                "it": "Confermato"
             },
             "confirmed_notif": {
-                "en-US": "{role} The event has been confirmed! 🎉",
-                "fr": "{role} L'événement a été confirmé ! 🎉",
-                "es-ES": "{role} ¡El evento ha sido confirmado! 🎉",
-                "de": "{role} Das Event wurde bestätigt! 🎉",
-                "it": "{role} L'evento è stato confermato! 🎉"
+                "en-US": "Event confirmed <@&{role}>! Please sign up!",
+                "fr": "Événement confirmé <@&{role}> ! Merci de vous inscrire !",
+                "es-ES": "Evento confirmado <@&{role}>! ¡Por favor, regístrate!",
+                "de": "Ereignis bestätigt <@&{role}>! Bitte melde dich an!",
+                "it": "Evento confermato <@&{role}>! Per favore, iscriviti!"
             },
             "event_updated": {
-                "en-US": "✅ Event {event_id} confirmed successfully",
-                "fr": "✅ Événement {event_id} confirmé avec succès",
-                "es-ES": "✅ Evento {event_id} confirmado exitosamente",
-                "de": "✅ Event {event_id} erfolgreich bestätigt",
-                "it": "✅ Evento {event_id} confermato con successo"
+                "en-US": "✅ Event {event_id} marked as Confirmed.",
+                "fr": "✅ Événement {event_id} passé à Confirmé.",
+                "es-ES": "✅ Evento {event_id} marcado como Confirmado.",
+                "de": "✅ Ereignis {event_id} als Bestätigt markiert.",
+                "it": "✅ Evento {event_id} segnato come Confermato."
             },
             "event_embed_ko": {
                 "en-US": "❌ Error updating event embed: {e}",
@@ -2540,18 +2540,18 @@
     "autorole_system": {
         "welcome": {
             "pending": {
-                "en-US": "⏳ Registration pending...",
-                "fr": "⏳ Inscription en attente...",
-                "es-ES": "⏳ Registro pendiente...",
-                "de": "⏳ Registrierung ausstehend...",
-                "it": "⏳ Registrazione in sospeso..."
+                "en-US": "📜 **Pending rules acceptance**",
+                "fr": "📜 **En attente d'acceptation des règles**",
+                "es-ES": "📜 **En espera de aceptación de las reglas**",
+                "de": "📜 **Ausstehende Annahme der Regeln**",
+                "it": "📜 **In attesa dell'accettazione delle regole**"
             },
             "accepted": {
-                "en-US": "✅ Registration completed on {date}",
-                "fr": "✅ Inscription complétée le {date}",
-                "es-ES": "✅ Registro completado el {date}",
-                "de": "✅ Registrierung abgeschlossen am {date}",
-                "it": "✅ Registrazione completata il {date}"
+                "en-US": "✅ **Rules accepted on {date}**",
+                "fr": "✅ **Règles acceptées le {date}**",
+                "es-ES": "✅ **Reglas aceptadas el {date}**",
+                "de": "✅ **Regeln akzeptiert am {date}**",
+                "it": "✅ **Regole accettate il {date}**"
             }
         }
     },
@@ -3325,11 +3325,11 @@
                 "it": "👥 Gestione Alleati"
             },
             "message_ally": {
-                "en-US": "Discussion thread for allies management and coordination. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless",
-                "fr": "Discussion pour la gestion et coordination des alliés. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless",
-                "es-ES": "Hilo de discusión para gestión y coordinación de aliados. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless",
-                "de": "Diskussionsthread für Verbündeten-Management und Koordination. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless",
-                "it": "Thread di discussione per la gestione e coordinazione degli alleati. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless"
+                "en-US": "# Notifications about ally arrivals \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&",
+                "fr": "# Notifications sur les arrivées des alliés \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&",
+                "es-ES": "# Notificaciones sobre la llegada de aliados \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&",
+                "de": "# Benachrichtigungen über die Ankünfte von Verbündeten \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&",
+                "it": "# Notifiche sugli arrivi degli alleati \n https://cdn.discordapp.com/attachments/1209255148271181908/1346092767561908234/ally.png?ex=67c6ee14&is=67c59c94&hm=e7adf8f1593b94afb24fba96f331d39eaf05daeb6993c24c96a30b35e1993b69&"
             },
             "topic_friends": {
                 "en-US": "🤝 Friends Management",
@@ -3339,11 +3339,11 @@
                 "it": "🤝 Gestione Amici"
             },
             "message_friends": {
-                "en-US": "Discussion thread for friends management and social coordination. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless",
-                "fr": "Discussion pour la gestion des amis et coordination sociale. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless",
-                "es-ES": "Hilo de discusión para gestión de amigos y coordinación social. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless",
-                "de": "Diskussionsthread für Freunde-Management und soziale Koordination. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless",
-                "it": "Thread di discussione per la gestione degli amici e coordinazione sociale. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless"
+                "en-US": "# Notifications about friend arrivals \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&",
+                "fr": "# Notifications sur les arrivées des amis \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&",
+                "es-ES": "# Notificaciones sobre la llegada de amigos \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&",
+                "de": "# Benachrichtigungen über die Ankünfte von Freunden \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&",
+                "it": "# Notifiche sugli arrivi degli amici \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093200795766824/friends.png?ex=67c6ee7c&is=67c59cfc&hm=8b709293abb3cf97ac542c3280a1c10bd36624373894a451075d9fd20630c96e&"
             },
             "topic_diplomats": {
                 "en-US": "🕊️ Diplomatic Relations",
@@ -3353,11 +3353,11 @@
                 "it": "🕊️ Relazioni Diplomatiche"
             },
             "message_diplomats": {
-                "en-US": "Discussion thread for diplomatic relations and negotiations. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless",
-                "fr": "Discussion pour les relations diplomatiques et négociations. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless",
-                "es-ES": "Hilo de discusión para relaciones diplomáticas y negociaciones. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless",
-                "de": "Diskussionsthread für diplomatische Beziehungen und Verhandlungen. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless",
-                "it": "Thread di discussione per relazioni diplomatiche e negoziazioni. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless"
+                "en-US": "# Notifications about diplomat arrivals \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&",
+                "fr": "# Notifications sur les arrivées des diplomates \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&",
+                "es-ES": "# Notificaciones sobre la llegada de diplomáticos \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&",
+                "de": "# Benachrichtigungen über die Ankünfte von Diplomaten \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&",
+                "it": "# Notifiche sugli arrivi dei diplomatici \n https://cdn.discordapp.com/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=67c6eed1&is=67c59d51&hm=3107c984e6dbd070efb5e84acad376e7d24a47061a5f1fa3e10c4a9c60e2ef56&"
             },
             "topic_recruitment": {
                 "en-US": "📝 Recruitment",
@@ -3367,11 +3367,11 @@
                 "it": "📝 Reclutamento"
             },
             "message_recruitment": {
-                "en-US": "Discussion thread for recruitment strategy and candidate evaluation. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless",
-                "fr": "Discussion pour la stratégie de recrutement et évaluation des candidats. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless",
-                "es-ES": "Hilo de discusión para estrategia de reclutamiento y evaluación de candidatos. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless",
-                "de": "Diskussionsthread für Rekrutierungsstrategie und Kandidatenbewertung. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless",
-                "it": "Thread di discussione per strategia di reclutamento e valutazione candidati. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless"
+                "en-US": "# Notifications about new applications \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&",
+                "fr": "# Notifications sur les nouvelles candidatures \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&",
+                "es-ES": "# Notificaciones sobre nuevas candidaturas \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&",
+                "de": "# Benachrichtigungen über neue Bewerbungen \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&",
+                "it": "# Notifiche sulle nuove candidature \n https://cdn.discordapp.com/attachments/1209255148271181908/1346064196671897650/postu.png?ex=67c6d379&is=67c581f9&hm=5b115952bbc27db21871926c045949dc29dec9adba5af2d72df4b7ec298502ac&"
             },
             "topic_members": {
                 "en-US": "👤 Member Management",
@@ -3381,25 +3381,25 @@
                 "it": "👤 Gestione Membri"
             },
             "message_members": {
-                "en-US": "Discussion thread for member management and internal affairs. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless",
-                "fr": "Discussion pour la gestion des membres et affaires internes. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless",
-                "es-ES": "Hilo de discusión para gestión de miembros y asuntos internos. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless",
-                "de": "Diskussionsthread für Mitglieder-Management und interne Angelegenheiten. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless",
-                "it": "Thread di discussione per gestione membri e affari interni. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless"
+                "en-US": "# Notifications about member arrivals and absences \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&",
+                "fr": "# Notifications sur les arrivées et absences des membres \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&",
+                "es-ES": "# Notificaciones sobre la llegada y ausencia de miembros \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&",
+                "de": "# Benachrichtigungen über die Ankünfte und Abwesenheiten von Mitgliedern \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&",
+                "it": "# Notifiche sugli arrivi e le assenze dei membri \n https://cdn.discordapp.com/attachments/1209255148271181908/1346061941004570715/members.png?ex=67c6d15f&is=67c57fdf&hm=b242fc6ccd30a56eec306762c7a0a679123bbaa9b544ded8264db61f02f35d8d&"
             },
             "cat_recruitment": {
-                "en-US": "──── ✍️Recruitment",
-                "fr": "──── ✍️Recrutement",
-                "es-ES": "──── ✍️Reclutamiento",
-                "de": "──── ✍️Rekrutierung",
-                "it": "──── ✍️Reclutamento"
+                "en-US": "──── ✍️ Recruitment",
+                "fr": "──── ✍️ Recrutement",
+                "es-ES": "──── ✍️ Reclutamiento",
+                "de": "──── ✍️ Rekrutierung",
+                "it": "──── ✍️ Reclutamento"
             },
             "ext_recruitment": {
-                "en-US": "🚩│infos",
-                "fr": "🚩│infos",
-                "es-ES": "🚩│información",
-                "de": "🚩│infos",
-                "it": "🚩│informazioni"
+                "en-US": "🚩│Infos",
+                "fr": "🚩│Infos",
+                "es-ES": "🚩│Infos",
+                "de": "🚩│Infos",
+                "it": "🚩│Infos"
             },
             "recruitment_message": {
                 "en-US": "Guild Recruitment",
@@ -3667,34 +3667,34 @@
     "notification": {
         "member_join": {
             "title": {
-                "en-US": "🎉 Welcome to the server!",
-                "fr": "🎉 Bienvenue sur le serveur !",
-                "es-ES": "🎉 ¡Bienvenido al servidor!",
-                "de": "🎉 Willkommen auf dem Server!",
-                "it": "🎉 Benvenuto nel server!"
+                "en-US": "🟢 New Member!",
+                "fr": "🟢 Nouveau Membre !",
+                "es-ES": "🟢 ¡Nuevo Miembro!",
+                "de": "🟢 Neuer Spieler!",
+                "it": "🟢 Nuovo Membro!"
             },
             "description": {
-                "en-US": "Welcome {member_mention}!\n\n👤 **User:** {member_name}\n🆔 **ID:** {member_id}\n\nWe're glad to have you here!",
-                "fr": "Bienvenue {member_mention} !\n\n👤 **Utilisateur :** {member_name}\n🆔 **ID :** {member_id}\n\nNous sommes ravis de t'avoir parmi nous !",
-                "es-ES": "¡Bienvenido {member_mention}!\n\n👤 **Usuario:** {member_name}\n🆔 **ID:** {member_id}\n\n¡Nos alegra tenerte aquí!",
-                "de": "Willkommen {member_mention}!\n\n👤 **Benutzer:** {member_name}\n🆔 **ID:** {member_id}\n\nWir freuen uns, dich hier zu haben!",
-                "it": "Benvenuto {member_mention}!\n\n👤 **Utente:** {member_name}\n🆔 **ID:** {member_id}\n\nSiamo felici di averti qui!"
+                "en-US": "Welcome {member_mention}!\n**Discord Name:** {member_name}\n**Discord ID:** `{member_id}`\n📜 **Pending rules acceptance**\n🚀 Pending configuration...",
+                "fr": "Bienvenue à {member_mention} ! 🎉\n**Pseudo Discord :** {member_name}\n**ID Discord :** `{member_id}`\n📜 **En attente d'acceptation des règles**\n🚀 En attente de configuration...",
+                "es-ES": "¡Bienvenido {member_mention}!\n**Nombre de Discord:** {member_name}\n**ID de Discord:** `{member_id}`\n📜 **Pendiente de aceptación de reglas**\n🚀 Pendiente de configuración...",
+                "de": "Willkommen {member_mention}!\n**Discord-Name:** {member_name}\n**Discord-ID:** `{member_id}`\n📜 **Ausstehende Regelakzeptanz**\n🚀 Ausstehende Konfiguration...",
+                "it": "Benvenuto {member_mention}!\n**Nome Discord:** {member_name}\n**ID Discord:** `{member_id}`\n📜 **In attesa di accettazione delle regole**\n🚀 In attesa di configurazione..."
             }
         },
         "member_leave": {
             "title": {
-                "en-US": "👋 Member left the server",
-                "fr": "👋 Un membre a quitté le serveur",
-                "es-ES": "👋 Un miembro dejó el servidor",
-                "de": "👋 Mitglied hat den Server verlassen",
-                "it": "👋 Un membro ha lasciato il server"
+                "en-US": "🔴 Member Left",
+                "fr": "🔴 Départ de Membre",
+                "es-ES": "🔴 Miembro que se fue",
+                "de": "🔴 Mitglied ist gegangen",
+                "it": "🔴 Membro partito"
             },
             "description": {
-                "en-US": "Goodbye!\n\n👤 **User:** {member_name}\n🆔 **ID:** {member_id}\n\nThey have left the server.",
-                "fr": "Au revoir !\n\n👤 **Utilisateur :** {member_name}\n🆔 **ID :** {member_id}\n\nIl/Elle a quitté le serveur.",
-                "es-ES": "¡Adiós!\n\n👤 **Usuario:** {member_name}\n🆔 **ID:** {member_id}\n\nHa dejado el servidor.",
-                "de": "Auf Wiedersehen!\n\n👤 **Benutzer:** {member_name}\n🆔 **ID:** {member_id}\n\nHat den Server verlassen.",
-                "it": "Arrivederci!\n\n👤 **Utente:** {member_name}\n🆔 **ID:** {member_id}\n\nHa lasciato il server."
+                "en-US": "**{member_name}** left the server\n**Discord ID:** `{member_id}`",
+                "fr": "**{member_name}** a quitté le serveur\n**ID Discord :** `{member_id}`",
+                "es-ES": "**{member_name}** dejó el servidor\n**ID de Discord:** `{member_id}`",
+                "de": "**{member_name}** hat den Server verlassen\n**Discord-ID:** `{member_id}`",
+                "it": "**{member_name}** ha lasciato il server\n**ID Discord:** `{member_id}`"
             }
         }
     },
@@ -3709,20 +3709,37 @@
 
     "profile_setup": {
         "language_saved": {
-            "en-US": "✅ Language saved! Please continue with your profile setup.",
-            "fr": "✅ Langue enregistrée ! Veuillez continuer avec la configuration de votre profil.",
-            "es-ES": "✅ ¡Idioma guardado! Por favor continúa con la configuración de tu perfil.",
-            "de": "✅ Sprache gespeichert! Bitte fahre mit der Profilkonfiguration fort.",
-            "it": "✅ Lingua salvata! Continua con la configurazione del tuo profilo."
+            "en-US": "✅ Language set to English",
+            "fr": "✅ Langue définie sur Français",
+            "es-ES": "✅ Idioma configurado en Español",
+            "de": "✅ Sprache auf Deutsch gesetzt",
+            "it": "✅ Lingua impostata su Italiano"
         },
         "motif_select": {
-            "en-US": "Select your reason for joining",
-            "fr": "Sélectionnez votre motif d'adhésion",
-            "es-ES": "Selecciona tu motivo para unirte",
-            "de": "Wähle deinen Beitrittsgrund",
-            "it": "Seleziona il tuo motivo per unirti"
+            "en-US": "🔹 Choose your reason for joining the Discord",
+            "fr": "🔹 Choisis ton motif d'arrivée sur le Discord",
+            "es-ES": "🔹 Elige tu motivo para unirte al Discord", 
+            "de": "🔹 Wähle deinen Grund für den Beitritt zu Discord",
+            "it": "🔹 Scegli il motivo per unirti a Discord"
         },
         "motif_select_options": [
+            {
+                "label": {
+                    "en-US": "Application",
+                    "fr": "Postulation",
+                    "es-ES": "Postulación",
+                    "de": "Bewerbung",
+                    "it": "Candidatura"
+                },
+                "value": "application",
+                "description": {
+                    "en-US": "Apply to join the guild",
+                    "fr": "Postuler à la guilde",
+                    "es-ES": "Postular a la guild",
+                    "de": "Sich für die Gilde bewerben",
+                    "it": "Candidarsi per la gilda"
+                }
+            },
             {
                 "label": {
                     "en-US": "Member",
@@ -3733,28 +3750,11 @@
                 },
                 "value": "member",
                 "description": {
-                    "en-US": "I am a guild member",
-                    "fr": "Je suis membre de la guilde",
-                    "es-ES": "Soy miembro del gremio",
-                    "de": "Ich bin Gildenmitglied",
-                    "it": "Sono un membro della gilda"
-                }
-            },
-            {
-                "label": {
-                    "en-US": "Application",
-                    "fr": "Candidature",
-                    "es-ES": "Solicitud",
-                    "de": "Bewerbung",
-                    "it": "Candidatura"
-                },
-                "value": "application",
-                "description": {
-                    "en-US": "I want to join the guild",
-                    "fr": "Je souhaite rejoindre la guilde",
-                    "es-ES": "Quiero unirme al gremio",
-                    "de": "Ich möchte der Gilde beitreten",
-                    "it": "Voglio unirmi alla gilda"
+                    "en-US": "Already a member of the guild",
+                    "fr": "Déjà membre de la guilde",
+                    "es-ES": "Ya es miembro de la guild",
+                    "de": "Bereits Mitglied der Gilde",
+                    "it": "Già membro della gilda"
                 }
             },
             {
@@ -3895,7 +3895,7 @@
         },
         "acronym": {
             "en-US": "[APP]",
-            "fr": "[CAND]",
+            "fr": "[POST]",
             "es-ES": "[SOL]",
             "de": "[BEW]",
             "it": "[CAND]"
@@ -3982,46 +3982,46 @@
             "it": "Profilo configurato"
         },
         "pending": {
-            "en-US": "⏳ Profile setup in progress",
-            "fr": "⏳ Configuration du profil en cours",
-            "es-ES": "⏳ Configuración del perfil en curso",
-            "de": "⏳ Profilkonfiguration läuft",
-            "it": "⏳ Configurazione profilo in corso"
+            "en-US": "🚀 Pending configuration...",
+            "fr": "🚀 En attente de configuration...",
+            "es-ES": "🚀 Pendiente de configuración...",
+            "de": "🚀 Ausstehende Konfiguration...",
+            "it": "🚀 In attesa di configurazione..."
         },
         "accepted_member": {
-            "en-US": "✅ Member profile validated\n👤 **Name:** {new_nickname}\n⚔️ **GS:** {gs}\n📅 **Date:** {now}",
-            "fr": "✅ Profil membre validé\n👤 **Nom :** {new_nickname}\n⚔️ **GS :** {gs}\n📅 **Date :** {now}",
-            "es-ES": "✅ Perfil de miembro validado\n👤 **Nombre:** {new_nickname}\n⚔️ **GS:** {gs}\n📅 **Fecha:** {now}",
-            "de": "✅ Mitgliedsprofil validiert\n👤 **Name:** {new_nickname}\n⚔️ **GS:** {gs}\n📅 **Datum:** {now}",
-            "it": "✅ Profilo membro validato\n👤 **Nome:** {new_nickname}\n⚔️ **GS:** {gs}\n📅 **Data:** {now}"
+            "en-US": "🔹 **New Member:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Registered on {now}**",
+            "fr": "🔹 **Nouveau Membre :** {new_nickname}\n🎯 **GS :** {gs}\n📆 **Inscrit le {now}**",
+            "es-ES": "🔹 **Nuevo Miembro:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Registrado el {now}**",
+            "de": "🔹 **Neues Mitglied:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Registriert am {now}**",
+            "it": "🔹 **Nuovo Membro:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Registrato il {now}**"
         },
         "accepted_application": {
-            "en-US": "✅ Application validated\n👤 **Name:** {new_nickname}\n⚔️ **GS:** {gs}\n📅 **Date:** {now}",
-            "fr": "✅ Candidature validée\n👤 **Nom :** {new_nickname}\n⚔️ **GS :** {gs}\n📅 **Date :** {now}",
-            "es-ES": "✅ Solicitud validada\n👤 **Nombre:** {new_nickname}\n⚔️ **GS:** {gs}\n📅 **Fecha:** {now}",
-            "de": "✅ Bewerbung validiert\n👤 **Name:** {new_nickname}\n⚔️ **GS:** {gs}\n📅 **Datum:** {now}",
-            "it": "✅ Candidatura validata\n👤 **Nome:** {new_nickname}\n⚔️ **GS:** {gs}\n📅 **Data:** {now}"
+            "en-US": "🛡️ **New Application:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Application submitted on {now}**",
+            "fr": "🛡️ **Nouvelle postulation :** {new_nickname}\n🎯 **GS :** {gs}\n📆 **Postulation soumise le {now}**",
+            "es-ES": "🛡️ **Nueva postulación:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Postulación enviada el {now}**",
+            "de": "🛡️ **Neue Bewerbung:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Bewerbung eingereicht am {now}**",
+            "it": "🛡️ **Nuova candidatura:** {new_nickname}\n🎯 **GS:** {gs}\n📆 **Candidatura inviata il {now}**"
         },
         "accepted_diplomat": {
-            "en-US": "✅ Diplomat profile validated\n👤 **Name:** {new_nickname}\n🏰 **Guild:** {guild_name}\n📅 **Date:** {now}",
-            "fr": "✅ Profil diplomate validé\n👤 **Nom :** {new_nickname}\n🏰 **Guilde :** {guild_name}\n📅 **Date :** {now}",
-            "es-ES": "✅ Perfil diplomático validado\n👤 **Nombre:** {new_nickname}\n🏰 **Gremio:** {guild_name}\n📅 **Fecha:** {now}",
-            "de": "✅ Diplomatenprofil validiert\n👤 **Name:** {new_nickname}\n🏰 **Gilde:** {guild_name}\n📅 **Datum:** {now}",
-            "it": "✅ Profilo diplomatico validato\n👤 **Nome:** {new_nickname}\n🏰 **Gilda:** {guild_name}\n📅 **Data:** {now}"
+            "en-US": "🤝 **New Diplomat:** {new_nickname}\n🏰 **Guild:** {guild_name}\n📅 **Profile submitted on {now}**",
+            "fr": "🤝 **Nouveau diplomate :** {new_nickname}\n🏰 **Guilde :** {guild_name}\n📅 **Profil soumis le {now}**",
+            "es-ES": "🤝 **Nuevo diplomático:** {new_nickname}\n🏰 **Gremio:** {guild_name}\n📅 **Perfil enviado el {now}**",
+            "de": "🤝 **Neuer Diplomat:** {new_nickname}\n🏰 **Gilde:** {guild_name}\n📅 **Profil eingereicht am {now}**",
+            "it": "🤝 **Nuovo diplomatico:** {new_nickname}\n🏰 **Gilda:** {guild_name}\n📅 **Profilo inviato il {now}**"
         },
         "accepted_allies": {
-            "en-US": "✅ Ally profile validated\n👤 **Name:** {new_nickname}\n🏰 **Guild:** {guild_name}\n📅 **Date:** {now}",
-            "fr": "✅ Profil allié validé\n👤 **Nom :** {new_nickname}\n🏰 **Guilde :** {guild_name}\n📅 **Date :** {now}",
-            "es-ES": "✅ Perfil aliado validado\n👤 **Nombre:** {new_nickname}\n🏰 **Gremio:** {guild_name}\n📅 **Fecha:** {now}",
-            "de": "✅ Verbündetenprofil validiert\n👤 **Name:** {new_nickname}\n🏰 **Gilde:** {guild_name}\n📅 **Datum:** {now}",
-            "it": "✅ Profilo alleato validato\n👤 **Nome:** {new_nickname}\n🏰 **Gilda:** {guild_name}\n📅 **Data:** {now}"
+            "en-US": "🏰 **New Ally:** {new_nickname}\n🏰 **Guild:** {guild_name}\n📅 **Profile submitted on {now}**",
+            "fr": "🏰 **Nouvel allié :** {new_nickname}\n🏰 **Guilde :** {guild_name}\n📅 **Profil soumis le {now}**",
+            "es-ES": "🏰 **Nuevo aliado:** {new_nickname}\n🏰 **Gremio:** {guild_name}\n📅 **Perfil enviado el {now}**",
+            "de": "🏰 **Neuer Verbündeter:** {new_nickname}\n🏰 **Gilde:** {guild_name}\n📅 **Profil eingereicht am {now}**",
+            "it": "🏰 **Nuovo alleato:** {new_nickname}\n🏰 **Gilda:** {guild_name}\n📅 **Profilo inviato il {now}**"
         },
         "accepted_friends": {
-            "en-US": "✅ Friend profile validated\n👤 **Name:** {new_nickname}\n👥 **Friend:** {friend_pseudo}\n📅 **Date:** {now}",
-            "fr": "✅ Profil ami validé\n👤 **Nom :** {new_nickname}\n👥 **Ami :** {friend_pseudo}\n📅 **Date :** {now}",
-            "es-ES": "✅ Perfil de amigo validado\n👤 **Nombre:** {new_nickname}\n👥 **Amigo:** {friend_pseudo}\n📅 **Fecha:** {now}",
-            "de": "✅ Freundprofil validiert\n👤 **Name:** {new_nickname}\n👥 **Freund:** {friend_pseudo}\n📅 **Datum:** {now}",
-            "it": "✅ Profilo amico validato\n👤 **Nome:** {new_nickname}\n👥 **Amico:** {friend_pseudo}\n📅 **Data:** {now}"
+            "en-US": "🎭 **New Friend:** {new_nickname}\n👥 **Friend:** {friend_pseudo}\n📅 **Profile submitted on {now}**",
+            "fr": "🎭 **Nouvel ami :** {new_nickname}\n👥 **Ami :** {friend_pseudo}\n📅 **Profil soumis le {now}**",
+            "es-ES": "🎭 **Nuevo amigo:** {new_nickname}\n👥 **Amigo:** {friend_pseudo}\n📅 **Perfil enviado el {now}**",
+            "de": "🎭 **Neuer Freund:** {new_nickname}\n👥 **Freund:** {friend_pseudo}\n📅 **Profil eingereicht am {now}**",
+            "it": "🎭 **Nuovo amico:** {new_nickname}\n👥 **Amico:** {friend_pseudo}\n📅 **Profilo inviato il {now}**"
         },
         "anti_espionage": {
             "alert_message": {
