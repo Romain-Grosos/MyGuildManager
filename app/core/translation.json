@@ -42,16 +42,6 @@
                     "it": "Gioco su cui si concentra questa gilda"
                 },
                 "choices": {
-                    "new_world": {
-                        "name": {
-                            "en-US": "New World",
-                            "fr": "New World",
-                            "es-ES": "New World",
-                            "de": "New World",
-                            "it": "New World"
-                        },
-                        "value": "new_world"
-                    },
                     "throne_liberty": {
                         "name": {
                             "en-US": "Throne and Liberty",
@@ -60,7 +50,7 @@
                             "de": "Throne and Liberty",
                             "it": "Throne and Liberty"
                         },
-                        "value": "throne_liberty"
+                        "value": 1
                     }
                 }
             },
@@ -1705,31 +1695,6 @@
     },
 
     "static_groups": {
-        "channel": {
-            "name": {
-                "en-US": "statics-groups",
-                "fr": "groupes-fixes",
-                "es-ES": "grupos-estaticos", 
-                "de": "statische-gruppen",
-                "it": "gruppi-statici"
-            },
-            "placeholder": {
-                "title": {
-                    "en-US": "🏆 Static Groups",
-                    "fr": "🏆 Groupes fixes",
-                    "es-ES": "🏆 Grupos estáticos",
-                    "de": "🏆 Statische Gruppen",
-                    "it": "🏆 Gruppi statici"
-                },
-                "description": {
-                    "en-US": "Organized groups for regular activities. Use `/statics group_create` to create a new group.",
-                    "fr": "Groupes organisés pour les activités régulières. Utilisez `/statics group_create` pour créer un nouveau groupe.",
-                    "es-ES": "Grupos organizados para actividades regulares. Usa `/statics group_create` para crear un nuevo grupo.",
-                    "de": "Organisierte Gruppen für regelmäßige Aktivitäten. Verwende `/statics group_create` um eine neue Gruppe zu erstellen.",
-                    "it": "Gruppi organizzati per attività regolari. Usa `/statics group_create` per creare un nuovo gruppo."
-                }
-            }
-        },
         "static_create": {
             "options": {
                 "group_name": {
@@ -3167,57 +3132,64 @@
                 "es-ES": "Config OK",
                 "de": "Config OK",
                 "it": "Config OK"
+            },
+            "rules_ok": {
+                "en-US": "Rules OK",
+                "fr": "Règles OK",
+                "es-ES": "Reglas OK",
+                "de": "Regeln OK",
+                "it": "Regole OK"
             }
         },
         "channel_names": {
             "rules": {
-                "en-US": "📜-rules",
-                "fr": "📜-règles",
-                "es-ES": "📜-reglas",
-                "de": "📜-regeln",
-                "it": "📜-regole"
+                "en-US": "📄│rules",
+                "fr": "📄│règles",
+                "es-ES": "📄│reglas",
+                "de": "📄│regeln",
+                "it": "📄│regole"
             },
             "rules_message": {
-                "en-US": "Welcome to the guild! Please read and accept the rules by reacting with ✅",
-                "fr": "Bienvenue dans la guilde ! Veuillez lire et accepter les règles en réagissant avec ✅",
-                "es-ES": "¡Bienvenido al gremio! Por favor lee y acepta las reglas reaccionando con ✅",
-                "de": "Willkommen in der Gilde! Bitte lesen und akzeptieren Sie die Regeln, indem Sie mit ✅ reagieren",
-                "it": "Benvenuto nella gilda! Per favore leggi e accetta le regole reagendo con ✅"
+                "en-US": "# 📜 Rules of Conduct 📜\n\n## 1️⃣ Respect and Courtesy\nStay courteous and respectful towards all members.\nInsults, harassment, threats or toxic behavior are prohibited.\nAny hate speech, discriminatory or racist language will result in immediate sanctions.\n\n## 2️⃣ Legality and Authorized Content\nNo incitement to piracy, cheating or use of illegal third-party software.\nDo not share illegal, NSFW or content contrary to Discord's terms of service.\nRespect intellectual property: no illegal distribution of protected content.\n\n## 3️⃣ Good Atmosphere and Fair-Play\nPlay in a spirit of fair-play and mutual aid.\nNo spam, flood or abuse of capital letters.\nNo advertising or self-promotion without prior authorization.\n\n## 4️⃣ Channels and Messages\nUse appropriate channels for discussion: respect the server organization.\nAvoid excessive off-topic or sensitive debates (politics, religion, etc.).\nSharing personal information (doxing) is strictly prohibited.\n\n## 5️⃣ Moderation and Sanctions\nRespect moderators' decisions.\nReport any inappropriate behavior to moderation.\nIn case of non-compliance with rules, progressive sanctions will be applied (warning, mute, ban).\n\n## 💡 Tip\nA good server is a server where everyone feels comfortable! Respect these rules and contribute to an enjoyable gaming experience for all.\n\n**After acceptance, you will receive a DM from the bot for profile configuration**\n**You have 3 minutes to react. After these 3 minutes, you will have to remove and re-accept the rules to restart!**",
+                "fr": "# 📜 Règles de Bonne Conduite 📜\n\n## 1️⃣ Respect et Courtoisie\nReste courtois et respectueux envers tous les membres.\nLes insultes, harcèlement, menaces ou comportements toxiques sont interdits.\nTout discours haineux, discriminatoire ou raciste entraînera une sanction immédiate.\n\n## 2️⃣ Légalité et Contenu Autorisé\nAucune incitation au piratage, à la triche ou à l'utilisation de logiciels tiers illégaux.\nNe partage pas de contenu illégal, NSFW ou contraire aux conditions d'utilisation de Discord.\nRespecte la propriété intellectuelle : pas de diffusion illégale de contenu protégé.\n\n## 3️⃣ Bonne Ambiance et Fair-Play\nJoue dans un esprit de fair-play et d'entraide.\nPas de spam, flood ou abus de majuscules.\nPas de publicité ou d'auto-promotion sans autorisation préalable.\n\n## 4️⃣ Canaux et Messages\nUtilise les canaux appropriés pour discuter : respecte l'organisation du serveur.\nÉvite le hors-sujet excessif ou les débats sensibles (politique, religion, etc.).\nLe partage d'informations personnelles (doxing) est strictement interdit.\n\n## 5️⃣ Modération et Sanctions\nRespecte les décisions des modérateurs.\nSignale tout comportement inapproprié à la modération.\nEn cas de non-respect des règles, des sanctions progressives seront appliquées (avertissement, mute, bannissement).\n\n## 💡 Astuce\nUn bon serveur est un serveur où chacun se sent bien ! Respecte ces règles et contribue à une expérience de jeu agréable pour tous.\n\n**Après acceptation, vous allez recevoir un MP du bot pour configuration de votre profil**\n**Vous avez 3 minutes pour réagir. Passé ces 3 minutes, vous devrez retirer et ré-accepter les règles pour pouvoir recommencer !**",
+                "es-ES": "# 📜 Reglas de Buena Conducta 📜\n\n## 1️⃣ Respeto y Cortesía\nMantente cortés y respetuoso hacia todos los miembros.\nLos insultos, acoso, amenazas o comportamientos tóxicos están prohibidos.\nCualquier discurso de odio, discriminatorio o racista resultará en sanciones inmediatas.\n\n## 2️⃣ Legalidad y Contenido Autorizado\nNo se permite la incitación a la piratería, trampas o uso de software de terceros ilegales.\nNo compartas contenido ilegal, NSFW o contrario a los términos de servicio de Discord.\nRespeta la propiedad intelectual: no distribución ilegal de contenido protegido.\n\n## 3️⃣ Buen Ambiente y Fair-Play\nJuega con espíritu de fair-play y ayuda mutua.\nNo spam, flood o abuso de mayúsculas.\nNo publicidad o autopromoción sin autorización previa.\n\n## 4️⃣ Canales y Mensajes\nUsa canales apropiados para discusión: respeta la organización del servidor.\nEvita temas excesivamente off-topic o debates sensibles (política, religión, etc.).\nCompartir información personal (doxing) está estrictamente prohibido.\n\n## 5️⃣ Moderación y Sanciones\nRespeta las decisiones de los moderadores.\nReporta cualquier comportamiento inapropiado a la moderación.\nEn caso de incumplimiento de las reglas, se aplicarán sanciones progresivas (advertencia, silencio, baneo).\n\n## 💡 Consejo\n¡Un buen servidor es un servidor donde todos se sienten cómodos! Respeta estas reglas y contribuye a una experiencia de juego agradable para todos.\n\n**Después de la aceptación, recibirás un MD del bot para la configuración del perfil**\n**Tienes 3 minutos para reaccionar. ¡Pasados estos 3 minutos, tendrás que quitar y re-aceptar las reglas para reiniciar!**",
+                "de": "# 📜 Verhaltensregeln 📜\n\n## 1️⃣ Respekt und Höflichkeit\nBleibe höflich und respektvoll gegenüber allen Mitgliedern.\nBeleidigungen, Belästigung, Drohungen oder toxisches Verhalten sind verboten.\nJede Hassrede, diskriminierende oder rassistische Sprache führt zu sofortigen Sanktionen.\n\n## 2️⃣ Legalität und Autorisierter Inhalt\nKeine Anstiftung zu Piraterie, Betrug oder Verwendung illegaler Drittanbieter-Software.\nTeile keine illegalen, NSFW oder gegen Discords Nutzungsbedingungen verstoßenden Inhalte.\nRespektiere geistiges Eigentum: keine illegale Verbreitung geschützter Inhalte.\n\n## 3️⃣ Gute Atmosphäre und Fair-Play\nSpiele im Geist von Fair-Play und gegenseitiger Hilfe.\nKein Spam, Flood oder Missbrauch von Großbuchstaben.\nKeine Werbung oder Selbstvermarktung ohne vorherige Genehmigung.\n\n## 4️⃣ Kanäle und Nachrichten\nVerwende angemessene Kanäle für Diskussionen: respektiere die Serverorganisation.\nVermeide übermäßige Off-Topic oder sensible Debatten (Politik, Religion, etc.).\nDas Teilen persönlicher Informationen (Doxing) ist strengstens verboten.\n\n## 5️⃣ Moderation und Sanktionen\nRespektiere die Entscheidungen der Moderatoren.\nMelde jedes unangemessene Verhalten der Moderation.\nBei Nichteinhaltung der Regeln werden progressive Sanktionen angewandt (Warnung, Stummschaltung, Bann).\n\n## 💡 Tipp\nEin guter Server ist ein Server, auf dem sich jeder wohl fühlt! Respektiere diese Regeln und trage zu einem angenehmen Spielerlebnis für alle bei.\n\n**Nach der Annahme erhältst du eine DM vom Bot für die Profilkonfiguration**\n**Du hast 3 Minuten zum Reagieren. Nach diesen 3 Minuten musst du die Regeln entfernen und erneut akzeptieren, um neu zu starten!**",
+                "it": "# 📜 Regole di Buona Condotta 📜\n\n## 1️⃣ Rispetto e Cortesia\nRimani cortese e rispettoso verso tutti i membri.\nInsulti, molestie, minacce o comportamenti tossici sono proibiti.\nQualsiasi discorso di odio, discriminatorio o razzista comporterà sanzioni immediate.\n\n## 2️⃣ Legalità e Contenuto Autorizzato\nNessuna incitazione alla pirateria, al cheating o all'uso di software di terze parti illegali.\nNon condividere contenuti illegali, NSFW o contrari ai termini di servizio di Discord.\nRispetta la proprietà intellettuale: nessuna distribuzione illegale di contenuti protetti.\n\n## 3️⃣ Buona Atmosfera e Fair-Play\nGioca nello spirito del fair-play e dell'aiuto reciproco.\nNiente spam, flood o abuso di lettere maiuscole.\nNiente pubblicità o auto-promozione senza autorizzazione preventiva.\n\n## 4️⃣ Canali e Messaggi\nUsa canali appropriati per le discussioni: rispetta l'organizzazione del server.\nEvita argomenti eccessivamente off-topic o dibattiti sensibili (politica, religione, ecc.).\nLa condivisione di informazioni personali (doxing) è severamente vietata.\n\n## 5️⃣ Moderazione e Sanzioni\nRispetta le decisioni dei moderatori.\nSegnala qualsiasi comportamento inappropriato alla moderazione.\nIn caso di non rispetto delle regole, verranno applicate sanzioni progressive (avvertimento, silenziamento, ban).\n\n## 💡 Suggerimento\nUn buon server è un server dove ognuno si sente a proprio agio! Rispetta queste regole e contribuisci a un'esperienza di gioco piacevole per tutti.\n\n**Dopo l'accettazione, riceverai un messaggio privato dal bot per la configurazione del profilo**\n**Hai 3 minuti per reagire. Dopo questi 3 minuti, dovrai rimuovere e ri-accettare le regole per ricominciare!**"
             },
             "cat_guild": {
-                "en-US": "🏰 Guild",
-                "fr": "🏰 Guilde",
-                "es-ES": "🏰 Gremio",
-                "de": "🏰 Gilde",
-                "it": "🏰 Gilda"
+                "en-US": "──── 📚Guild",
+                "fr": "──── 📚Guilde",
+                "es-ES": "──── 📚Gremio",
+                "de": "──── 📚Gilde",
+                "it": "──── 📚Gilda"
             },
             "announcements": {
-                "en-US": "📢-announcements",
-                "fr": "📢-annonces",
-                "es-ES": "📢-anuncios",
-                "de": "📢-ankündigungen",
-                "it": "📢-annunci"
+                "en-US": "📢│announcements",
+                "fr": "📢│annonces",
+                "es-ES": "📢│anuncios",
+                "de": "📢│ankündigungen",
+                "it": "📢│annunci"
             },
             "tavern": {
-                "en-US": "🍺-tavern",
-                "fr": "🍺-taverne",
-                "es-ES": "🍺-taberna",
-                "de": "🍺-taverne",
-                "it": "🍺-taverna"
+                "en-US": "🍺│tavern",
+                "fr": "🍺│taverne",
+                "es-ES": "🍺│taberna",
+                "de": "🍺│taverne",
+                "it": "🍺│taverna"
             },
             "hall_of_fame": {
-                "en-US": "🏆-hall-of-fame",
-                "fr": "🏆-hall-of-fame",
-                "es-ES": "🏆-salón-de-la-fama",
-                "de": "🏆-ruhmeshalle",
-                "it": "🏆-sala-della-fama"
+                "en-US": "🏰│hall_of_fame",
+                "fr": "🏰│temple_de_la_renommée",
+                "es-ES": "🏰│salón_de_la_fama",
+                "de": "🏰│ruhmeshalle",
+                "it": "🏰│sala_della_fama"
             },
             "tavern_voc": {
-                "en-US": "🍺 Tavern",
-                "fr": "🍺 Taverne",
-                "es-ES": "🍺 Taberna",
-                "de": "🍺 Taverne",
-                "it": "🍺 Taverna"
+                "en-US": "🍻 Tavern",
+                "fr": "🍻 Taverne",
+                "es-ES": "🍻 Taberna",
+                "de": "🍻 Taverne",
+                "it": "🍻 Taverna"
             },
             "create_room": {
                 "en-US": "➕ Create Room",
@@ -3227,102 +3199,123 @@
                 "it": "➕ Crea Stanza"
             },
             "cat_org": {
-                "en-US": "📋 Organization",
-                "fr": "📋 Organisation",
-                "es-ES": "📋 Organización",
-                "de": "📋 Organisation",
-                "it": "📋 Organizzazione"
+                "en-US": "──── 📑 Organization",
+                "fr": "──── 📑 Organisation",
+                "es-ES": "──── 📑 Organización",
+                "de": "──── 📑 Organisation",
+                "it": "──── 📑 Organizzazione"
             },
             "events": {
-                "en-US": "📅-events",
-                "fr": "📅-événements",
-                "es-ES": "📅-eventos",
-                "de": "📅-events",
-                "it": "📅-eventi"
+                "en-US": "📅│events",
+                "fr": "📅│événements",
+                "es-ES": "📅│eventos",
+                "de": "📅│events",
+                "it": "📅│eventi"
             },
             "groups": {
-                "en-US": "👥-groups",
-                "fr": "👥-groupes",
-                "es-ES": "👥-grupos",
-                "de": "👥-gruppen",
-                "it": "👥-gruppi"
+                "en-US": "👥│groups",
+                "fr": "👥│groupes",
+                "es-ES": "👥│grupos",
+                "de": "👥│gruppen",
+                "it": "👥│gruppi"
             },
             "members": {
-                "en-US": "👤-members",
-                "fr": "👤-membres",
-                "es-ES": "👤-miembros",
-                "de": "👤-mitglieder",
-                "it": "👤-membri"
+                "en-US": "👤│members",
+                "fr": "👤│membres",
+                "es-ES": "👤│miembros",
+                "de": "👤│mitglieder",
+                "it": "👤│membri"
+            },
+            "statics": {
+                "en-US": "🪧│statics",
+                "fr": "🪧│statiques",
+                "es-ES": "🪧│estáticos",
+                "de": "🪧│statische",
+                "it": "🪧│statici"
+            },
+            "statics_placeholder_title": {
+                "en-US": "🏆 Static Groups",
+                "fr": "🏆 Groupes fixes",
+                "es-ES": "🏆 Grupos estáticos",
+                "de": "🏆 Statische Gruppen",
+                "it": "🏆 Gruppi statici"
+            },
+            "statics_placeholder_description": {
+                "en-US": "Organized groups for regular activities. Use `/statics group_create` to create a new group.",
+                "fr": "Groupes organisés pour les activités régulières. Utilisez `/statics group_create` pour créer un nouveau groupe.",
+                "es-ES": "Grupos organizados para actividades regulares. Usa `/statics group_create` para crear un nuevo grupo.",
+                "de": "Organisierte Gruppen für regelmäßige Aktivitäten. Verwende `/statics group_create`, um eine neue Gruppe zu erstellen.",
+                "it": "Gruppi organizzati per attività regolari. Usa `/statics group_create` per creare un nuovo gruppo."
             },
             "abs": {
-                "en-US": "💤-absences",
-                "fr": "💤-absences",
-                "es-ES": "💤-ausencias",
-                "de": "💤-abwesenheiten",
-                "it": "💤-assenze"
+                "en-US": "🕒│absences",
+                "fr": "🕒│absences",
+                "es-ES": "🕒│ausencias",
+                "de": "🕒│abwesenheiten",
+                "it": "🕒│assenze"
             },
             "absences_message": {
-                "en-US": "Post your absences here. Your message will automatically assign you the absent role.",
-                "fr": "Postez vos absences ici. Votre message vous assignera automatiquement le rôle absent.",
-                "es-ES": "Publica tus ausencias aquí. Tu mensaje te asignará automáticamente el rol de ausente.",
-                "de": "Posten Sie Ihre Abwesenheiten hier. Ihre Nachricht weist Ihnen automatisch die Rolle 'abwesend' zu.",
-                "it": "Pubblica le tue assenze qui. Il tuo messaggio ti assegnerà automaticamente il ruolo assente."
+                "en-US": "## **📌 ABSENCE CHANNEL RULES 📌**\n\n### 👋 This channel is exclusively for announcing absences of more than 3 days.\n\n**🔹 Declaring an absence:**\nWrite a message indicating the duration and reason for your absence (optional).\nYour role will automatically change from **\"Member\"** to **\"Absent Member\"**.\n\n**✅ Reacting to an absence:**\n__Do not post messages__ to respond to an absence.\nUse only **reactions** under the message to interact.\n\n**🏡 Signaling your return:**\n__Delete your absence message__ upon your return.\nYour role will automatically change back to **\"Member\"**.\n\n### ⚠️ Any off-topic messages will be deleted. Please respect these rules to ensure clear and effective absence tracking.\n\nHappy gaming! 🎮✨",
+                "fr": "## **📌 RÈGLES DU CANAL ABSENCES 📌**\n\n### 👋 Ce canal est exclusivement réservé à l'annonce des absences de plus de 3 jours.\n\n**🔹 Déclarer une absence :**\nÉcrivez un message indiquant la durée et la raison de votre absence (optionnel).\nVotre rôle passera automatiquement de **\"Membre\"** à **\"Membre absent\"**.\n\n**✅ Réagir à une absence :**\n__Ne postez pas de messages__ pour répondre à une absence.\nUtilisez uniquement **les réactions** sous le message pour interagir.\n\n**🏡 Signaler votre retour :**\n__Supprimez votre message__ d'absence dès votre retour.\nVotre rôle repassera automatiquement à **\"Membre\"**.\n\n### ⚠️ Tout message hors sujet sera supprimé. Merci de respecter ces règles pour assurer un suivi clair et efficace des absences.\n\nBon jeu à tous ! 🎮✨",
+                "es-ES": "## **📌 REGLAS DEL CANAL DE AUSENCIAS 📌**\n\n### 👋 Este canal está exclusivamente reservado para anunciar ausencias de más de 3 días.\n\n**🔹 Declarar una ausencia:**\nEscribe un mensaje indicando la duración y el motivo de tu ausencia (opcional).\nTu rol cambiará automáticamente de **\"Miembro\"** a **\"Miembro ausente\"**.\n\n**✅ Reaccionar a una ausencia:**\n__No publiques mensajes__ para responder a una ausencia.\nUsa solo **las reacciones** bajo el mensaje para interactuar.\n\n**🏡 Señalar tu regreso:**\n__Elimina tu mensaje__ de ausencia al regresar.\nTu rol volverá automáticamente a **\"Miembro\"**.\n\n### ⚠️ Cualquier mensaje fuera de tema será eliminado. Por favor, respeta estas reglas para asegurar un seguimiento claro y eficaz de las ausencias.\n\n¡Buen juego a todos! 🎮✨",
+                "de": "## **📌 REGELN DES ABWESENHEITSKANALS 📌**\n\n### 👋 Dieser Kanal ist ausschließlich für die Ankündigung von Abwesenheiten von mehr als 3 Tagen reserviert.\n\n**🔹 Eine Abwesenheit melden:**\nSchreiben Sie eine Nachricht mit der Dauer und dem Grund Ihrer Abwesenheit (optional).\nIhre Rolle wechselt automatisch von **\"Mitglied\"** zu **\"Abwesendes Mitglied\"**.\n\n**✅ Auf eine Abwesenheit reagieren:**\n__Posten Sie keine Nachrichten__ als Antwort auf eine Abwesenheit.\nVerwenden Sie nur **Reaktionen** unter der Nachricht zur Interaktion.\n\n**🏡 Ihre Rückkehr signalisieren:**\n__Löschen Sie Ihre Abwesenheitsnachricht__ bei Ihrer Rückkehr.\nIhre Rolle wechselt automatisch zurück zu **\"Mitglied\"**.\n\n### ⚠️ Alle themenfremden Nachrichten werden gelöscht. Bitte respektieren Sie diese Regeln, um eine klare und effektive Abwesenheitsverfolgung zu gewährleisten.\n\nViel Spaß beim Spielen! 🎮✨",
+                "it": "## **📌 REGOLE DEL CANALE ASSENZE 📌**\n\n### 👋 Questo canale è esclusivamente riservato all'annuncio di assenze superiori a 3 giorni.\n\n**🔹 Dichiarare un'assenza:**\nScrivi un messaggio indicando la durata e il motivo della tua assenza (opzionale).\nIl tuo ruolo cambierà automaticamente da **\"Membro\"** a **\"Membro assente\"**.\n\n**✅ Reagire a un'assenza:**\n__Non pubblicare messaggi__ per rispondere a un'assenza.\nUsa solo **le reazioni** sotto il messaggio per interagire.\n\n**🏡 Segnalare il tuo ritorno:**\n__Elimina il tuo messaggio__ di assenza al tuo ritorno.\nIl tuo ruolo tornerà automaticamente a **\"Membro\"**.\n\n### ⚠️ Qualsiasi messaggio fuori tema sarà eliminato. Si prega di rispettare queste regole per garantire un monitoraggio chiaro ed efficace delle assenze.\n\nBuon gioco a tutti! 🎮✨"
             },
             "loot": {
-                "en-US": "💎-loot-wishlist",
-                "fr": "💎-loot-wishlist",
-                "es-ES": "💎-lista-de-botín",
-                "de": "💎-loot-wunschliste",
-                "it": "💎-lista-loot"
+                "en-US": "💍│loot_wishlist",
+                "fr": "💍│loot_wishlist",
+                "es-ES": "💍│lista_de_botín",
+                "de": "💍│loot_wunschliste",
+                "it": "💍│lista_loot"
             },
             "tutorial": {
-                "en-US": "📚-tutorial",
-                "fr": "📚-tutoriel",
-                "es-ES": "📚-tutorial",
-                "de": "📚-tutorial",
-                "it": "📚-tutorial"
+                "en-US": "❓│tutorial",
+                "fr": "❓│tutoriel",
+                "es-ES": "❓│tutorial",
+                "de": "❓│tutorial",
+                "it": "❓│tutorial"
             },
             "cat_council": {
-                "en-US": "👑 Council",
-                "fr": "👑 Conseil",
-                "es-ES": "👑 Consejo",
-                "de": "👑 Rat",
-                "it": "👑 Consiglio"
+                "en-US": "──── 👑 Council",
+                "fr": "──── 👑 Conseil",
+                "es-ES": "──── 👑 Consejo",
+                "de": "──── 👑 Rat",
+                "it": "──── 👑 Consiglio"
             },
             "rounded_table": {
-                "en-US": "🗣️-round-table",
-                "fr": "🗣️-table-ronde",
-                "es-ES": "🗣️-mesa-redonda",
-                "de": "🗣️-runder-tisch",
-                "it": "🗣️-tavola-rotonda"
+                "en-US": "🔱│round-table",
+                "fr": "🔱│table_ronde",
+                "es-ES": "🔱│mesa_redonda",
+                "de": "🔱│runder_tisch",
+                "it": "🔱│tavola_rotonda"
             },
             "reports": {
-                "en-US": "📊-reports",
-                "fr": "📊-rapports",
-                "es-ES": "📊-informes",
-                "de": "📊-berichte",
-                "it": "📊-rapporti"
+                "en-US": "📨│reports",
+                "fr": "📨│rapports",
+                "es-ES": "📨│informes",
+                "de": "📨│berichte",
+                "it": "📨│rapporti"
             },
             "notifications": {
-                "en-US": "🔔-notifications",
-                "fr": "🔔-notifications",
-                "es-ES": "🔔-notificaciones",
-                "de": "🔔-benachrichtigungen",
-                "it": "🔔-notifiche"
+                "en-US": "❕│notifications",
+                "fr": "❕│notifications",
+                "es-ES": "❕│notificaciones",
+                "de": "❕│benachrichtigungen",
+                "it": "❕│notifiche"
             },
             "staff": {
-                "en-US": "👑 Staff",
-                "fr": "👑 Staff",
-                "es-ES": "👑 Staff",
-                "de": "👑 Staff",
-                "it": "👑 Staff"
+                "en-US": "🍺 Staff Bar",
+                "fr": "🍺 Bar du Staff",
+                "es-ES": "🍺 Bar del Staff",
+                "de": "🍺 Staff-Bar",
+                "it": "🍺 Bar dello Staff"
             },
             "forum_org": {
-                "en-US": "📋-organization-forum",
-                "fr": "📋-forum-organisation",
-                "es-ES": "📋-foro-organización",
-                "de": "📋-organisations-forum",
-                "it": "📋-forum-organizzazione"
+                "en-US": "📂│organization_forum",
+                "fr": "📂│forum_organisation",
+                "es-ES": "📂│foro_organización",
+                "de": "📂│organisations_forum",
+                "it": "📂│forum_organizzazione"
             },
             "topic_ally": {
                 "en-US": "👥 Allies Management",
@@ -3332,11 +3325,11 @@
                 "it": "👥 Gestione Alleati"
             },
             "message_ally": {
-                "en-US": "Discussion thread for allies management and coordination.",
-                "fr": "Discussion pour la gestion et coordination des alliés.",
-                "es-ES": "Hilo de discusión para gestión y coordinación de aliados.",
-                "de": "Diskussionsthread für Verbündeten-Management und Koordination.",
-                "it": "Thread di discussione per la gestione e coordinazione degli alleati."
+                "en-US": "Discussion thread for allies management and coordination. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless",
+                "fr": "Discussion pour la gestion et coordination des alliés. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless",
+                "es-ES": "Hilo de discusión para gestión y coordinación de aliados. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless",
+                "de": "Diskussionsthread für Verbündeten-Management und Koordination. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless",
+                "it": "Thread di discussione per la gestione e coordinazione degli alleati. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346092767561908234/ally.png?ex=6895e994&is=68949814&hm=1743f01e792da1848a730ed9e4504918b598bc46200e575dbb762efdb0d7db89&=&format=webp&quality=lossless"
             },
             "topic_friends": {
                 "en-US": "🤝 Friends Management",
@@ -3346,11 +3339,11 @@
                 "it": "🤝 Gestione Amici"
             },
             "message_friends": {
-                "en-US": "Discussion thread for friends management and social coordination.",
-                "fr": "Discussion pour la gestion des amis et coordination sociale.",
-                "es-ES": "Hilo de discusión para gestión de amigos y coordinación social.",
-                "de": "Diskussionsthread für Freunde-Management und soziale Koordination.",
-                "it": "Thread di discussione per la gestione degli amici e coordinazione sociale."
+                "en-US": "Discussion thread for friends management and social coordination. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless",
+                "fr": "Discussion pour la gestion des amis et coordination sociale. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless",
+                "es-ES": "Hilo de discusión para gestión de amigos y coordinación social. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless",
+                "de": "Diskussionsthread für Freunde-Management und soziale Koordination. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless",
+                "it": "Thread di discussione per la gestione degli amici e coordinazione sociale. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093200795766824/friends.png?ex=6895e9fc&is=6894987c&hm=7e9dc865c405b96e0da0401cb1a16211307a7cd5d410aff10d22dc5db7bbfe62&=&format=webp&quality=lossless"
             },
             "topic_diplomats": {
                 "en-US": "🕊️ Diplomatic Relations",
@@ -3360,11 +3353,11 @@
                 "it": "🕊️ Relazioni Diplomatiche"
             },
             "message_diplomats": {
-                "en-US": "Discussion thread for diplomatic relations and negotiations.",
-                "fr": "Discussion pour les relations diplomatiques et négociations.",
-                "es-ES": "Hilo de discusión para relaciones diplomáticas y negociaciones.",
-                "de": "Diskussionsthread für diplomatische Beziehungen und Verhandlungen.",
-                "it": "Thread di discussione per relazioni diplomatiche e negoziazioni."
+                "en-US": "Discussion thread for diplomatic relations and negotiations. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless",
+                "fr": "Discussion pour les relations diplomatiques et négociations. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless",
+                "es-ES": "Hilo de discusión para relaciones diplomáticas y negociaciones. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless",
+                "de": "Diskussionsthread für diplomatische Beziehungen und Verhandlungen. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless",
+                "it": "Thread di discussione per relazioni diplomatiche e negoziazioni. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346093557731295324/diplo.png?ex=6895ea51&is=689498d1&hm=ad55de36c6001f06ebf6e4a0f9d41fb94cd3bf875774da82d0ecd34766a8ec2c&=&format=webp&quality=lossless"
             },
             "topic_recruitment": {
                 "en-US": "📝 Recruitment",
@@ -3374,11 +3367,11 @@
                 "it": "📝 Reclutamento"
             },
             "message_recruitment": {
-                "en-US": "Discussion thread for recruitment strategy and candidate evaluation.",
-                "fr": "Discussion pour la stratégie de recrutement et évaluation des candidats.",
-                "es-ES": "Hilo de discusión para estrategia de reclutamiento y evaluación de candidatos.",
-                "de": "Diskussionsthread für Rekrutierungsstrategie und Kandidatenbewertung.",
-                "it": "Thread di discussione per strategia di reclutamento e valutazione candidati."
+                "en-US": "Discussion thread for recruitment strategy and candidate evaluation. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless",
+                "fr": "Discussion pour la stratégie de recrutement et évaluation des candidats. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless",
+                "es-ES": "Hilo de discusión para estrategia de reclutamiento y evaluación de candidatos. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless",
+                "de": "Diskussionsthread für Rekrutierungsstrategie und Kandidatenbewertung. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless",
+                "it": "Thread di discussione per strategia di reclutamento e valutazione candidati. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346064196671897650/postu.png?ex=6895cef9&is=68947d79&hm=6cfba8cbeeefab9d2075af99090624dd7e4b60f443ecae6c866c5f643e6b58c8&=&format=webp&quality=lossless"
             },
             "topic_members": {
                 "en-US": "👤 Member Management",
@@ -3388,53 +3381,53 @@
                 "it": "👤 Gestione Membri"
             },
             "message_members": {
-                "en-US": "Discussion thread for member management and internal affairs.",
-                "fr": "Discussion pour la gestion des membres et affaires internes.",
-                "es-ES": "Hilo de discusión para gestión de miembros y asuntos internos.",
-                "de": "Diskussionsthread für Mitglieder-Management und interne Angelegenheiten.",
-                "it": "Thread di discussione per gestione membri e affari interni."
+                "en-US": "Discussion thread for member management and internal affairs. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless",
+                "fr": "Discussion pour la gestion des membres et affaires internes. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless",
+                "es-ES": "Hilo de discusión para gestión de miembros y asuntos internos. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless",
+                "de": "Diskussionsthread für Mitglieder-Management und interne Angelegenheiten. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless",
+                "it": "Thread di discussione per gestione membri e affari interni. \nhttps://media.discordapp.net/attachments/1209255148271181908/1346061941004570715/members.png?ex=6895ccdf&is=68947b5f&hm=e31d7ea2397eef508f0cd66bbd597df1ac1cdbb297a4b3002d3f15fb67452b28&=&format=webp&quality=lossless"
             },
             "cat_recruitment": {
-                "en-US": "📝 Recruitment",
-                "fr": "📝 Recrutement",
-                "es-ES": "📝 Reclutamiento",
-                "de": "📝 Rekrutierung",
-                "it": "📝 Reclutamento"
+                "en-US": "──── ✍️Recruitment",
+                "fr": "──── ✍️Recrutement",
+                "es-ES": "──── ✍️Reclutamiento",
+                "de": "──── ✍️Rekrutierung",
+                "it": "──── ✍️Reclutamento"
             },
             "ext_recruitment": {
-                "en-US": "📝-external-recruitment",
-                "fr": "📝-recrutement-externe",
-                "es-ES": "📝-reclutamiento-externo",
-                "de": "📝-externe-rekrutierung",
-                "it": "📝-reclutamento-esterno"
+                "en-US": "🚩│infos",
+                "fr": "🚩│infos",
+                "es-ES": "🚩│información",
+                "de": "🚩│infos",
+                "it": "🚩│informazioni"
             },
             "recruitment_message": {
-                "en-US": "Guild Recruitment - Join Us!",
-                "fr": "Recrutement de Guilde - Rejoignez-nous !",
-                "es-ES": "Reclutamiento de Gremio - ¡Únete!",
-                "de": "Gilden-Rekrutierung - Schließen Sie sich uns an!",
-                "it": "Reclutamento Gilda - Unisciti a noi!"
+                "en-US": "Guild Recruitment",
+                "fr": "Recrutement de Guilde",
+                "es-ES": "Reclutamiento de Gremio",
+                "de": "Gilden-Rekrutierung",
+                "it": "Reclutamento Gilda"
             },
             "waiting_room": {
-                "en-US": "⏳ Waiting Room",
-                "fr": "⏳ Salle d'attente",
-                "es-ES": "⏳ Sala de Espera",
-                "de": "⏳ Wartezimmer",
-                "it": "⏳ Sala d'Attesa"
+                "en-US": "⏸️ Waiting Room",
+                "fr": "⏸️ Salle d'Attente",
+                "es-ES": "⏸️ Sala de Espera",
+                "de": "⏸️ Wartezimmer",
+                "it": "⏸️ Sala d'Attesa"
             },
             "recruitment": {
-                "en-US": "📝 Recruitment",
-                "fr": "📝 Recrutement",
-                "es-ES": "📝 Reclutamiento",
-                "de": "📝 Rekrutierung",
-                "it": "📝 Reclutamento"
+                "en-US": "✍️ Recruitment",
+                "fr": "✍️ Recrutement",
+                "es-ES": "✍️ Reclutamiento",
+                "de": "✍️ Rekrutierung",
+                "it": "✍️ Reclutamento"
             },
             "cat_diplomacy": {
-                "en-US": "🕊️ Diplomacy",
-                "fr": "🕊️ Diplomatie",
-                "es-ES": "🕊️ Diplomacia",
-                "de": "🕊️ Diplomatie",
-                "it": "🕊️ Diplomazia"
+                "en-US": "──── 🕊️Diplomacy",
+                "fr": "──── 🕊️Diplomatie",
+                "es-ES": "──── 🕊️Diplomacia",
+                "de": "──── 🕊️Diplomatie",
+                "it": "──── 🕊️Diplomazia"
             },
             "diplomacy": {
                 "en-US": "🕊️ Diplomacy",
@@ -3444,18 +3437,18 @@
                 "it": "🕊️ Diplomazia"
             },
             "cat_ami": {
-                "en-US": "🤝 Friends",
-                "fr": "🤝 Amis",
-                "es-ES": "🤝 Amigos",
-                "de": "🤝 Freunde",
-                "it": "🤝 Amici"
+                "en-US": "──── 🤝 Friends",
+                "fr": "──── 🤝 Amis",
+                "es-ES": "──── 🤝 Amigos",
+                "de": "──── 🤝 Freunde",
+                "it": "──── 🤝 Amici"
             },
             "ami_tavern": {
-                "en-US": "🤝-friends-chat",
-                "fr": "🤝-discussion-amis",
-                "es-ES": "🤝-chat-amigos",
-                "de": "🤝-freunde-chat",
-                "it": "🤝-chat-amici"
+                "en-US": "🤝│friends_chat",
+                "fr": "🤝│discussion_amis",
+                "es-ES": "🤝│chat_amigos",
+                "de": "🤝│freunde_chat",
+                "it": "🤝│chat_amici"
             },
             "ami_tavern_voc": {
                 "en-US": "🤝 Friends Voice",

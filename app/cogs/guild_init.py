@@ -134,7 +134,8 @@ class GuildInit(commands.Cog):
                     "diplomats": discord.Color(int("DC143C", 16)),
                     "friends": discord.Color(int("FFD700", 16)),
                     "applicant": discord.Color(int("ba55d3", 16)),
-                    "config_ok": discord.Color(int("646464", 16))
+                    "config_ok": discord.Color(int("646464", 16)),
+                    "rules_ok": discord.Color(int("808080", 16))
                 }
                 role_names = GUILD_INIT_DATA.get("role_names", {})
                 created_roles = {}
@@ -221,12 +222,11 @@ class GuildInit(commands.Cog):
                 members_msgs = await asyncio.gather(*(members_ch.send(".") for _ in range(5)))
                 m_ids = [msg.id for msg in members_msgs]
 
-                static_groups = global_translations.get("static_groups", {})
-                statics_name = static_groups["channel"]["name"].get(guild_lang, static_groups["channel"]["name"].get("en-US"))
+                statics_name = channel_names["statics"].get(guild_lang)
                 statics_ch = await guild.create_text_channel(name=statics_name, category=org_cat)
                 
-                title = static_groups["channel"]["placeholder"]["title"].get(guild_lang, static_groups["channel"]["placeholder"]["title"].get("en-US"))
-                description = static_groups["channel"]["placeholder"]["description"].get(guild_lang, static_groups["channel"]["placeholder"]["description"].get("en-US"))
+                title = channel_names["statics_placeholder_title"].get(guild_lang)
+                description = channel_names["statics_placeholder_description"].get(guild_lang)
                 placeholder_embed = discord.Embed(title=title, description=description, color=discord.Color.blue())
                 statics_msg = await statics_ch.send(embed=placeholder_embed)
                 abs_ch = await guild.create_text_channel(name=channel_names["abs"].get(guild_lang),category=org_cat)
@@ -287,7 +287,7 @@ class GuildInit(commands.Cog):
                         response = await get_user_message(ctx, GUILD_INIT_DATA,"messages.error", error="Discord configuration error")
                         return await ctx.followup.send(response, ephemeral=True)
 
-                war_conf = await guild.create_voice_channel("⚔️ WAR",type=discord.ChannelType.stage_voice,category=guild_cat)
+                war_conf = await guild.create_stage_channel("⚔️ WAR", category=guild_cat, topic="War coordination and strategic discussions")
 
                 tutorial_channel = await ctx.guild.create_forum_channel(name=channel_names["tutorial"].get(guild_lang),category=org_cat,position=99)
 
@@ -330,6 +330,7 @@ class GuildInit(commands.Cog):
                     tutorial_channel.id,
                     *forum_ids,
                     notif_ch.id,
+                    recruitment_cat.id,
                     ext_recruitment.id,
                     ext_msg.id,
                     diplomat_cat.id
@@ -357,17 +358,18 @@ class GuildInit(commands.Cog):
                     abs_channel,
                     loot_channel,
                     loot_message,
-                    tutorial_channel,
+                    tuto_channel,
                     forum_allies_channel,
                     forum_friends_channel,
                     forum_diplomats_channel,
                     forum_recruitment_channel,
                     forum_members_channel,
                     notifications_channel,
+                    external_recruitment_cat,
                     external_recruitment_channel,
                     external_recruitment_message,
                     category_diplomat
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     rules_channel = VALUES(rules_channel),
                     rules_message = VALUES(rules_message),
@@ -388,13 +390,14 @@ class GuildInit(commands.Cog):
                     abs_channel = VALUES(abs_channel),
                     loot_channel = VALUES(loot_channel),
                     loot_message = VALUES(loot_message),
-                    tutorial_channel = VALUES(tutorial_channel),
+                    tuto_channel = VALUES(tuto_channel),
                     forum_allies_channel = VALUES(forum_allies_channel),
                     forum_friends_channel = VALUES(forum_friends_channel),
                     forum_diplomats_channel = VALUES(forum_diplomats_channel),
                     forum_recruitment_channel = VALUES(forum_recruitment_channel),
                     forum_members_channel = VALUES(forum_members_channel),
                     notifications_channel = VALUES(notifications_channel),
+                    external_recruitment_cat = VALUES(external_recruitment_cat),
                     external_recruitment_channel = VALUES(external_recruitment_channel),
                     external_recruitment_message = VALUES(external_recruitment_message),
                     category_diplomat = VALUES(category_diplomat)
@@ -422,13 +425,14 @@ class GuildInit(commands.Cog):
                     "abs_channel": abs_ch.id,
                     "loot_channel": loot.id,
                     "loot_message": loot_msg.id,
-                    "tutorial_channel": tutorial_channel.id,
+                    "tuto_channel": tutorial_channel.id,
                     "forum_allies_channel": forum_ids[0],
                     "forum_friends_channel": forum_ids[1],
                     "forum_diplomats_channel": forum_ids[2],
                     "forum_recruitment_channel": forum_ids[3],
                     "forum_members_channel": forum_ids[4],
                     "notifications_channel": notif_ch.id,
+                    "external_recruitment_cat": recruitment_cat.id,
                     "external_recruitment_channel": ext_recruitment.id,
                     "external_recruitment_message": ext_msg.id,
                     "category_diplomat": diplomat_cat.id
@@ -448,7 +452,11 @@ class GuildInit(commands.Cog):
                 )
 
                 try:
-                    await self.bot.cache.invalidate_guild(guild_id)
+                    await self.bot.cache.invalidate_category('guild_data')
+                    await self.bot.cache.invalidate_category('roster_data')  
+                    await self.bot.cache.invalidate_category('events_data')
+                    await self.bot.cache.invalidate_category('user_data')
+                    await self.bot.cache.invalidate_category('discord_entities')
                     await self.bot.cache_loader.ensure_category_loaded('guild_roles')
                     await self.bot.cache_loader.ensure_category_loaded('guild_channels')
                     await self.bot.cache_loader.ensure_category_loaded('guild_settings')

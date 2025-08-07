@@ -510,6 +510,9 @@ def setup_global_group_error_handlers(bot: discord.Bot) -> None:
             error: Exception that occurred during command execution
         """
 
+        logging.error(f"[Bot] GLOBAL_ERROR_HANDLER TRIGGERED - Error Type: {type(error).__name__}, Error: {error}")
+        logging.error(f"[Bot] GLOBAL_ERROR_HANDLER CONTEXT - Guild: {ctx.guild.id if ctx.guild else 'None'}, Command: {ctx.command.name if hasattr(ctx, 'command') and ctx.command else 'None'}")
+
         group_name = "unknown"
         command_name = "unknown"
         

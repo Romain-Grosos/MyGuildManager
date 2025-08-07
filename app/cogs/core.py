@@ -154,6 +154,10 @@ class Core(commands.Cog):
             ctx: Discord application context
             error: Exception that occurred during command execution
         """
+
+        logging.error(f"[CoreManager] COG_ERROR_HANDLER TRIGGERED - Error Type: {type(error).__name__}, Error: {error}")
+        logging.error(f"[CoreManager] COG_ERROR_HANDLER CONTEXT - Guild: {ctx.guild.id if ctx.guild else 'None'}, Command: {ctx.command.name if hasattr(ctx, 'command') and ctx.command else 'None'}")
+        
         response = await get_user_message(ctx, global_translations.get("global", {}), "errors.unknown", error=error)
         try:
             if ctx.response.is_done():
@@ -183,7 +187,7 @@ class Core(commands.Cog):
             choices=[
                 discord.OptionChoice(
                     name=choice_data["name"].get("en-US", choice_name),
-                    value=choice_data["value"],
+                    value=str(choice_data["value"]),
                     name_localizations=choice_data["name"]
                 )
                 for choice_name, choice_data in global_translations.get("global", {}).get("common_options", {}).get("guild_game", {}).get("choices", {}).items()
@@ -204,7 +208,16 @@ class Core(commands.Cog):
             guild_game: Game ID for the guild
             guild_server: Server name for the guild
         """
-        valid_name, name_error = self._validate_guild_name(guild_name)
+
+        logging.info(f"[CoreManager] APP_INITIALIZE STARTED - Guild: {ctx.guild.id}, Name: {guild_name}, Lang: {guild_lang}, Game: {guild_game}, Server: {guild_server}")
+        
+        try:
+            logging.info(f"[CoreManager] About to validate guild name: '{guild_name}'")
+            valid_name, name_error = self._validate_guild_name(guild_name)
+            logging.info(f"[CoreManager] Guild name validation result: valid={valid_name}, error='{name_error}'")
+        except Exception as e:
+            logging.error(f"[CoreManager] CRITICAL ERROR in _validate_guild_name: {e}", exc_info=True)
+            raise
         if not valid_name:
             await ctx.respond(f"Invalid guild name: {name_error}", ephemeral=True)
             return
@@ -215,7 +228,9 @@ class Core(commands.Cog):
             return
         
         guild_id = ctx.guild.id
-        guild_game_int = int(guild_game)
+        
+        if isinstance(guild_game, str):
+            guild_game = int(guild_game)
         
         try:
             await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -230,20 +245,20 @@ class Core(commands.Cog):
                     (guild_id, guild_name, guild_lang, guild_game, guild_server, initialized, premium)
                     VALUES (%s, %s, %s, %s, %s, TRUE, 0)
                 """
-                await self.bot.run_db_query(insert_query, (guild_id, guild_name.strip(), guild_lang, guild_game_int, guild_server.strip()), commit=True)
+                await self.bot.run_db_query(insert_query, (guild_id, guild_name.strip(), guild_lang, guild_game, guild_server.strip()), commit=True)
                 logging.info(f"[CoreManager] Guild {guild_id} successfully initialized in the database.")
 
                 try:
                     await self.bot.cache.set_guild_data(guild_id, 'guild_name', guild_name.strip())
                     await self.bot.cache.set_guild_data(guild_id, 'guild_lang', guild_lang)
-                    await self.bot.cache.set_guild_data(guild_id, 'guild_game', guild_game_int)
+                    await self.bot.cache.set_guild_data(guild_id, 'guild_game', guild_game)
                     await self.bot.cache.set_guild_data(guild_id, 'guild_server', guild_server.strip())
                     await self.bot.cache.set_guild_data(guild_id, 'premium', 0)
 
                     await self.bot.cache.set_guild_data(guild_id, 'settings', {
                         'guild_name': guild_name.strip(),
                         'guild_lang': guild_lang,
-                        'guild_game': guild_game_int,
+                        'guild_game': guild_game,
                         'guild_server': guild_server.strip(),
                         'premium': 0
                     })
@@ -289,7 +304,7 @@ class Core(commands.Cog):
             choices=[
                 discord.OptionChoice(
                     name=choice_data["name"].get("en-US", choice_name),
-                    value=choice_data["value"],
+                    value=str(choice_data["value"]),
                     name_localizations=choice_data["name"]
                 )
                 for choice_name, choice_data in global_translations.get("global", {}).get("common_options", {}).get("guild_game", {}).get("choices", {}).items()
@@ -324,6 +339,9 @@ class Core(commands.Cog):
                 return
         
         guild_id = ctx.guild.id
+
+        if guild_game is not None and isinstance(guild_game, str):
+            guild_game = int(guild_game)
         
         try:
             await self.bot.cache_loader.ensure_category_loaded('guild_settings')
@@ -338,7 +356,7 @@ class Core(commands.Cog):
             
             new_guild_name = guild_name.strip() if guild_name is not None else current_guild_name
             new_guild_lang = guild_lang if guild_lang is not None else current_guild_lang
-            new_guild_game = int(guild_game) if guild_game is not None else current_guild_game
+            new_guild_game = guild_game if guild_game is not None else current_guild_game
             new_guild_server = guild_server.strip() if guild_server is not None else current_guild_server
 
             update_query = """
