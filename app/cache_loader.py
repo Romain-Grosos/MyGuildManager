@@ -606,28 +606,36 @@ class CacheLoader:
         """
         Load Epic T2 items data.
         
-        Loads epic item definitions with multilingual names
-        for loot wishlist and distribution systems.
+        Loads epic item definitions with multilingual names, types, categories
+        and URLs for loot wishlist and distribution systems.
         """
         if 'epic_items_t2' in self._loaded_categories:
             return
             
         logging.debug("[CacheLoader] Loading Epic T2 items data")
-        query = "SELECT item_id, item_name_en, item_name_fr, item_name_es, item_name_de FROM epic_items_t2"
+        query = """
+        SELECT item_id, item_name_en, item_type, item_category, 
+               item_icon_url, item_url, item_name_fr, item_name_es, item_name_de 
+        FROM epic_items_t2
+        """
         
         try:
             rows = await self.bot.run_db_query(query, fetch_all=True)
             if rows:
                 items_data = []
                 for row in rows:
-                    item_id, name_en, name_fr, name_es, name_de = row
+                    item_id, name_en, item_type, item_category, icon_url, item_url, name_fr, name_es, name_de = row
                     
                     items_data.append({
                         'item_id': item_id,
                         'item_name_en': name_en,
-                        'item_name_fr': name_fr,
-                        'item_name_es': name_es,
-                        'item_name_de': name_de
+                        'item_type': item_type or "Unknown",
+                        'item_category': item_category or "Unknown",
+                        'item_icon_url': icon_url or "",
+                        'item_url': item_url or f"https://questlog.gg/throne-and-liberty/en/db/item/{item_id}",
+                        'item_name_fr': name_fr or "",
+                        'item_name_es': name_es or "",
+                        'item_name_de': name_de or ""
                     })
                 
                 await self.bot.cache.set_static_data('epic_items_t2', items_data)

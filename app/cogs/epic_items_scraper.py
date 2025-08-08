@@ -48,6 +48,17 @@ class EpicItemsScraper(commands.Cog):
         self.languages = ['en', 'fr', 'es', 'de']
 
         self._register_loot_commands()
+
+        asyncio.create_task(self._init_cache())
+    
+    async def _init_cache(self):
+        """Initialize cache from database on startup using cache_loader."""
+        try:
+            await asyncio.sleep(2)
+            await self.bot.cache_loader.ensure_epic_items_t2_loaded()
+            logging.info(f"[EpicItemsScraper] Cache initialized via cache_loader")
+        except Exception as e:
+            logging.error(f"[EpicItemsScraper] Failed to initialize cache: {e}")
     
     def _register_loot_commands(self):
         """Register epic items commands with the centralized loot group."""
@@ -721,119 +732,82 @@ class EpicItemsScraper(commands.Cog):
         search: str = discord.Option(
             description=EPIC_ITEMS_DATA.get("options", {}).get("search", {}).get("description", {}).get("en-US", "Search for specific item by name"),
             description_localizations=EPIC_ITEMS_DATA.get("options", {}).get("search", {}).get("description", {}),
-            required=False
-        ),
-        item_type: str = discord.Option(
-            description=EPIC_ITEMS_DATA.get("options", {}).get("item_type", {}).get("description", {}).get("en-US", "Filter by item type"),
-            description_localizations=EPIC_ITEMS_DATA.get("options", {}).get("item_type", {}).get("description", {}),
-            required=False,
-            choices=["Weapon", "Armor", "Accessory", "All"]
-        ),
-        language: str = discord.Option(
-            description=EPIC_ITEMS_DATA.get("options", {}).get("language", {}).get("description", {}).get("en-US", "Language for item names"),
-            description_localizations=EPIC_ITEMS_DATA.get("options", {}).get("language", {}).get("description", {}),
-            required=False,
-            choices=["English", "Français", "Español", "Deutsch"],
-            default="English"
+            required=True
         )
     ):
         """
-        Command to view Epic T2 items with multilingual support.
+        Command to search items from the Epic T2 database.
         
         Args:
             ctx: Discord application context
-            search: Optional search filter for item names
-            item_type: Optional filter by item type (Weapon, Armor, Accessory, All)
-            language: Display language for item names
+            search: Search filter for item names (required)
         """
         await ctx.defer()
         
         try:
-            lang_map = {
-                "English": "item_name_en",
-                "Français": "item_name_fr", 
-                "Español": "item_name_es",
-                "Deutsch": "item_name_de"
-            }
-            name_column = lang_map.get(language, "item_name_en")
-
             items = await self.bot.cache.get_static_data('epic_items_t2')
             
             if not items:
-                query = f"""
-                SELECT item_id, {name_column} as item_name, item_type, item_category, 
-                       item_icon_url, item_url
+                query = """
+                SELECT item_id, item_name_en, item_type, item_category, 
+                       item_icon_url, item_url,
+                       item_name_fr, item_name_es, item_name_de
                 FROM epic_items_t2
                 """
                 params = []
                 conditions = []
                 
-                if search:
-                    conditions.append(f"{name_column} LIKE ?")
-                    params.append(f"%{search}%")
-                
-                if item_type and item_type != "All":
-                    conditions.append("item_type = ?")
-                    params.append(item_type)
+                search_conditions = [
+                    "item_name_en LIKE ?",
+                    "item_name_fr LIKE ?", 
+                    "item_name_es LIKE ?",
+                    "item_name_de LIKE ?"
+                ]
+                conditions.append(f"({' OR '.join(search_conditions)})")
+                search_param = f"%{search}%"
+                params.extend([search_param, search_param, search_param, search_param])
                 
                 if conditions:
                     query += " WHERE " + " AND ".join(conditions)
                 
-                query += f" ORDER BY {name_column}"
+                query += " ORDER BY item_name_en"
                 
                 results = await run_db_query(query, tuple(params) if params else (), fetch_all=True)
                 
                 if results:
                     items = []
                     for row in results:
-                        item_id = row[0]
-                        item_type_db = row[2]
-                        item_category_db = row[3]
-
-                        if not item_type_db or not item_category_db:
-                            item_type_calc, item_category_calc = self.classify_item_by_id(item_id)
-                            item_type_final = item_type_calc or item_type_db or "Unknown"
-                            item_category_final = item_category_calc or item_category_db or "Unknown"
-                        else:
-                            item_type_final = item_type_db
-                            item_category_final = item_category_db
-                        
-                        item_url = row[5] if row[5] else f"https://questlog.gg/throne-and-liberty/en/db/items/{item_id}"
-                        
                         items.append({
-                            "item_id": item_id,
-                            "item_name": row[1],
-                            "item_type": item_type_final,
-                            "item_category": item_category_final,
+                            "item_id": row[0],
+                            "item_name_en": row[1],
+                            "item_type": row[2] or "Unknown", 
+                            "item_category": row[3] or "Unknown",
                             "item_icon_url": row[4],
-                            "item_url": item_url
+                            "item_url": row[5] or f"https://questlog.gg/throne-and-liberty/en/db/item/{row[0]}",
+                            "item_name_fr": row[6] or "",
+                            "item_name_es": row[7] or "",
+                            "item_name_de": row[8] or ""
                         })
             else:
                 filtered_items = []
+                search_lower = search.lower().strip()
+                
                 for item in items:
-                    item_name = item.get(name_column, item.get('item_name_en', ''))
+                    item_names = [
+                        item.get("item_name_en", ""),
+                        item.get("item_name_fr", ""), 
+                        item.get("item_name_es", ""),
+                        item.get("item_name_de", "")
+                    ]
                     
-                    if search and search.lower() not in item_name.lower():
-                        continue
-                    if item_type and item_type != "All" and item.get("item_type") != item_type:
-                        continue
-
-                    filtered_item = item.copy()
-                    filtered_item["item_name"] = item_name
-
-                    if not filtered_item.get("item_url") and item.get("item_id"):
-                        filtered_item["item_url"] = f"https://questlog.gg/throne-and-liberty/en/db/item/{item['item_id']}"
-
-                    item_id = item.get("item_id", "")
-                    item_type_cached = item.get("item_type")
-                    item_category_cached = item.get("item_category")
+                    found = False
+                    for name in item_names:
+                        if name and search_lower in name.lower():
+                            found = True
+                            break
                     
-                    if not item_type_cached or not item_category_cached:
-                        item_type_calc, item_category_calc = self.classify_item_by_id(item_id)
-                        filtered_item["item_type"] = item_type_calc or item_type_cached or "Unknown"
-                        filtered_item["item_category"] = item_category_calc or item_category_cached or "Unknown"
-                    
-                    filtered_items.append(filtered_item)
+                    if found:
+                        filtered_items.append(item)
                 
                 items = filtered_items
             
@@ -846,15 +820,11 @@ class EpicItemsScraper(commands.Cog):
             items_per_page = 5
             
             for i in range(0, len(items), items_per_page):
-                title = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.embed_title", language=language)
-                description = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.embed_description", 
-                                               start=str(min(i+1, len(items))), 
-                                               end=str(min(i+items_per_page, len(items))), 
-                                               total=str(len(items)))
+                search_title = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.search_title")
+                search_title += f" : `{search}`"
                 
                 embed = discord.Embed(
-                    title=title,
-                    description=description,
+                    title=search_title,
                     color=discord.Color.purple()
                 )
                 
@@ -863,23 +833,25 @@ class EpicItemsScraper(commands.Cog):
                 view_label = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.view_on_questlog")
                 
                 page_items = items[i:i+items_per_page]
-                for item in page_items:
-                    item_name = item.get("item_name", "Unknown")
+                for j, item in enumerate(page_items):
+                    item_name = item.get("item_name_en", "Unknown")
                     item_type_val = item.get('item_type', 'Unknown')
                     item_category_val = item.get('item_category', 'Unknown')
                     item_url = item.get('item_url', '')
-                    item_icon = item.get('item_icon_url', '')
 
                     translated_type, translated_category = await self.get_translated_item_info(ctx, item_type_val, item_category_val)
                     
-                    field_value = f"**{type_label}:** {translated_type}\n"
+                    field_value = f"`{item_name}`\n\n"
+                    field_value += f"**{type_label}:** {translated_type}\n"
                     field_value += f"**{category_label}:** {translated_category}\n"
                     if item_url:
-                        field_value += f"[{view_label}]({item_url})\n"
-                    field_value += "\n"
+                        field_value += f"[{view_label}]({item_url})"
+                    
+                    if j < len(page_items) - 1:
+                        field_value += "\n\n" + "─" * 30
                     
                     embed.add_field(
-                        name=f"🏺 {item_name}",
+                        name=f"\u200b",
                         value=field_value,
                         inline=False
                     )
@@ -887,11 +859,11 @@ class EpicItemsScraper(commands.Cog):
                 if page_items and page_items[0].get('item_icon_url'):
                     embed.set_thumbnail(url=page_items[0]['item_icon_url'])
                 
-                current_page = (i//items_per_page)+1
-                total_pages = ((len(items)-1)//items_per_page)+1
-                footer_text = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.embed_footer", 
-                                               current=str(current_page), total=str(total_pages))
-                embed.set_footer(text=footer_text)
+                if len(items) > items_per_page:
+                    current_page = (i//items_per_page)+1
+                    total_pages = ((len(items)-1)//items_per_page)+1
+                    embed.set_footer(text=f"Page {current_page}/{total_pages}")
+                
                 embeds.append(embed)
 
             await ctx.respond(embed=embeds[0])

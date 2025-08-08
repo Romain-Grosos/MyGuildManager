@@ -38,31 +38,27 @@ class LootWishlist(commands.Cog):
             bot: The Discord bot instance
         """
         self.bot = bot
-        
-        # Register commands with centralized groups
+
         self._register_loot_commands()
         self._register_staff_commands()
     
     def _register_loot_commands(self):
         """Register loot wishlist commands with the centralized loot group."""
         if hasattr(self.bot, 'loot_group'):
-            # Register wishlist add command
             self.bot.loot_group.command(
                 name=LOOT_SYSTEM.get("wishlist_add", {}).get("name", {}).get("en-US", "wishlist_add"),
                 description=LOOT_SYSTEM.get("wishlist_add", {}).get("description", {}).get("en-US", "Add an Epic T2 item to your wishlist"),
                 name_localizations=LOOT_SYSTEM.get("wishlist_add", {}).get("name", {}),
                 description_localizations=LOOT_SYSTEM.get("wishlist_add", {}).get("description", {})
             )(self.wishlist_add)
-            
-            # Register wishlist remove command
+
             self.bot.loot_group.command(
                 name=LOOT_SYSTEM.get("wishlist_remove", {}).get("name", {}).get("en-US", "wishlist_remove"),
                 description=LOOT_SYSTEM.get("wishlist_remove", {}).get("description", {}).get("en-US", "Remove an item from your wishlist"),
                 name_localizations=LOOT_SYSTEM.get("wishlist_remove", {}).get("name", {}),
                 description_localizations=LOOT_SYSTEM.get("wishlist_remove", {}).get("description", {})
             )(self.wishlist_remove)
-            
-            # Register wishlist show command
+
             self.bot.loot_group.command(
                 name=LOOT_SYSTEM.get("wishlist_list", {}).get("name", {}).get("en-US", "wishlist_show"),
                 description=LOOT_SYSTEM.get("wishlist_list", {}).get("description", {}).get("en-US", "View your current wishlist"),
@@ -73,7 +69,6 @@ class LootWishlist(commands.Cog):
     def _register_staff_commands(self):
         """Register staff wishlist commands with the centralized staff group."""
         if hasattr(self.bot, 'staff_group'):
-            # Register wishlist admin command
             self.bot.staff_group.command(
                 name=LOOT_SYSTEM.get("wishlist_admin", {}).get("name", {}).get("en-US", "wishlist_mod"),
                 description=LOOT_SYSTEM.get("wishlist_admin", {}).get("description", {}).get("en-US", "[MOD] View global wishlist statistics"),
@@ -99,36 +94,91 @@ class LootWishlist(commands.Cog):
     
     async def autocomplete_epic_items(self, ctx: discord.AutocompleteContext) -> List[str]:
         """
-        Autocomplete callback for Epic T2 item names.
+        Autocomplete callback for Epic T2 item names with smart wildcard matching.
+        
+        Supports multiple search patterns:
+        - Exact start match (highest priority)
+        - Word start match (medium priority) 
+        - Substring match (lowest priority)
+        - Multilingue support (EN/FR/ES/DE)
         
         Args:
             ctx: The autocomplete context containing user input
             
         Returns:
-            List of up to 25 matching Epic T2 item names sorted alphabetically
+            List of up to 25 matching Epic T2 item names sorted by relevance
         """
         try:
-            user_input = ctx.value.lower() if ctx.value else ""
-            
+            user_input = ctx.value.lower().strip() if ctx.value else ""
+
+            await self.bot.cache_loader.ensure_category_loaded('epic_items_t2')
             epic_items = await self.bot.cache.get_static_data('epic_items_t2')
             
             if not epic_items:
+                logging.debug("[LootWishlist] No epic items in cache for autocomplete")
                 return []
 
-            suggestions = []
+            if not user_input:
+                suggestions = [item.get("item_name_en", "") for item in epic_items[:50] if item.get("item_name_en")]
+                suggestions.sort()
+                return suggestions[:25]
+            
+            logging.debug(f"[LootWishlist] Autocomplete search for: '{user_input}'")
+
+            scored_suggestions = []
             
             for item in epic_items:
-                item_name = item.get("item_name_en", "")
-                if not item_name:
+                english_name = item.get("item_name_en", "")
+                if not english_name:
                     continue
-                    
-                if not user_input:
-                    suggestions.append(item_name)
-                elif user_input in item_name.lower():
-                    suggestions.append(item_name)
+
+                item_names = [
+                    item.get("item_name_en", ""),
+                    item.get("item_name_fr", ""), 
+                    item.get("item_name_es", ""),
+                    item.get("item_name_de", "")
+                ]
+                
+                best_score = 0
+                
+                for item_name in item_names:
+                    if not item_name:
+                        continue
+                        
+                    item_name_lower = item_name.lower()
+                    score = 0
+
+                    if item_name_lower.startswith(user_input):
+                        score = 100
+                    elif any(word.startswith(user_input) for word in item_name_lower.split()):
+                        score = 80
+                    elif user_input in item_name_lower:
+                        score = 60
+                        pos = item_name_lower.find(user_input)
+                        if pos <= 5:
+                            score = 70
+
+                    if item_name == english_name and score > 0:
+                        score += 5
+
+                    if score > best_score:
+                        best_score = score
+
+                if best_score > 0:
+                    scored_suggestions.append((english_name, best_score))
+
+            unique_suggestions = {}
+            for name, score in scored_suggestions:
+                if name not in unique_suggestions or score > unique_suggestions[name]:
+                    unique_suggestions[name] = score
+
+            final_suggestions = [(name, score) for name, score in unique_suggestions.items()]
+            final_suggestions.sort(key=lambda x: (-x[1], x[0]))
             
-            suggestions.sort()
-            return suggestions[:25]
+            result = [suggestion[0] for suggestion in final_suggestions[:25]]
+            logging.debug(f"[LootWishlist] Autocomplete found {len(result)} matches for '{user_input}'")
+            
+            return result
             
         except Exception as e:
             logging.error(f"[LootWishlist] Autocomplete error: {e}")
@@ -248,6 +298,7 @@ class LootWishlist(commands.Cog):
     async def is_valid_epic_item(self, item_name: str) -> Tuple[bool, Optional[str]]:
         """
         Check if item exists in Epic T2 database and return item_id.
+        Uses the same smart matching logic as autocomplete.
         
         Args:
             item_name: The name of the item to validate
@@ -257,29 +308,75 @@ class LootWishlist(commands.Cog):
             and item_id is the database ID of the item or None if not found
         """
         try:
+            await self.bot.cache_loader.ensure_category_loaded('epic_items_t2')
             epic_items = await self.bot.cache.get_static_data('epic_items_t2')
             
             if epic_items:
                 logging.debug(f"[LootWishlist] Cache has {len(epic_items)} epic items")
+                user_input_lower = item_name.lower().strip()
+
+                best_score = 0
+                best_item = None
+                
                 for item in epic_items:
-                    for lang_key in ['item_name_en', 'item_name_fr', 'item_name_es', 'item_name_de']:
-                        item_lang_name = item.get(lang_key, '').lower()
-                        if item_lang_name == item_name.lower():
-                            logging.debug(f"[LootWishlist] Found match: {item_name} -> {item.get('item_id')}")
-                            return True, item.get('item_id')
+                    english_name = item.get("item_name_en", "")
+                    if not english_name:
+                        continue
+
+                    item_names = [
+                        item.get("item_name_en", ""),
+                        item.get("item_name_fr", ""), 
+                        item.get("item_name_es", ""),
+                        item.get("item_name_de", "")
+                    ]
+                    
+                    for item_lang_name in item_names:
+                        if not item_lang_name:
+                            continue
+                            
+                        item_name_lower = item_lang_name.lower()
+                        score = 0
+
+                        if item_name_lower == user_input_lower:
+                            score = 100
+                        elif item_name_lower.startswith(user_input_lower):
+                            score = 90
+                        elif any(word.startswith(user_input_lower) for word in item_name_lower.split()):
+                            score = 80
+                        elif user_input_lower in item_name_lower:
+                            score = 60
+                        
+                        if score > best_score:
+                            best_score = score
+                            best_item = item
+                
+                if best_item:
+                    logging.debug(f"[LootWishlist] Found match: {item_name} -> {best_item.get('item_id')} (score: {best_score})")
+                    return True, best_item.get('item_id')
+                    
                 logging.debug(f"[LootWishlist] No match found in cache for: {item_name}")
                 return False, None
 
             query = """
-            SELECT item_id FROM epic_items_t2 
+            SELECT item_id, item_name_en FROM epic_items_t2 
             WHERE LOWER(item_name_en) = LOWER(?) 
                OR LOWER(item_name_fr) = LOWER(?) 
                OR LOWER(item_name_es) = LOWER(?) 
                OR LOWER(item_name_de) = LOWER(?)
+               OR LOWER(item_name_en) LIKE LOWER(?)
+               OR LOWER(item_name_fr) LIKE LOWER(?)
+               OR LOWER(item_name_es) LIKE LOWER(?)
+               OR LOWER(item_name_de) LIKE LOWER(?)
             LIMIT 1
             """
             
-            result = await db.run_db_query(query, (item_name, item_name, item_name, item_name))
+            like_pattern = f"%{item_name}%"
+            result = await db.run_db_query(
+                query, 
+                (item_name, item_name, item_name, item_name,
+                 like_pattern, like_pattern, like_pattern, like_pattern),
+                fetch_one=True
+            )
             if result:
                 return True, result[0]
             return False, None
@@ -356,9 +453,12 @@ class LootWishlist(commands.Cog):
                 await message.edit(embeds=[main_embed])
             else:
                 total_wishlists = sum(item['demand_count'] for item in stats)
+                stats_summary = await get_guild_message(self.bot, guild_id, LOOT_WISHLIST_DATA, "messages.statistics_summary",
+                                                      total_wishes=total_wishlists, unique_items=len(stats))
+                stats_title = await get_guild_message(self.bot, guild_id, LOOT_WISHLIST_DATA, "messages.statistics_field_title")
                 main_embed.add_field(
-                    name="📊 Statistiques",
-                    value=f"👥 **{total_wishlists}** souhaits au total\n🎯 **{len(stats)}** objets différents",
+                    name=stats_title,
+                    value=stats_summary,
                     inline=False
                 )
                 main_embed.set_footer(text=footer_text)
@@ -387,13 +487,16 @@ class LootWishlist(commands.Cog):
                     if item_data.get('item_icon_url'):
                         item_embed.set_thumbnail(url=item_data['item_icon_url'])
                     
-                    info_text = f"👥 **{item_data['demand_count']}** membres intéressés\n"
-                    info_text += f"⭐ Priorité moyenne: **{item_data['avg_priority']:.1f}**"
+                    info_text = await get_guild_message(self.bot, guild_id, LOOT_WISHLIST_DATA, "messages.item_demand_info",
+                                                       member_count=item_data['demand_count'], 
+                                                       avg_priority=f"{item_data['avg_priority']:.1f}")
+                    
+                    demand_title = await get_guild_message(self.bot, guild_id, LOOT_WISHLIST_DATA, "messages.demand_field_title")
                     
                     item_embed.add_field(
-                        name="📈 Demande",
+                        name=demand_title,
                         value=info_text,
-                        inline=True
+                        inline=False
                     )
                     
                     user_names = []
@@ -418,10 +521,15 @@ class LootWishlist(commands.Cog):
                     if len(item_data['user_ids']) > 10:
                         members_list += f"\n*... et {len(item_data['user_ids']) - 10} autres*"
                     
+                    members_formatted = await get_guild_message(self.bot, guild_id, LOOT_WISHLIST_DATA, "messages.members_list_format",
+                                                              members_list=members_list or "Aucun membre")
+                    
+                    members_title = await get_guild_message(self.bot, guild_id, LOOT_WISHLIST_DATA, "messages.members_field_title")
+                    
                     item_embed.add_field(
-                        name="👤 Membres",
-                        value=members_list or "Aucun membre",
-                        inline=True
+                        name=members_title,
+                        value=members_formatted,
+                        inline=False
                     )
                     
                     rank_emojis = {1: "🥇", 2: "🥈", 3: "🥉"}
@@ -663,9 +771,13 @@ class LootWishlist(commands.Cog):
                 for i, item in enumerate(current_items, 1):
                     priority_emoji = priority_emojis.get(item['priority'], "⚪")
                     priority_name = priority_names.get(item['priority'], "Unknown")
-                    
-                    wishlist_text += f"**{i}.** {item['item_name']}\n"
-                    wishlist_text += f"└── {priority_emoji} **{priority_name}** priority\n\n"
+
+                    display_name = item['item_name']
+                    if len(display_name) > 35:
+                        display_name = display_name[:32] + "..."
+
+                    wishlist_text += f"`{i:>1}.` **{display_name}**\n"
+                    wishlist_text += f"    {priority_emoji} *{priority_name}*\n\n"
                 
                 field_name = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.your_items", count=len(current_items))
                 embed.add_field(
@@ -778,11 +890,14 @@ class LootWishlist(commands.Cog):
                     if item_data.get('item_icon_url'):
                         item_embed.set_thumbnail(url=item_data['item_icon_url'])
                     
-                    stats_value = f"👥 **{item_data['demand_count']}** membres intéressés\n"
-                    stats_value += f"⭐ Priorité moyenne: **{item_data['avg_priority']:.1f}**"
+                    stats_value = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.item_demand_info",
+                                                        member_count=item_data['demand_count'], 
+                                                        avg_priority=f"{item_data['avg_priority']:.1f}")
+                    
+                    stats_title = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.statistics_field_title")
                     
                     item_embed.add_field(
-                        name="📊 Statistiques",
+                        name=stats_title,
                         value=stats_value,
                         inline=False
                     )
@@ -814,21 +929,30 @@ class LootWishlist(commands.Cog):
                     
                     if len(members_details) <= 10:
                         members_list = "\n".join(members_details)
+                        members_formatted = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.members_list_format",
+                                                                 members_list=members_list)
+                        interested_members_title = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.interested_members_field_title")
                         item_embed.add_field(
-                            name="👤 Membres intéressés",
-                            value=members_list,
+                            name=interested_members_title,
+                            value=members_formatted,
                             inline=False
                         )
                     else:
                         half = len(members_details) // 2
+                        members_part1 = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.members_list_format",
+                                                             members_list="\n".join(members_details[:half]))
+                        members_part2 = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.members_list_format",
+                                                             members_list="\n".join(members_details[half:]))
+                        members_part1_title = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.members_part1_field_title")
+                        members_part2_title = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.members_part2_field_title")
                         item_embed.add_field(
-                            name="👤 Membres (1/2)",
-                            value="\n".join(members_details[:half]),
+                            name=members_part1_title,
+                            value=members_part1,
                             inline=True
                         )
                         item_embed.add_field(
-                            name="👤 Membres (2/2)",
-                            value="\n".join(members_details[half:]),
+                            name=members_part2_title,
+                            value=members_part2,
                             inline=True
                         )
                     

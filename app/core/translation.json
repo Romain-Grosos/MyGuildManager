@@ -181,11 +181,11 @@
                 "it": "bottino"
             },
             "description": {
-                "en-US": "Epic T2 loot wishlist management",
-                "fr": "Gestion des wishlists de butin Epic T2",
-                "es-ES": "Gestión de listas de deseos de botín Épico T2", 
-                "de": "Verwaltung der Epic T2 Beute-Wunschlisten",
-                "it": "Gestione delle liste dei desideri del bottino Epico T2"
+                "en-US": "Equipment loot wishlist management",
+                "fr": "Gestion des wishlists de butin d'équipements",
+                "es-ES": "Gestión de listas de deseos de botín de equipo", 
+                "de": "Verwaltung der Ausrüstungs-Beute-Wunschlisten",
+                "it": "Gestione delle liste dei desideri del bottino di equipaggiamento"
             }
         },
         "staff": {
@@ -2065,11 +2065,11 @@
                 "it": "lista_desideri_aggiungi"
             },
             "description": {
-                "en-US": "Add an Epic T2 item to your wishlist",
-                "fr": "Ajouter un objet Epic T2 à votre wishlist",
-                "es-ES": "Agregar un objeto Épico T2 a tu lista de deseos",
-                "de": "Epic T2 Gegenstand zur Wunschliste hinzufügen",
-                "it": "Aggiungi un oggetto Epico T2 alla tua lista desideri"
+                "en-US": "Add an equipment item to your wishlist",
+                "fr": "Ajouter un équipement à votre wishlist",
+                "es-ES": "Agregar un equipo a tu lista de deseos",
+                "de": "Ausrüstung zur Wunschliste hinzufügen",
+                "it": "Aggiungi un equipaggiamento alla tua lista desideri"
             }
         },
         "wishlist_remove": {
@@ -2125,11 +2125,11 @@
                 "options": {
                     "item_name": {
                         "description": {
-                            "en-US": "Name of the Epic T2 item you want to add",
-                            "fr": "Nom de l'objet Epic T2 que vous voulez ajouter",
-                            "es-ES": "Nombre del objeto Épico T2 que quieres agregar",
-                            "de": "Name des Epic T2 Gegenstands den du hinzufügen möchtest",
-                            "it": "Nome dell'oggetto Epico T2 che vuoi aggiungere"
+                            "en-US": "Name of the equipment item you want to add",
+                            "fr": "Nom de l'équipement que vous voulez ajouter (en anglais)",
+                            "es-ES": "Nombre del equipo que desea agregar (en inglés)",
+                            "de": "Name der Ausrüstung, die Sie hinzufügen möchten (auf Englisch)",
+                            "it": "Nome dell'attrezzatura che si desidera aggiungere (in inglese)"
                         }
                     },
                     "priority": {
@@ -2180,11 +2180,11 @@
                 "it": "Alto"
             },
             "item_not_valid": {
-                "en-US": "❌ **{item_name}** is not a valid Epic T2 item",
-                "fr": "❌ **{item_name}** n'est pas un objet Epic T2 valide",
-                "es-ES": "❌ **{item_name}** no es un objeto Épico T2 válido",
-                "de": "❌ **{item_name}** ist kein gültiger Epic T2 Gegenstand",
-                "it": "❌ **{item_name}** non è un oggetto Epico T2 valido"
+                "en-US": "❌ **{item_name}** is not a valid equipment item",
+                "fr": "❌ **{item_name}** n'est pas un équipement valide",
+                "es-ES": "❌ **{item_name}** no es un equipo válido",
+                "de": "❌ **{item_name}** ist keine gültige Ausrüstung",
+                "it": "❌ **{item_name}** non è un equipaggiamento valido"
             },
             "wishlist_full": {
                 "en-US": "❌ Your wishlist is full! Maximum 3 items allowed",
@@ -2250,11 +2250,11 @@
                 "it": "📋 Lista desideri di {user}"
             },
             "wishlist_empty": {
-                "en-US": "Your wishlist is empty. Use `/loot wishlist_add` to add Epic T2 items!",
-                "fr": "Votre wishlist est vide. Utilisez `/loot wishlist_add` pour ajouter des objets Epic T2 !",
-                "es-ES": "Tu lista está vacía. ¡Usa `/loot wishlist_add` para agregar objetos Épicos T2!",
-                "de": "Deine Wunschliste ist leer. Nutze `/loot wishlist_add` um Epic T2 Gegenstände hinzuzufügen!",
-                "it": "La tua lista è vuota. Usa `/loot wishlist_add` per aggiungere oggetti Epici T2!"
+                "en-US": "Your wishlist is empty. Use `/loot wishlist_add` to add equipment items!",
+                "fr": "Votre wishlist est vide. Utilisez `/loot wishlist_add` pour ajouter des équipements !",
+                "es-ES": "Tu lista está vacía. ¡Usa `/loot wishlist_add` para agregar equipos!",
+                "de": "Deine Wunschliste ist leer. Nutze `/loot wishlist_add` um Ausrüstung hinzuzufügen!",
+                "it": "La tua lista è vuota. Usa `/loot wishlist_add` per aggiungere equipaggiamento!"
             },
             "your_items": {
                 "en-US": "📦 Your items ({count}/3)",
@@ -2264,11 +2264,11 @@
                 "it": "📦 I tuoi oggetti ({count}/3)"
             },
             "wishlist_footer": {
-                "en-US": "You can add up to 3 Epic T2 items to your wishlist",
-                "fr": "Vous pouvez ajouter jusqu'à 3 objets Epic T2 à votre wishlist",
-                "es-ES": "Puedes agregar hasta 3 objetos Épicos T2 a tu lista",
-                "de": "Du kannst bis zu 3 Epic T2 Gegenstände zur Wunschliste hinzufügen",
-                "it": "Puoi aggiungere fino a 3 oggetti Epici T2 alla tua lista"
+                "en-US": "You can add up to 3 equipment items to your wishlist",
+                "fr": "Vous pouvez ajouter jusqu'à 3 équipements à votre wishlist",
+                "es-ES": "Puedes agregar hasta 3 equipos a tu lista",
+                "de": "Du kannst bis zu 3 Ausrüstungsgegenstand zur Wunschliste hinzufügen",
+                "it": "Puoi aggiungere fino a 3 equipaggiamenti alla tua lista"
             },
             "admin_no_wishlists": {
                 "en-US": "📭 No wishlists found for this guild",
@@ -2292,11 +2292,11 @@
                 "it": "📊 Panoramica"
             },
             "admin_overview_content": {
-                "en-US": "👥 **{members}** members with wishlists\n📦 **{total_items}** total items\n🎯 **{unique_items}** unique items",
-                "fr": "👥 **{members}** membres avec wishlists\n📦 **{total_items}** objets au total\n🎯 **{unique_items}** objets uniques",
-                "es-ES": "👥 **{members}** miembros con listas\n📦 **{total_items}** objetos totales\n🎯 **{unique_items}** objetos únicos",
-                "de": "👥 **{members}** Mitglieder mit Wunschlisten\n📦 **{total_items}** Gegenstände insgesamt\n🎯 **{unique_items}** einzigartige Gegenstände",
-                "it": "👥 **{members}** membri con liste\n📦 **{total_items}** oggetti totali\n🎯 **{unique_items}** oggetti unici"
+                "en-US": "👥 **{members}** members with wishlists\n- **{total_items}** total items\n- **{unique_items}** unique items",
+                "fr": "👥 **{members}** membres avec wishlists\n- **{total_items}** objets au total\n- **{unique_items}** objets uniques",
+                "es-ES": "👥 **{members}** miembros con listas\n- **{total_items}** objetos totales\n- **{unique_items}** objetos únicos",
+                "de": "👥 **{members}** Mitglieder mit Wunschlisten\n- **{total_items}** Gegenstände insgesamt\n- **{unique_items}** einzigartige Gegenstände",
+                "it": "👥 **{members}** membri con liste\n- **{total_items}** oggetti totali\n- **{unique_items}** oggetti unici"
             },
             "admin_footer": {
                 "en-US": "Use /loot wishlist_add to participate",
@@ -2304,29 +2304,92 @@
                 "es-ES": "Usa /loot wishlist_add para participar",
                 "de": "Nutze /loot wishlist_add um teilzunehmen",
                 "it": "Usa /loot wishlist_add per partecipare"
+            },
+            "statistics_summary": {
+                "en-US": "- **{total_wishes}** total wishes\n- **{unique_items}** different items",
+                "fr": "- **{total_wishes}** souhaits au total\n- **{unique_items}** objets différents",
+                "es-ES": "- **{total_wishes}** deseos totales\n- **{unique_items}** objetos diferentes",
+                "de": "- **{total_wishes}** Wünsche insgesamt\n- **{unique_items}** verschiedene Gegenstände",
+                "it": "- **{total_wishes}** desideri totali\n- **{unique_items}** oggetti diversi"
+            },
+            "item_demand_info": {
+                "en-US": "**{member_count}** interested members\nAverage priority: **{avg_priority}**",
+                "fr": "**{member_count}** membres intéressés\nPriorité moyenne : **{avg_priority}**",
+                "es-ES": "**{member_count}** miembros interesados\nPrioridad promedio: **{avg_priority}**",
+                "de": "**{member_count}** interessierte Mitglieder\nDurchschnittliche Priorität: **{avg_priority}**",
+                "it": "**{member_count}** membri interessati\nPriorità media: **{avg_priority}**"
+            },
+            "members_list_format": {
+                "en-US": "{members_list}\n",
+                "fr": "{members_list}\n",
+                "es-ES": "{members_list}\n",
+                "de": "{members_list}\n",
+                "it": "{members_list}\n"
+            },
+            "demand_field_title": {
+                "en-US": "📈 Demand",
+                "fr": "📈 Demande",
+                "es-ES": "📈 Demanda",
+                "de": "📈 Nachfrage",
+                "it": "📈 Domanda"
+            },
+            "members_field_title": {
+                "en-US": "👤 Members",
+                "fr": "👤 Membres",
+                "es-ES": "👤 Miembros",
+                "de": "👤 Mitglieder",
+                "it": "👤 Membri"
+            },
+            "interested_members_field_title": {
+                "en-US": "👤 Interested members",
+                "fr": "👤 Membres intéressés",
+                "es-ES": "👤 Miembros interesados",
+                "de": "👤 Interessierte Mitglieder",
+                "it": "👤 Membri interessati"
+            },
+            "statistics_field_title": {
+                "en-US": "📊 Statistics",
+                "fr": "📊 Statistiques",
+                "es-ES": "📊 Estadísticas",
+                "de": "📊 Statistiken",
+                "it": "📊 Statistiche"
+            },
+            "members_part1_field_title": {
+                "en-US": "👤 Members (1/2)",
+                "fr": "👤 Membres (1/2)",
+                "es-ES": "👤 Miembros (1/2)",
+                "de": "👤 Mitglieder (1/2)",
+                "it": "👤 Membri (1/2)"
+            },
+            "members_part2_field_title": {
+                "en-US": "👤 Members (2/2)",
+                "fr": "👤 Membres (2/2)",
+                "es-ES": "👤 Miembros (2/2)",
+                "de": "👤 Mitglieder (2/2)",
+                "it": "👤 Membri (2/2)"
             }
         },
         "placeholder": {
             "title": {
-                "en-US": "Epic T2 Items Wishlist",
-                "fr": "Wishlist Objets Epic T2",
-                "es-ES": "Lista de Deseos Objetos Épicos T2",
-                "de": "Epic T2 Gegenstände Wunschliste",
-                "it": "Lista Desideri Oggetti Epici T2"
+                "en-US": "Equipment Wishlist",
+                "fr": "Wishlist Équipements",
+                "es-ES": "Lista de Deseos de Equipos",
+                "de": "Ausrüstungs-Wunschliste",
+                "it": "Lista Desideri Equipaggiamento"
             },
             "description": {
-                "en-US": "Most wanted Epic T2 items by guild members",
-                "fr": "Objets Epic T2 les plus recherchés par les membres de la guilde",
-                "es-ES": "Objetos Épicos T2 más deseados por los miembros del gremio",
-                "de": "Die begehrtesten Epic T2 Gegenstände der Gildenmitglieder",
-                "it": "Oggetti Epici T2 più desiderati dai membri della gilda"
+                "en-US": "Most wanted equipment items by guild members",
+                "fr": "Équipements les plus recherchés par les membres de la guilde",
+                "es-ES": "Equipos más deseados por los miembros del gremio",
+                "de": "Die begehrtesten Ausrüstungsgegenstände der Gildenmitglieder",
+                "it": "Equipaggiamento più desiderato dai membri della gilda"
             },
             "empty": {
-                "en-US": "No items in wishlist yet. Use `/loot wishlist_add` to add your desired Epic T2 items!",
-                "fr": "Aucun objet dans la wishlist. Utilisez `/loot wishlist_add` pour ajouter vos objets Epic T2 désirés !",
-                "es-ES": "No hay objetos en la lista aún. ¡Usa `/loot wishlist_add` para agregar tus objetos Épicos T2 deseados!",
-                "de": "Noch keine Gegenstände in der Wunschliste. Nutze `/loot wishlist_add` um deine gewünschten Epic T2 Gegenstände hinzuzufügen!",
-                "it": "Ancora nessun oggetto nella lista. Usa `/loot wishlist_add` per aggiungere i tuoi oggetti Epici T2 desiderati!"
+                "en-US": "No items in wishlist yet. Use `/loot wishlist_add` to add your desired equipment items!",
+                "fr": "Aucun objet dans la wishlist. Utilisez `/loot wishlist_add` pour ajouter vos équipements désirés !",
+                "es-ES": "No hay objetos en la lista aún. ¡Usa `/loot wishlist_add` para agregar tus equipos deseados!",
+                "de": "Noch keine Gegenstände in der Wunschliste. Nutze `/loot wishlist_add` um deine gewünschte Ausrüstung hinzuzufügen!",
+                "it": "Ancora nessun oggetto nella lista. Usa `/loot wishlist_add` per aggiungere il tuo equipaggiamento desiderato!"
             },
             "footer": {
                 "en-US": "Updated regularly • Max 3 items per member",
@@ -2478,61 +2541,358 @@
                     }
                 }
             },
+            "command": {
+                "name": {
+                    "en-US": "Contract",
+                    "fr": "Contrat",
+                    "es-ES": "Contrato",
+                    "de": "Vertrag",
+                    "it": "Contratto"
+                }
+            },
             "user_messages": {
-                "success_published": {
-                    "en-US": "✅ Contract successfully published!",
-                    "fr": "✅ Contrat publié avec succès !",
-                    "es-ES": "✅ ¡Contrato publicado exitosamente!",
-                    "de": "✅ Vertrag erfolgreich veröffentlicht!",
-                    "it": "✅ Contratto pubblicato con successo!"
+                "command_usage": {
+                    "select_contract": {
+                        "en-US": "Please select a contract for each category. Click ✅ to validate the announcement.",
+                        "fr": "Choisissez un contrat pour chaque catégorie.\nCliquez sur ✅ **Valider** pour envoyer l'annonce.",
+                        "es-ES": "Seleccione un contrato para cada categoría. Haga clic en ✅ para enviar el anuncio.",
+                        "de": "Wählen Sie einen Vertrag für jede Kategorie aus. Klicken Sie auf ✅, um die Ankündigung zu senden.",
+                        "it": "Seleziona un contratto per ogni categoria. Clicca su ✅ per inviare l'annuncio."
+                    }
                 },
-                "error_load_options": {
-                    "en-US": "Unable to load contract options. Please check translations.",
-                    "fr": "Impossible de charger les options de contrat. Vérifiez les traductions.",
-                    "es-ES": "No se pueden cargar las opciones de contrato. Verifica las traducciones.",
-                    "de": "Vertragsoptionen können nicht geladen werden. Überprüfen Sie die Übersetzungen.",
-                    "it": "Impossibile caricare le opzioni del contratto. Controlla le traduzioni."
-                },
-                "usage": {
-                    "en-US": "Usage: Use the selection menus above to configure your contract.",
-                    "fr": "Utilisation : Utilisez les menus de sélection ci-dessus pour configurer votre contrat.",
-                    "es-ES": "Uso: Utiliza los menús de selección de arriba para configurar tu contrato.",
-                    "de": "Verwendung: Verwenden Sie die obigen Auswahlmenüs, um Ihren Vertrag zu konfigurieren.",
-                    "it": "Utilizzo: Usa i menu di selezione sopra per configurare il tuo contratto."
-                },
-                "success_deleted": {
-                    "en-US": "✅ Guild contract deleted successfully.",
-                    "fr": "✅ Contrat de guilde supprimé avec succès.",
-                    "es-ES": "✅ Contrato del gremio eliminado exitosamente.",
-                    "de": "✅ Gildenvertrag erfolgreich gelöscht.",
-                    "it": "✅ Contratto della gilda eliminato con successo."
-                },
-                "already_deleted": {
-                    "en-US": "⚠️ No contract message found to delete.",
-                    "fr": "⚠️ Aucun message de contrat trouvé à supprimer.",
-                    "es-ES": "⚠️ No se encontró mensaje de contrato para eliminar.",
-                    "de": "⚠️ Keine Vertragsnachricht zum Löschen gefunden.",
-                    "it": "⚠️ Nessun messaggio di contratto trovato da eliminare."
-                },
-                "no_contract": {
-                    "en-US": "❌ No contract found for this guild.",
-                    "fr": "❌ Aucun contrat trouvé pour cette guilde.",
-                    "es-ES": "❌ No se encontró contrato para este gremio.",
-                    "de": "❌ Kein Vertrag für diese Gilde gefunden.",
-                    "it": "❌ Nessun contratto trovato per questa gilda."
-                },
-                "error": {
-                    "en-US": "❌ An error occurred while processing the contract.",
-                    "fr": "❌ Une erreur s'est produite lors du traitement du contrat.",
-                    "es-ES": "❌ Ocurrió un error al procesar el contrato.",
-                    "de": "❌ Bei der Verarbeitung des Vertrags ist ein Fehler aufgetreten.",
-                    "it": "❌ Si è verificato un errore durante l'elaborazione del contratto."
+                "notifications": {
+                    "contract_published": {
+                        "en-US": "Guild contract published successfully.",
+                        "fr": "Contrat de guilde publié avec succès.",
+                        "es-ES": "Contrato del gremio publicado con éxito.",
+                        "de": "Gildenvertrag erfolgreich veröffentlicht.",
+                        "it": "Contratto della gilda pubblicato con successo."
+                    },
+                    "contract_deleted": {
+                        "en-US": "Guild contract deleted successfully.",
+                        "fr": "Contrat de guilde supprimé avec succès.",
+                        "es-ES": "Contrato del gremio eliminado con éxito.",
+                        "de": "Gildenvertrag erfolgreich gelöscht.",
+                        "it": "Contratto della gilda eliminato con successo."
+                    },
+                    "contract_already_deleted": {
+                        "en-US": "Contract already deleted.",
+                        "fr": "Contrat déjà supprimé.",
+                        "es-ES": "Contrato ya eliminado.",
+                        "de": "Vertrag bereits gelöscht.",
+                        "it": "Contratto già eliminato."
+                    },
+                    "no_contract_to_delete": {
+                        "en-US": "No contract to delete.",
+                        "fr": "Aucun contrat à supprimer.",
+                        "es-ES": "No hay contrato para eliminar.",
+                        "de": "Kein Vertrag zum Löschen.",
+                        "it": "Nessun contratto da eliminare."
+                    },
+                    "delete_error": {
+                        "en-US": "An error occurred while deleting the contract.",
+                        "fr": "Une erreur s'est produite lors de la suppression du contrat.",
+                        "es-ES": "Ocurrió un error al eliminar el contrato.",
+                        "de": "Beim Löschen des Vertrags ist ein Fehler aufgetreten.",
+                        "it": "Si è verificato un errore durante l'eliminazione del contratto."
+                    }
                 }
             },
             "options": {
-                "monster_elimination": [],
-                "dynamic_events": [],
-                "open_dungeon": []
+                "monster_elimination": [
+                    {
+                        "all": {
+                            "en-US": "All",
+                            "fr": "Tous",
+                            "es-ES": "Todos",
+                            "de": "Alle",
+                            "it": "Tutti"
+                        }
+                    },
+                    {
+                        "demon": {
+                            "en-US": "Demon",
+                            "fr": "Démon",
+                            "es-ES": "Demonio",
+                            "de": "Dämon",
+                            "it": "Demone"
+                        }
+                    },
+                    {
+                        "humanoid": {
+                            "en-US": "Humanoid",
+                            "fr": "Humanoïde",
+                            "es-ES": "Humanoide",
+                            "de": "Humanoid",
+                            "it": "Umanoide"
+                        }
+                    },
+                    {
+                        "savages": {
+                            "en-US": "Savages",
+                            "fr": "Sauvageons",
+                            "es-ES": "Salvajes",
+                            "de": "Wilde",
+                            "it": "Selvaggi"
+                        }
+                    },
+                    {
+                        "undead": {
+                            "en-US": "Undead",
+                            "fr": "Mort-Vivant",
+                            "es-ES": "No-muerto",
+                            "de": "Untot",
+                            "it": "Non morti"
+                        }
+                    },
+                    {
+                        "construction": {
+                            "en-US": "Construction",
+                            "fr": "Construction",
+                            "es-ES": "Construcción",
+                            "de": "Bau",
+                            "it": "Costruzione"
+                        }
+                    }
+                ],
+                "dynamic_events": [
+                    {
+                        "Desert Caravan": {
+                            "en-US": "Desert Caravan",
+                            "fr": "Caravane du Désert",
+                            "es-ES": "Caravana del Desierto",
+                            "de": "Wüstencaravane",
+                            "it": "Carovana del Deserto"
+                        }
+                    },
+                    {
+                        "Bloody Mushroom Gathering": {
+                            "en-US": "Bloody Mushroom Gathering",
+                            "fr": "Cueillette de Champignons Sanglants",
+                            "es-ES": "Cosecha de Hongos Sangrientos",
+                            "de": "Blutige Pilzsammlung",
+                            "it": "Raccolta di Funghi Insanguinati"
+                        }
+                    },
+                    {
+                        "Howling Contest": {
+                            "en-US": "Howling Contest",
+                            "fr": "Concours de Louveterie",
+                            "es-ES": "Concurso de Aullidos",
+                            "de": "Heulwettbewerb",
+                            "it": "Concorso di Ululati"
+                        }
+                    },
+                    {
+                        "Destroyers of Darkness": {
+                            "en-US": "Destroyers of Darkness",
+                            "fr": "Destructeurs des Ténèbres",
+                            "es-ES": "Destructores de la Oscuridad",
+                            "de": "Zerstörer der Dunkelheit",
+                            "it": "Distruttori dell'Oscurità"
+                        }
+                    },
+                    {
+                        "Bellflower Seed Festival": {
+                            "en-US": "Bellflower Seed Festival",
+                            "fr": "Fête des graines de Campanule",
+                            "es-ES": "Festival de semillas de Campanula",
+                            "de": "Campanula-Samenfest",
+                            "it": "Festa dei semi di Campanula"
+                        }
+                    },
+                    {
+                        "Mana Frenzy": {
+                            "en-US": "Mana Frenzy",
+                            "fr": "Frénésie de Mana",
+                            "es-ES": "Frenesí de Maná",
+                            "de": "Manafrenzy",
+                            "it": "Frenesia di Mana"
+                        }
+                    },
+                    {
+                        "Fire Festival": {
+                            "en-US": "Fire Festival",
+                            "fr": "Fête du Feu",
+                            "es-ES": "Festival del Fuego",
+                            "de": "Feuerfest",
+                            "it": "Festa del Fuoco"
+                        }
+                    },
+                    {
+                        "Crimson Forest": {
+                            "en-US": "Crimson Forest",
+                            "fr": "Forêt Écarlate",
+                            "es-ES": "Bosque Carmesí",
+                            "de": "Karmesinroter Wald",
+                            "it": "Foresta Cremisi"
+                        }
+                    },
+                    {
+                        "Talisman Delivery": {
+                            "en-US": "Talisman Delivery",
+                            "fr": "Livraison de Talismans",
+                            "es-ES": "Entrega de Talismán",
+                            "de": "Talismanlieferung",
+                            "it": "Consegna di Talismani"
+                        }
+                    },
+                    {
+                        "Hidden Brown Mica": {
+                            "en-US": "Hidden Brown Mica",
+                            "fr": "Mica Brun Caché",
+                            "es-ES": "Mica Marrón Escondido",
+                            "de": "Versteckter Braunmika",
+                            "it": "Mica Marrone Nascosta"
+                        }
+                    },
+                    {
+                        "Requiem of Light": {
+                            "en-US": "Requiem of Light",
+                            "fr": "Requiem de Lumière",
+                            "es-ES": "Réquiem de Luz",
+                            "de": "Requiem des Lichts",
+                            "it": "Requiem della Luce"
+                        }
+                    },
+                    {
+                        "Stellar Stones Ritual": {
+                            "en-US": "Stellar Stones Ritual",
+                            "fr": "Rituel des Pierres Stellaires",
+                            "es-ES": "Ritual de Piedras Estelares",
+                            "de": "Ritual der Sternsteine",
+                            "it": "Rituale delle Pietre Stellari"
+                        }
+                    },
+                    {
+                        "Break the Moonlight Spell": {
+                            "en-US": "Break the Moonlight Spell",
+                            "fr": "Rompre le charme du clair de lune",
+                            "es-ES": "Romper el hechizo de la luz de la luna",
+                            "de": "Den Mondzauber brechen",
+                            "it": "Spezzare l'incantesimo della luna"
+                        }
+                    },
+                    {
+                        "Blizzard Seal": {
+                            "en-US": "Blizzard Seal",
+                            "fr": "Le Sceau du Blizzard",
+                            "es-ES": "El Sello de la Ventisca",
+                            "de": "Das Siegel des Blizzard",
+                            "it": "Il Sigillo della Tempesta di Neve"
+                        }
+                    },
+                    {
+                        "The passage Ceremony of the Great Tree": {
+                            "en-US": "The Passage Ceremony of the Great Tree",
+                            "fr": "La Cérémonie de Passage du Grand Arbre",
+                            "es-ES": "La Ceremonia de Paso del Gran Árbol",
+                            "de": "Die Übergangszeremonie des Großen Baums",
+                            "it": "La Cerimonia di Passaggio del Grande Albero"
+                        }
+                    },
+                    {
+                        "Healing Touch for Divine Beasts": {
+                            "en-US": "Healing Touch for Divine Beasts",
+                            "fr": "Toucher de Guérison pour les Bêtes Célestes",
+                            "es-ES": "Toque Curativo para las Bestias Divinas",
+                            "de": "Heilende Berührung für Göttliche Bestien",
+                            "it": "Tocco Curativo per le Bestie Divine"
+                        }
+                    },
+                    {
+                        "Obsidian Acquisition Operation": {
+                            "en-US": "Obsidian Acquisition Operation",
+                            "fr": "Opération acquisition d'obsidienne",
+                            "es-ES": "Operación de adquisición de obsidiana",
+                            "de": "Operation zur Beschaffung von Obsidian",
+                            "it": "Operazione di acquisizione dell'ossidiana"
+                        }
+                    },
+                    {
+                        "Peipor Harvest Festival": {
+                            "en-US": "Peipor Harvest Festival",
+                            "fr": "Fête des récoltes de peipor",
+                            "es-ES": "Festival de la cosecha de Peipor",
+                            "de": "Peipor-Erntefest",
+                            "it": "Festa del raccolto di Peipor"
+                        }
+                    },
+                    {
+                        "Best way to prevent the worst": {
+                            "en-US": "Best way to prevent the worst",
+                            "fr": "Le meilleur moyen d'empêcher le pire",
+                            "es-ES": "La mejor forma de evitar lo peor",
+                            "de": "Der beste Weg, das Schlimmste zu verhindern",
+                            "it": "Il modo migliore per prevenire il peggio"
+                        }
+                    }
+                ],
+                "open_dungeon": [
+                    {
+                        "Syleus's Abyss": {
+                            "en-US": "Syleus's Abyss",
+                            "fr": "Abysse de Syléus",
+                            "es-ES": "Abismo de Syleus",
+                            "de": "Abgrund von Syleus",
+                            "it": "Abisso di Syleus"
+                        }
+                    },
+                    {
+                        "Shadowed Crypt": {
+                            "en-US": "Shadowed Crypt",
+                            "fr": "Crypte des Ombres",
+                            "es-ES": "Cripta sombría",
+                            "de": "Schattenkrypta",
+                            "it": "Cripta delle Ombre"
+                        }
+                    },
+                    {
+                        "Saurodoma Island": {
+                            "en-US": "Saurodoma Island",
+                            "fr": "Île des Sauriens",
+                            "es-ES": "Isla del Reptiloide",
+                            "de": "Insel Saurodoma",
+                            "it": "Isola dei Saurodoma"
+                        }
+                    },
+                    {
+                        "Sanctuary of Desire": {
+                            "en-US": "Sanctuary of Desire",
+                            "fr": "Sanctuaire de la Voracité",
+                            "es-ES": "Santuario de la Voracidad",
+                            "de": "Schrein der Begierde",
+                            "it": "Santuario del Anhelo"
+                        }
+                    },
+                    {
+                        "Temple of Truth": {
+                            "en-US": "Temple of Truth",
+                            "fr": "Temple de la Vérité",
+                            "es-ES": "Templo de la Verdad",
+                            "de": "Tempel der Wahrheit",
+                            "it": "Tempio della Verità"
+                        }
+                    },
+                    {
+                        "Bercant Estate": {
+                            "en-US": "Bercant Estate",
+                            "fr": "Demeure des Bercant",
+                            "es-ES": "Mansión Bercant",
+                            "de": "Anwesen der Bercant",
+                            "it": "Tenuta dei Bercant"
+                        }
+                    },
+                    {
+                        "Crimson Mansion": {
+                            "en-US": "Crimson Mansion",
+                            "fr": "Demeure des Vermeil",
+                            "es-ES": "Mansión Carmesí",
+                            "de": "Karmesinrote Villa",
+                            "it": "Villa Cremisi"
+                        }
+                    }
+                ]
             }
         }
     },
@@ -2575,11 +2935,11 @@
             "it": "cerca_oggetto"
         },
         "description": {
-            "en-US": "Search for Epic T2 items from Throne and Liberty",
-            "fr": "Rechercher des objets T2 épiques de Throne and Liberty",
-            "es-ES": "Buscar objetos T2 épicos de Throne and Liberty",
-            "de": "Suche nach epischen T2-Gegenständen aus Throne and Liberty",
-            "it": "Cerca oggetti T2 epici di Throne and Liberty"
+            "en-US": "Search for equipment items from Throne and Liberty",
+            "fr": "Rechercher des équipements de Throne and Liberty",
+            "es-ES": "Buscar equipos de Throne and Liberty",
+            "de": "Suche nach Ausrüstung aus Throne and Liberty",
+            "it": "Cerca equipaggiamento di Throne and Liberty"
         },
         "options": {
             "search": {
@@ -2589,15 +2949,6 @@
                     "es-ES": "Buscar objeto específico por nombre",
                     "de": "Nach einem bestimmten Gegenstand nach Name suchen",
                     "it": "Cerca un oggetto specifico per nome"
-                }
-            },
-            "item_type": {
-                "description": {
-                    "en-US": "Filter by item type",
-                    "fr": "Filtrer par type d'objet",
-                    "es-ES": "Filtrar por tipo de objeto",
-                    "de": "Nach Gegenstandstyp filtern",
-                    "it": "Filtra per tipo di oggetto"
                 }
             },
             "language": {
@@ -2791,25 +3142,18 @@
         },
         "messages": {
             "no_items_found": {
-                "en-US": "❌ No Epic T2 items found with the specified criteria",
-                "fr": "❌ Aucun objet T2 épique trouvé avec les critères spécifiés",
-                "es-ES": "❌ No se encontraron objetos T2 épicos con los criterios especificados",
-                "de": "❌ Keine epischen T2-Gegenstände mit den angegebenen Kriterien gefunden",
-                "it": "❌ Nessun oggetto T2 epico trovato con i criteri specificati"
+                "en-US": "❌ No equipment items found with the specified criteria",
+                "fr": "❌ Aucun équipement trouvé avec les critères spécifiés",
+                "es-ES": "❌ No se encontraron equipos con los criterios especificados",
+                "de": "❌ Keine Ausrüstung mit den angegebenen Kriterien gefunden",
+                "it": "❌ Nessun equipaggiamento trovato con i criteri specificati"
             },
-            "embed_title": {
-                "en-US": "🏺 Epic T2 Items ({language})",
-                "fr": "🏺 Objets T2 Épiques ({language})",
-                "es-ES": "🏺 Objetos T2 Épicos ({language})",
-                "de": "🏺 Epische T2-Gegenstände ({language})",
-                "it": "🏺 Oggetti T2 Epici ({language})"
-            },
-            "embed_description": {
-                "en-US": "Items {start}-{end} of {total} found",
-                "fr": "Objets {start}-{end} sur {total} trouvés",
-                "es-ES": "Objetos {start}-{end} de {total} encontrados",
-                "de": "Gegenstände {start}-{end} von {total} gefunden",
-                "it": "Oggetti {start}-{end} di {total} trovati"
+            "search_title": {
+                "en-US": "🔍 Item Search",
+                "fr": "🔍 Recherche d'objets",
+                "es-ES": "🔍 Búsqueda de objetos",
+                "de": "🔍 Gegenstände suchen",
+                "it": "🔍 Ricerca oggetti"
             },
             "item_type_label": {
                 "en-US": "Type",
@@ -2826,11 +3170,32 @@
                 "it": "Categoria"
             },
             "view_on_questlog": {
-                "en-US": "View on QuestLog",
-                "fr": "Voir sur QuestLog",
-                "es-ES": "Ver en QuestLog",
-                "de": "Auf QuestLog anzeigen",
-                "it": "Visualizza su QuestLog"
+                "en-US": "View on Questlog",
+                "fr": "Voir sur Questlog",
+                "es-ES": "Ver en Questlog",
+                "de": "Auf Questlog anzeigen",
+                "it": "Visualizza su Questlog"
+            },
+            "error": {
+                "en-US": "❌ An error occurred while searching items",
+                "fr": "❌ Une erreur s'est produite lors de la recherche d'objets",
+                "es-ES": "❌ Se produjo un error al buscar objetos",
+                "de": "❌ Ein Fehler trat beim Suchen von Gegenständen auf",
+                "it": "❌ Si è verificato un errore durante la ricerca degli oggetti"
+            },
+            "embed_title": {
+                "en-US": "🏺 Equipment Items ({language})",
+                "fr": "🏺 Équipements ({language})",
+                "es-ES": "🏺 Equipos ({language})",
+                "de": "🏺 Ausrüstung ({language})",
+                "it": "🏺 Equipaggiamento ({language})"
+            },
+            "embed_description": {
+                "en-US": "Items {start}-{end} of {total} found",
+                "fr": "Objets {start}-{end} sur {total} trouvés",
+                "es-ES": "Objetos {start}-{end} de {total} encontrados",
+                "de": "Gegenstände {start}-{end} von {total} gefunden",
+                "it": "Oggetti {start}-{end} di {total} trovati"
             },
             "embed_footer": {
                 "en-US": "Page {current} of {total}",
@@ -2838,13 +3203,6 @@
                 "es-ES": "Página {current} de {total}",
                 "de": "Seite {current} von {total}",
                 "it": "Pagina {current} di {total}"
-            },
-            "error": {
-                "en-US": "❌ An error occurred while searching for items",
-                "fr": "❌ Une erreur s'est produite lors de la recherche d'objets",
-                "es-ES": "❌ Ocurrió un error al buscar objetos",
-                "de": "❌ Beim Suchen nach Gegenständen ist ein Fehler aufgetreten",
-                "it": "❌ Si è verificato un errore durante la ricerca degli oggetti"
             }
         }
     },
