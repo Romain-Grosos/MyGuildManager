@@ -323,18 +323,62 @@ class GlobalCacheSystem:
 # #################################################################################### #
 #                            Specialized Cache Methods
 # #################################################################################### #
-    async def get_guild_data(self, guild_id: int, data_type: str) -> Optional[Any]:
+    async def get_guild_data(self, guild_id: int, data_type: str, _auto_reload: bool = True) -> Optional[Any]:
         """
-        Get guild-specific data from cache.
+        Get guild-specific data from cache with auto-reload if missing.
         
         Args:
             guild_id: Discord guild ID
             data_type: Type of data to retrieve
+            _auto_reload: Internal flag to prevent infinite recursion
             
         Returns:
             Cached guild data or None
         """
-        return await self.get('guild_data', guild_id, data_type)
+        key = self._generate_key('guild_data', guild_id, data_type)
+
+        reload_key = f"reload_{key}"
+        if reload_key in self._cache:
+            await asyncio.sleep(0.1)
+            
+        result = await self.get('guild_data', guild_id, data_type)
+
+        if result is None and _auto_reload and self.bot and hasattr(self.bot, 'cache_loader'):
+            await self.set('temporary', True, reload_key, ttl=30)
+            
+            try:
+                category_map = {
+                    'roles': 'guild_roles',
+                    'settings': 'guild_settings',
+                    'channels': 'guild_channels',
+                    'guild_lang': 'guild_settings',
+                    'guild_ptb': 'guild_settings',
+                    'guild_name': 'guild_settings',
+                    'guild_game': 'guild_settings',
+                    'guild_server': 'guild_settings',
+                    'initialized': 'guild_settings',
+                    'premium': 'guild_settings',
+                    'members_role': 'guild_roles',
+                    'absent_members_role': 'guild_roles',
+                    'rules_ok_role': 'guild_roles',
+                    'config_ok_role': 'guild_roles',
+                    'members_channel': 'guild_channels',
+                    'rules_message': 'guild_channels',
+                    'absence_channels': 'guild_channels'
+                }
+                
+                category = category_map.get(data_type)
+                if category:
+                    logging.debug(f"[Cache] Auto-reloading {category} for guild {guild_id} (missing {data_type})")
+                    try:
+                        await self.bot.cache_loader.reload_category(category)
+                        result = await self.get_guild_data(guild_id, data_type, _auto_reload=False)
+                    except Exception as e:
+                        logging.error(f"[Cache] Failed to auto-reload {category}: {e}")
+            finally:
+                await self.delete('temporary', reload_key)
+        
+        return result
     
     async def set_guild_data(self, guild_id: int, data_type: str, value: Any) -> None:
         """
@@ -360,19 +404,49 @@ class GlobalCacheSystem:
         """
         return await self.delete('guild_data', guild_id, data_type)
     
-    async def get_user_data(self, guild_id: int, user_id: int, data_type: str) -> Optional[Any]:
+    async def get_user_data(self, guild_id: int, user_id: int, data_type: str, _auto_reload: bool = True) -> Optional[Any]:
         """
-        Get user-specific data from cache.
+        Get user-specific data from cache with auto-reload if missing.
         
         Args:
             guild_id: Discord guild ID
             user_id: Discord user ID
             data_type: Type of data to retrieve
+            _auto_reload: Internal flag to prevent infinite recursion
             
         Returns:
             Cached user data or None
         """
-        return await self.get('user_data', guild_id, user_id, data_type)
+        key = self._generate_key('user_data', guild_id, user_id, data_type)
+
+        reload_key = f"reload_{key}"
+        if reload_key in self._cache:
+            await asyncio.sleep(0.1)
+            
+        result = await self.get('user_data', guild_id, user_id, data_type)
+
+        if result is None and _auto_reload and self.bot and hasattr(self.bot, 'cache_loader'):
+            await self.set('temporary', True, reload_key, ttl=30)
+            
+            try:
+                category_map = {
+                    'setup': 'user_setup',
+                    'locale': 'user_setup',
+                    'welcome_message': 'welcome_messages'
+                }
+                
+                category = category_map.get(data_type)
+                if category:
+                    logging.debug(f"[Cache] Auto-reloading {category} for user {guild_id}/{user_id} (missing {data_type})")
+                    try:
+                        await self.bot.cache_loader.reload_category(category)
+                        result = await self.get_user_data(guild_id, user_id, data_type, _auto_reload=False)
+                    except Exception as e:
+                        logging.error(f"[Cache] Failed to auto-reload {category}: {e}")
+            finally:
+                await self.delete('temporary', reload_key)
+        
+        return result
     
     async def set_user_data(self, guild_id: int, user_id: int, data_type: str, value: Any) -> None:
         """
@@ -593,7 +667,11 @@ class GlobalCacheSystem:
         """
         
         start_time = time.time()
-        rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
+        try:
+            rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
+        except Exception as e:
+            logging.error(f"[Cache] Database error in get_bulk_guild_members for guild {guild_id}: {e}")
+            return {}
         query_time = time.time() - start_time
         
         members_data = {}
@@ -885,6 +963,64 @@ class GlobalCacheSystem:
             'preload_efficiency': preload_efficiency,
             'active_preload_tasks': len(self._preload_tasks),
             **self._metrics
+        }
+    
+    async def handle_cache_error(self, operation: str, key: str, error: Exception) -> None:
+        """
+        Handle cache errors with logging and recovery attempts.
+        
+        Args:
+            operation: Operation that failed (get, set, delete)
+            key: Cache key involved
+            error: Exception that occurred
+        """
+        logging.error(f"[Cache] Error in {operation} for key {key}: {error}")
+
+        if operation == "get" and "guild_data" in key:
+            try:
+                parts = key.split(":")
+                if len(parts) >= 3:
+                    await self.delete(parts[0], *parts[1:])
+                    logging.debug(f"[Cache] Cleared corrupted entry: {key}")
+            except Exception as recovery_error:
+                logging.error(f"[Cache] Recovery failed for {key}: {recovery_error}")
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """
+        Perform cache system health check and return status.
+        
+        Returns:
+            Dictionary containing health status and metrics
+        """
+        health_status = {
+            'status': 'healthy',
+            'issues': [],
+            'recommendations': []
+        }
+
+        cache_size = len(self._cache)
+        if cache_size > 10000:
+            health_status['issues'].append(f"Cache size very large: {cache_size} entries")
+            health_status['recommendations'].append("Consider reducing TTL values or implementing more aggressive cleanup")
+
+        total_requests = self._metrics['hits'] + self._metrics['misses']
+        if total_requests > 100:
+            hit_rate = (self._metrics['hits'] / total_requests * 100)
+            if hit_rate < 70:
+                health_status['issues'].append(f"Low cache hit rate: {hit_rate:.1f}%")
+                health_status['recommendations'].append("Review caching strategy and TTL configuration")
+
+        if self._metrics['evictions'] > self._metrics['sets'] * 0.5:
+            health_status['issues'].append("High eviction rate indicates TTL values may be too low")
+            health_status['recommendations'].append("Consider increasing TTL for frequently accessed data")
+
+        if len(health_status['issues']) > 0:
+            health_status['status'] = 'warning' if len(health_status['issues']) <= 2 else 'critical'
+        
+        return {
+            **health_status,
+            'metrics': self.get_metrics(),
+            'timestamp': time.time()
         }
 
 # #################################################################################### #

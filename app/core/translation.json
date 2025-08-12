@@ -880,6 +880,13 @@
                 "es-ES": "Notificar miembros con perfiles incompletos",
                 "de": "Mitglieder mit unvollständigen Profilen benachrichtigen",
                 "it": "Notifica membri con profili incompleti"
+            },
+            "no_inc_profiles": {
+                "en-US": "✅ All members have complete profiles!",
+                "fr": "✅ Tous les membres ont des profils complets !",
+                "es-ES": "✅ ¡Todos los miembros tienen perfiles completos!",
+                "de": "✅ Alle Mitglieder haben vollständige Profile!",
+                "it": "✅ Tutti i membri hanno profili completi!"
             }
         },
         "config_roster": {
@@ -970,76 +977,76 @@
         },
         "post_recruitment": {
             "name": {
-                "en-US": "Post Recruitment",
-                "fr": "Publication de recrutement",
-                "es-ES": "Publicación de reclutamiento",
-                "de": "Rekrutierungspost",
-                "it": "Post di reclutamento"
+                "en-US": "📢 Recruitment",
+                "fr": "📢 Recrutement",
+                "es-ES": "📢 Reclutamiento",
+                "de": "📢 Rekrutierung",
+                "it": "📢 Reclutamento"
             },
             "roster_size": {
-                "en-US": "Roster Size: {size}",
-                "fr": "Taille du roster : {size}",
-                "es-ES": "Tamaño del roster: {size}",
-                "de": "Roster-Größe: {size}",
-                "it": "Dimensione roster: {size}"
+                "en-US": "👥 Current staff: **{total_members}/{roster_size_max}**\n",
+                "fr": "👥 Effectif actuel : **{total_members}/{roster_size_max}**\n",
+                "es-ES": "👥 Personal actual: **{total_members}/{roster_size_max}**\n",
+                "de": "👥 Aktueller Bestand: **{total_members}/{roster_size_max}**\n",
+                "it": "👥 Effettivo attuale: **{total_members}/{roster_size_max}**\n"
             },
             "places": {
-                "en-US": "Available places: {places}",
-                "fr": "Places disponibles : {places}",
-                "es-ES": "Lugares disponibles: {places}",
-                "de": "Verfügbare Plätze: {places}",
-                "it": "Posti disponibili: {places}"
+                "en-US": "📌 Available spots: **{remaining_slots}**\n\n",
+                "fr": "📌 Places disponibles : **{remaining_slots}**\n\n",
+                "es-ES": "📌 Plazas disponibles: **{remaining_slots}**\n\n",
+                "de": "📌 Verfügbare Plätze: **{remaining_slots}**\n\n",
+                "it": "📌 Posti disponibili: **{remaining_slots}**\n\n"
             },
             "post_availability": {
-                "en-US": "Post Availability",
-                "fr": "Publier la disponibilité",
-                "es-ES": "Publicar disponibilidad",
-                "de": "Verfügbarkeit posten",
-                "it": "Pubblica disponibilità"
+                "en-US": "**Positions available:**\n",
+                "fr": "**Postes à pourvoir :**\n",
+                "es-ES": "**Puestos disponibles:**\n",
+                "de": "**Verfügbare Positionen:**\n",
+                "it": "**Posizioni disponibili:**\n"
             },
             "updated": {
-                "en-US": "Updated: {date}",
-                "fr": "Mis à jour : {date}",
-                "es-ES": "Actualizado: {date}",
-                "de": "Aktualisiert: {date}",
-                "it": "Aggiornato: {date}"
+                "en-US": "Updated on {now}",
+                "fr": "Mis à jour le {now}",
+                "es-ES": "Actualizado el {now}",
+                "de": "Aktualisiert am {now}",
+                "it": "Aggiornato il {now}"
             }
         },
         "class": {
-            "tank": {
+            "Tank": {
                 "en-US": "Tank",
                 "fr": "Tank",
                 "es-ES": "Tanque",
                 "de": "Tank",
                 "it": "Tank"
             },
-            "healer": {
+            "Melee DPS": {
+                "en-US": "Melee DPS",
+                "fr": "DPS CàC",
+                "es-ES": "DPS CaC",
+                "de": "Nahkampf-DPS",
+                "it": "DPS CaC"
+            },
+            "Ranged DPS": {
+                "en-US": "Ranged DPS",
+                "fr": "DPS à Distance",
+                "es-ES": "DPS a Distancia",
+                "de": "Fernkampf-DPS",
+                "it": "DPS a Distanza"
+            },
+            "Healer": {
                 "en-US": "Healer",
-                "fr": "Soigneur",
+                "fr": "Healer",
                 "es-ES": "Sanador",
                 "de": "Heiler",
                 "it": "Guaritore"
             },
-            "melee_dps": {
-                "en-US": "Melee DPS",
-                "fr": "DPS Corps à corps",
-                "es-ES": "DPS Cuerpo a cuerpo",
-                "de": "Nahkampf DPS",
-                "it": "DPS Mischia"
-            },
-            "ranged_dps": {
-                "en-US": "Ranged DPS",
-                "fr": "DPS Distant",
-                "es-ES": "DPS A distancia",
-                "de": "Fernkampf DPS",
-                "it": "DPS Distanza"
-            },
-            "flanker": {
+            "Flanker": {
                 "en-US": "Flanker",
                 "fr": "Flanker",
                 "es-ES": "Flanqueador",
-                "de": "Flanker",
-                "it": "Flanker"
+                "de": "Flankierer",
+                "it": "Fiancheggiatore"
             }
         },
         "table": {

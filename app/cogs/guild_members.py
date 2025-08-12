@@ -1231,107 +1231,145 @@ class GuildMembers(commands.Cog):
         Returns:
             None
         """
-        if hasattr(ctx, "guild"):
-            guild_obj = ctx.guild
-        else:
-            guild_obj = ctx
-        guild_id = guild_obj.id
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        
-        locale = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
-        channel_id = await self.bot.cache.get_guild_data(guild_id, 'external_recruitment_channel')
-        message_id = await self.bot.cache.get_guild_data(guild_id, 'external_recruitment_message')
-        
-        if not channel_id:
-            logging.error(f"[GuildMembers] No recruitment channel configured for guild {guild_id}")
+        try:
+            logging.debug("[GuildMembers] update_recruitment_message - Starting function")
+            if hasattr(ctx, "guild"):
+                guild_obj = ctx.guild
+            else:
+                guild_obj = ctx
+            guild_id = guild_obj.id
+            logging.debug(f"[GuildMembers] update_recruitment_message - Guild ID: {guild_id}")
+            
+            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+            await self.bot.cache_loader.ensure_category_loaded('guild_channels')
+            
+            locale = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
+            channel_id = await self.bot.cache.get_guild_data(guild_id, 'external_recruitment_channel')
+            message_id = await self.bot.cache.get_guild_data(guild_id, 'external_recruitment_message')
+            logging.debug(f"[GuildMembers] update_recruitment_message - Channel ID: {channel_id}, Message ID: {message_id}")
+            
+            if not channel_id:
+                logging.error(f"[GuildMembers] No recruitment channel configured for guild {guild_id}")
+                return
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                logging.error("[GuildMembers] Unable to retrieve recruitment channel")
+                return
+        except Exception as e:
+            logging.exception(f"[GuildMembers] Error in update_recruitment_message initialization: {e}")
             return
-        channel = self.bot.get_channel(channel_id)
-        if not channel:
-            logging.error("[GuildMembers] Unable to retrieve recruitment channel")
-            return
-
-        guild_members = await self.get_guild_members()
-        members_in_roster = [v for (g, _), v in guild_members.items() if g == guild_id]
-        total_members = len(members_in_roster)
-        logging.info(f"[GuildMembers] Recruitment message - Guild members cache contains {len(guild_members)} total entries, {len(members_in_roster)} for guild {guild_id}")
-        
-        if not members_in_roster:
-            logging.warning(f"[GuildMembers] No members found in roster for recruitment message in guild {guild_id}, checking database directly...")
-            try:
-                guild_members_db = await self._get_guild_members_bulk(guild_id)
-                logging.info(f"[GuildMembers] Database query for recruitment returned {len(guild_members_db)} members for guild {guild_id}")
-                if guild_members_db:
-                    current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
-                    for member_id, data in guild_members_db.items():
-                        key = (guild_id, member_id)
-                        current_cache[key] = data
-                    await self.bot.cache.set('roster_data', current_cache, 'guild_members')
-                    members_in_roster = list(guild_members_db.values())
-                    total_members = len(members_in_roster)
-                    logging.info(f"[GuildMembers] Updated global cache for recruitment and found {total_members} members")
-            except Exception as e:
-                logging.error(f"[GuildMembers] Error loading members for recruitment message: {e}", exc_info=True)
-
-        game_id = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
-        roster_size_max = None
-        if game_id:
-            await self.bot.cache_loader.ensure_games_list_loaded()
-            games_data = await self.bot.cache.get_static_data('games_list')
-            if games_data and game_id in games_data:
-                roster_size_max = games_data[game_id].get('max_members')
-
-        ideal_staff = await self.get_ideal_staff(guild_id)
-        if not ideal_staff:
-            ideal_staff = {
-                "Tank": 20,
-                "Healer": 20,
-                "Flanker": 10,
-                "Ranged DPS": 10,
-                "Melee DPS": 10
-            }
-
-        class_counts = { key: 0 for key in ideal_staff.keys() }
-        for m in members_in_roster:
-            cls = m.get("class", "NULL")
-            if cls in ideal_staff:
-                class_counts[cls] += 1
-
-        remaining_slots = max(0, (roster_size_max or 0) - total_members)
-
-        title = GUILD_MEMBERS["post_recruitment"]["name"][locale]
-        roster_size_template = GUILD_MEMBERS["post_recruitment"]["roster_size"][locale]
-        roster_size_line = roster_size_template.format(total_members=total_members, roster_size_max=roster_size_max)
-        places_template = GUILD_MEMBERS["post_recruitment"]["places"][locale]
-        places_line = places_template.format(remaining_slots=remaining_slots)
-        post_availability_template = GUILD_MEMBERS["post_recruitment"]["post_availability"][locale]
-        updated_template = GUILD_MEMBERS["post_recruitment"]["updated"][locale]
-
-        positions_details = ""
-        for cls_key, ideal_number in ideal_staff.items():
-            class_name = GUILD_MEMBERS["class"][cls_key][locale]
-            current_count = class_counts.get(cls_key, 0)
-            available = max(0, ideal_number - current_count)
-            positions_details += f"- **{class_name}** : {available} \n"
-
-        description = roster_size_line + places_line + post_availability_template + positions_details
-
-        embed = discord.Embed(
-            title=title,
-            description=description,
-            color=discord.Color.blue()
-        )
-        now = datetime.now().strftime("%d/%m/%Y à %H:%M")
-        embed.set_footer(text=updated_template.format(now=now))
 
         try:
-            message = await channel.fetch_message(message_id)
-            await message.edit(embed=embed)
+            logging.debug("[GuildMembers] update_recruitment_message - Getting guild members")
+            guild_members = await self.get_guild_members()
+            members_in_roster = [v for (g, _), v in guild_members.items() if g == guild_id]
+            total_members = len(members_in_roster)
+            logging.info(f"[GuildMembers] Recruitment message - Guild members cache contains {len(guild_members)} total entries, {len(members_in_roster)} for guild {guild_id}")
+            
+            if not members_in_roster:
+                logging.warning(f"[GuildMembers] No members found in roster for recruitment message in guild {guild_id}, checking database directly...")
+                try:
+                    guild_members_db = await self._get_guild_members_bulk(guild_id)
+                    logging.info(f"[GuildMembers] Database query for recruitment returned {len(guild_members_db)} members for guild {guild_id}")
+                    if guild_members_db:
+                        current_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
+                        for member_id, data in guild_members_db.items():
+                            key = (guild_id, member_id)
+                            current_cache[key] = data
+                        await self.bot.cache.set('roster_data', current_cache, 'guild_members')
+                        members_in_roster = list(guild_members_db.values())
+                        total_members = len(members_in_roster)
+                        logging.info(f"[GuildMembers] Updated global cache for recruitment and found {total_members} members")
+                except Exception as e:
+                    logging.error(f"[GuildMembers] Error loading members for recruitment message: {e}", exc_info=True)
+
+            logging.debug("[GuildMembers] update_recruitment_message - Getting game data")
+            game_id = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
+            roster_size_max = None
+            if game_id:
+                await self.bot.cache_loader.ensure_games_list_loaded()
+                games_data = await self.bot.cache.get_static_data('games_list')
+                if games_data and game_id in games_data:
+                    roster_size_max = games_data[game_id].get('max_members')
+
+            logging.debug("[GuildMembers] update_recruitment_message - Getting ideal staff")
+            ideal_staff = await self.get_ideal_staff(guild_id)
+            if not ideal_staff:
+                ideal_staff = {
+                    "Tank": 20,
+                    "Healer": 20,
+                    "Flanker": 10,
+                    "Ranged DPS": 10,
+                    "Melee DPS": 10
+                }
+
+            logging.debug("[GuildMembers] update_recruitment_message - Calculating class counts")
+            class_counts = { key: 0 for key in ideal_staff.keys() }
+            for m in members_in_roster:
+                cls = m.get("class", "NULL")
+                if cls in ideal_staff:
+                    class_counts[cls] += 1
+
+            remaining_slots = max(0, (roster_size_max or 0) - total_members)
+
+            logging.debug("[GuildMembers] update_recruitment_message - Building embed")
+            title = GUILD_MEMBERS["post_recruitment"]["name"][locale]
+            roster_size_template = GUILD_MEMBERS["post_recruitment"]["roster_size"][locale]
+            roster_size_line = roster_size_template.format(total_members=total_members, roster_size_max=roster_size_max or "∞")
+            places_template = GUILD_MEMBERS["post_recruitment"]["places"][locale]
+            places_line = places_template.format(remaining_slots=remaining_slots)
+            post_availability_template = GUILD_MEMBERS["post_recruitment"]["post_availability"][locale]
+            updated_template = GUILD_MEMBERS["post_recruitment"]["updated"][locale]
+
+            class_order = ["Tank", "Healer", "Melee DPS", "Ranged DPS", "Flanker"]
+            
+            positions_details = ""
+            for cls_key in class_order:
+                if cls_key in ideal_staff:
+                    ideal_number = ideal_staff[cls_key]
+                    class_name = GUILD_MEMBERS["class"][cls_key][locale]
+                    current_count = class_counts.get(cls_key, 0)
+                    available = max(0, ideal_number - current_count)
+                    positions_details += f"- **{class_name}** : {available} \n"
+
+            description = roster_size_line + places_line + post_availability_template + positions_details
+
+            embed = discord.Embed(
+                title=title,
+                description=description,
+                color=discord.Color.blue()
+            )
+            now = datetime.now().strftime("%d/%m/%Y à %H:%M")
+            embed.set_footer(text=updated_template.format(now=now))
+        except Exception as e:
+            logging.exception(f"[GuildMembers] Error in update_recruitment_message processing: {e}")
+            return
+
+        logging.debug("[GuildMembers] update_recruitment_message - About to update embed")
+        try:
+            if message_id:
+                logging.debug(f"[GuildMembers] update_recruitment_message - Fetching existing message {message_id}")
+                message = await channel.fetch_message(message_id)
+                logging.debug(f"[GuildMembers] update_recruitment_message - Editing message")
+                await message.edit(embed=embed)
+                logging.info("[GuildMembers] update_recruitment_message - Successfully updated recruitment embed")
+            else:
+                logging.debug(f"[GuildMembers] update_recruitment_message - Creating new message")
+                new_message = await channel.send(embed=embed)
+                await self.bot.cache.set_guild_data(guild_id, 'external_recruitment_message', new_message.id)
+                query = "UPDATE guild_settings SET external_recruitment_message = %s WHERE guild_id = %s"
+                await self.bot.run_db_query(query, (new_message.id, guild_id), commit=True)
+                logging.info(f"[GuildMembers] update_recruitment_message - Created new recruitment message {new_message.id}")
         except discord.NotFound:
+            logging.warning(f"[GuildMembers] update_recruitment_message - Message {message_id} not found, creating new one")
             new_message = await channel.send(embed=embed)
             await self.bot.cache.set_guild_data(guild_id, 'external_recruitment_message', new_message.id)
             query = "UPDATE guild_settings SET external_recruitment_message = %s WHERE guild_id = %s"
             await self.bot.run_db_query(query, (new_message.id, guild_id), commit=True)
+            logging.info(f"[GuildMembers] update_recruitment_message - Created replacement message {new_message.id}")
+        except Exception as e:
+            logging.exception(f"[GuildMembers] Error updating recruitment message: {e}")
+            return
 
     async def update_members_message(self, ctx):
         """
