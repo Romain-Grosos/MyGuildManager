@@ -198,20 +198,8 @@ class LLMInteraction(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize LLM data on bot ready."""
-        asyncio.create_task(self.load_llm_data())
-        logging.debug("[LLMInteraction] Cache loading tasks started in on_ready.")
-
-    async def load_llm_data(self) -> None:
-        """
-        Ensure all required data is loaded via centralized cache loader.
-        
-        Loads guild settings needed for premium status checks and language preferences.
-        """
-        logging.debug("[LLMInteraction] Loading LLM data")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        
-        logging.debug("[LLMInteraction] LLM data loading completed")
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+        logging.debug("[Llm] Waiting for initial cache load")
 
     async def get_guild_premium_status(self, guild_id: int) -> bool:
         """
@@ -223,8 +211,6 @@ class LLMInteraction(commands.Cog):
         Returns:
             True if guild has premium status, False otherwise
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        
         premium = await self.bot.cache.get_guild_data(guild_id, 'premium')
         return premium in [True, 1, "1"]
     

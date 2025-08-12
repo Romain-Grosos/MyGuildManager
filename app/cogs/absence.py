@@ -52,9 +52,9 @@ class AbsenceManager(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Initialize absence data on bot ready."""
-        asyncio.create_task(self.load_absence_channels())
-        logging.debug("[AbsenceManager] Load absence channels task started")
+        """Wait for centralized cache load to complete."""
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+        logging.debug("[AbsenceManager] Waiting for initial cache load")
 
     async def _get_guild_roles(self, guild: discord.Guild) -> "tuple[discord.Role | None, discord.Role | None]":
         """
@@ -77,17 +77,6 @@ class AbsenceManager(commands.Cog):
             logging.warning("[AbsenceManager] Roles missing in guild %s", guild.id)
             return None, None
         return role_member, role_absent
-
-    async def load_absence_channels(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
-        logging.debug("[AbsenceManager] Ensuring required data is loaded")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('absence_messages')
-        
-        logging.debug("[AbsenceManager] Required data loading completed")
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -388,11 +377,9 @@ class AbsenceManager(commands.Cog):
                     logging.debug(f"[AbsenceManager] Added member role to {member.name}")
 
                 try:
-                    # Get all absence messages before deleting from DB
                     select_query = "SELECT message_id FROM absence_messages WHERE guild_id = %s AND member_id = %s"
                     message_ids = await self.bot.run_db_query(select_query, (guild.id, member.id), fetch_all=True)
-                    
-                    # Delete messages from absence channel
+
                     if message_ids:
                         channels_data = await self.bot.cache.get_guild_data(guild.id, 'absence_channels')
                         if channels_data and channels_data.get('abs_channel'):
@@ -408,19 +395,16 @@ class AbsenceManager(commands.Cog):
                                         logging.debug(f"[AbsenceManager] Absence message {message_id} already deleted")
                                     except Exception as msg_error:
                                         logging.error(f"[AbsenceManager] Error deleting message {message_id}: {msg_error}")
-                    
-                    # Now delete from database
+
                     delete_query = "DELETE FROM absence_messages WHERE guild_id = %s AND member_id = %s"
                     await self.bot.run_db_query(delete_query, (guild.id, member.id), commit=True)
                     logging.debug(f"[AbsenceManager] Removed absence record for {member.name}")
                 except Exception as db_error:
                     logging.error(f"[AbsenceManager] Error removing absence record: {db_error}")
 
-                await self.bot.cache_loader.ensure_category_loaded('guild_channels')
                 channels_data = await self.bot.cache.get_guild_data(guild.id, 'absence_channels')
                 
                 if channels_data and channels_data.get('forum_members_channel'):
-                    await self.bot.cache_loader.ensure_category_loaded('guild_settings')
                     guild_lang = await self.bot.cache.get_guild_data(guild.id, 'guild_lang') or "en-US"
                     
                     await self.notify_absence(member, "removal", 

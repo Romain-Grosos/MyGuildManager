@@ -170,21 +170,8 @@ class Notification(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize notification data on bot ready."""
-        asyncio.create_task(self.load_notification_data())
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
         logging.debug("[NotificationManager] Notification data loading tasks started in on_ready.")
-
-    async def load_notification_data(self) -> None:
-        """
-        Ensure all required data is loaded via centralized cache loader.
-        
-        Loads guild settings and channels data needed for notification processing.
-        """
-        logging.debug("[NotificationManager] Loading notification data")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        
-        logging.debug("[NotificationManager] Notification data loading completed")
 
     async def get_guild_lang(self, guild: discord.Guild) -> str:
         """
@@ -195,9 +182,7 @@ class Notification(commands.Cog):
             
         Returns:
             Guild language code (default: en-US)
-        """
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        
+        """        
         guild_lang = await self.bot.cache.get_guild_data(guild.id, 'guild_lang')
         return guild_lang or "en-US"
 
@@ -232,7 +217,6 @@ class Notification(commands.Cog):
                 return
             
             try:
-                await self.bot.cache_loader.ensure_category_loaded('guild_channels')
                 channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
                 logging.debug(f"[NotificationManager] Channels data for guild {guild.id}: {channels_data}")
                 notif_channel_id = channels_data.get('notifications_channel') if channels_data else None
@@ -389,7 +373,6 @@ class Notification(commands.Cog):
                 except Exception as e:
                     logging.error(f"[NotificationManager] Error cleaning up DB records for {safe_user}: {e}", exc_info=True)
             else:
-                await self.bot.cache_loader.ensure_category_loaded('guild_channels')
                 channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
                 notif_channel_id = channels_data.get('notifications_channel') if channels_data else None
                 

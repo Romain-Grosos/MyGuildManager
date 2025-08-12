@@ -134,16 +134,8 @@ class Core(commands.Cog):
                     logging.error(f"[CoreManager] Failed to sync slash commands: {e}")
         logging.info(f"[CoreManager] Bot is connected as {self.bot.user}")
 
-        asyncio.create_task(self.load_core_data())
-        logging.debug("[CoreManager] Cache loading tasks started in on_ready.")
-    
-    async def load_core_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
-        logging.debug("[CoreManager] Loading core data")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        
-        logging.debug("[CoreManager] Core data loading completed")
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+        logging.debug("[Core] Waiting for initial cache load")
 
     @commands.Cog.listener()
     async def on_app_command_error(self, ctx: discord.ApplicationContext, error: Exception):
@@ -233,7 +225,6 @@ class Core(commands.Cog):
             guild_game = int(guild_game)
         
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             existing_settings = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
             
             if existing_settings:
@@ -344,7 +335,6 @@ class Core(commands.Cog):
             guild_game = int(guild_game)
         
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             current_guild_name = await self.bot.cache.get_guild_data(guild_id, 'guild_name')
             current_guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
             current_guild_game = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
@@ -422,7 +412,6 @@ class Core(commands.Cog):
             return await ctx.respond(response, ephemeral=True)
 
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             existing_settings = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
             
             if not existing_settings:

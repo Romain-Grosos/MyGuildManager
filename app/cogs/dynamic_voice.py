@@ -59,20 +59,10 @@ class DynamicVoice(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize dynamic voice data on bot ready."""
-        asyncio.create_task(self.load_create_room_channels())
-        logging.debug("[DynamicVoice] 'load_create_room_channels' task started from on_ready")
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+        logging.debug("[DynamicVoice] Waiting for initial cache load")
         asyncio.create_task(self.load_persistent_channels())
         logging.debug("[DynamicVoice] 'load_persistent_channels' task started from on_ready")
-
-    async def load_create_room_channels(self):
-        """
-        Ensure create room channels are loaded via centralized cache loader.
-        
-        Loads guild channel configurations needed for dynamic voice channel creation.
-        """
-        logging.debug("[DynamicVoice] Loading create room channels via centralized cache")
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        logging.debug("[DynamicVoice] Create room channels loading completed")
 
     async def load_persistent_channels(self):
         """
@@ -155,8 +145,8 @@ class DynamicVoice(commands.Cog):
                 return
             await self.bot.cache.set('temporary', now, f'cooldown_{member.id}')
 
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-            await self.bot.cache_loader.ensure_category_loaded('guild_roles')
+            # Data already loaded centrally at startup
+            # Data already loaded centrally at startup
             
             guild_lang = await self.bot.cache.get_guild_data(guild.id, 'guild_lang') or "en-US"
             roles_data = await self.bot.cache.get_guild_data(guild.id, 'roles')

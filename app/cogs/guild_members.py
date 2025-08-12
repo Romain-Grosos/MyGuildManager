@@ -197,26 +197,6 @@ class GuildMembers(commands.Cog):
             return None
         return sanitized
 
-    async def load_guild_members_data(self) -> None:
-        """
-        Ensure all required data is loaded via centralized cache loader.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-        """
-        logging.debug("[GuildMembers] Loading guild members data")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        await self._load_weapons_data()
-        await self._load_members_data()
-        
-        logging.debug("[GuildMembers] Guild members data loading completed")
-
     async def _load_weapons_data(self) -> None:
         """
         Load weapons and combinations data using centralized cache loaders.
@@ -377,7 +357,6 @@ class GuildMembers(commands.Cog):
         if not isinstance(weapons_list, list) or not weapons_list:
             return "NULL"
         
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         game = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
         if not game:
             return "NULL"
@@ -406,8 +385,7 @@ class GuildMembers(commands.Cog):
         valid = set()
         if not isinstance(guild_id, int):
             return valid
-            
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
+
         game = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
         if not game:
             return valid
@@ -807,8 +785,6 @@ class GuildMembers(commands.Cog):
         await ctx.defer(ephemeral=True)
         guild_id = ctx.guild.id
         
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         await self.bot.cache_loader.reload_category('guild_channels')
         
         roles_config = await self.bot.cache.get_guild_data(guild_id, 'roles')
@@ -1147,7 +1123,6 @@ class GuildMembers(commands.Cog):
                     if not isinstance(member_id, int) or member_id <= 0:
                         raise ValueError(f"Invalid member ID format in update: {member_id}")
                     
-                    # Build update query for all changed fields
                     set_clauses = []
                     params = []
                     for field, value in changes:
@@ -1239,9 +1214,6 @@ class GuildMembers(commands.Cog):
                 guild_obj = ctx
             guild_id = guild_obj.id
             logging.debug(f"[GuildMembers] update_recruitment_message - Guild ID: {guild_id}")
-            
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-            await self.bot.cache_loader.ensure_category_loaded('guild_channels')
             
             locale = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
             channel_id = await self.bot.cache.get_guild_data(guild_id, 'external_recruitment_channel')
@@ -1390,8 +1362,6 @@ class GuildMembers(commands.Cog):
         guild_id = guild_obj.id
         
         logging.info(f"[GuildMembers] Processing update_members_message for guild {guild_id}")
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         
         locale = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
         logging.info(f"[GuildMembers] Guild locale: {locale}")
@@ -1858,7 +1828,6 @@ class GuildMembers(commands.Cog):
                 return
         
         try:
-            # Store full locale instead of truncated version
             query = "UPDATE guild_members SET language = %s WHERE guild_id = %s AND member_id = %s"
             await self.bot.run_db_query(query, (language, guild_id, member_id), commit=True)
             
@@ -1886,7 +1855,6 @@ class GuildMembers(commands.Cog):
         Returns:
             None
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
         roles_config = await self.bot.cache.get_guild_data(guild_id, 'roles')
         if not roles_config:
             logging.error(f"[GuildMembers] No roles configured for guild {guild_id}")
@@ -2008,7 +1976,7 @@ class GuildMembers(commands.Cog):
             None
         """
         try:
-            asyncio.create_task(self.load_guild_members_data())
+            asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
             logging.debug("[GuildMembers] Database info caching tasks launched from on_ready")
         except Exception as e:
             logging.exception(f"[GuildMembers] Error during on_ready initialization: {e}")

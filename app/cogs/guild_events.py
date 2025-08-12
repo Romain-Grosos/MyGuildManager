@@ -160,30 +160,8 @@ class GuildEvents(commands.Cog):
         Returns:
             None
         """
-        asyncio.create_task(self.load_events_data())
-        logging.debug("[GuildEvents] Cache loading tasks started in on_ready.")
-
-    async def load_events_data(self) -> None:
-        """
-        Ensure all required data is loaded via centralized cache loader.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-        """
-        logging.debug("[GuildEvents] Loading events data")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        await self.bot.cache_loader.ensure_category_loaded('guild_members')
-        await self.bot.cache_loader.ensure_category_loaded('events_data')
-        await self.bot.cache_loader.ensure_category_loaded('static_data')
-        await self.bot.cache_loader.ensure_category_loaded('static_groups')
-        
-        logging.debug("[GuildEvents] Events data loading completed")
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+        logging.debug("[Guild_Events] Waiting for initial cache load")
 
     async def get_event_from_cache(self, guild_id: int, event_id: int) -> Optional[Dict]:
         """
@@ -197,8 +175,6 @@ class GuildEvents(commands.Cog):
             Dictionary containing event data if found, None otherwise
         """
         try:
-            await self.bot.cache_loader.ensure_category_loaded('events_data')
-            
             event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
             if event_data:
                 event_data['guild_id'] = guild_id
@@ -300,7 +276,6 @@ class GuildEvents(commands.Cog):
         Returns:
             Dictionary containing static group data if found, None otherwise
         """
-        await self.bot.cache_loader.ensure_category_loaded('static_groups')
         static_groups = await self.bot.cache.get_guild_data(guild_id, 'static_groups')
         if not static_groups:
             return None
@@ -315,11 +290,7 @@ class GuildEvents(commands.Cog):
             
         Returns:
             Dictionary containing guild configuration settings including language, channels, roles, and premium status
-        """
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        
+        """     
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
         guild_game = await self.bot.cache.get_guild_data(guild_id, 'guild_game')
         events_channel = await self.bot.cache.get_guild_data(guild_id, 'events_channel')
@@ -351,8 +322,6 @@ class GuildEvents(commands.Cog):
         Returns:
             Dictionary containing events calendar data for the specified game
         """
-        await self.bot.cache_loader.ensure_category_loaded('static_data')
-        
         calendar_data = await self.bot.cache.get('static_data', f'events_calendar_{game_id}')
         return calendar_data or {}
 
@@ -367,8 +336,6 @@ class GuildEvents(commands.Cog):
         Returns:
             Dictionary containing event data, empty dict if not found
         """
-        await self.bot.cache_loader.ensure_category_loaded('events_data')
-        
         event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
         return event_data or {}
 
@@ -383,8 +350,6 @@ class GuildEvents(commands.Cog):
         Returns:
             Dictionary containing member data, empty dict if not found
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_members')
-        
         member_data = await self.bot.cache.get_guild_data(guild_id, f'member_{member_id}')
         return member_data or {}
 
@@ -398,7 +363,6 @@ class GuildEvents(commands.Cog):
         Returns:
             Dictionary containing all static groups data for the guild, empty dict if not found
         """
-        await self.bot.cache_loader.ensure_category_loaded('static_groups')
         static_groups = await self.bot.cache.get_guild_data(guild_id, 'static_groups')
         return static_groups or {}
 
@@ -412,8 +376,6 @@ class GuildEvents(commands.Cog):
         Returns:
             Dictionary containing ideal staff composition data for the guild, empty dict if not found
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_ideal_staff')
-        
         staff_data = await self.bot.cache.get('guild_data', 'ideal_staff')
         return staff_data.get(guild_id, {}) if staff_data else {}
 
@@ -493,8 +455,6 @@ class GuildEvents(commands.Cog):
         Returns:
             None
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        
         for guild in self.bot.guilds:
             guild_id = guild.id
             settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
@@ -522,7 +482,6 @@ class GuildEvents(commands.Cog):
         """
         guild_id = guild.id
         
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         if not settings:
             logging.error(f"[GuildEvents - create_events_for_guild] No configuration for guild {guild_id}.")
@@ -530,7 +489,6 @@ class GuildEvents(commands.Cog):
 
         guild_lang = settings.get("guild_lang")
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
         if not channels_data:
             logging.error(f"[GuildEvents - create_events_for_guild] No channels configuration for guild {guild_id}.")
@@ -660,7 +618,6 @@ class GuildEvents(commands.Cog):
                     continue
 
                 try:
-                    await self.bot.cache_loader.ensure_category_loaded('guild_roles')
                     roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
                     members_role_id = roles_data.get("members") if roles_data else None
                     if members_role_id:
@@ -766,7 +723,6 @@ class GuildEvents(commands.Cog):
 
         guild = ctx.guild
         guild_id = ctx.guild.id
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         user_locale = await get_effective_locale(self.bot, guild_id, ctx.user.id)
         guild_locale = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
@@ -800,7 +756,6 @@ class GuildEvents(commands.Cog):
         except Exception as e:
             logging.error(f"[GuildEvents] Error updating event {event_id} status for guild {guild.id}: {e}", exc_info=True)
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
         
         events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
@@ -844,7 +799,6 @@ class GuildEvents(commands.Cog):
             new_embed.add_field(name=field["name"], value=field["value"], inline=field["inline"])
 
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_roles')
             roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
             
             members_role = roles_data.get("members") if roles_data else None
@@ -873,7 +827,6 @@ class GuildEvents(commands.Cog):
 
         guild = ctx.guild
         guild_id = ctx.guild.id
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         user_locale = await get_effective_locale(self.bot, guild_id, ctx.user.id)
         guild_locale = settings.get("guild_lang") if settings and settings.get("guild_lang") else "en-US"
@@ -906,7 +859,6 @@ class GuildEvents(commands.Cog):
         except Exception as e:
             logging.error(f"[GuildEvents] Error updating status for event {event_id_int} in guild {guild.id}: {e}", exc_info=True)
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
         
         events_channel = guild.get_channel(channels_data.get("events_channel")) if channels_data else None
@@ -989,7 +941,6 @@ class GuildEvents(commands.Cog):
             logging.debug("[GuildEvents - on_raw_reaction_add] Guild not found.")
             return
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
         if not channels_data:
             logging.debug("[GuildEvents - on_raw_reaction_add] Channels data not found for this guild.")
@@ -1105,7 +1056,6 @@ class GuildEvents(commands.Cog):
         if not guild:
             return
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         channels_data = await self.bot.cache.get_guild_data(guild.id, 'channels')
         if not channels_data:
             return
@@ -1159,7 +1109,6 @@ class GuildEvents(commands.Cog):
         guild = self.bot.get_guild(message.guild.id)
         guild_id = guild.id
         
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
         present_key = EVENT_MANAGEMENT["events_infos"]["present"] \
@@ -1237,8 +1186,6 @@ class GuildEvents(commands.Cog):
         """
         tz = pytz.timezone("Europe/Paris")
         now = datetime.now(tz)
-
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         
         for guild in self.bot.guilds:
             guild_id = guild.id
@@ -1249,7 +1196,6 @@ class GuildEvents(commands.Cog):
             if not settings:
                 continue
 
-            await self.bot.cache_loader.ensure_category_loaded('guild_channels')
             channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
             if not channels_data:
                 continue
@@ -1336,8 +1282,6 @@ class GuildEvents(commands.Cog):
         overall_results = []
 
         logging.info(f"[GuildEvents - event_reminder_cron] Starting automatic reminder for {today_str}.")
-
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         
         for guild in self.bot.guilds:
             guild_id = guild.id
@@ -1347,7 +1291,6 @@ class GuildEvents(commands.Cog):
 
             guild_locale = settings.get("guild_lang") or "en-US"
 
-            await self.bot.cache_loader.ensure_category_loaded('guild_channels')
             channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
             if not channels_data:
                 continue
@@ -1392,7 +1335,6 @@ class GuildEvents(commands.Cog):
                 initial = set(initial_members)
                 
                 try:
-                    await self.bot.cache_loader.ensure_category_loaded('guild_roles')
                     roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
                     members_role_id = roles_data.get("members") if roles_data else None
                     if members_role_id:
@@ -1482,9 +1424,6 @@ class GuildEvents(commands.Cog):
         tz = pytz.timezone("Europe/Paris")
         now = datetime.now(tz)
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-
         for guild in self.bot.guilds:
             guild_id = guild.id
             closed_events_to_update = []
@@ -1539,10 +1478,6 @@ class GuildEvents(commands.Cog):
                 logging.debug(f"[GuildEvents CRON] Event {ev['event_id']}: time_diff={time_diff}, condition={time_condition and status_condition}")
                 
                 if time_condition and status_condition:
-                    try:
-                        await self.bot.cache_loader.ensure_category_loaded('guild_members')
-                    except Exception as e:
-                        logging.error(f"[GuildEvents CRON] Error loading guild members for guild {guild_id}: {e}", exc_info=True)
                     closed_localized = EVENT_MANAGEMENT["events_infos"]["status_closed"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["status_closed"].get("en-US"))
                     closed_db = "Closed"
                     try:
@@ -1773,7 +1708,6 @@ class GuildEvents(commands.Cog):
         """
         member_info_list = []
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_members')
         guild_members_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
 
         for member_id in member_ids:
@@ -2300,7 +2234,6 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvent - Cron Create_Groups] Guild not found for guild_id: {guild_id}")
             return
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         if not settings:
             logging.error(f"[GuildEvent - Cron Create_Groups] No configuration found for guild {guild_id}")
@@ -2308,13 +2241,11 @@ class GuildEvents(commands.Cog):
 
         guild_lang = settings.get("guild_lang", "en-US")
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
         if not channels_data:
             logging.error(f"[GuildEvent - Cron Create_Groups] No channels configuration for guild {guild_id}")
             return
 
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
         roles_data = await self.bot.cache.get_guild_data(guild_id, 'roles')
         
         groups_channel = guild.get_channel(channels_data.get("groups_channel")) if channels_data.get("groups_channel") else None
@@ -2490,9 +2421,7 @@ class GuildEvents(commands.Cog):
 
         guild = ctx.guild
         guild_id = ctx.guild.id
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        
+
         user_locale = await get_effective_locale(self.bot, guild_id, ctx.user.id)
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
         
@@ -2610,7 +2539,6 @@ class GuildEvents(commands.Cog):
 
         try:
             if status.lower() == "confirmed":
-                await self.bot.cache_loader.ensure_category_loaded('guild_roles')
                 roles_data = await self.bot.cache.get_guild_data(guild.id, 'roles')
                 members_role = roles_data.get("members") if roles_data else None
                 update_message = EVENT_MANAGEMENT["event_confirm_messages"]["confirmed_notif"].get(
@@ -2647,7 +2575,6 @@ class GuildEvents(commands.Cog):
             logging.error(f"[GuildEvents - event_create] Error creating scheduled event: {e}", exc_info=True)
 
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_roles')
             roles_data = await self.bot.cache.get_guild_data(guild.id, 'roles')
             members_role_id = roles_data.get("members") if roles_data else None
             if members_role_id:
@@ -2758,7 +2685,6 @@ class GuildEvents(commands.Cog):
         
         guild_id = ctx.guild.id
         leader_id = ctx.author.id
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
         existing_group = await self.get_static_group_data(guild_id, group_name)
@@ -2815,7 +2741,6 @@ class GuildEvents(commands.Cog):
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
         group_data = await self.get_static_group_data(guild_id, group_name)
@@ -2890,7 +2815,6 @@ class GuildEvents(commands.Cog):
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
         group_data = await self.get_static_group_data(guild_id, group_name)
@@ -2954,7 +2878,6 @@ class GuildEvents(commands.Cog):
         
         guild_id = ctx.guild.id
         
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
         
         user_locale = await get_effective_locale(self.bot, guild_id, ctx.user.id)
@@ -3260,7 +3183,6 @@ class GuildEvents(commands.Cog):
         await ctx.defer(ephemeral=True)
         
         guild_id = ctx.guild.id
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
         group_data = await self.get_static_group_data(guild_id, group_name)

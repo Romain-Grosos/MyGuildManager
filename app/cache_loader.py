@@ -18,6 +18,8 @@ class CacheLoader:
         """
         self.bot = bot
         self._loaded_categories = set()
+        self._initial_load_complete = False
+        self._load_lock = asyncio.Lock()
         
     async def ensure_guild_settings_loaded(self) -> None:
         """
@@ -651,41 +653,85 @@ class CacheLoader:
 
     async def load_all_shared_data(self) -> None:
         """
-        Load all shared data categories in parallel.
+        Load all shared data categories in parallel - ONCE at startup.
         
-        Executes all cache loading operations concurrently
-        to minimize startup time and database load.
+        This method should be called ONCE during bot initialization
+        to load all necessary data in a single optimized operation.
         """
-        logging.info("[CacheLoader] Loading all shared data categories")
+        async with self._load_lock:
+            if self._initial_load_complete:
+                logging.debug("[CacheLoader] Initial load already complete, skipping")
+                return
+                
+            logging.info("[CacheLoader] Starting optimized initial data load")
+            start_time = asyncio.get_event_loop().time()
+
+            tasks = [
+                self.ensure_guild_settings_loaded(),
+                self.ensure_guild_roles_loaded(),
+                self.ensure_guild_channels_loaded(),
+                self.ensure_welcome_messages_loaded(),
+                self.ensure_absence_messages_loaded(),
+                self.ensure_guild_members_loaded(),
+                self.ensure_events_data_loaded(),
+                self.ensure_static_data_loaded(),
+                self.ensure_static_groups_loaded(),
+                self.ensure_user_setup_loaded(),
+                self.ensure_weapons_loaded(),
+                self.ensure_weapons_combinations_loaded(),
+                self.ensure_guild_ideal_staff_loaded(),
+                self.ensure_games_list_loaded(),
+                self.ensure_epic_items_t2_loaded(),
+                self.ensure_guild_ptb_settings_loaded(),
+            ]
+            
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    logging.error(f"[CacheLoader] Error loading category {i}: {result}")
+            
+            self._initial_load_complete = True
+            elapsed = asyncio.get_event_loop().time() - start_time
+            logging.info(f"[CacheLoader] Initial data load completed in {elapsed:.2f}s - {len(self._loaded_categories)} categories loaded")
+    
+    async def wait_for_initial_load(self) -> None:
+        """
+        Wait for initial cache load to complete.
         
-        await asyncio.gather(
-            self.ensure_guild_settings_loaded(),
-            self.ensure_guild_roles_loaded(),
-            self.ensure_guild_channels_loaded(),
-            self.ensure_welcome_messages_loaded(),
-            self.ensure_absence_messages_loaded(),
-            self.ensure_guild_members_loaded(),
-            self.ensure_events_data_loaded(),
-            self.ensure_static_data_loaded(),
-            self.ensure_user_setup_loaded(),
-            self.ensure_weapons_loaded(),
-            self.ensure_weapons_combinations_loaded(),
-            self.ensure_guild_ideal_staff_loaded(),
-            self.ensure_games_list_loaded(),
-            self.ensure_epic_items_t2_loaded(),
-            self.ensure_guild_ptb_settings_loaded(),
-            return_exceptions=True
-        )
+        Cogs can call this instead of loading data themselves.
+        This ensures they wait for the centralized load to finish.
+        """
+        if self._initial_load_complete:
+            return
+
+        for _ in range(100):
+            if self._initial_load_complete:
+                return
+            await asyncio.sleep(0.1)
         
-        logging.info("[CacheLoader] Shared data loading completed")
+        logging.warning("[CacheLoader] Initial load timeout - proceeding anyway")
+    
+    def is_loaded(self) -> bool:
+        """
+        Check if initial cache load is complete.
+        
+        Returns:
+            bool: True if all data has been loaded
+        """
+        return self._initial_load_complete
     
     async def ensure_category_loaded(self, category: str) -> None:
         """
         Ensure a specific category is loaded.
         
+        After initial load, this becomes a no-op for already loaded categories.
+        
         Args:
             category: Name of the data category to load
         """
+        if self._initial_load_complete and category in self._loaded_categories:
+            return
         if category == 'guild_settings':
             await self.ensure_guild_settings_loaded()
         elif category == 'guild_roles':

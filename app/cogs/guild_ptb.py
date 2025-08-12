@@ -56,24 +56,9 @@ class GuildPTB(commands.Cog):
         This method is called when the bot has finished logging in and is ready
         to receive events. It starts the process of loading PTB data from cache.
         """
-        asyncio.create_task(self.load_ptb_data())
-        logging.debug("[GuildPTB] Cache loading tasks started in on_ready.")
-    
-    async def load_ptb_data(self) -> None:
-        """
-        Ensure all required data is loaded via centralized cache loader.
-        
-        This method loads essential PTB data categories into the cache,
-        including guild settings and PTB-specific settings.
-        """
-        logging.debug("[GuildPTB] Loading PTB data")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_ptb_settings')
-        
-        logging.debug("[GuildPTB] PTB data loading completed")
-    
-    
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+        logging.debug("[Guild_Ptb] Waiting for initial cache load")
+
     async def get_ptb_settings(self) -> Dict:
         """
         Get PTB settings for all guilds from centralized cache.
@@ -82,8 +67,6 @@ class GuildPTB(commands.Cog):
             Dict: A dictionary mapping guild IDs to their PTB settings,
                  containing only guilds that have PTB configurations
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_ptb_settings')
-
         all_ptb_settings = {}
         for guild in self.bot.guilds:
             guild_ptb_settings = await self.bot.cache.get_guild_data(guild.id, 'ptb_settings')
@@ -102,7 +85,6 @@ class GuildPTB(commands.Cog):
         Returns:
             Dict: The PTB settings for the specified guild, or empty dict if none found
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_ptb_settings')
         result = await self.bot.cache.get_guild_data(guild_id, 'ptb_settings')
         if not result:
             logging.debug(f"[GuildPTB] No PTB settings found for guild {guild_id} in cache")
@@ -142,7 +124,6 @@ class GuildPTB(commands.Cog):
             bool: True if ownership and permissions are valid, False otherwise
         """
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             ptb_guild = self.bot.get_guild(ptb_guild_id)
             if not ptb_guild:
                 logging.error(f"[GuildPTB] PTB guild {ptb_guild_id} not found or bot has no access")
@@ -225,8 +206,6 @@ class GuildPTB(commands.Cog):
                 logging.error(f"[GuildPTB] User {authorized_user_id} insufficient permissions for PTB creation in guild {main_guild_id}")
                 return False
 
-
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             initialized = await self.bot.cache.get_guild_data(main_guild_id, 'initialized')
             
             if not initialized:
@@ -518,7 +497,6 @@ class GuildPTB(commands.Cog):
             groups_data: Dictionary mapping group names to lists of member IDs
         """
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             info_channel = ptb_guild.get_channel(info_channel_id)
             if not info_channel:
                 logging.error(f"[GuildPTB] Info channel not found: {info_channel_id}")
@@ -533,7 +511,6 @@ class GuildPTB(commands.Cog):
                     break
             
             if main_guild_id:
-                await self.bot.cache_loader.ensure_category_loaded('guild_settings')
                 guild_lang = await self.bot.cache.get_guild_data(main_guild_id, 'guild_lang') or "en-US"
 
             title = GUILD_PTB["event_recap"]["title"].get(guild_lang, 
@@ -594,7 +571,6 @@ class GuildPTB(commands.Cog):
             groups_data: Dictionary mapping group names to lists of member IDs
         """
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             main_guild = self.bot.get_guild(main_guild_id)
             if not main_guild:
                 return
@@ -619,7 +595,6 @@ class GuildPTB(commands.Cog):
             for member_ids in groups_data.values():
                 all_member_ids.update(member_ids)
 
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             guild_lang = await self.bot.cache.get_guild_data(main_guild_id, 'guild_lang') or "en-US"
 
             invitation_message = GUILD_PTB["invitation"]["dm_message"].get(guild_lang,
@@ -779,7 +754,6 @@ class GuildPTB(commands.Cog):
             main_guild_id: The ID of the main guild to sync from
         """
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             logging.debug(f"[GuildPTB] Attempting to sync nickname for {ptb_member.display_name} ({ptb_member.id}) from main guild {main_guild_id}")
             
             main_guild = self.bot.get_guild(main_guild_id)
@@ -854,7 +828,6 @@ class GuildPTB(commands.Cog):
                 await ctx.followup.send(error_msg, ephemeral=True)
                 return
 
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             guild_lang = await self.bot.cache.get_guild_data(main_guild_id_int, 'guild_lang') or "en-US"
             initialized = await self.bot.cache.get_guild_data(main_guild_id_int, 'initialized')
             
@@ -939,7 +912,6 @@ class GuildPTB(commands.Cog):
         }
         
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             ptb_guild_id = await self.bot.cache.get_guild_data(main_guild_id, 'guild_ptb')
             if not ptb_guild_id:
                 audit_report["status"] = "no_ptb"

@@ -110,8 +110,6 @@ class LootWishlist(commands.Cog):
         """
         try:
             user_input = ctx.value.lower().strip() if ctx.value else ""
-
-            await self.bot.cache_loader.ensure_category_loaded('epic_items_t2')
             epic_items = await self.bot.cache.get_static_data('epic_items_t2')
             
             if not epic_items:
@@ -308,7 +306,6 @@ class LootWishlist(commands.Cog):
             and item_id is the database ID of the item or None if not found
         """
         try:
-            await self.bot.cache_loader.ensure_category_loaded('epic_items_t2')
             epic_items = await self.bot.cache.get_static_data('epic_items_t2')
             
             if epic_items:

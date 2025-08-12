@@ -63,7 +63,6 @@ class ProfileSetup(commands.Cog):
         Returns:
             Guild language code (default: en-US)
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
         return guild_lang or "en-US"
     
@@ -77,7 +76,6 @@ class ProfileSetup(commands.Cog):
         Returns:
             Dictionary containing guild settings
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         settings = await self.bot.cache.get_guild_data(guild_id, 'guild_settings')
         return settings or {}
     
@@ -91,7 +89,6 @@ class ProfileSetup(commands.Cog):
         Returns:
             Dictionary containing guild role IDs
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
         roles = await self.bot.cache.get_guild_data(guild_id, 'roles')
         return roles or {}
     
@@ -105,7 +102,6 @@ class ProfileSetup(commands.Cog):
         Returns:
             Dictionary containing guild channel IDs
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
         channels = await self.bot.cache.get_guild_data(guild_id, 'channels')
         return channels or {}
     
@@ -131,22 +127,6 @@ class ProfileSetup(commands.Cog):
         """
         validations = await self.bot.cache.get('temporary', 'pending_validations')
         return validations or {}
-    
-    async def load_profile_setup_data(self) -> None:
-        """
-        Ensure all required data is loaded via centralized cache loader.
-        
-        Loads guild roles, channels, settings, and pending validations needed
-        for profile setup workflow.
-        """
-        logging.debug("[ProfileSetup] Loading profile setup data")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self._load_pending_validations()
-        
-        logging.debug("[ProfileSetup] Profile setup data loading completed")
 
     def _sanitize_llm_input(self, text: str) -> str:
         """Sanitize text input for LLM queries to prevent prompt injection attacks.
@@ -481,21 +461,15 @@ class ProfileSetup(commands.Cog):
     async def on_ready(self):
         """Initialize profile setup data on bot ready."""
         
-        async def safe_load_profile_setup_data():
-            try:
-                await self.load_profile_setup_data()
-            except Exception as e:
-                logging.error(f"[ProfileSetup] Error loading profile setup data: {e}", exc_info=True)
-        
         async def safe_restore_pending_validation_views():
             try:
                 await self.restore_pending_validation_views()
             except Exception as e:
                 logging.error(f"[ProfileSetup] Error restoring pending validation views: {e}", exc_info=True)
         
-        asyncio.create_task(safe_load_profile_setup_data())
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
         asyncio.create_task(safe_restore_pending_validation_views())
-        logging.debug("[ProfileSetup] Cache loading tasks started from on_ready")
+        logging.debug("[Profile_Setup] Waiting for initial cache load")
 
     async def finalize_profile(self, guild_id: int, user_id: int) -> None:
         """

@@ -64,20 +64,9 @@ class AutoRole(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Initialize autorole data on bot ready."""
-        asyncio.create_task(self.load_autorole_data())
-        logging.debug("[AutoRole] Cache loading tasks started from on_ready.")
-
-    async def load_autorole_data(self) -> None:
-        """Ensure all required data is loaded via centralized cache loader."""
-        logging.debug("[AutoRole] Loading autorole data")
-
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('welcome_messages')
-        
-        logging.debug("[AutoRole] Autorole data loading completed")
+        """Wait for initial cache load to complete."""
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+        logging.debug("[AutoRole] Waiting for initial cache load")
 
     def _check_rate_limit(self, guild_id: int, user_id: int, message_id: int) -> bool:
         """

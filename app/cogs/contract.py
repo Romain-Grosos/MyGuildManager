@@ -431,8 +431,6 @@ class Contract(commands.Cog):
         Returns:
             Dictionary with events_channel and guild_lang
         """
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
         
         channels_data = await self.bot.cache.get_guild_data(guild_id, 'channels')
         events_channel = channels_data.get('events_channel') if channels_data else None

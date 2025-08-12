@@ -673,9 +673,9 @@ async def on_ready() -> None:
         bot._cache_loaded = True
         try:
             await bot.cache_loader.load_all_shared_data()
-            logging.info("[Bot] Cache loader: shared data loaded successfully")
+            logging.info("[Bot] Initial cache load completed successfully - all categories loaded ONCE")
         except Exception as e:
-            logging.error(f"[Bot] Error loading shared cache data: {e}", exc_info=True)
+            logging.error(f"[Bot] Error during initial cache load: {e}", exc_info=True)
     
     if PSUTIL_AVAILABLE and not hasattr(bot, '_monitor_task'):
         bot._monitor_task = asyncio.create_task(monitor_resources())
@@ -700,7 +700,6 @@ async def on_ready() -> None:
         await start_cache_maintenance_task(bot)
         await start_cleanup_task(bot)
 
-        await bot.cache_loader.load_all_shared_data()
         logging.info("[BotOptimizer] Optimization setup completed - intelligent cache system with smart features started")
 
 

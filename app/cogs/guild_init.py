@@ -32,7 +32,6 @@ class GuildInit(commands.Cog):
             bot: The Discord bot instance
         """
         self.bot = bot
-
         self._register_admin_commands()
     
     def _register_admin_commands(self):
@@ -89,7 +88,6 @@ class GuildInit(commands.Cog):
             return await ctx.followup.send(msg, ephemeral=True)
 
         try:
-            await self.bot.cache_loader.ensure_category_loaded('guild_settings')
             guild_settings = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
             if not guild_settings:
                 response = await get_user_message(ctx, GUILD_INIT_DATA, "messages.not_initialized")
@@ -116,7 +114,6 @@ class GuildInit(commands.Cog):
 
         elif config_mode == "complete":
             try:
-                await self.bot.cache_loader.ensure_category_loaded('guild_settings')
                 guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
 
                 everyone = guild.default_role
@@ -457,9 +454,6 @@ class GuildInit(commands.Cog):
                     await self.bot.cache.invalidate_category('events_data')
                     await self.bot.cache.invalidate_category('user_data')
                     await self.bot.cache.invalidate_category('discord_entities')
-                    await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-                    await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-                    await self.bot.cache_loader.ensure_category_loaded('guild_settings')
                     logging.info("[GuildInit] Cache invalidated and reloaded for guild %s", guild_id)
                 except Exception as e:
                     logging.error("[GuildInit] Error reloading caches: %s", e)
@@ -485,29 +479,8 @@ class GuildInit(commands.Cog):
         Returns:
             None
         """
-        asyncio.create_task(self.load_guild_init_data())
-        logging.debug("[GuildInit] Cache loading tasks started in on_ready.")
-
-    async def load_guild_init_data(self) -> None:
-        """
-        Ensure all required data is loaded via centralized cache loader.
-        
-        Loads guild settings, channels, and roles data into the cache to ensure
-        all necessary information is available for guild initialization operations.
-        
-        Returns:
-            None
-            
-        Raises:
-            Exception: When cache loading operations fail
-        """
-        logging.debug("[GuildInit] Loading guild init data")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        
-        logging.debug("[GuildInit] Guild init data loading completed")
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+        logging.debug("[Guild_Init] Waiting for initial cache load")
 
 def setup(bot: discord.Bot) -> None:
     """

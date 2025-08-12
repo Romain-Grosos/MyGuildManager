@@ -33,26 +33,8 @@ class GuildAttendance(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize attendance data on bot ready."""
-        asyncio.create_task(self.load_attendance_data())
-        logging.debug("[GuildAttendance] Cache loading tasks started in on_ready.")
-
-    async def load_attendance_data(self) -> None:
-        """
-        Ensure all required data is loaded via centralized cache loader.
-        
-        Loads guild settings, channels, roles, members, and events data needed
-        for attendance tracking. This method is called during bot initialization
-        to warm up the cache.
-        """
-        logging.debug("[GuildAttendance] Loading attendance data")
-        
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        await self.bot.cache_loader.ensure_category_loaded('guild_members')
-        await self.bot.cache_loader.ensure_category_loaded('events_data')
-        
-        logging.debug("[GuildAttendance] Attendance data loading completed")
+        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+        logging.debug("[Guild_Attendance] Waiting for initial cache load")
 
     async def get_event_from_cache(self, guild_id: int, event_id: int) -> Optional[Dict]:
         """
@@ -153,11 +135,7 @@ class GuildAttendance(commands.Cog):
             
         Returns:
             Dictionary containing guild settings (language, premium, channels, roles)
-        """
-        await self.bot.cache_loader.ensure_category_loaded('guild_settings')
-        await self.bot.cache_loader.ensure_category_loaded('guild_channels')
-        await self.bot.cache_loader.ensure_category_loaded('guild_roles')
-        
+        """     
         try:
             guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang') or "en-US"
             premium = await self.bot.cache.get_guild_data(guild_id, 'premium')
@@ -189,9 +167,7 @@ class GuildAttendance(commands.Cog):
             
         Returns:
             Dictionary mapping member IDs to member data
-        """
-        await self.bot.cache_loader.ensure_category_loaded('guild_members')
-        
+        """       
         try:
             guild_members_cache = await self.bot.cache.get('roster_data', 'guild_members') or {}
             guild_specific_members = {}
@@ -383,8 +359,6 @@ class GuildAttendance(commands.Cog):
         Returns:
             Dictionary containing event data or empty dict if not found
         """
-        await self.bot.cache_loader.ensure_category_loaded('events_data')
-        
         event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
         return event_data or {}
 
