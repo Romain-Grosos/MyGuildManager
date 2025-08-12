@@ -333,8 +333,10 @@ class GuildPTB(commands.Cog):
             logging.debug(f"[GuildPTB] Created info channel ({info_channel.id})")
 
             try:
+                new_permissions = ptb_guild.default_role.permissions
+                new_permissions.update(change_nickname=False)
                 await ptb_guild.default_role.edit(
-                    permissions=ptb_guild.default_role.permissions.update(change_nickname=False),
+                    permissions=new_permissions,
                     reason="PTB Configuration - Disable nickname changes for @everyone"
                 )
                 logging.debug("[GuildPTB] Removed change_nickname permission from @everyone")
@@ -401,7 +403,7 @@ class GuildPTB(commands.Cog):
             
             await self.bot.run_db_query(query, data, commit=True)
 
-            await self.bot.cache.invalidate_guild_data(main_guild_id, 'ptb_settings')
+            await self.bot.cache.delete_guild_data(main_guild_id, 'ptb_settings')
             await self.bot.cache_loader.reload_category('guild_ptb_settings')
             
             logging.info(f"[GuildPTB] Saved PTB settings for guild {main_guild_id}")
@@ -476,11 +478,14 @@ class GuildPTB(commands.Cog):
         """
         try:
             for group_name, member_ids in groups_data.items():
-                if group_name not in ptb_settings["groups"]:
-                    logging.warning(f"[GuildPTB] Group {group_name} not found in PTB settings")
+                group_num = group_name.lower()
+                role_key = f"{group_num}_role_id"
+                
+                if role_key not in ptb_settings:
+                    logging.warning(f"[GuildPTB] Group {group_name} role not found in PTB settings")
                     continue
                 
-                role_id = ptb_settings["groups"][group_name]["role_id"]
+                role_id = ptb_settings[role_key]
                 role = ptb_guild.get_role(role_id)
                 
                 if not role:
@@ -677,10 +682,13 @@ class GuildPTB(commands.Cog):
             groups_data = event_data["groups_data"]
 
             for group_name, member_ids in groups_data.items():
-                if group_name not in ptb_settings["groups"]:
+                group_num = group_name.lower()
+                role_key = f"{group_num}_role_id"
+                
+                if role_key not in ptb_settings:
                     continue
                 
-                role_id = ptb_settings["groups"][group_name]["role_id"]
+                role_id = ptb_settings[role_key]
                 role = ptb_guild.get_role(role_id)
                 
                 if not role:
@@ -742,8 +750,11 @@ class GuildPTB(commands.Cog):
 
                     for group_name, member_ids in groups_data.items():
                         if member.id in member_ids:
-                            if group_name in guild_ptb_settings["groups"]:
-                                role_id = guild_ptb_settings["groups"][group_name]["role_id"]
+                            group_num = group_name.lower()
+                            role_key = f"{group_num}_role_id"
+                            
+                            if role_key in guild_ptb_settings:
+                                role_id = guild_ptb_settings[role_key]
                                 role = member.guild.get_role(role_id)
                                 
                                 if role:

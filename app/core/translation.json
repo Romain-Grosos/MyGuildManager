@@ -1228,18 +1228,18 @@
                 "it": "Evento"
             },
             "date": {
-                "en-US": "📅 Date",
-                "fr": "📅 Date",
-                "es-ES": "📅 Fecha",
-                "de": "📅 Datum",
-                "it": "📅 Data"
+                "en-US": "Date",
+                "fr": "Date",
+                "es-ES": "Fecha",
+                "de": "Datum",
+                "it": "Data"
             },
             "hour": {
-                "en-US": "🕐 Time",
-                "fr": "🕐 Heure",
-                "es-ES": "🕐 Hora",
-                "de": "🕐 Zeit",
-                "it": "🕐 Ora"
+                "en-US": "Hour (Paris)",
+                "fr": "Heure (Paris)",
+                "es-ES": "Hora (París)",
+                "de": "Uhrzeit (Paris)",
+                "it": "Ora (Parigi)"
             },
             "time_at": {
                 "en-US": "at",
@@ -1249,18 +1249,18 @@
                 "it": "alle"
             },
             "duration": {
-                "en-US": "⏱️ Duration",
-                "fr": "⏱️ Durée",
-                "es-ES": "⏱️ Duración",
-                "de": "⏱️ Dauer",
-                "it": "⏱️ Durata"
+                "en-US": "Duration (minutes)",
+                "fr": "Durée (minutes)",
+                "es-ES": "Duración (minutos)",
+                "de": "Dauer (Minuten)",
+                "it": "Durata (minuti)"
             },
             "status": {
-                "en-US": "📊 Status",
-                "fr": "📊 Statut",
-                "es-ES": "📊 Estado",
-                "de": "📊 Status",
-                "it": "📊 Stato"
+                "en-US": "Status",
+                "fr": "Statut",
+                "es-ES": "Estado",
+                "de": "Status",
+                "it": "Stato"
             },
             "status_planned": {
                 "en-US": "🟡 Planned",
@@ -1284,25 +1284,25 @@
                 "it": "🔴 Chiuso"
             },
             "dkp_v": {
-                "en-US": "💰 DKP Victory",
-                "fr": "💰 DKP Victoire",
-                "es-ES": "💰 DKP Victoria",
-                "de": "💰 DKP Sieg",
-                "it": "💰 DKP Vittoria"
+                "en-US": "DKP Value",
+                "fr": "DKP Valeur",
+                "es-ES": "Valor DKP",
+                "de": "DKP-Wert",
+                "it": "Valore DKP"
             },
             "dkp_i": {
-                "en-US": "💎 DKP Inscription",
-                "fr": "💎 DKP Inscription",
-                "es-ES": "💎 DKP Inscripción",
-                "de": "💎 DKP Anmeldung",
-                "it": "💎 DKP Iscrizione"
+                "en-US": "DKP Registration",
+                "fr": "DKP Inscription",
+                "es-ES": "Registro DKP",
+                "de": "DKP-Anmeldung",
+                "it": "Registrazione DKP"
             },
             "present": {
-                "en-US": "✅ Present",
-                "fr": "✅ Présent",
-                "es-ES": "✅ Presente",
-                "de": "✅ Anwesend",
-                "it": "✅ Presente"
+                "en-US": "Present",
+                "fr": "Présent",
+                "es-ES": "Presente",
+                "de": "Anwesend",
+                "it": "Presente"
             },
             "present_count": {
                 "en-US": "Present",
@@ -1312,11 +1312,11 @@
                 "it": "Presenti"
             },
             "attempt": {
-                "en-US": "🟡 Maybe",
-                "fr": "🟡 Peut-être",
-                "es-ES": "🟡 Tal vez",
-                "de": "🟡 Vielleicht",
-                "it": "🟡 Forse"
+                "en-US": "Maybe",
+                "fr": "Peut-être",
+                "es-ES": "Tal vez",
+                "de": "Vielleicht",
+                "it": "Forse"
             },
             "attempt_count": {
                 "en-US": "Attempts",
@@ -1326,25 +1326,25 @@
                 "it": "Tentativi"
             },
             "absence": {
-                "en-US": "❌ Absent",
-                "fr": "❌ Absent",
-                "es-ES": "❌ Ausente",
-                "de": "❌ Abwesend",
-                "it": "❌ Assente"
+                "en-US": "Absent",
+                "fr": "Absent",
+                "es-ES": "Ausente",
+                "de": "Abwesend",
+                "it": "Assente"
             },
             "voice_channel": {
-                "en-US": "🔊 Voice Channel",
-                "fr": "🔊 Canal vocal",
-                "es-ES": "🔊 Canal de voz",
-                "de": "🔊 Sprachkanal",
-                "it": "🔊 Canale vocale"
+                "en-US": "Voice Channel",
+                "fr": "Salon Vocal",
+                "es-ES": "Canal de Voz",
+                "de": "Sprachkanal",
+                "it": "Canale Vocale"
             },
             "groups": {
-                "en-US": "👥 Groups",
-                "fr": "👥 Groupes",
-                "es-ES": "👥 Grupos",
-                "de": "👥 Gruppen",
-                "it": "👥 Gruppi"
+                "en-US": "Groups",
+                "fr": "Groupes",
+                "es-ES": "Grupos",
+                "de": "Gruppen",
+                "it": "Gruppi"
             },
             "groups_below": {
                 "en-US": "Groups below",
@@ -1354,11 +1354,11 @@
                 "it": "Gruppi sotto"
             },
             "auto_grouping": {
-                "en-US": "🤖 Auto Grouping",
-                "fr": "🤖 Groupage automatique",
-                "es-ES": "🤖 Agrupación automática",
-                "de": "🤖 Auto-Gruppierung",
-                "it": "🤖 Raggruppamento automatico"
+                "en-US": "Automatic group assignment and gathering 15 minutes before the event!",
+                "fr": "Envoi automatique des groupes et regroupement 15 minutes avant l'évènement !",
+                "es-ES": "Asignación automática de grupos y reunión 15 minutos antes del evento!",
+                "de": "Automatische Gruppenzuweisung und Sammeln 15 Minuten vor dem Ereignis!",
+                "it": "Assegnazione automatica dei gruppi e raduno 15 minuti prima dell'evento!"
             },
             "none": {
                 "en-US": "None",
@@ -1368,18 +1368,18 @@
                 "it": "Nessuno"
             },
             "description": {
-                "en-US": "Register for this event by reacting with ✅ (Present), 🟡 (Maybe), or ❌ (Absent)",
-                "fr": "Inscrivez-vous à cet événement en réagissant avec ✅ (Présent), 🟡 (Peut-être), ou ❌ (Absent)",
-                "es-ES": "Regístrate para este evento reaccionando con ✅ (Presente), 🟡 (Tal vez), o ❌ (Ausente)",
-                "de": "Melde dich für dieses Event an, indem du mit ✅ (Anwesend), 🟡 (Vielleicht) oder ❌ (Abwesend) reagierst",
-                "it": "Registrati per questo evento reagendo con ✅ (Presente), 🟡 (Forse), o ❌ (Assente)"
+                "en-US": "React to indicate your presence, attempt, or absence.",
+                "fr": "Réagissez pour indiquer votre présence, tentative ou absence.",
+                "es-ES": "Reacciona para indicar tu presencia, intento o ausencia.",
+                "de": "Reagiere, um deine Anwesenheit, deinen Versuch oder deine Abwesenheit anzuzeigen.",
+                "it": "Reagisci per indicare la tua presenza, tentativo o assenza."
             },
             "description_scheduled": {
-                "en-US": "Register for this event by reacting with ✅ (Present), 🟡 (Maybe), or ❌ (Absent)\n\n[View Event Details]({link})",
-                "fr": "Inscrivez-vous à cet événement en réagissant avec ✅ (Présent), 🟡 (Peut-être), ou ❌ (Absent)\n\n[Voir les détails de l'événement]({link})",
-                "es-ES": "Regístrate para este evento reaccionando con ✅ (Presente), 🟡 (Tal vez), o ❌ (Ausente)\n\n[Ver detalles del evento]({link})",
-                "de": "Melde dich für dieses Event an, indem du mit ✅ (Anwesend), 🟡 (Vielleicht) oder ❌ (Abwesend) reagierst\n\n[Event-Details anzeigen]({link})",
-                "it": "Registrati per questo evento reagendo con ✅ (Presente), 🟡 (Forse), o ❌ (Assente)\n\n[Visualizza dettagli evento]({link})"
+                "en-US": "React to indicate your presence, attempt, or absence.\n\n[View Event Details]({link})",
+                "fr": "Réagissez pour indiquer votre présence, tentative ou absence.\n\n[Voir les détails de l'événement]({link})",
+                "es-ES": "Reacciona para indicar tu presencia, intento o ausencia.\n\n[Ver detalles del evento]({link})",
+                "de": "Reagiere, um deine Anwesenheit, deinen Versuch oder deine Abwesenheit anzuzeigen.\n\n[Event-Details anzeigen]({link})",
+                "it": "Reagisci per indicare la tua presenza, tentativo o assenza.\n\n[Visualizza dettagli evento]({link})"
             },
             "view_event": {
                 "en-US": "View Event and registrations",
@@ -1405,11 +1405,11 @@
                 "it": "Nome evento"
             },
             "event_date": {
-                "en-US": "Event date (DD/MM/YYYY)",
-                "fr": "Date de l'événement (JJ/MM/AAAA)",
-                "es-ES": "Fecha del evento (DD/MM/AAAA)",
-                "de": "Event-Datum (TT/MM/JJJJ)",
-                "it": "Data evento (GG/MM/AAAA)"
+                "en-US": "Event date (DD/MM/YYYY or YYYY-MM-DD)",
+                "fr": "Date de l'événement (JJ/MM/AAAA ou AAAA-MM-JJ)",
+                "es-ES": "Fecha del evento (DD/MM/AAAA o AAAA-MM-DD)",
+                "de": "Event-Datum (TT/MM/JJJJ oder JJJJ-MM-TT)",
+                "it": "Data evento (GG/MM/AAAA o AAAA-MM-GG)"
             },
             "event_hour": {
                 "en-US": "Event time (HH:MM)",
@@ -1511,11 +1511,11 @@
                 "it": "❌ Durata non valida (deve essere 0.5-12 ore)"
             },
             "date_ko": {
-                "en-US": "❌ Invalid date format. Use DD/MM/YYYY",
-                "fr": "❌ Format de date invalide. Utilisez JJ/MM/AAAA",
-                "es-ES": "❌ Formato de fecha inválido. Use DD/MM/AAAA",
-                "de": "❌ Ungültiges Datumsformat. Verwenden Sie TT/MM/JJJJ",
-                "it": "❌ Formato data non valido. Usa GG/MM/AAAA"
+                "en-US": "❌ Invalid date format. Use DD/MM/YYYY or YYYY-MM-DD",
+                "fr": "❌ Format de date invalide. Utilisez JJ/MM/AAAA ou AAAA-MM-JJ",
+                "es-ES": "❌ Formato de fecha inválido. Use DD/MM/AAAA o AAAA-MM-DD",
+                "de": "❌ Ungültiges Datumsformat. Verwenden Sie TT/MM/JJJJ oder JJJJ-MM-TT",
+                "it": "❌ Formato data non valido. Usa GG/MM/AAAA o AAAA-MM-GG"
             },
             "date_ko_2": {
                 "en-US": "❌ Date cannot be in the past",
@@ -1834,11 +1834,11 @@
                     "it": "⚠️ {member} non è nel gruppo **{group_name}**"
                 },
                 "success": {
-                    "en-US": "✅ {member} removed from group **{group_name}** ({count}/5 members)",
-                    "fr": "✅ {member} retiré du groupe **{group_name}** ({count}/5 membres)",
-                    "es-ES": "✅ {member} eliminado del grupo **{group_name}** ({count}/5 miembros)",
-                    "de": "✅ {member} aus Gruppe **{group_name}** entfernt ({count}/5 Mitglieder)",
-                    "it": "✅ {member} rimosso dal gruppo **{group_name}** ({count}/5 membri)"
+                    "en-US": "✅ {member} removed from group **{group_name}** ({count}/6 members)",
+                    "fr": "✅ {member} retiré du groupe **{group_name}** ({count}/6 membres)",
+                    "es-ES": "✅ {member} eliminado del grupo **{group_name}** ({count}/6 miembros)",
+                    "de": "✅ {member} aus Gruppe **{group_name}** entfernt ({count}/6 Mitglieder)",
+                    "it": "✅ {member} rimosso dal gruppo **{group_name}** ({count}/6 membri)"
                 },
                 "error": {
                     "en-US": "❌ Error removing member from group: {error}",
@@ -2031,11 +2031,11 @@
                     "it": "Anteprima dei gruppi generati automaticamente per **{event_name}**\n📅 {event_date} alle {event_time}\n\n👥 **{total_members}** membri registrati"
                 },
                 "group_title": {
-                    "en-US": "🏆 Group {group_number} ({member_count}/5)",
-                    "fr": "🏆 Groupe {group_number} ({member_count}/5)",
-                    "es-ES": "🏆 Grupo {group_number} ({member_count}/5)",
-                    "de": "🏆 Gruppe {group_number} ({member_count}/5)",
-                    "it": "🏆 Gruppo {group_number} ({member_count}/5)"
+                    "en-US": "🏆 Group {group_number} ({member_count}/6)",
+                    "fr": "🏆 Groupe {group_number} ({member_count}/6)",
+                    "es-ES": "🏆 Grupo {group_number} ({member_count}/6)",
+                    "de": "🏆 Gruppe {group_number} ({member_count}/6)",
+                    "it": "🏆 Gruppo {group_number} ({member_count}/6)"
                 },
                 "no_members": {
                     "en-US": "No members assigned",

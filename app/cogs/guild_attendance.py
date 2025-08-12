@@ -27,6 +27,7 @@ class GuildAttendance(commands.Cog):
             bot: Discord bot instance
         """
         self.bot = bot
+        self._processed_events = set()
 
 
     @commands.Cog.listener()
@@ -405,9 +406,9 @@ class GuildAttendance(commands.Cog):
 
         query = """
         SELECT guild_id, event_id, name, event_date, event_time, duration, 
-               dkp_value, status, registrations, actual_presence
+               dkp_value, dkp_ins, status, registrations, actual_presence
         FROM events_data 
-        WHERE guild_id = %s AND status = 'Closed'
+        WHERE guild_id = %s AND status LIKE '%Closed%'
         """
         try:
             rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
@@ -422,9 +423,10 @@ class GuildAttendance(commands.Cog):
                         "event_time": row[4],
                         "duration": row[5],
                         "dkp_value": row[6],
-                        "status": row[7],
-                        "registrations": json.loads(row[8]) if row[8] else {},
-                        "actual_presence": json.loads(row[9]) if row[9] else []
+                        "dkp_ins": row[7],
+                        "status": row[8],
+                        "registrations": json.loads(row[9]) if row[9] else {},
+                        "actual_presence": json.loads(row[10]) if row[10] else []
                     }
                 except (ValueError, TypeError, json.JSONDecodeError) as e:
                     logging.warning(f"[GuildAttendance] Invalid event data for {row[0]}_{row[1]}: {e}")
@@ -486,30 +488,52 @@ class GuildAttendance(commands.Cog):
         event_id = event_data["event_id"]
         logging.debug(f"[GuildAttendance] Processing voice attendance for event {event_id}")
 
-        if self._was_recently_checked(event_data, now):
-            return
+        try:
+            if self._was_already_processed(event_data):
+                return
 
-        voice_members = await self._get_voice_connected_members(guild)
+            voice_members = await self._get_voice_connected_members(guild)
+            logging.debug(f"[GuildAttendance] Found {len(voice_members)} members in voice channels")
 
-        dkp_presence = int(event_data.get("dkp_value", 0))
-        dkp_registration = int(event_data.get("dkp_ins", 0))
+            try:
+                dkp_presence = int(event_data.get("dkp_value", 0))
+                dkp_registration = int(event_data.get("dkp_ins", 0))
+            except (ValueError, TypeError) as e:
+                logging.error(f"[GuildAttendance] Error parsing DKP values for event {event_id}: {e}")
+                dkp_presence = 0
+                dkp_registration = 0
+            
+            logging.debug(f"[GuildAttendance] Event {event_id}: dkp_presence={dkp_presence}, dkp_registration={dkp_registration}")
 
-        registrations = event_data.get("registrations", {})
-        presence_ids = set(registrations.get("presence", []))
-        tentative_ids = set(registrations.get("tentative", []))
-        absence_ids = set(registrations.get("absence", []))
+            registrations = event_data.get("registrations", {})
+            presence_ids = set(registrations.get("presence", []))
+            tentative_ids = set(registrations.get("tentative", []))
+            absence_ids = set(registrations.get("absence", []))
+            
+            logging.debug(f"[GuildAttendance] Event {event_id}: {len(presence_ids)} present, {len(tentative_ids)} tentative, {len(absence_ids)} absent registrations")
 
-        attendance_changes = await self._calculate_attendance_changes(
-            voice_members, presence_ids, tentative_ids, absence_ids, 
-            event_data.get("actual_presence", []), event_data, dkp_presence, dkp_registration
-        )
-        
-        if attendance_changes:
-            await self._apply_attendance_changes(guild.id, event_id, attendance_changes)
+            attendance_changes = await self._calculate_attendance_changes(
+                voice_members, presence_ids, tentative_ids, absence_ids, 
+                event_data.get("actual_presence", []), event_data, dkp_presence, dkp_registration
+            )
+            
+            logging.debug(f"[GuildAttendance] Event {event_id}: calculated {len(attendance_changes)} attendance changes")
+            
+            if attendance_changes:
+                logging.info(f"[GuildAttendance] Applying {len(attendance_changes)} attendance changes for event {event_id}")
+                await self._apply_attendance_changes(guild.id, event_id, attendance_changes)
+                await self._update_event_actual_presence(guild.id, event_id, list(voice_members))
+                await self._send_attendance_notification(guild.id, event_id, attendance_changes)
 
-            await self._update_event_actual_presence(guild.id, event_id, list(voice_members))
-
-            await self._send_attendance_notification(guild.id, event_id, attendance_changes)
+                if not hasattr(self, '_processed_events'):
+                    self._processed_events = set()
+                self._processed_events.add(event_id)
+                logging.debug(f"[GuildAttendance] Marked event {event_id} as processed - will never be processed again")
+            else:
+                logging.debug(f"[GuildAttendance] No attendance changes to apply for event {event_id}")
+                
+        except Exception as e:
+            logging.error(f"[GuildAttendance] Error processing voice attendance for event {event_id}: {e}", exc_info=True)
 
     async def _get_voice_connected_members(self, guild: discord.Guild) -> Set[int]:
         """
@@ -531,19 +555,28 @@ class GuildAttendance(commands.Cog):
         logging.debug(f"[GuildAttendance] Found {len(voice_members)} members in voice channels")
         return voice_members
 
-    def _was_recently_checked(self, event_data: Dict, now: datetime, threshold_minutes: int = 10) -> bool:
+    def _was_already_processed(self, event_data: Dict) -> bool:
         """
-        Check if event was recently processed to avoid spam.
+        Check if event was already processed to avoid duplicate attendance processing.
+        
+        Once an event has been processed for attendance, it should NEVER be processed again.
+        This prevents duplicate notifications and DKP changes.
         
         Args:
             event_data: Dictionary containing event information
-            now: Current datetime for comparison
-            threshold_minutes: Minimum minutes between checks (default: 10)
             
         Returns:
-            True if event was checked recently, False otherwise
+            True if event was already processed, False otherwise
         """
-        return len(event_data.get("actual_presence", [])) > 0
+        event_id = event_data.get("event_id")
+        if not event_id:
+            return False
+            
+        if event_id in self._processed_events:
+            logging.debug(f"[GuildAttendance] Event {event_id} was already processed for attendance, skipping")
+            return True
+            
+        return False
 
     async def _member_has_members_role(self, guild: discord.Guild, member_id: int) -> bool:
         """
@@ -659,7 +692,11 @@ class GuildAttendance(commands.Cog):
 
             if change["dkp_change"] != 0 or change["attendance_change"] != 0:
                 changes.append(change)
+                logging.debug(f"[GuildAttendance] Added change for member {member_id}: dkp_change={change['dkp_change']}, attendance_change={change['attendance_change']}, reason={change['reason']}")
+            else:
+                logging.debug(f"[GuildAttendance] No change for member {member_id}: dkp_change={change['dkp_change']}, attendance_change={change['attendance_change']}")
         
+        logging.debug(f"[GuildAttendance] Total changes calculated: {len(changes)}")
         return changes
 
     async def _apply_attendance_changes(self, guild_id: int, event_id: int, changes: List[Dict]) -> None:
@@ -721,10 +758,11 @@ class GuildAttendance(commands.Cog):
             update_query = "UPDATE events_data SET actual_presence = %s WHERE guild_id = %s AND event_id = %s"
             await self.bot.run_db_query(update_query, (actual_presence_json, guild_id, event_id), commit=True)
 
-            event_data = await self.get_event_from_cache(guild_id, event_id)
+            event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
             if event_data:
                 event_data["actual_presence"] = voice_members
-                await self.set_event_in_cache(guild_id, event_id, event_data)
+                await self.bot.cache.set_guild_data(guild_id, f'event_{event_id}', event_data)
+                logging.debug(f"[GuildAttendance] Updated actual_presence in cache for event {event_id}")
                 
         except Exception as e:
             logging.error(f"[GuildAttendance] Error updating actual presence for event {event_id}: {e}")
@@ -820,8 +858,17 @@ class GuildAttendance(commands.Cog):
             event_id: Event ID for the notification
             changes: List of attendance changes to report
         """
+        logging.debug(f"[GuildAttendance] Attempting to send attendance notification for event {event_id} with {len(changes)} changes")
+        
         settings = await self.get_guild_settings(guild_id)
-        if not settings or not settings.get("notifications_channel") or not changes:
+        if not settings:
+            logging.warning(f"[GuildAttendance] No settings found for guild {guild_id}, cannot send notification")
+            return
+        if not settings.get("notifications_channel"):
+            logging.warning(f"[GuildAttendance] No notifications channel configured for guild {guild_id}, cannot send notification")
+            return
+        if not changes:
+            logging.debug(f"[GuildAttendance] No changes to report for event {event_id}, skipping notification")
             return
             
         guild = self.bot.get_guild(guild_id)
@@ -890,9 +937,10 @@ class GuildAttendance(commands.Cog):
             embed.add_field(name=date_field, value=current_date, inline=False)
             
             await channel.send(embed=embed)
+            logging.info(f"[GuildAttendance] Successfully sent attendance notification for event {event_id} to channel {settings['notifications_channel']}")
             
         except Exception as e:
-            logging.error(f"[GuildAttendance] Error sending attendance notification: {e}")
+            logging.error(f"[GuildAttendance] Error sending attendance notification: {e}", exc_info=True)
     
     async def _process_guild_attendance(self, guild: discord.Guild, now: datetime):
         """

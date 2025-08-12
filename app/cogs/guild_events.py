@@ -197,6 +197,8 @@ class GuildEvents(commands.Cog):
             Dictionary containing event data if found, None otherwise
         """
         try:
+            await self.bot.cache_loader.ensure_category_loaded('events_data')
+            
             event_data = await self.bot.cache.get_guild_data(guild_id, f'event_{event_id}')
             if event_data:
                 event_data['guild_id'] = guild_id
@@ -204,6 +206,9 @@ class GuildEvents(commands.Cog):
                     event_data['registrations'] = '{"presence":[],"tentative":[],"absence":[]}'
                 if not event_data.get('actual_presence'):
                     event_data['actual_presence'] = '[]'
+                logging.debug(f"[GuildEvents] Found event {event_id} in cache for guild {guild_id}")
+            else:
+                logging.warning(f"[GuildEvents] Event {event_id} not found in cache for guild {guild_id}")
             return event_data
         except Exception as e:
             logging.error(f"[GuildEvents] Error retrieving event {event_id} for guild {guild_id}: {e}", exc_info=True)
@@ -1198,13 +1203,13 @@ class GuildEvents(commands.Cog):
         new_fields = []
         for field in embed.fields:
             lower_name = field.name.lower()
-            if lower_name.startswith(present_key):
+            if present_key in lower_name or "<:_yes_:" in field.name:
                 new_name = f"{EVENT_MANAGEMENT['events_infos']['present'][guild_lang]} <:_yes_:1340109996666388570> ({len(presence_ids)})"
                 new_fields.append((new_name, presence_str, field.inline))
-            elif lower_name.startswith(attempt_key):
+            elif attempt_key in lower_name or "<:_attempt_:" in field.name:
                 new_name = f"{EVENT_MANAGEMENT['events_infos']['attempt'][guild_lang]} <:_attempt_:1340110058692018248> ({len(tentative_ids)})"
                 new_fields.append((new_name, tentative_str, field.inline))
-            elif lower_name.startswith(absence_key):
+            elif absence_key in lower_name or "<:_no_:" in field.name:
                 new_name = f"{EVENT_MANAGEMENT['events_infos']['absence'][guild_lang]} <:_no_:1340110124521357313> ({len(absence_ids)})"
                 new_fields.append((new_name, absence_str, field.inline))
             else:
@@ -1535,11 +1540,11 @@ class GuildEvents(commands.Cog):
                 
                 if time_condition and status_condition:
                     try:
-                        await self.load_guild_members()
+                        await self.bot.cache_loader.ensure_category_loaded('guild_members')
                     except Exception as e:
                         logging.error(f"[GuildEvents CRON] Error loading guild members for guild {guild_id}: {e}", exc_info=True)
                     closed_localized = EVENT_MANAGEMENT["events_infos"]["status_closed"].get(guild_lang, EVENT_MANAGEMENT["events_infos"]["status_closed"].get("en-US"))
-                    closed_db = EVENT_MANAGEMENT["events_infos"]["status_closed"].get("en-US")
+                    closed_db = "Closed"
                     try:
                         msg = await events_channel.fetch_message(ev["event_id"])
                     except Exception as e:
@@ -2528,11 +2533,30 @@ class GuildEvents(commands.Cog):
         tz = pytz.timezone("Europe/Paris")
         try:
             event_date = event_date.replace("/", "-")
-            start_date = datetime.strptime(event_date, "%Y-%m-%d").date()
+
+            date_formats = [
+                "%d-%m-%Y",
+                "%Y-%m-%d",
+                "%d-%m-%y",
+                "%Y-%m-%d",
+            ]
+            
+            start_date = None
+            for date_format in date_formats:
+                try:
+                    start_date = datetime.strptime(event_date, date_format).date()
+                    logging.debug(f"[GuildEvents - event_create] Successfully parsed date with format {date_format}")
+                    break
+                except ValueError:
+                    continue
+            
+            if not start_date:
+                raise ValueError(f"Could not parse date: {event_date}")
+                
             start_time_obj = datetime.strptime(event_time, "%H:%M").time()
             logging.debug(f"[GuildEvents - event_create] Parsed dates: start_date={start_date}, start_time={start_time_obj}")
         except Exception as e:
-            logging.error("[GuildEvents - event_create] Error parsing date or time.", exc_info=True)
+            logging.error(f"[GuildEvents - event_create] Error parsing date or time: {e}", exc_info=True)
             follow_message = await get_user_message(ctx, EVENT_MANAGEMENT, "event_create_options.date_ko")
             await ctx.followup.send(follow_message, ephemeral=True)
             return
@@ -2589,9 +2613,9 @@ class GuildEvents(commands.Cog):
                 await self.bot.cache_loader.ensure_category_loaded('guild_roles')
                 roles_data = await self.bot.cache.get_guild_data(guild.id, 'roles')
                 members_role = roles_data.get("members") if roles_data else None
-                update_message = EVENT_MANAGEMENT["event_confirm"]["confirmed_notif"].get(
+                update_message = EVENT_MANAGEMENT["event_confirm_messages"]["confirmed_notif"].get(
                     user_locale,
-                    EVENT_MANAGEMENT["event_confirm"]["confirmed_notif"].get("en-US")
+                    EVENT_MANAGEMENT["event_confirm_messages"]["confirmed_notif"].get("en-US")
                 ).format(role=members_role)
                 announcement = await events_channel.send(content=update_message, embed=embed)
             else:
@@ -3008,11 +3032,12 @@ class GuildEvents(commands.Cog):
         total = len(all_groups)
 
         preview_title = STATIC_GROUPS["preview_groups"]["embeds"]["preview_title"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["preview_title"].get("en-US"))
+        total_members = len(presence_ids) + len(tentative_ids)
         preview_description = STATIC_GROUPS["preview_groups"]["embeds"]["preview_description"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["preview_description"].get("en-US")).format(
             event_name=event['name'],
             event_date=event['event_date'],
             event_time=event['event_time'],
-            total=total
+            total_members=total_members
         )
         
         header_embed = discord.Embed(
@@ -3024,8 +3049,8 @@ class GuildEvents(commands.Cog):
         
         for idx, grp in enumerate(all_groups, 1):
             group_title = STATIC_GROUPS["preview_groups"]["embeds"]["group_title"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["group_title"].get("en-US")).format(
-                index=idx,
-                total=total
+                group_number=idx,
+                member_count=len(grp)
             )
             
             e = discord.Embed(
@@ -3049,7 +3074,7 @@ class GuildEvents(commands.Cog):
             embeds.append(e)
 
         if len(embeds) > 10:
-            embeds = embeds[:10]
+            embeds = embeds[:9]
             
             truncated_title = STATIC_GROUPS["preview_groups"]["embeds"]["truncated_title"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["truncated_title"].get("en-US"))
             truncated_description = STATIC_GROUPS["preview_groups"]["embeds"]["truncated_description"].get(guild_lang, STATIC_GROUPS["preview_groups"]["embeds"]["truncated_description"].get("en-US")).format(total=total)
