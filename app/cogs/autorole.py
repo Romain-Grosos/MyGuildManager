@@ -161,6 +161,9 @@ class AutoRole(commands.Cog):
 
         try:
             member = guild.get_member(payload.user_id) or await guild.fetch_member(payload.user_id)
+        except discord.NotFound:
+            logging.debug(f"[AutoRole] Member {payload.user_id} no longer exists (left Discord) - skipping role assignment")
+            return
         except Exception as e:
             logging.error(f"[AutoRole] Error fetching member with ID {payload.user_id}: {e}", exc_info=True)
             return
@@ -271,6 +274,9 @@ class AutoRole(commands.Cog):
 
         try:
             member = guild.get_member(payload.user_id) or await guild.fetch_member(payload.user_id)
+        except discord.NotFound:
+            logging.debug(f"[AutoRole] Member {payload.user_id} no longer exists (left Discord) - skipping role removal")
+            return
         except Exception as e:
             logging.error(f"[AutoRole] Error fetching member with ID {payload.user_id}: {e}", exc_info=True)
             return

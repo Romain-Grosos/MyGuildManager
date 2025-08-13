@@ -172,15 +172,27 @@ bot.events_group    # Événements guildes (4 commandes)
 bot.statics_group   # Groupes statiques (5 commandes)
 ```
 
-### Mapping des commandes par groupe
+### Mapping des commandes par groupe avec permissions
 
-- **`/admin_bot`** : bot_initialize, bot_modify, bot_reset, discord_setup, ptb_init
-- **`/absence`** : absence_add, return  
-- **`/member`** : gs, weapons, build, username, show_build, change_language
-- **`/loot`** : epic_items, add_item, remove_item, show_wishlist
-- **`/staff`** : maj_effectifs, notify_profile, config_roster, contract, contract_delete, wishlist_admin
-- **`/events`** : create, confirm, cancel, preview_groups
-- **`/statics`** : group_create, player_add, player_remove, group_delete, update
+- **`/admin_bot`** 🔒 (Admin) : bot_initialize, bot_modify, bot_reset, discord_setup, ptb_init
+- **`/absence`** 🔒 (Staff) : absence_add *(staff déclare les absences)*
+- **`/member`** ✅ (Membres) : gs, weapons, build, username, show_build, change_language, **return** *(signaler retour)*
+- **`/loot`** ✅ (Membres) : epic_items, add_item, remove_item, show_wishlist
+- **`/staff`** 🔒 (Staff) : maj_effectifs, notify_profile, config_roster, contract, contract_delete, wishlist_admin
+- **`/events`** 🔒 (Staff) : create, confirm, cancel, preview_groups
+- **`/statics`** 🔒 (Staff) : group_create, player_add, player_remove, group_delete, update
+
+### 🎯 Permissions Discord par Groupe (13 août 2025)
+
+| Groupe | Permission Requise | Accessible aux Membres ? | Logique |
+|--------|-------------------|---------------------------|---------|
+| `admin_bot` | `administrator=True` | ❌ Admin uniquement | Administration bot |
+| `absence` | `manage_guild=True` | ❌ Staff uniquement | **Staff déclare absences** |
+| `member` | `send_messages=True` | ✅ **Tous membres** | **Membres gèrent profil + retour** |
+| `loot` | `send_messages=True` | ✅ **Tous membres** | Gestion wishlist personnelle |
+| `staff` | `manage_roles=True` | ❌ Staff uniquement | Modération équipe |
+| `events` | `manage_events=True` | ❌ Staff uniquement | Gestion événements |
+| `statics` | `manage_roles=True` | ❌ Staff uniquement | Groupes statiques |
 
 ### Pattern d'implémentation dans les cogs
 
@@ -234,6 +246,37 @@ if result is None and _auto_reload and self._initial_load_complete:
         return None
 ```
 
+## 🔐 Système Permissions Discord Hiérarchisé (13 août 2025)
+
+### Permissions Rôles Automatiques
+
+```python
+# guild_init.py - Création rôles avec permissions
+if key == "guild_master":
+    permissions.update(administrator=True)  # 👑 Contrôle total
+elif key == "officer":
+    permissions.update(  # 🛡️ Gestion complète + modération
+        manage_roles=True, ban_members=True, manage_events=True,
+        mute_members=True, priority_speaker=True  # + 8 autres
+    )
+elif key == "guardian":
+    permissions.update(  # 🔰 Gestion modérée
+        manage_roles=True, kick_members=True, manage_events=True,
+        mute_members=True, priority_speaker=True  # + 6 autres, pas de ban
+    )
+```
+
+### Architecture Commandes Membres vs Staff
+
+```python
+# Logique métier optimisée
+"/absence absence_add"  # 🔒 Staff déclare membre absent
+"/member return"        # ✅ Membre signale son retour
+
+# Accès étendu membres
+"/member" + "/loot" = 11 commandes accessibles via rôles "membres"/"absents"
+```
+
 ### Invalidation Automatique Cache
 
 ```python
@@ -255,6 +298,8 @@ after guild reset:
 6. **Pas de décorateurs slash** - Suppression de tous les `@discord.slash_command()`
 7. **Protection intelligente** - Auto-reload uniquement pour guildes configurées (TTL 30min)
 8. **Performance maximale** - Score 100/100 en production avec 0 auto-reload
+9. **Permissions hiérarchisées** - Discord roles avec permissions automatiques (Maître/Officier/Gardien)
+10. **Accès membres étendu** - 11 commandes accessibles via permissions granulaires
 
 ## 🔧 Maintenance
 

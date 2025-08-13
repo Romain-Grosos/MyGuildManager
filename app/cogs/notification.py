@@ -410,9 +410,46 @@ class Notification(commands.Cog):
                     logging.debug(f"[NotificationManager] Cleaned up pending diplomat validations for {safe_user} (no welcome message case)")
                 except Exception as e:
                     logging.error(f"[NotificationManager] Error cleaning up diplomat validations for {safe_user}: {e}", exc_info=True)
+            
+            # Clean up user data from database to prevent future errors
+            try:
+                await self._cleanup_member_database_records(member, safe_user)
+                logging.debug(f"[NotificationManager] Database cleanup completed for departed member {safe_user}")
+            except Exception as e:
+                logging.error(f"[NotificationManager] Error during database cleanup for {safe_user}: {e}", exc_info=True)
                     
         except Exception as e:
             logging.error(f"[NotificationManager] Error in on_member_remove for {safe_user}: {e}", exc_info=True)
+            
+    async def _cleanup_member_database_records(self, member: discord.Member, safe_user: str) -> None:
+        """
+        Clean up database records for departed members to prevent future AutoRole errors.
+        
+        Args:
+            member: Discord member who left
+            safe_user: Safe user identifier for logging
+        """
+        guild_id = member.guild.id
+        user_id = member.id
+        
+        try:
+            # Clean up guild_members table
+            delete_queries = [
+                ("DELETE FROM guild_members WHERE guild_id = %s AND user_id = %s", (guild_id, user_id)),
+                ("DELETE FROM user_setup WHERE guild_id = %s AND user_id = %s", (guild_id, user_id)),
+                ("DELETE FROM static_groups_members WHERE guild_id = %s AND user_id = %s", (guild_id, user_id)),
+                ("DELETE FROM event_attendance WHERE guild_id = %s AND user_id = %s", (guild_id, user_id))
+            ]
+            
+            for query, params in delete_queries:
+                await self.bot.run_db_query(query, params, commit=True)
+                
+            # Clear user data from cache
+            await self.bot.cache.invalidate_guild_member_data(guild_id, user_id)
+            logging.debug(f"[NotificationManager] Database and cache cleanup successful for {safe_user}")
+            
+        except Exception as e:
+            logging.error(f"[NotificationManager] Database cleanup failed for {safe_user}: {e}", exc_info=True)
 
 def setup(bot: discord.Bot):
     """

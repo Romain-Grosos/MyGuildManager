@@ -1863,9 +1863,19 @@ class GuildMembers(commands.Cog):
         Returns:
             None
         """
+        guild_ptb_config = await self.bot.cache.get_guild_data(guild_id, 'ptb_settings')
+        if guild_ptb_config and guild_ptb_config.get('is_ptb_guild', False):
+            logging.debug(f"[GuildMembers] Skipping roster update for PTB guild {guild_id}")
+            return
+
+        guild_settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
+        if not guild_settings or not guild_settings.get('initialized', False):
+            logging.debug(f"[GuildMembers] Skipping roster update for unconfigured guild {guild_id}")
+            return
+        
         roles_config = await self.bot.cache.get_guild_data(guild_id, 'roles')
         if not roles_config:
-            logging.error(f"[GuildMembers] No roles configured for guild {guild_id}")
+            logging.debug(f"[GuildMembers] No roles configured for guild {guild_id}")
             return
 
         members_role_id = roles_config.get("members")
