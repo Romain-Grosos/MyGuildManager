@@ -246,9 +246,13 @@ class TaskScheduler:
         Args:
             loot_wishlist_cog: LootWishlist cog instance
         """
+        if not self.bot.is_ready():
+            logging.warning("[Scheduler] Bot not ready, skipping wishlist update")
+            return
+            
         guild_ids = [guild.id for guild in self.bot.guilds]
         if not guild_ids:
-            logging.info("[Scheduler] No guilds found for wishlist update")
+            logging.warning("[Scheduler] No guilds found for wishlist update - bot may be disconnected")
             return
         
         semaphore = asyncio.Semaphore(3)
@@ -259,13 +263,19 @@ class TaskScheduler:
             nonlocal successful_updates, failed_updates
             async with semaphore:
                 try:
+                    guild = self.bot.get_guild(int(guild_id))
+                    if not guild:
+                        logging.warning(f"[Scheduler] Guild {guild_id} not accessible by bot")
+                        failed_updates += 1
+                        return
+                        
                     success = await loot_wishlist_cog.update_wishlist_message(guild_id)
                     if success:
                         successful_updates += 1
                         logging.debug(f"[Scheduler] Wishlist updated for guild {guild_id}")
                     else:
                         failed_updates += 1
-                        logging.debug(f"[Scheduler] Wishlist update failed for guild {guild_id}")
+                        logging.debug(f"[Scheduler] Wishlist update returned false for guild {guild_id}")
                 except Exception as e:
                     failed_updates += 1
                     logging.error(f"[Scheduler] Error updating wishlist for guild {guild_id}: {e}")

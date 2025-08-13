@@ -466,7 +466,6 @@ class GuildEvents(commands.Cog):
                     logging.exception(f"[GuildEvents] Error creating events for guild {guild_id}: {e}")
             else:
                     logging.error(f"❌ [GuildEvents] Guild {guild_id} not found.")
-        await self.load_events_data()
 
     @profile_performance(threshold_ms=200.0)
     @discord_resilient(service_name='discord_api', max_retries=2)

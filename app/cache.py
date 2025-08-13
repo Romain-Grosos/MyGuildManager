@@ -11,13 +11,13 @@ from typing import Dict, Any, Optional, Set, List, Callable
 # #################################################################################### #
 DEFAULT_TTL = 3600  # 1 hour
 CACHE_CATEGORIES = {
-    'guild_data': 86400,    # 24 hours - Guild settings, roles, channels (event-driven + fail-safe)
-    'user_data': 7200,      # 2 hours - User profiles, setup data (event-driven + fail-safe)
-    'events_data': 90000,   # 25 hours - Events, registrations (daily cron at 12:00 + fail-safe)
-    'roster_data': 25200,   # 7 hours - Guild members, roster info (6h cron + fail-safe)
-    'static_data': 90000,   # 25 hours - Weapons, combinations, static configs (daily cron at 03:30 + fail-safe)
-    'discord_entities': 7200, # 2 hours - Discord members, channels, guilds (event-driven + fail-safe)
-    'temporary': 300        # 5 minutes - Short-term cache
+    'guild_data': 604800,    # 7 days - Guild settings, roles, channels (persistent)
+    'user_data': 86400,      # 24 hours - User profiles, setup data (daily refresh)
+    'events_data': 172800,   # 48 hours - Events, registrations (bi-daily refresh)
+    'roster_data': 86400,    # 24 hours - Guild members, roster info (daily refresh)
+    'static_data': 2592000,  # 30 days - Weapons, combinations, static configs (monthly)
+    'discord_entities': 43200, # 12 hours - Discord members, channels, guilds (bi-daily)
+    'temporary': 300         # 5 minutes - Short-term cache
 }
 
 # #################################################################################### #
@@ -133,6 +133,7 @@ class GlobalCacheSystem:
         """
         self._cache: Dict[str, CacheEntry] = {}
         self._locks: Dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self._initial_load_complete = False
         self._metrics = {
             'hits': 0,
             'misses': 0,
@@ -154,6 +155,8 @@ class GlobalCacheSystem:
         self._hot_keys: Set[str] = set()
         self._preload_tasks: Dict[str, asyncio.Task] = {}
         self._maintenance_task: Optional[asyncio.Task] = None
+        self._configured_guilds_cache: Optional[Set[int]] = None
+        self._configured_guilds_cache_time: float = 0
         
         logging.info("[Cache] Global cache system initialized with smart features")
     
@@ -343,7 +346,11 @@ class GlobalCacheSystem:
             
         result = await self.get('guild_data', guild_id, data_type)
 
-        if result is None and _auto_reload and self.bot and hasattr(self.bot, 'cache_loader'):
+        if result is None and _auto_reload and self._initial_load_complete and self.bot and hasattr(self.bot, 'cache_loader'):
+            if not await self._is_guild_configured(guild_id):
+                logging.debug(f"[Cache] Skipping auto-reload for unconfigured guild {guild_id} ({data_type})")
+                return None
+                
             await self.set('temporary', True, reload_key, ttl=30)
             
             try:
@@ -379,6 +386,83 @@ class GlobalCacheSystem:
                 await self.delete('temporary', reload_key)
         
         return result
+    
+    async def _is_guild_configured(self, guild_id: int) -> bool:
+        """
+        Check if a guild is configured (initialized) without triggering auto-reload.
+        
+        Uses a cached list of configured guild IDs to avoid repeated DB queries.
+        Cache is refreshed every 30 minutes or when explicitly invalidated.
+        
+        Args:
+            guild_id: Discord guild ID to check
+            
+        Returns:
+            True if guild is configured, False otherwise
+        """
+        import time
+
+        current_time = time.time()
+        if (self._configured_guilds_cache is None or 
+            current_time - self._configured_guilds_cache_time > 1800):
+
+            try:
+                if not self.bot:
+                    return False
+                    
+                query = "SELECT guild_id FROM guild_settings WHERE initialized = TRUE"
+                rows = await self.bot.run_db_query(query, fetch_all=True)
+                
+                self._configured_guilds_cache = set()
+                if rows:
+                    for row in rows:
+                        self._configured_guilds_cache.add(row[0])
+                        
+                self._configured_guilds_cache_time = current_time
+                logging.debug(f"[Cache] Refreshed configured guilds cache: {len(self._configured_guilds_cache)} guilds")
+                
+            except Exception as e:
+                logging.error(f"[Cache] Error checking configured guilds: {e}")
+                return False
+        
+        return guild_id in self._configured_guilds_cache
+    
+    async def invalidate_configured_guilds_cache(self) -> None:
+        """
+        Invalidate the configured guilds cache.
+        
+        Should be called after adding/removing a configured guild to ensure
+        the cache reflects the current state immediately.
+        """
+        self._configured_guilds_cache = None
+        self._configured_guilds_cache_time = 0
+        logging.debug("[Cache] Configured guilds cache invalidated")
+    
+    async def ensure_cache_persistence(self) -> None:
+        """
+        Ensure cache data persists and reload if necessary.
+        
+        This method checks if critical cache data exists and
+        triggers a reload if the cache appears to be empty.
+        """
+        critical_empty = True
+
+        for key in self._cache:
+            if key.startswith('guild_data:'):
+                critical_empty = False
+                break
+                
+        if critical_empty and self._initial_load_complete:
+            logging.warning("[Cache] Cache appears empty after initial load, triggering reload...")
+            if hasattr(self, 'bot') and hasattr(self.bot, 'cache_loader'):
+                try:
+                    self._initial_load_complete = False
+                    await self.bot.cache_loader.load_all_shared_data()
+                    self._initial_load_complete = True
+                    logging.info("[Cache] Cache reloaded successfully")
+                except Exception as e:
+                    logging.error(f"[Cache] Failed to reload cache: {e}")
+                    self._initial_load_complete = True
     
     async def set_guild_data(self, guild_id: int, data_type: str, value: Any) -> None:
         """
@@ -425,7 +509,11 @@ class GlobalCacheSystem:
             
         result = await self.get('user_data', guild_id, user_id, data_type)
 
-        if result is None and _auto_reload and self.bot and hasattr(self.bot, 'cache_loader'):
+        if result is None and _auto_reload and self._initial_load_complete and self.bot and hasattr(self.bot, 'cache_loader'):
+            if not await self._is_guild_configured(guild_id):
+                logging.debug(f"[Cache] Skipping auto-reload for unconfigured guild {guild_id} ({data_type})")
+                return None
+                
             await self.set('temporary', True, reload_key, ttl=30)
             
             try:
@@ -632,7 +720,7 @@ class GlobalCacheSystem:
         return info
     
     # ==================================================================================== #
-    #                          PERFORMANCE OPTIMIZATION METHODS                           #
+    #                          PERFORMANCE OPTIMIZATION METHODS
     # ==================================================================================== #
     
     async def get_bulk_guild_members(self, guild_id: int, force_refresh: bool = False) -> Dict[int, Dict]:

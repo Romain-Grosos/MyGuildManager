@@ -671,11 +671,44 @@ async def on_ready() -> None:
 
     if not hasattr(bot, '_cache_loaded'):
         bot._cache_loaded = True
-        try:
-            await bot.cache_loader.load_all_shared_data()
-            logging.info("[Bot] Initial cache load completed successfully - all categories loaded ONCE")
-        except Exception as e:
-            logging.error(f"[Bot] Error during initial cache load: {e}", exc_info=True)
+        
+        max_retries = 3
+        retry_count = 0
+        cache_loaded = False
+        
+        while retry_count < max_retries and not cache_loaded:
+            try:
+                retry_count += 1
+                logging.info(f"[Bot] Attempting cache load (attempt {retry_count}/{max_retries})...")
+                
+                await bot.cache_loader.load_all_shared_data()
+                bot.cache._initial_load_complete = True
+                cache_loaded = True
+                logging.info("[Bot] Initial cache load completed successfully - all categories loaded ONCE")
+                
+            except Exception as e:
+                logging.error(f"[Bot] Cache load attempt {retry_count} failed: {e}", exc_info=True)
+                
+                if retry_count < max_retries:
+                    wait_time = retry_count * 5
+                    logging.warning(f"[Bot] Retrying cache load in {wait_time} seconds...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    logging.critical("[Bot] CRITICAL: Failed to load cache after 3 attempts!")
+                    logging.critical("[Bot] The bot cannot function properly without cache.")
+                    logging.critical("[Bot] Initiating shutdown sequence...")
+
+                    try:
+                        await bot.close()
+                    except:
+                        pass
+
+                    logging.critical("[Bot] Exiting with error code 1. Please check database connection and restart manually.")
+                    import sys
+                    sys.exit(1)
+
+        if not cache_loaded:
+            bot.cache._initial_load_complete = True
     
     if PSUTIL_AVAILABLE and not hasattr(bot, '_monitor_task'):
         bot._monitor_task = asyncio.create_task(monitor_resources())

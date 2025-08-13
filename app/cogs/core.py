@@ -255,6 +255,8 @@ class Core(commands.Cog):
                     })
                     
                     logging.debug(f"[CoreManager] Global cache updated after guild {guild_id} initialization")
+
+                    await self.bot.cache.invalidate_configured_guilds_cache()
                 except Exception as cache_error:
                     logging.error(f"[CoreManager] Error updating global cache: {cache_error}")
 
@@ -461,29 +463,43 @@ class Core(commands.Cog):
             True if deletion succeeded, False otherwise
         """
         try:
+            ptb_guild_query = "SELECT guild_id FROM guild_settings WHERE guild_ptb = %s"
+            ptb_result = await self.bot.run_db_query(ptb_guild_query, (guild_id,), fetch_all=True)
+            
+            if ptb_result:
+                for row in ptb_result:
+                    main_guild_id = row[0]
+                    logging.info(f"[CoreManager] Clearing PTB reference from guild {main_guild_id} (PTB guild {guild_id} removed)")
+                    await self.bot.run_db_query(
+                        "UPDATE guild_settings SET guild_ptb = NULL WHERE guild_id = %s", 
+                        (main_guild_id,), 
+                        commit=True
+                    )
+                    await self.bot.cache.delete('guild_data', main_guild_id, 'settings')
+            
             delete_queries = [
-                "DELETE FROM welcome_messages WHERE guild_id = %s",
-                "DELETE FROM absence_messages WHERE guild_id = %s", 
-                "DELETE FROM contracts WHERE guild_id = %s",
-                "DELETE FROM events_data WHERE guild_id = %s",
-                "DELETE FROM user_setup WHERE guild_id = %s",
-                "DELETE FROM guild_members WHERE guild_id = %s",
-                "DELETE FROM guild_static_members WHERE group_id IN (SELECT id FROM guild_static_groups WHERE guild_id = %s)",
-                "DELETE FROM guild_static_groups WHERE guild_id = %s",
-                "DELETE FROM pending_diplomat_validations WHERE guild_id = %s",
-                "DELETE FROM loot_wishlist_history WHERE guild_id = %s",
-                "DELETE FROM loot_wishlist WHERE guild_id = %s",
-                "DELETE FROM dynamic_voice_channels WHERE guild_id = %s",
-                "DELETE FROM guild_ptb_settings WHERE guild_id = %s",
-                "DELETE FROM guild_ideal_staff WHERE guild_id = %s",
-                "DELETE FROM guild_roles WHERE guild_id = %s",
-                "DELETE FROM guild_channels WHERE guild_id = %s",
-                "DELETE FROM guild_settings WHERE guild_id = %s"
+                ("DELETE FROM welcome_messages WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM absence_messages WHERE guild_id = %s", (guild_id,)), 
+                ("DELETE FROM contracts WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM events_data WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM user_setup WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_members WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_static_members WHERE group_id IN (SELECT id FROM guild_static_groups WHERE guild_id = %s)", (guild_id,)),
+                ("DELETE FROM guild_static_groups WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM pending_diplomat_validations WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM loot_wishlist_history WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM loot_wishlist WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM dynamic_voice_channels WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_ptb_settings WHERE guild_id = %s OR ptb_guild_id = %s", (guild_id, guild_id)),
+                ("DELETE FROM guild_ideal_staff WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_roles WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_channels WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_settings WHERE guild_id = %s", (guild_id,))
             ]
             
-            for query in delete_queries:
+            for query, params in delete_queries:
                 try:
-                    await self.bot.run_db_query(query, (guild_id,), commit=True)
+                    await self.bot.run_db_query(query, params, commit=True)
                 except Exception as e:
                     logging.debug(f"[CoreManager] Non-critical deletion error for guild {guild_id}: {e}")
             
@@ -525,6 +541,8 @@ class Core(commands.Cog):
                 logging.error(f"[CoreManager] Error clearing global cache for removed guild: {cache_error}")
             
             logging.info(f"[CoreManager] Data for guild {guild_id} successfully deleted from the database.")
+
+            await self.bot.cache.invalidate_configured_guilds_cache()
         else:
             logging.error(f"[CoreManager] Failed to completely delete data for guild {guild_id}")
 
