@@ -140,9 +140,45 @@ class GuildInit(commands.Cog):
                 for key, names in role_names.items():
                     name = names.get(guild_lang, names.get("en-US"))
                     color = role_colors.get(key, discord.Color.default())
-                    role = await guild.create_role(name=name, color=color)
+
+                    permissions = discord.Permissions.none()
+                    
+                    if key == "guild_master":
+                        permissions.update(administrator=True)
+                    elif key == "officer":
+                        permissions.update(
+                            manage_roles=True,
+                            manage_nicknames=True,
+                            ban_members=True,
+                            kick_members=True,
+                            create_public_threads=True,
+                            priority_speaker=True,
+                            mute_members=True,
+                            deafen_members=True,
+                            move_members=True,
+                            use_external_apps=True,
+                            request_to_speak=True,
+                            create_events=True,
+                            manage_events=True
+                        )
+                    elif key == "guardian":
+                        permissions.update(
+                            manage_roles=True,
+                            manage_nicknames=True,
+                            kick_members=True,
+                            create_public_threads=True,
+                            priority_speaker=True,
+                            mute_members=True,
+                            move_members=True,
+                            use_external_apps=True,
+                            request_to_speak=True,
+                            create_events=True,
+                            manage_events=True
+                        )
+                    
+                    role = await guild.create_role(name=name, color=color, permissions=permissions)
                     created_roles[key] = role.id
-                    logging.info("[GuildInit] Created role '%s' (%s)", name, role.id)
+                    logging.info("[GuildInit] Created role '%s' (%s) with permissions", name, role.id)
 
                 role_values = (
                     guild_id,

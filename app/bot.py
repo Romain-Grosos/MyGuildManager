@@ -434,7 +434,7 @@ def create_command_groups(bot: discord.Bot) -> None:
         description=GROUPS_DATA.get("member", {}).get("description", {}).get("en-US", "Member profile and stats management"),
         name_localizations=GROUPS_DATA.get("member", {}).get("name", {}),
         description_localizations=GROUPS_DATA.get("member", {}).get("description", {}),
-        default_member_permissions=discord.Permissions(manage_guild=True)
+        default_member_permissions=discord.Permissions(send_messages=True)
     )
 
     bot.loot_group = discord.SlashCommandGroup(
