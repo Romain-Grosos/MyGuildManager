@@ -144,7 +144,7 @@ class EpicItemsScraper(commands.Cog):
             success = await run_db_transaction(queries_and_params)
             
             if success:
-                logging.info(f"Successfully processed {items_scraped} Epic T2 items: {items_added} added, {items_updated} updated")
+                logging.info(f"Epic T2: {items_scraped} items ({items_added} new, {items_updated} upd)")
 
                 await self.update_cache(multilang_items)
 
@@ -155,7 +155,7 @@ class EpicItemsScraper(commands.Cog):
                 
         except Exception as e:
             execution_time = int((datetime.now() - start_time).total_seconds())
-            logging.error(f"Scraping error: {e}")
+            logging.error(f"Scraping error: {str(e)[:100]}")
             await self.log_scraping_error(str(e), execution_time)
             raise
 
@@ -187,7 +187,7 @@ class EpicItemsScraper(commands.Cog):
                     logging.error("No base items found in English")
                     return []
                 
-                logging.info(f"Found {len(base_items)} base items in English")
+                logging.info(f"Base items: {len(base_items)}")
 
                 multilang_items = {}
                 for item in base_items:
@@ -202,7 +202,7 @@ class EpicItemsScraper(commands.Cog):
                     }
 
                 for lang in ['fr', 'es', 'de']:
-                    logging.info(f"Starting {lang.upper()} scraping with fresh driver...")
+                    logging.info(f"{lang.upper()} scraping...")
                     try:
                         lang_items = self.scrape_language_items_optimized(lang)
 
@@ -211,19 +211,19 @@ class EpicItemsScraper(commands.Cog):
                             if item_id in multilang_items:
                                 multilang_items[item_id][f'item_name_{lang}'] = item['item_name']
                         
-                        logging.info(f"Processed {len(lang_items)} {lang.upper()} items")
+                        logging.info(f"{lang.upper()}: {len(lang_items)}")
                         
                     except Exception as e:
-                        logging.warning(f"Failed to scrape {lang} items: {e}")
+                        logging.warning(f"{lang} fail: {str(e)[:50]}")
                         for item_id in multilang_items:
                             if f'item_name_{lang}' not in multilang_items[item_id]:
                                 multilang_items[item_id][f'item_name_{lang}'] = multilang_items[item_id]['item_name_en']
                 
-                logging.info(f"Completed multilingual scraping: {len(multilang_items)} items")
+                logging.info(f"Total scraped: {len(multilang_items)}")
                 return list(multilang_items.values())
                 
             except Exception as e:
-                logging.error(f"Selenium scraping error: {e}")
+                logging.error(f"Selenium error: {str(e)[:100]}")
                 return []
 
         try:
@@ -271,25 +271,25 @@ class EpicItemsScraper(commands.Cog):
             options.set_preference('browser.sessionstore.max_tabs_undo', 0)
             options.set_preference('media.memory_cache_max_size', 0)
             
-            logging.info(f"Creating memory-optimized Firefox driver for {language}")
+            logging.info(f"Creating Firefox driver: {language}")
             driver = webdriver.Firefox(options=options)
             driver.set_page_load_timeout(30)
             
             items = self.scrape_language_items(driver, language)
-            logging.info(f"Scraped {len(items)} items for {language}, closing driver")
+            logging.info(f"{language}: {len(items)} items")
             
             return items
             
         except Exception as e:
-            logging.error(f"Error in optimized scraping for {language}: {e}")
+            logging.error(f"{language} error: {str(e)[:100]}")
             return []
         finally:
             if driver:
                 try:
                     driver.quit()
-                    logging.debug(f"Driver closed for {language}")
+                    logging.debug(f"Driver closed: {language}")
                 except Exception as e:
-                    logging.warning(f"Error closing driver for {language}: {e}")
+                    logging.warning(f"Close error {language}: {str(e)[:50]}")
 
     def scrape_language_items(self, driver, language: str) -> List[Dict[str, Any]]:
         """
@@ -310,11 +310,11 @@ class EpicItemsScraper(commands.Cog):
         
         try:
             max_pages = self.detect_total_pages(driver, base_url, language)
-            logging.info(f"Detected {max_pages} total pages for {language}")
+            logging.info(f"{language}: {max_pages} pages")
             
             for page in range(1, max_pages + 1):
                 page_url = f"{base_url}&page={page}"
-                logging.debug(f"Scraping {language} page {page}/{max_pages}: {page_url}")
+                logging.debug(f"{language} p{page}/{max_pages}")
                 
                 try:
                     driver.get(page_url)
@@ -337,21 +337,21 @@ class EpicItemsScraper(commands.Cog):
                             if item and self.should_include_item(item['item_id']):
                                 page_items.append(item)
                         except Exception as e:
-                            logging.debug(f"Failed to extract item from link: {e}")
+                            logging.debug(f"Extract fail: {str(e)[:50]}")
                             continue
                         
                     items.extend(page_items)
-                    logging.debug(f"Found {len(page_items)} items on page {page} for {language}")
+                    logging.debug(f"p{page}: {len(page_items)} items")
                     
                 except Exception as page_error:
-                    logging.warning(f"Error scraping page {page} for {language}: {page_error}")
+                    logging.warning(f"{language} p{page} error: {str(page_error)[:50]}")
                     continue
             
-            logging.info(f"Total items scraped for {language}: {len(items)}")
+            logging.info(f"{language} total: {len(items)}")
             return items
             
         except Exception as e:
-            logging.error(f"Error scraping {language} items: {e}")
+            logging.error(f"{language} scrape error: {str(e)[:100]}")
             return []
 
     def detect_total_pages(self, driver, base_url: str, language: str) -> int:
@@ -415,20 +415,20 @@ class EpicItemsScraper(commands.Cog):
                                 continue
                     
                     if max_page > 1:
-                        logging.debug(f"Found pagination container with max page: {max_page}")
+                        logging.debug(f"Max page: {max_page}")
                         break
 
             if max_page == 1:
                 max_page = self.binary_search_last_page(driver, base_url, language)
 
             if max_page == 1:
-                logging.warning(f"Could not detect pagination for {language}, using fallback of 20 pages")
+                logging.warning(f"{language}: pagination fallback (20)")
                 max_page = 20
             
             return max_page
             
         except Exception as e:
-            logging.error(f"Error detecting total pages for {language}: {e}")
+            logging.error(f"{language} page detect error: {str(e)[:50]}")
             return 20
 
     def binary_search_last_page(self, driver, base_url: str, language: str) -> int:
@@ -472,7 +472,7 @@ class EpicItemsScraper(commands.Cog):
                     except:
                         continue
 
-                logging.debug(f"Page {mid}: {epic_items_found} Epic T2 items found")
+                logging.debug(f"p{mid}: {epic_items_found} items")
 
                 if epic_items_found > 0:
                     last_epic_page = mid
@@ -483,11 +483,11 @@ class EpicItemsScraper(commands.Cog):
                     high = mid - 1
 
             final_pages = min(last_epic_page + 2, 25)
-            logging.info(f"Binary search found last Epic T2 page: {last_epic_page}, using {final_pages} total pages for {language}")
+            logging.info(f"{language}: pages {final_pages} (last T2: p{last_epic_page})")
             return final_pages
             
         except Exception as e:
-            logging.error(f"Error in binary search for {language}: {e}")
+            logging.error(f"{language} binary search: {str(e)[:50]}")
             return 20
 
     def extract_item_from_link(self, link_element, language: str) -> Optional[Dict[str, Any]]:
@@ -540,7 +540,7 @@ class EpicItemsScraper(commands.Cog):
             }
             
         except Exception as e:
-            logging.debug(f"Error extracting item from link: {e}")
+            logging.debug(f"Extract error: {str(e)[:30]}")
             return None
 
     def should_include_item(self, item_id: str) -> bool:
@@ -664,7 +664,7 @@ class EpicItemsScraper(commands.Cog):
             items: List of item dictionaries to cache
         """
         await self.bot.cache.set_static_data('epic_items_t2', items)
-        logging.info(f"Updated cache with {len(items)} Epic T2 items")
+        logging.info(f"Cache updated: {len(items)} items")
 
     async def log_scraping_success(self, items_scraped: int, items_added: int, items_updated: int, items_failed: int, execution_time: int) -> None:
         """

@@ -651,6 +651,57 @@ class CacheLoader:
         except Exception as e:
             logging.error(f"[CacheLoader] Error loading Epic T2 items: {e}", exc_info=True)
 
+    async def ensure_events_calendar_loaded(self) -> None:
+        """
+        Load events calendar data for all games with long TTL.
+        
+        Loads event calendar definitions organized by game_id,
+        including event names, schedules, DKP values, and frequencies.
+        Uses extended TTL (24 hours) as calendar data changes infrequently.
+        """
+        if 'events_calendar' in self._loaded_categories:
+            return
+            
+        logging.debug("[CacheLoader] Loading events calendar data for all games")
+        query = """
+        SELECT game_id, id, name, day, time, duration, week, dkp_value, dkp_ins
+        FROM events_calendar
+        ORDER BY game_id, id
+        """
+        
+        try:
+            rows = await self.bot.run_db_query(query, fetch_all=True)
+            if rows:
+                calendar_by_game = {}
+                for row in rows:
+                    game_id, event_id, name, day, time, duration, week, dkp_value, dkp_ins = row
+                    
+                    if game_id not in calendar_by_game:
+                        calendar_by_game[game_id] = {'events': []}
+                    
+                    calendar_by_game[game_id]['events'].append({
+                        'id': event_id,
+                        'name': name,
+                        'day': day,
+                        'time': str(time),  # Convert time to string
+                        'duration': int(duration),
+                        'week': week,
+                        'dkp_value': int(dkp_value) if dkp_value else 0,
+                        'dkp_ins': int(dkp_ins) if dkp_ins else 0
+                    })
+                
+                # Store each game's calendar with long TTL (24 hours)
+                for game_id, calendar_data in calendar_by_game.items():
+                    await self.bot.cache.set('static_data', calendar_data, f'events_calendar_{game_id}', ttl=86400)
+                    
+                logging.info(f"[CacheLoader] Loaded events calendar: {len(rows)} events for {len(calendar_by_game)} games")
+                self._loaded_categories.add('events_calendar')
+            else:
+                logging.warning("[CacheLoader] No events calendar data found in database")
+                self._loaded_categories.add('events_calendar')
+        except Exception as e:
+            logging.error(f"[CacheLoader] Error loading events calendar: {e}", exc_info=True)
+
     async def load_all_shared_data(self) -> None:
         """
         Load all shared data categories in parallel - ONCE at startup.
@@ -682,6 +733,7 @@ class CacheLoader:
                 self.ensure_guild_ideal_staff_loaded(),
                 self.ensure_games_list_loaded(),
                 self.ensure_epic_items_t2_loaded(),
+                self.ensure_events_calendar_loaded(),
                 self.ensure_guild_ptb_settings_loaded(),
             ]
             
@@ -762,6 +814,8 @@ class CacheLoader:
             await self.ensure_games_list_loaded()
         elif category == 'epic_items_t2':
             await self.ensure_epic_items_t2_loaded()
+        elif category == 'events_calendar':
+            await self.ensure_events_calendar_loaded()
         elif category == 'guild_ptb_settings':
             await self.ensure_guild_ptb_settings_loaded()
         else:
