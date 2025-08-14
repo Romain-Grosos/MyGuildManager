@@ -887,6 +887,20 @@
                 "es-ES": "✅ ¡Todos los miembros tienen perfiles completos!",
                 "de": "✅ Alle Mitglieder haben vollständige Profile!",
                 "it": "✅ Tutti i membri hanno profili completi!"
+            },
+            "mp_sent": {
+                "en-US": "📩 **Reminder**: Your guild profile is incomplete. Please update your gear score (GS) and weapon combination using the `/member` commands to help with roster management.",
+                "fr": "📩 **Rappel** : Votre profil de guilde est incomplet. Veuillez mettre à jour votre score d'équipement (GS) et votre combinaison d'armes en utilisant les commandes `/member` pour aider à la gestion du roster.",
+                "es-ES": "📩 **Recordatorio**: Tu perfil de gremio está incompleto. Por favor actualiza tu puntuación de equipo (GS) y combinación de armas usando los comandos `/member` para ayudar con la gestión del roster.",
+                "de": "📩 **Erinnerung**: Ihr Gildenprofil ist unvollständig. Bitte aktualisieren Sie Ihre Ausrüstungswertung (GS) und Waffenkombination mit den `/member` Befehlen zur Unterstützung der Rosterverwaltung.",
+                "it": "📩 **Promemoria**: Il tuo profilo di gilda è incompleto. Aggiorna il tuo punteggio equipaggiamento (GS) e la combinazione di armi usando i comandi `/member` per aiutare con la gestione del roster."
+            },
+            "success": {
+                "en-US": "✅ Notifications sent: **{successes}** successful, **{failures}** failed",
+                "fr": "✅ Notifications envoyées : **{successes}** réussies, **{failures}** échouées",
+                "es-ES": "✅ Notificaciones enviadas: **{successes}** exitosas, **{failures}** fallidas",
+                "de": "✅ Benachrichtigungen gesendet: **{successes}** erfolgreich, **{failures}** fehlgeschlagen",
+                "it": "✅ Notifiche inviate: **{successes}** riuscite, **{failures}** fallite"
             }
         },
         "config_roster": {
