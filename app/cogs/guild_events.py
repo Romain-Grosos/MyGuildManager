@@ -323,6 +323,12 @@ class GuildEvents(commands.Cog):
             Dictionary containing events calendar data for the specified game
         """
         calendar_data = await self.bot.cache.get('static_data', f'events_calendar_{game_id}')
+        
+        if calendar_data is None:
+            logging.debug(f"[GuildEvents] Events calendar not in cache for game_id {game_id}, loading from cache_loader")
+            await self.bot.cache_loader.ensure_events_calendar_loaded()
+            calendar_data = await self.bot.cache.get('static_data', f'events_calendar_{game_id}')
+        
         return calendar_data or {}
 
     async def get_event_data(self, guild_id: int, event_id: int) -> Dict:
@@ -465,7 +471,10 @@ class GuildEvents(commands.Cog):
                 except Exception as e:
                     logging.exception(f"[GuildEvents] Error creating events for guild {guild_id}: {e}")
             else:
-                    logging.error(f"❌ [GuildEvents] Guild {guild_id} not found.")
+                if not settings:
+                    logging.debug(f"[GuildEvents] Guild {guild_id} has no settings configured, skipping event creation")
+                else:
+                    logging.debug(f"[GuildEvents] Guild {guild_id} is not premium, skipping automatic event creation")
 
     @profile_performance(threshold_ms=200.0)
     @discord_resilient(service_name='discord_api', max_retries=2)
@@ -544,24 +553,25 @@ class GuildEvents(commands.Cog):
                         continue
 
                 event_key = cal_event.get("name")
-                event_info = EVENT_MANAGEMENT["events_infos"].get(event_key)
+                events_infos = EVENT_MANAGEMENT.get("events_infos", {})
+                event_info = events_infos.get(event_key)
                 event_name = event_info.get(guild_lang, event_info.get("en-US")) if event_info else event_key
-                event_date = EVENT_MANAGEMENT["events_infos"]["date"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["date"].get("en-US"))
-                event_hour = EVENT_MANAGEMENT["events_infos"]["hour"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["hour"].get("en-US"))
-                event_duration = EVENT_MANAGEMENT["events_infos"]["duration"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["duration"].get("en-US"))
-                event_status = EVENT_MANAGEMENT["events_infos"]["status"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["status"].get("en-US"))
-                event_dkp_v = EVENT_MANAGEMENT["events_infos"]["dkp_v"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["dkp_v"].get("en-US"))
-                event_dkp_i = EVENT_MANAGEMENT["events_infos"]["dkp_i"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["dkp_i"].get("en-US"))
-                event_present = EVENT_MANAGEMENT["events_infos"]["present"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["present"].get("en-US"))
-                event_attempt = EVENT_MANAGEMENT["events_infos"]["attempt"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["attempt"].get("en-US"))
-                event_absence = EVENT_MANAGEMENT["events_infos"]["absence"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["absence"].get("en-US"))
-                event_voice_channel = EVENT_MANAGEMENT["events_infos"]["voice_channel"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["voice_channel"].get("en-US"))
-                event_groups = EVENT_MANAGEMENT["events_infos"]["groups"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["groups"].get("en-US"))
-                event_auto_grouping = EVENT_MANAGEMENT["events_infos"]["auto_grouping"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["auto_grouping"].get("en-US"))
+                event_date = events_infos.get("date", {}).get(guild_lang, events_infos.get("date", {}).get("en-US", "Date"))
+                event_hour = events_infos.get("hour", {}).get(guild_lang, events_infos.get("hour", {}).get("en-US", "Hour"))
+                event_duration = events_infos.get("duration", {}).get(guild_lang, events_infos.get("duration", {}).get("en-US", "Duration"))
+                event_status = events_infos.get("status", {}).get(guild_lang, events_infos.get("status", {}).get("en-US", "Status"))
+                event_dkp_v = events_infos.get("dkp_v", {}).get(guild_lang, events_infos.get("dkp_v", {}).get("en-US", "DKP Value"))
+                event_dkp_i = events_infos.get("dkp_i", {}).get(guild_lang, events_infos.get("dkp_i", {}).get("en-US", "DKP Ins"))
+                event_present = events_infos.get("present", {}).get(guild_lang, events_infos.get("present", {}).get("en-US", "Present"))
+                event_attempt = events_infos.get("attempt", {}).get(guild_lang, events_infos.get("attempt", {}).get("en-US", "Attempt"))
+                event_absence = events_infos.get("absence", {}).get(guild_lang, events_infos.get("absence", {}).get("en-US", "Absence"))
+                event_voice_channel = events_infos.get("voice_channel", {}).get(guild_lang, events_infos.get("voice_channel", {}).get("en-US", "Voice Channel"))
+                event_groups = events_infos.get("groups", {}).get(guild_lang, events_infos.get("groups", {}).get("en-US", "Groups"))
+                event_auto_grouping = events_infos.get("auto_grouping", {}).get(guild_lang, events_infos.get("auto_grouping", {}).get("en-US", "Auto Grouping"))
 
-                status = EVENT_MANAGEMENT["events_infos"]["status_planned"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["status_planned"].get("en-US"))
-                status_db = EVENT_MANAGEMENT["events_infos"]["status_planned"].get("en-US")
-                description = EVENT_MANAGEMENT["events_infos"]["description"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["description"].get("en-US"))
+                status = events_infos.get("status_planned", {}).get(guild_lang, events_infos.get("status_planned", {}).get("en-US", "Planned"))
+                status_db = events_infos.get("status_planned", {}).get("en-US", "Planned")
+                description = events_infos.get("description", {}).get(guild_lang, events_infos.get("description", {}).get("en-US", "React to indicate your presence."))
 
                 try:
                     embed = discord.Embed(
@@ -575,7 +585,7 @@ class GuildEvents(commands.Cog):
                     embed.add_field(name=event_status, value=status, inline=True)
                     embed.add_field(name=event_dkp_v, value=str(cal_event.get("dkp_value", 0)), inline=True)
                     embed.add_field(name=event_dkp_i, value=str(cal_event.get("dkp_ins", 0)), inline=True)
-                    none_text = EVENT_MANAGEMENT["events_infos"]["none"].get(guild_lang, "None")
+                    none_text = events_infos.get("none", {}).get(guild_lang, events_infos.get("none", {}).get("en-US", "None"))
                     embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value=none_text, inline=False)
                     embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value=none_text, inline=False)
                     embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value=none_text, inline=False)
@@ -600,7 +610,7 @@ class GuildEvents(commands.Cog):
                     continue
 
                 try:
-                    description_scheduled = EVENT_MANAGEMENT["events_infos"]["description_scheduled"].get(guild_lang,EVENT_MANAGEMENT["events_infos"]["description_scheduled"].get("en-US")).format(link=message_link)
+                    description_scheduled = events_infos.get("description_scheduled", {}).get(guild_lang, events_infos.get("description_scheduled", {}).get("en-US", "View event: {link}")).format(link=message_link)
                     scheduled_event = await guild.create_scheduled_event(
                         name=event_name,
                         description=description_scheduled,
@@ -696,6 +706,10 @@ class GuildEvents(commands.Cog):
                 try:
                     await self.bot.run_db_query(query, record, commit=True)
                     logging.info(f"[GuildEvents - create_events - create_events_for_guild] Event saved in DB successfully: {announcement.id}")
+                    
+                    await self.bot.cache.invalidate_category('events_data')
+                    logging.debug(f"[GuildEvents] Cache invalidated for events_data after automatic event creation")
+                    
                 except Exception as e:
                     error_msg = str(e).lower()
                     if "duplicate entry" in error_msg or "1062" in error_msg:

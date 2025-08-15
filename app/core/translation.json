@@ -1234,6 +1234,55 @@
             }
         },
         "events_infos": {
+            "boonstone": {
+                "en-US": "Boonstone",
+                "fr": "Pierre de Bénédiction",
+                "es-ES": "Piedra de Bendición",
+                "de": "Segensstein",
+                "it": "Pietra della Benedizione"
+            },
+            "riftstone": {
+                "en-US": "Riftstone",
+                "fr": "Pierre de Faille",
+                "es-ES": "Piedra de Grieta",
+                "de": "Rissstein",
+                "it": "Pietra della Fenditura"
+            },
+            "conflict archboss": {
+                "en-US": "Conflict Archboss",
+                "fr": "Archboss Conflit",
+                "es-ES": "Archijefe de Conflicto",
+                "de": "Konflikt-Archboss",
+                "it": "Arci-boss del Conflitto"
+            },
+            "guild bosses": {
+                "en-US": "Guild's Bosses",
+                "fr": "Boss de Guilde",
+                "es-ES": "Jefes de la Guild",
+                "de": "Gildenbosse",
+                "it": "Boss della Gilda"
+            },
+            "boonstone interserv": {
+                "en-US": "Boonstone + Interserver",
+                "fr": "Pierre de Bénédiction + Interserveur",
+                "es-ES": "Piedra de Bendición + Interservidor",
+                "de": "Segensstein + Interserver",
+                "it": "Pietra della Benedizione + Interserver"
+            },
+            "riftstone interserv": {
+                "en-US": "Riftstone + Interserver",
+                "fr": "Pierre de Faille + Interserveur",
+                "es-ES": "Piedra de Grieta + Interservidor",
+                "de": "Rissstein + Interserver",
+                "it": "Pietra della Fenditura + Interserver"
+            },
+            "castle siege": {
+                "en-US": "Castle's Siege",
+                "fr": "Attaque du Château",
+                "es-ES": "Asedio del Castillo",
+                "de": "Burgbelagerung",
+                "it": "Assedio al Castello"
+            },
             "event_name": {
                 "en-US": "Event",
                 "fr": "Événement",

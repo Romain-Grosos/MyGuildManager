@@ -485,22 +485,22 @@ class ProfileSetup(commands.Cog):
         def _values_from_session(s: Dict[str, Any]) -> Tuple[Any, ...]:
             """Internal method: Values from session."""
             return (
-                guild_id,
-                user_id,
-                s.get("nickname"),
-                s.get("locale"),
-                s.get("motif"),
-                s.get("friend_pseudo"),
-                s.get("weapons"),
-                s.get("guild_name"),
-                s.get("guild_acronym"),
-                s.get("gs"),
-                s.get("playtime"),
-                s.get("game_mode"),
-                s.get("nickname"),
-                s.get("locale"),
-                s.get("motif"),
-                s.get("friend_pseudo"),
+                    guild_id,
+                    user_id,
+                    s.get("nickname"),
+                    s.get("locale"),
+                    s.get("motif"),
+                    s.get("friend_pseudo"),
+                    s.get("weapons"),
+                    s.get("guild_name"),
+                    s.get("guild_acronym"),
+                    s.get("gs"),
+                    s.get("playtime"),
+                    s.get("game_mode"),
+                    s.get("nickname"),
+                    s.get("locale"),
+                    s.get("motif"),
+                    s.get("friend_pseudo"),
                 s.get("weapons"),
                 s.get("guild_name"),
                 s.get("guild_acronym"),
@@ -581,9 +581,9 @@ class ProfileSetup(commands.Cog):
             nickname = session.get("nickname", "")
             new_nickname = nickname
             if motif == "application":
-                post_acronym = PROFILE_SETUP_DATA["acronym"].get(
+                post_acronym = PROFILE_SETUP_DATA.get("acronym", {}).get(
                     session.get("locale", "en-US"),
-                    PROFILE_SETUP_DATA["acronym"].get("en-US"),
+                    PROFILE_SETUP_DATA.get("acronym", {}).get("en-US", "Acronym:"),
                 )
                 new_nickname = f"{post_acronym} {nickname}"
             elif motif in ["diplomat", "allies"]:
@@ -639,29 +639,29 @@ class ProfileSetup(commands.Cog):
             logging.debug(f"[ProfileSetup] Embed color for motif '{motif}': {embed_color}")
             
             embed = discord.Embed(
-                title=PROFILE_SETUP_DATA["notification"]["title"].get(
-                    locale, PROFILE_SETUP_DATA["notification"]["title"].get("en-US")
+                title=PROFILE_SETUP_DATA.get("notification", {}).get("title", {}).get(
+                    locale, PROFILE_SETUP_DATA.get("notification", {}).get("title", {}).get("en-US", "📋 New Profile Configured")
                 ),
                 color=embed_color,
             )
             embed.add_field(
-                name=PROFILE_SETUP_DATA["notification"]["fields"]["user"].get(
-                    locale, PROFILE_SETUP_DATA["notification"]["fields"]["user"].get("en-US")
+                name=PROFILE_SETUP_DATA.get("notification", {}).get("fields", {}).get("user", {}).get(
+                    locale, PROFILE_SETUP_DATA.get("notification", {}).get("fields", {}).get("user", {}).get("en-US", "User")
                 ),
                 value=f"<@{user_id}>",
                 inline=False,
             )
             embed.add_field(
-                name=PROFILE_SETUP_DATA["notification"]["fields"]["discord_name"].get(
+                name=PROFILE_SETUP_DATA.get("notification", {}).get("fields", {}).get("discord_name", {}).get(
                     locale,
-                    PROFILE_SETUP_DATA["notification"]["fields"]["discord_name"].get("en-US"),
+                    PROFILE_SETUP_DATA.get("notification", {}).get("fields", {}).get("discord_name", {}).get("en-US", "Discord Name"),
                 ),
                 value=f"`{session.get('nickname', 'Unknown')}`",
                 inline=False,
             )
             embed.set_footer(
-                text=PROFILE_SETUP_DATA["footer"].get(
-                    locale, PROFILE_SETUP_DATA["footer"].get("en-US")
+                text=PROFILE_SETUP_DATA.get("footer", {}).get(
+                    locale, PROFILE_SETUP_DATA.get("footer", {}).get("en-US", "Profile configured")
                 )
             )
 
@@ -1255,60 +1255,78 @@ class ProfileSetup(commands.Cog):
             Args:
                 interaction: Discord interaction from modal submission
             """
+            await interaction.response.defer(ephemeral=True)
+            
             try:
                 logging.debug(f"[ProfileSetup] QuestionsSelect submitted by user {interaction.user.id} in guild {self.guild_id}.")
                 cog: ProfileSetup = interaction.client.get_cog("ProfileSetup")
                 if not cog:
                     logging.error("[ProfileSetup] Cog 'ProfileSetup' not found.")
-                    await interaction.response.send_message("❌ Error.", ephemeral=True)
+                    await interaction.followup.send("❌ Error.", ephemeral=True)
                     return
                 guild_id = self.guild_id
                 user_id = interaction.user.id
-                session = await cog.load_session(guild_id, user_id)
-                logging.debug(f"[ProfileSetup] Session before update: {session}")
-                session["nickname"] = self.nickname.value
-                if hasattr(self, "guild_name"):
-                    session["guild_name"] = self.guild_name.value
-                    session["guild_acronym"] = self.guild_acronym.value
-                if hasattr(self, "friend_pseudo"):
-                    session["friend_pseudo"] = self.friend_pseudo.value
-                if hasattr(self, "weapons"):
-                    weapons_input = self.weapons.value
-                    llm_cog = interaction.client.get_cog("LLMInteraction")
-                    try:
-                        if llm_cog:
-                            weapons_clean = await llm_cog.normalize_weapons(weapons_input)
-                            if not weapons_clean:
+                
+                session_key = f"{guild_id}_{user_id}"
+                if session_key not in cog.session_locks:
+                    cog.session_locks[session_key] = asyncio.Lock()
+                
+                async with cog.session_locks[session_key]:
+                    session = await cog.load_session(guild_id, user_id)
+                    logging.debug(f"[ProfileSetup] Session before update: {session}")
+                    session["nickname"] = self.nickname.value
+                    if hasattr(self, "guild_name"):
+                        session["guild_name"] = self.guild_name.value
+                        session["guild_acronym"] = self.guild_acronym.value
+                    if hasattr(self, "friend_pseudo"):
+                        session["friend_pseudo"] = self.friend_pseudo.value
+                    if hasattr(self, "weapons"):
+                        weapons_input = self.weapons.value
+                        llm_cog = interaction.client.get_cog("LLMInteraction")
+                        try:
+                            if llm_cog:
+                                weapons_clean = await llm_cog.normalize_weapons(weapons_input)
+                                if not weapons_clean:
+                                    weapons_clean = weapons_input
+                            else:
                                 weapons_clean = weapons_input
-                        else:
+                        except Exception as e:
+                            logging.warning(f"[ProfileSetup] LLM weapons normalization failed: {e}")
                             weapons_clean = weapons_input
-                    except Exception as e:
-                        logging.warning(f"[ProfileSetup] LLM weapons normalization failed: {e}")
-                        weapons_clean = weapons_input
-                    session["weapons"] = weapons_clean[:32]
-                    session["gs"] = self.gs.value
-                if hasattr(self, "game_mode"):
-                    raw_playtime = self.playtime.value.strip()
-                    session["game_mode"] = self.game_mode.value
-                    session["playtime"] = raw_playtime[:MAX_PLAYTIME_LEN]
-                    if len(raw_playtime) > MAX_PLAYTIME_LEN:
-                        logging.warning(
-                            f"[ProfileSetup] Playtime truncated at modal input for user {user_id}"
-                        )
-                logging.debug(f"[ProfileSetup] Session after update: {session}")
-                await interaction.response.defer(ephemeral=True)
-                await cog.finalize_profile(guild_id, user_id)
-                await interaction.followup.send(
-                    PROFILE_SETUP_DATA["setup_complete"].get(self.locale, PROFILE_SETUP_DATA["setup_complete"].get("en-US")),
-                    ephemeral=True,
+                        session["weapons"] = weapons_clean[:32]
+                        
+                        try:
+                            gs_value = int(self.gs.value.strip()) if self.gs.value.strip() else 0
+                            session["gs"] = min(max(gs_value, 0), 99999)
+                        except (ValueError, TypeError):
+                            logging.warning(f"[ProfileSetup] Invalid GS value '{self.gs.value}' for user {user_id}, using 0")
+                            session["gs"] = 0
+                    if hasattr(self, "game_mode"):
+                        raw_playtime = self.playtime.value.strip()
+                        session["game_mode"] = self.game_mode.value
+                        session["playtime"] = raw_playtime[:MAX_PLAYTIME_LEN]
+                        if len(raw_playtime) > MAX_PLAYTIME_LEN:
+                            logging.warning(
+                                f"[ProfileSetup] Playtime truncated at modal input for user {user_id}"
+                            )
+                    logging.debug(f"[ProfileSetup] Session after update: {session}")
+                    await cog.finalize_profile(guild_id, user_id)
+                setup_complete_msg = PROFILE_SETUP_DATA.get("setup_complete", {}).get(
+                    self.locale, 
+                    PROFILE_SETUP_DATA.get("setup_complete", {}).get("en-US", "✅ Profile setup complete!")
                 )
+                await interaction.followup.send(setup_complete_msg, ephemeral=True)
                 logging.debug("[ProfileSetup] QuestionsSelect modal submission processed successfully.")
-            except Exception:
-                logging.error("[ProfileSetup] Error in QuestionsSelect.on_submit", exc_info=True)
+            except Exception as e:
+                logging.exception(f"[ProfileSetup] Error in QuestionsSelect.callback: {e}")
+                error_msg = PROFILE_SETUP_DATA.get("error_occurred", {}).get(
+                    self.locale,
+                    PROFILE_SETUP_DATA.get("error_occurred", {}).get("en-US", "❌ An error occurred during profile submission.")
+                )
                 try:
-                    await interaction.response.send_message("❌ An error occurred during profile submission.", ephemeral=True)
-                except Exception:
-                    pass
+                    await interaction.followup.send(error_msg, ephemeral=True)
+                except Exception as follow_error:
+                    logging.error(f"[ProfileSetup] Failed to send error message: {follow_error}")
 
     class QuestionsSelectButton(discord.ui.Button):
         """Button to open profile questions modal."""
