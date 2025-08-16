@@ -269,7 +269,8 @@ class CacheLoader:
         Loads member information including usernames, classes, gear scores,
         builds, weapons, DKP, and event statistics.
         """
-        if 'guild_members' in self._loaded_categories:
+        current_cache = await self.bot.cache.get('roster_data', 'guild_members')
+        if 'guild_members' in self._loaded_categories and current_cache:
             return
             
         logging.debug("[CacheLoader] Loading guild members for all guilds")

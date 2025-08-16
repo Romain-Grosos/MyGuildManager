@@ -296,9 +296,11 @@ class GuildMembers(commands.Cog):
             Dictionary mapping (guild_id, member_id) tuples to member data dictionaries
         """
         guild_members = await self.bot.cache.get('roster_data', 'guild_members')
-        if guild_members is None:
-            logging.warning("[GuildMembers] guild_members cache returned None, ensuring cache is loaded...")
+        if not guild_members:
+            logging.warning("[GuildMembers] guild_members cache empty or None, forcing reload...")
             try:
+                if 'guild_members' in self.bot.cache_loader._loaded_categories:
+                    self.bot.cache_loader._loaded_categories.discard('guild_members')
                 await self.bot.cache_loader.ensure_guild_members_loaded()
                 guild_members = await self.bot.cache.get('roster_data', 'guild_members')
                 logging.debug(f"[GuildMembers] After cache reload: {type(guild_members)} - {guild_members is None}")
