@@ -91,7 +91,11 @@ class BotOptimizer:
         self._channel_cache = {}
         self._guild_cache = {}
         self._cache_ttl = 300
-        self._cache_times = {}
+        self._cache_times = {
+            'members': {},
+            'channels': {},
+            'guilds': {}
+        }
         
         self.metrics = {
             'commands_executed': 0,
@@ -144,7 +148,7 @@ class BotOptimizer:
             Cached member object or None
         """
         key = f"member_{guild_id}_{member_id}"
-        if key in self._member_cache and self.is_cache_valid(key):
+        if key in self._member_cache and self.is_cache_valid('members', key):
             self.metrics['cache_hits'] += 1
             return self._member_cache[key]
         self.metrics['cache_misses'] += 1
@@ -172,7 +176,7 @@ class BotOptimizer:
             
             if member:
                 key = f"member_{guild.id}_{member_id}"
-                self.set_cache(self._member_cache, key, member)
+                self.set_cache('members', self._member_cache, key, member)
                 self.metrics['api_calls_cached'] += 1
             
             self.metrics['api_calls_total'] += 1
@@ -646,6 +650,10 @@ async def global_rate_limit(ctx):
     Raises:
         CommandOnCooldown: If rate limit is exceeded
     """
+    guild_id = ctx.guild.id if ctx.guild else "DM"
+    user_id = ctx.author.id
+    command_name = f"{ctx.command.parent.name}/{ctx.command.name}" if ctx.command.parent else ctx.command.name
+    logging.debug(f"[Bot] Executing {command_name} | guild={guild_id} | user={user_id}")
     now = time.time()
     bot.global_command_cooldown = {
         timestamp for timestamp in bot.global_command_cooldown 
@@ -690,7 +698,7 @@ async def on_ready() -> None:
                 logging.error(f"[Bot] Cache load attempt {retry_count} failed: {e}", exc_info=True)
                 
                 if retry_count < max_retries:
-                    wait_time = retry_count * 5
+                    wait_time = min(60, 5 * (2 ** (retry_count - 1)))
                     logging.warning(f"[Bot] Retrying cache load in {wait_time} seconds...")
                     await asyncio.sleep(wait_time)
                 else:
@@ -853,12 +861,13 @@ async def run_bot():
             await bot.start(validate_token())
         except aiohttp.ClientError as e:
             retry_count += 1
-            logging.exception(f"Network error (attempt {retry_count}/{max_retries}) - retrying in 15s")
+            wait_time = min(300, 15 * (2 ** (retry_count - 1)))
+            logging.exception(f"Network error (attempt {retry_count}/{max_retries}) - retrying in {wait_time}s")
             if retry_count >= max_retries:
                 logging.critical("[Bot] Max retries reached. Shutting down.")
                 break
             await bot.close()
-            await asyncio.sleep(15)
+            await asyncio.sleep(wait_time)
         except Exception as e:
             logging.critical(f"[Bot] Critical error during startup: {e}", exc_info=True)
             break
