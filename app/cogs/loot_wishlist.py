@@ -347,7 +347,7 @@ class LootWishlist(commands.Cog):
                             best_score = score
                             best_item = item
                 
-                if best_item:
+                if best_item and best_item.get('item_id'):
                     logging.debug(f"[LootWishlist] Found match: {item_name} -> {best_item.get('item_id')} (score: {best_score})")
                     return True, best_item.get('item_id')
                     
@@ -999,6 +999,28 @@ class LootWishlist(commands.Cog):
             logging.error(f"[LootWishlist] Error getting admin wishlist data: {e}")
             message = await get_user_message(ctx, LOOT_WISHLIST_DATA, "messages.general_error", action="retrieving wishlist data")
             await ctx.followup.send(message, ephemeral=True)
+    
+    async def cleanup_member_wishlist(self, guild_id: int, user_id: int) -> None:
+        """
+        Remove all wishlist items for a member who left the guild.
+        Called from notification.py when a member leaves.
+        
+        Args:
+            guild_id: The Discord guild ID
+            user_id: The Discord user ID of the departed member
+        """
+        try:
+            delete_query = "DELETE FROM loot_wishlist WHERE guild_id = ? AND user_id = ?"
+            await db.run_db_query(delete_query, (guild_id, user_id), commit=True)
+            
+            cache_key = f"wishlist_stats_{guild_id}"
+            if hasattr(self.bot, 'cache') and hasattr(self.bot.cache, 'invalidate'):
+                await self.bot.cache.invalidate(cache_key)
+            
+            logging.info(f"[LootWishlist] Cleaned up wishlist for departed member {user_id} from guild {guild_id}")
+            
+        except Exception as e:
+            logging.error(f"[LootWishlist] Error cleaning up wishlist for member {user_id}: {e}")
 
 def setup(bot: discord.Bot) -> None:
     """

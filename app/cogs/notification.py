@@ -433,18 +433,17 @@ class Notification(commands.Cog):
         user_id = member.id
         
         try:
-            # Clean up guild_members table
             delete_queries = [
                 ("DELETE FROM guild_members WHERE guild_id = %s AND user_id = %s", (guild_id, user_id)),
                 ("DELETE FROM user_setup WHERE guild_id = %s AND user_id = %s", (guild_id, user_id)),
                 ("DELETE FROM static_groups_members WHERE guild_id = %s AND user_id = %s", (guild_id, user_id)),
-                ("DELETE FROM event_attendance WHERE guild_id = %s AND user_id = %s", (guild_id, user_id))
+                ("DELETE FROM event_attendance WHERE guild_id = %s AND user_id = %s", (guild_id, user_id)),
+                ("DELETE FROM loot_wishlist WHERE guild_id = %s AND user_id = %s", (guild_id, user_id))
             ]
             
             for query, params in delete_queries:
                 await self.bot.run_db_query(query, params, commit=True)
                 
-            # Clear user data from cache
             await self.bot.cache.invalidate_guild_member_data(guild_id, user_id)
             logging.debug(f"[NotificationManager] Database and cache cleanup successful for {safe_user}")
             
