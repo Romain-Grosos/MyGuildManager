@@ -1734,11 +1734,11 @@
         },
         "event_reminder": {
             "dm_message": {
-                "en-US": "🔔 **Event Reminder**\n\nThe event **{event_name}** is starting in 1 hour!\n📅 **Date:** {event_date}\n🕐 **Time:** {event_time}\n\nMake sure you're ready to participate. See you there! 🎮",
-                "fr": "🔔 **Rappel d'événement**\n\nL'événement **{event_name}** commence dans 1 heure !\n📅 **Date :** {event_date}\n🕐 **Heure :** {event_time}\n\nAssurez-vous d'être prêt à participer. À bientôt ! 🎮",
-                "es-ES": "🔔 **Recordatorio de evento**\n\n¡El evento **{event_name}** comienza en 1 hora!\n📅 **Fecha:** {event_date}\n🕐 **Hora:** {event_time}\n\n¡Asegúrate de estar listo para participar. Nos vemos allí! 🎮",
-                "de": "🔔 **Event-Erinnerung**\n\nDas Event **{event_name}** beginnt in 1 Stunde!\n📅 **Datum:** {event_date}\n🕐 **Zeit:** {event_time}\n\nStell sicher, dass du bereit bist teilzunehmen. Bis dann! 🎮",
-                "it": "🔔 **Promemoria evento**\n\nL'evento **{event_name}** inizia tra 1 ora!\n📅 **Data:** {event_date}\n🕐 **Ora:** {event_time}\n\nAssicurati di essere pronto a partecipare. Ci vediamo lì! 🎮"
+                "en-US": "Hello {member_name},\n\nYou have not yet confirmed your registration for the event **{event_name}** scheduled on {date} at {time}.\nTo sign up, click here: {link}\n\nThank you!",
+                "fr": "Bonjour {member_name},\n\nVous n'avez pas confirmé votre inscription pour l'événement **{event_name}** prévu le {date} à {time}.\nPour vous inscrire, cliquez ici : {link}\n\nMerci !",
+                "es-ES": "Hola {member_name},\n\nAún no has confirmado tu inscripción para el evento **{event_name}** programado el {date} a las {time}.\nPara inscribirte, haz clic aquí: {link}\n\n¡Gracias!",
+                "de": "Hallo {member_name},\n\nDu hast deine Anmeldung für das Event **{event_name}** am {date} um {time} noch nicht bestätigt.\nUm dich anzumelden, klicke hier: {link}\n\nDanke!",
+                "it": "Ciao {member_name},\n\nNon hai ancora confermato la tua iscrizione per l'evento **{event_name}** previsto per il {date} alle {time}.\nPer iscriverti, clicca qui: {link}\n\nGrazie!"
             },
             "notification_reminded": {
                 "en-US": "🔔 Event reminder sent to {count} registered members",

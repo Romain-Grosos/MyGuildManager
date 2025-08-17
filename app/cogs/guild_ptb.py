@@ -433,6 +433,22 @@ class GuildPTB(commands.Cog):
             }
             await self.set_active_events(active_events)
 
+            missing_groups = []
+            for group_name in groups_data.keys():
+                group_num = group_name.lower()
+                role_key = f"{group_num}_role_id"
+                if role_key not in ptb_settings:
+                    missing_groups.append(group_name)
+            
+            if missing_groups:
+                logging.debug(f"[GuildPTB] Missing group configs: {missing_groups}, reloading PTB settings")
+                await self.bot.cache.invalidate_category('guild_data')
+                await self.bot.cache_loader.reload_category('guild_ptb_settings')
+                ptb_settings = await self.get_guild_ptb_settings(main_guild_id)
+                if not ptb_settings:
+                    logging.error(f"[GuildPTB] Still no PTB settings after reload for guild {main_guild_id}")
+                    return False
+
             await self._assign_roles_to_members(ptb_guild, ptb_settings, groups_data)
 
             await self._send_event_recap(ptb_guild, ptb_settings["info_channel_id"], event_id, groups_data)

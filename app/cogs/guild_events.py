@@ -476,7 +476,7 @@ class GuildEvents(commands.Cog):
                 else:
                     logging.debug(f"[GuildEvents] Guild {guild_id} is not premium, skipping automatic event creation")
 
-    @profile_performance(threshold_ms=200.0)
+    @profile_performance(threshold_ms=100.0)
     @discord_resilient(service_name='discord_api', max_retries=2)
     async def create_events_for_guild(self, guild: discord.Guild) -> None:
         """
@@ -556,74 +556,48 @@ class GuildEvents(commands.Cog):
                 events_infos = EVENT_MANAGEMENT.get("events_infos", {})
                 event_info = events_infos.get(event_key)
                 event_name = event_info.get(guild_lang, event_info.get("en-US")) if event_info else event_key
-                event_date = events_infos.get("date", {}).get(guild_lang, events_infos.get("date", {}).get("en-US", "Date"))
-                event_hour = events_infos.get("hour", {}).get(guild_lang, events_infos.get("hour", {}).get("en-US", "Hour"))
-                event_duration = events_infos.get("duration", {}).get(guild_lang, events_infos.get("duration", {}).get("en-US", "Duration"))
-                event_status = events_infos.get("status", {}).get(guild_lang, events_infos.get("status", {}).get("en-US", "Status"))
-                event_dkp_v = events_infos.get("dkp_v", {}).get(guild_lang, events_infos.get("dkp_v", {}).get("en-US", "DKP Value"))
-                event_dkp_i = events_infos.get("dkp_i", {}).get(guild_lang, events_infos.get("dkp_i", {}).get("en-US", "DKP Ins"))
-                event_present = events_infos.get("present", {}).get(guild_lang, events_infos.get("present", {}).get("en-US", "Present"))
-                event_attempt = events_infos.get("attempt", {}).get(guild_lang, events_infos.get("attempt", {}).get("en-US", "Attempt"))
-                event_absence = events_infos.get("absence", {}).get(guild_lang, events_infos.get("absence", {}).get("en-US", "Absence"))
-                event_voice_channel = events_infos.get("voice_channel", {}).get(guild_lang, events_infos.get("voice_channel", {}).get("en-US", "Voice Channel"))
-                event_groups = events_infos.get("groups", {}).get(guild_lang, events_infos.get("groups", {}).get("en-US", "Groups"))
-                event_auto_grouping = events_infos.get("auto_grouping", {}).get(guild_lang, events_infos.get("auto_grouping", {}).get("en-US", "Auto Grouping"))
 
-                status = events_infos.get("status_planned", {}).get(guild_lang, events_infos.get("status_planned", {}).get("en-US", "Planned"))
-                status_db = events_infos.get("status_planned", {}).get("en-US", "Planned")
-                description = events_infos.get("description", {}).get(guild_lang, events_infos.get("description", {}).get("en-US", "React to indicate your presence."))
+                translations = self._get_cached_translations(guild_lang, events_infos)
 
                 try:
                     embed = discord.Embed(
                         title=event_name,
-                        description=description,
+                        description=translations["description"],
                         color=discord.Color.blue()
                     )
-                    embed.add_field(name=event_date, value=start_time.strftime("%d-%m-%Y"), inline=True)
-                    embed.add_field(name=event_hour, value=start_time.strftime("%H:%M"), inline=True)
-                    embed.add_field(name=event_duration, value=f"{duration_minutes}", inline=True)
-                    embed.add_field(name=event_status, value=status, inline=True)
-                    embed.add_field(name=event_dkp_v, value=str(cal_event.get("dkp_value", 0)), inline=True)
-                    embed.add_field(name=event_dkp_i, value=str(cal_event.get("dkp_ins", 0)), inline=True)
-                    none_text = events_infos.get("none", {}).get(guild_lang, events_infos.get("none", {}).get("en-US", "None"))
-                    embed.add_field(name=f"{event_present} <:_yes_:1340109996666388570> (0)", value=none_text, inline=False)
-                    embed.add_field(name=f"{event_attempt} <:_attempt_:1340110058692018248> (0)", value=none_text, inline=False)
-                    embed.add_field(name=f"{event_absence} <:_no_:1340110124521357313> (0)", value=none_text, inline=False)
+                    embed.add_field(name=translations["date"], value=start_time.strftime("%d-%m-%Y"), inline=True)
+                    embed.add_field(name=translations["hour"], value=start_time.strftime("%H:%M"), inline=True)
+                    embed.add_field(name=translations["duration"], value=f"{duration_minutes}", inline=True)
+                    embed.add_field(name=translations["status"], value=translations["status_planned"], inline=True)
+                    embed.add_field(name=translations["dkp_v"], value=str(cal_event.get("dkp_value", 0)), inline=True)
+                    embed.add_field(name=translations["dkp_i"], value=str(cal_event.get("dkp_ins", 0)), inline=True)
+                    embed.add_field(name=f"{translations['present']} <:_yes_:1340109996666388570> (0)", value=translations["none"], inline=False)
+                    embed.add_field(name=f"{translations['attempt']} <:_attempt_:1340110058692018248> (0)", value=translations["none"], inline=False)
+                    embed.add_field(name=f"{translations['absence']} <:_no_:1340110124521357313> (0)", value=translations["none"], inline=False)
                     conference_link = f"https://discord.com/channels/{guild.id}/{conference_channel.id}"
-                    embed.add_field(name=event_voice_channel, value=f"[🏹 WAR]({conference_link})", inline=False)
-                    embed.add_field(name=event_groups, value=event_auto_grouping, inline=False)
+                    embed.add_field(name=translations["voice_channel"], value=f"[🏹 WAR]({conference_link})", inline=False)
+                    embed.add_field(name=translations["groups"], value=translations["auto_grouping"], inline=False)
                 except Exception as e:
                     logging.error(f"[GuildEvents - create_events_for_guild] Error building embed for event '{event_name}': {e}", exc_info=True)
                     continue
 
                 try:
-                    announcement = await events_channel.send(embed=embed)
-                    logging.debug(f"[GuildEvents - create_events_for_guild] Announcement sent: id={announcement.id} in channel {announcement.channel.id}")
+                    announcement_task = self._send_announcement(events_channel, embed)
+
+                    announcement = await announcement_task
                     message_link = f"https://discord.com/channels/{guild.id}/{announcement.channel.id}/{announcement.id}"
+
                     embed.set_footer(text=f"Event ID = {announcement.id}")
                     await announcement.edit(embed=embed)
-                    await announcement.add_reaction("<:_yes_:1340109996666388570>")
-                    await announcement.add_reaction("<:_attempt_:1340110058692018248>")
-                    await announcement.add_reaction("<:_no_:1340110124521357313>")
-                except Exception as e:
-                    logging.error(f"[GuildEvents - create_events_for_guild] Error sending announcement message: {e}", exc_info=True)
-                    continue
 
-                try:
                     description_scheduled = events_infos.get("description_scheduled", {}).get(guild_lang, events_infos.get("description_scheduled", {}).get("en-US", "View event: {link}")).format(link=message_link)
-                    scheduled_event = await guild.create_scheduled_event(
-                        name=event_name,
-                        description=description_scheduled,
-                        start_time=start_time,
-                        end_time=end_time,
-                        location=conference_channel
+
+                    scheduled_event = await self._create_scheduled_event(
+                        guild, event_name, description_scheduled, start_time, end_time, conference_channel
                     )
-                    logging.debug(f"[GuildEvents - create_events_for_guild] Scheduled event created: {scheduled_event.id if scheduled_event else 'None'}")
-                except discord.Forbidden:
-                    logging.error(f"[GuildEvents - create_events_for_guild] Insufficient permissions to create scheduled event in guild {guild_id}.")
-                    continue
-                except discord.HTTPException as e:
-                    logging.error(f"[GuildEvents - create_events_for_guild] HTTP error creating scheduled event in guild {guild_id}: {e}")
+                    
+                except Exception as e:
+                    logging.error(f"[GuildEvents - create_events_for_guild] Error creating announcement or scheduled event: {e}", exc_info=True)
                     continue
 
                 try:
@@ -654,7 +628,7 @@ class GuildEvents(commands.Cog):
                     "duration": duration_minutes,
                     "dkp_value": cal_event.get("dkp_value", 0),
                     "dkp_ins": cal_event.get("dkp_ins", 0),
-                    "status": status_db,
+                    "status": translations["status_planned_db"],
                     "initial_members": json.dumps(initial_members),
                     "registrations": json.dumps({"presence": [], "tentative": [], "absence": []}),
                     "actual_presence": json.dumps([])
@@ -709,6 +683,9 @@ class GuildEvents(commands.Cog):
                     
                     await self.bot.cache.invalidate_category('events_data')
                     logging.debug(f"[GuildEvents] Cache invalidated for events_data after automatic event creation")
+
+                    await self.bot.cache.get_guild_data(guild_id, 'events_data', force_reload=True)
+                    logging.debug(f"[GuildEvents] Events cache reloaded for guild {guild_id} after automatic event creation")
                     
                 except Exception as e:
                     error_msg = str(e).lower()
@@ -720,6 +697,95 @@ class GuildEvents(commands.Cog):
                         logging.error(f"[GuildEvents - create_events - create_events_for_guild] Error saving event in DB for guild {guild_id}: {e}")
             except Exception as outer_e:
                 logging.error(f"[GuildEvents - create_events_for_guild] Unexpected error in create_events_for_guild for guild {guild_id}: {outer_e}", exc_info=True)
+
+    def _get_cached_translations(self, guild_lang: str, events_infos: Dict) -> Dict[str, str]:
+        """
+        Get cached translations for event fields to avoid repetitive dictionary lookups.
+        
+        Args:
+            guild_lang: Guild language code
+            events_infos: Events info dictionary from translations
+            
+        Returns:
+            Dictionary with pre-resolved translations
+        """
+        def get_translation(key: str, default: str = "") -> str:
+            """Helper to get translation with fallback to en-US then default."""
+            field_dict = events_infos.get(key, {})
+            return field_dict.get(guild_lang, field_dict.get("en-US", default))
+        
+        return {
+            "date": get_translation("date", "Date"),
+            "hour": get_translation("hour", "Hour"), 
+            "duration": get_translation("duration", "Duration"),
+            "status": get_translation("status", "Status"),
+            "dkp_v": get_translation("dkp_v", "DKP Value"),
+            "dkp_i": get_translation("dkp_i", "DKP Ins"),
+            "present": get_translation("present", "Present"),
+            "attempt": get_translation("attempt", "Attempt"),
+            "absence": get_translation("absence", "Absence"),
+            "voice_channel": get_translation("voice_channel", "Voice Channel"),
+            "groups": get_translation("groups", "Groups"),
+            "auto_grouping": get_translation("auto_grouping", "Auto Grouping"),
+            "status_planned": get_translation("status_planned", "Planned"),
+            "status_planned_db": events_infos.get("status_planned", {}).get("en-US", "Planned"),
+            "description": get_translation("description", "React to indicate your presence."),
+            "none": get_translation("none", "None")
+        }
+
+    @profile_performance(threshold_ms=100.0)
+    async def _send_announcement(self, events_channel: discord.TextChannel, embed: discord.Embed) -> discord.Message:
+        """
+        Send event announcement with batched reactions.
+        
+        Args:
+            events_channel: Channel to send the announcement
+            embed: Event embed to send
+            
+        Returns:
+            Sent message object
+        """
+        announcement = await events_channel.send(embed=embed)
+        logging.debug(f"[GuildEvents - create_events_for_guild] Announcement sent: id={announcement.id} in channel {announcement.channel.id}")
+        
+        reactions = ["<:_yes_:1340109996666388570>", "<:_attempt_:1340110058692018248>", "<:_no_:1340110124521357313>"]
+        await asyncio.gather(*[announcement.add_reaction(reaction) for reaction in reactions])
+        
+        return announcement
+
+    @profile_performance(threshold_ms=100.0)
+    async def _create_scheduled_event(self, guild: discord.Guild, event_name: str, description_scheduled: str, 
+                                    start_time: datetime, end_time: datetime, conference_channel: discord.VoiceChannel) -> Optional[discord.ScheduledEvent]:
+        """
+        Create Discord scheduled event.
+        
+        Args:
+            guild: Guild to create event in
+            event_name: Name of the event
+            description_scheduled: Event description with link
+            start_time: Event start time
+            end_time: Event end time
+            conference_channel: Voice channel for the event
+            
+        Returns:
+            Created scheduled event or None if failed
+        """
+        try:
+            scheduled_event = await guild.create_scheduled_event(
+                name=event_name,
+                description=description_scheduled,
+                start_time=start_time,
+                end_time=end_time,
+                location=conference_channel
+            )
+            logging.debug(f"[GuildEvents - create_events_for_guild] Scheduled event created: {scheduled_event.id if scheduled_event else 'None'}")
+            return scheduled_event
+        except discord.Forbidden:
+            logging.error(f"[GuildEvents - create_events_for_guild] Insufficient permissions to create scheduled event in guild {guild.id}.")
+            return None
+        except discord.HTTPException as e:
+            logging.error(f"[GuildEvents - create_events_for_guild] HTTP error creating scheduled event in guild {guild.id}: {e}")
+            return None
 
     async def event_confirm(self, ctx: discord.ApplicationContext, event_id: str):
         """

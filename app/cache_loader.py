@@ -819,6 +819,8 @@ class CacheLoader:
             await self.ensure_events_calendar_loaded()
         elif category == 'guild_ptb_settings':
             await self.ensure_guild_ptb_settings_loaded()
+        elif category == 'user_data':
+            await self.ensure_user_setup_loaded()
         else:
             logging.warning(f"[CacheLoader] Unknown category: {category}")
     
