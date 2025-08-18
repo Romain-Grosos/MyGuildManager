@@ -4,7 +4,14 @@ Centralized Cache Loader - Manages loading of shared data into global cache.
 
 import asyncio
 import logging
+import time
+import json
+import os
+from datetime import datetime
 from typing import Dict, Any, Optional
+from contextvars import ContextVar
+
+correlation_id_context: ContextVar[Optional[str]] = ContextVar('correlation_id', default=None)
 
 class CacheLoader:
     """Centralized loader for shared guild data to eliminate redundant DB queries."""
@@ -21,6 +28,65 @@ class CacheLoader:
         self._initial_load_complete = False
         self._load_lock = asyncio.Lock()
         
+        self._db_query_count = 0
+        self._load_times = {}
+        
+    def _log_json(self, level: str, event: str, **fields) -> None:
+        """Log structured JSON message with correlation ID and PII masking."""
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "level": level.upper(),
+            "event": event,
+            "component": "cache_loader",
+            "version": "1.0"
+        }
+        
+        correlation_id = correlation_id_context.get(None)
+        if correlation_id:
+            log_entry["correlation_id"] = correlation_id
+        
+        is_production = os.environ.get('PRODUCTION', 'False').lower() == 'true'
+        for key, value in fields.items():
+            if is_production and key in ('guild_id', 'user_id'):
+                log_entry[key] = "REDACTED"
+            else:
+                log_entry[key] = value
+        
+        log_entry.pop('pii_masked', None)
+        
+        log_msg = json.dumps(log_entry)
+        if level == "debug":
+            logging.debug(log_msg)
+        elif level == "info":
+            logging.info(log_msg)
+        elif level == "warning":
+            logging.warning(log_msg)
+        elif level == "error":
+            logging.error(log_msg)
+    
+    async def _run_db_query_with_metrics(self, query: str, params=None, fetch_all=False):
+        """Run DB query with performance tracking."""
+        start_time = time.monotonic()
+        self._db_query_count += 1
+        
+        try:
+            result = await self.bot.run_db_query(query, params, fetch_all=fetch_all)
+            query_time = time.monotonic() - start_time
+            
+            if query_time > 0.1:
+                self._log_json("warning", "slow_db_query", 
+                              duration_ms=int(query_time * 1000),
+                              query_type="cache_loader")
+            
+            return result
+        except Exception as e:
+            query_time = time.monotonic() - start_time
+            self._log_json("error", "db_query_error", 
+                          duration_ms=int(query_time * 1000),
+                          error_type=type(e).__name__, 
+                          error_msg=str(e))
+            raise
+        
     async def ensure_guild_settings_loaded(self) -> None:
         """
         Load guild settings (language, name, game, server) for all guilds.
@@ -31,11 +97,11 @@ class CacheLoader:
         if 'guild_settings' in self._loaded_categories:
             return
             
-        logging.debug("[CacheLoader] Loading guild settings for all guilds")
+        self._log_json("debug", "loading_guild_settings")
         query = "SELECT guild_id, guild_ptb, guild_lang, guild_name, guild_game, guild_server, initialized, premium FROM guild_settings"
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 for row in rows:
                     guild_id, guild_ptb, guild_lang, guild_name, guild_game, guild_server, initialized, premium = row
@@ -58,12 +124,13 @@ class CacheLoader:
                         'premium': premium
                     })
                     
-                logging.info(f"[CacheLoader] Loaded settings for {len(rows)} guilds")
+                self._log_json("info", "guild_settings_loaded", guild_count=len(rows))
                 self._loaded_categories.add('guild_settings')
             else:
-                logging.warning("[CacheLoader] No guild settings found in database")
+                self._log_json("warning", "no_guild_settings_found")
         except Exception as e:
-            logging.error(f"[CacheLoader] Error loading guild settings: {e}", exc_info=True)
+            self._log_json("error", "guild_settings_load_error", 
+                          error_type=type(e).__name__, error_msg=str(e))
     
     async def ensure_guild_roles_loaded(self) -> None:
         """
@@ -79,7 +146,7 @@ class CacheLoader:
         query = "SELECT guild_id, guild_master, officer, guardian, members, absent_members, allies, diplomats, friends, applicant, config_ok, rules_ok FROM guild_roles"
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 for row in rows:
                     guild_id, guild_master, officer, guardian, members, absent_members, allies, diplomats, friends, applicant, config_ok, rules_ok = row
@@ -137,7 +204,7 @@ class CacheLoader:
         """
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 for row in rows:
                     guild_id, rules_channel, rules_message, announcements_channel, voice_tavern_channel, voice_war_channel, create_room_channel, events_channel, members_channel, members_m1, members_m2, members_m3, members_m4, members_m5, groups_channel, statics_channel, statics_message, abs_channel, loot_channel, loot_message, tuto_channel, forum_allies_channel, forum_friends_channel, forum_diplomats_channel, forum_recruitment_channel, forum_members_channel, notifications_channel, external_recruitment_cat, category_diplomat, external_recruitment_channel, external_recruitment_message = row
@@ -233,7 +300,7 @@ class CacheLoader:
         query = "SELECT guild_id, member_id, channel_id, message_id FROM welcome_messages"
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 for row in rows:
                     guild_id, member_id, channel_id, message_id = row
@@ -277,7 +344,7 @@ class CacheLoader:
         query = "SELECT guild_id, member_id, username, language, class, GS, build, weapons, DKP, nb_events, registrations, attendances FROM guild_members"
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 guild_members_cache = {}
                 for row in rows:
@@ -328,7 +395,7 @@ class CacheLoader:
         """
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 for row in rows:
                     guild_id, event_id, name, event_date, event_time, duration, dkp_value, status, registrations, actual_presence = row
@@ -396,7 +463,7 @@ class CacheLoader:
         """
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
 
             guild_static_groups = {}
             for row in rows:
@@ -437,7 +504,7 @@ class CacheLoader:
         query = "SELECT guild_id, user_id, locale, gs, weapons FROM user_setup"
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 for row in rows:
                     guild_id, user_id, locale, gs, weapons = row
@@ -472,7 +539,7 @@ class CacheLoader:
         query = "SELECT game_id, code, name FROM weapons ORDER BY game_id"
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 weapons_by_game = {}
                 for row in rows:
@@ -508,7 +575,7 @@ class CacheLoader:
         query = "SELECT game_id, role, weapon1, weapon2 FROM weapons_combinations ORDER BY game_id"
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 combinations_by_game = {}
                 for row in rows:
@@ -548,7 +615,7 @@ class CacheLoader:
         query = "SELECT guild_id, class_name, ideal_count FROM guild_ideal_staff"
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 ideal_staff = {}
                 for row in rows:
@@ -583,7 +650,7 @@ class CacheLoader:
         query = "SELECT id, game_name, max_members FROM games_list"
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 games_data = {}
                 for row in rows:
@@ -623,7 +690,7 @@ class CacheLoader:
         """
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 items_data = []
                 for row in rows:
@@ -671,7 +738,7 @@ class CacheLoader:
         """
         
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             if rows:
                 calendar_by_game = {}
                 for row in rows:
@@ -691,7 +758,6 @@ class CacheLoader:
                         'dkp_ins': int(dkp_ins) if dkp_ins else 0
                     })
                 
-                # Store each game's calendar with long TTL (24 hours)
                 for game_id, calendar_data in calendar_by_game.items():
                     await self.bot.cache.set('static_data', calendar_data, f'events_calendar_{game_id}', ttl=86400)
                     
@@ -716,7 +782,7 @@ class CacheLoader:
                 return
                 
             logging.info("[CacheLoader] Starting optimized initial data load")
-            start_time = asyncio.get_event_loop().time()
+            start_time = time.monotonic()
 
             tasks = [
                 self.ensure_guild_settings_loaded(),
@@ -745,8 +811,11 @@ class CacheLoader:
                     logging.error(f"[CacheLoader] Error loading category {i}: {result}")
             
             self._initial_load_complete = True
-            elapsed = asyncio.get_event_loop().time() - start_time
-            logging.info(f"[CacheLoader] Initial data load completed in {elapsed:.2f}s - {len(self._loaded_categories)} categories loaded")
+            elapsed = time.monotonic() - start_time
+            self._log_json("info", "initial_load_completed", 
+                          duration_seconds=round(elapsed, 2), 
+                          categories_loaded=len(self._loaded_categories),
+                          db_queries_total=self._db_query_count)
     
     async def wait_for_initial_load(self) -> None:
         """
@@ -877,7 +946,7 @@ class CacheLoader:
         FROM guild_ptb_settings
         """
         try:
-            rows = await self.bot.run_db_query(query, fetch_all=True)
+            rows = await self._run_db_query_with_metrics(query, fetch_all=True)
             for row in rows:
                 guild_id = int(row[0])
                 ptb_settings = {
