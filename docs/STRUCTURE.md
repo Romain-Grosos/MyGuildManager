@@ -18,8 +18,9 @@
 3. **Production security** - PII masking, secrets safe, schema versioning
 4. **Monitoring proactif** - SLO availability/performance + health checks intelligents
 
-### ✅ Performance Exceptionnelle (Août 2025 + Observability)
+### ✅ Performance Exceptionnelle (Août 2025 + Observability + AsyncDB)
 - **Score startup** : 100/100 (A+ Excellent) + observabilité complète
+- **Database async pur** : Migration asyncmy pour performances natives
 - **Auto-reloads éliminés** : 0 (vs 30 précédemment)
 - **Démarrage ultra-rapide** : 0.01s pour chargement complet + correlation tracking
 - **Stabilité parfaite** : 0 erreur, 0 warning + alerting proactif
@@ -31,12 +32,12 @@
 discord-bot-mgm/
 ├── app/                    # 🎯 Code applicatif principal
 │   ├── __init__.py        # Package principal
-│   ├── bot.py             # Point d'entrée du bot
-│   ├── cache.py           # Système de cache global
+│   ├── bot.py             # Point d'entrée du bot + init async DB
+│   ├── cache.py           # Système de cache global TTL intelligent
 │   ├── cache_loader.py    # Chargeur de cache centralisé
-│   ├── config.py          # Configuration (chargement .env)
-│   ├── db.py              # Couche base de données
-│   ├── scheduler.py       # Planificateur de tâches
+│   ├── config.py          # Configuration robuste + validation
+│   ├── db.py              # Couche async pure MySQL/MariaDB (asyncmy)
+│   ├── scheduler.py       # Planificateur enterprise + observabilité
 │   ├── .env               # Variables d'environnement (non versionné)
 │   ├── core/              # 🔧 Modules utilitaires centraux
 │   │   ├── __init__.py

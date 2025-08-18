@@ -1,17 +1,69 @@
+"""
+Task Scheduler Module - Enterprise-grade automated task orchestration.
+
+This module provides a robust scheduling system for Discord bot operations with:
+- Time-based task execution with timezone awareness (Europe/Paris)
+- Parallel task processing with semaphore-based concurrency control
+- Comprehensive metrics tracking and health monitoring
+- JSON structured logging with correlation tracking
+- Idempotent task execution with duplicate prevention
+- Graceful shutdown with timeout-bounded cleanup
+- Performance monitoring with high-resolution timers
+- Anti-spam logging for bot readiness issues
+- Immutable schedule constants for safety
+
+Schedule Overview:
+- Epic Items: Daily at 03:30
+- Contracts: Daily at 06:30  
+- Roster Updates: 4x daily at 05:00, 11:00, 17:00, 23:00
+- Event Creation: Daily at 12:00
+- Event Reminders: Daily at 13:00, 18:00
+- Event Deletion: Daily at 23:30, 04:30
+- Event Closure: Every 5 minutes
+- Attendance Check: Every 5 minutes
+- Wishlist Updates: Daily at 09:00, 22:00
+
+Performance Features:
+- Lock-based task isolation prevents concurrent execution
+- Canonical slot system prevents missed or duplicate executions
+- Metrics include success/failure counts, average duration, last error
+- Health status exposes active locks and execution history
+"""
+
 import asyncio
+import json
 import logging
 import time
 from datetime import datetime
-from typing import Dict, Set, Optional, Any
+from typing import Dict, Optional, Any, Callable, Awaitable
+from zoneinfo import ZoneInfo
 
-import discord
-import pytz
 from discord.ext import tasks
 
 # #################################################################################### #
 #                            Scheduler Configuration
 # #################################################################################### #
-TIMEZONE = pytz.timezone("Europe/Paris")
+TIMEZONE = ZoneInfo("Europe/Paris")
+
+# #################################################################################### #
+#                            Schedule Constants
+# #################################################################################### #
+ROSTER_SLOTS = frozenset({"05:00", "11:00", "17:00", "23:00"})
+REMINDER_SLOTS = frozenset({"13:00", "18:00"})
+WISHLIST_SLOTS = frozenset({"09:00", "22:00"})
+EVENTS_DELETE_SLOTS = frozenset({"23:30", "04:30"})
+
+TASK_COG_MAPPING = {
+    'contracts': 'Contract',
+    'roster': 'GuildMembers',
+    'events_create': 'GuildEvents',
+    'events_reminder': 'GuildEvents',
+    'events_delete': 'GuildEvents',
+    'events_close': 'GuildEvents',
+    'attendance_check': 'GuildAttendance',
+    'epic_items_scraping': 'EpicItemsScraper',
+    'wishlist_update': 'LootWishlist'
+}
 
 # #################################################################################### #
 #                            Task Scheduler Core System
@@ -39,30 +91,55 @@ class TaskScheduler:
             'wishlist_update': asyncio.Lock()
         }
         self._last_execution: Dict[str, str] = {}
-        self._task_metrics: Dict[str, Dict[str, int]] = {
-            task: {'success': 0, 'failures': 0, 'total_time': 0} 
+        self._task_metrics: Dict[str, Dict[str, Any]] = {
+            task: {
+                'success': 0, 
+                'failures': 0, 
+                'total_time': 0,
+                'last_duration_ms': 0,
+                'last_error': None,
+                'skipped_no_cog': 0,
+                'skipped_not_ready': 0
+            } 
             for task in self._task_locks.keys()
         }
+        self._last_not_ready_log = 0.0
+        self._scheduler_running = False
         
-        logging.info("[Scheduler] Task scheduler initialized")
+        self._log_json("info", "scheduler_initialized", tasks_count=len(self._task_locks))
+    
+    def _log_json(self, level: str, event: str, **fields) -> None:
+        """Log structured JSON message."""
+        log_entry = {
+            "timestamp": datetime.now(TIMEZONE).isoformat(),
+            "level": level.upper(),
+            "event": event,
+            "component": "scheduler",
+            "version": "1.0"
+        }
+        log_entry.update(fields)
+        
+        log_msg = json.dumps(log_entry)
+        getattr(logging, level, logging.info)(log_msg)
 
-    def _should_execute(self, task_key: str, current_time: str) -> bool:
+    def _should_execute(self, task_key: str, slot: str) -> bool:
         """
-        Check if task should execute based on last execution time.
+        Check if task should execute based on canonical slot.
         
         Args:
             task_key: Unique identifier for the task
-            current_time: Current time string for comparison
+            slot: Canonical slot identifier (YYYYMMDD-HHMM or similar)
             
         Returns:
             True if task should execute, False otherwise
         """
-        if self._last_execution.get(task_key) == current_time:
+        if self._last_execution.get(task_key) == slot:
+            self._log_json("debug", "duplicate_slot_skipped", task=task_key, slot=slot)
             return False
-        self._last_execution[task_key] = current_time
+        self._last_execution[task_key] = slot
         return True
     
-    async def _execute_with_monitoring(self, task_name: str, coroutine, *args, **kwargs):
+    async def _execute_with_monitoring(self, task_name: str, coroutine: Callable[..., Awaitable[Any]], *args, **kwargs):
         """
         Execute task with performance monitoring and error handling.
         
@@ -73,19 +150,40 @@ class TaskScheduler:
             **kwargs: Keyword arguments for the coroutine
         """
         if task_name not in self._task_metrics:
-            self._task_metrics[task_name] = {'success': 0, 'failures': 0, 'total_time': 0}
+            self._task_metrics[task_name] = {
+                'success': 0, 'failures': 0, 'total_time': 0,
+                'last_duration_ms': 0, 'last_error': None,
+                'skipped_no_cog': 0, 'skipped_not_ready': 0
+            }
         
-        start_time = time.time()
+        start_time = time.perf_counter()
         try:
+            self._log_json("info", "task_started", task=task_name)
             await coroutine(*args, **kwargs)
+            
+            execution_time = int((time.perf_counter() - start_time) * 1000)
             self._task_metrics[task_name]['success'] += 1
-            execution_time = int((time.time() - start_time) * 1000)
             self._task_metrics[task_name]['total_time'] += execution_time
-            logging.info(f"[Scheduler] {task_name} completed successfully in {execution_time}ms")
+            self._task_metrics[task_name]['last_duration_ms'] = execution_time
+            self._task_metrics[task_name]['last_error'] = None
+            
+            self._log_json("info", "task_finished", 
+                          task=task_name, duration_ms=execution_time)
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
+            execution_time = int((time.perf_counter() - start_time) * 1000)
             self._task_metrics[task_name]['failures'] += 1
-            execution_time = int((time.time() - start_time) * 1000)
-            logging.exception(f"[Scheduler] {task_name} failed after {execution_time}ms: {e}")
+            self._task_metrics[task_name]['last_duration_ms'] = execution_time
+            self._task_metrics[task_name]['last_error'] = {
+                'type': type(e).__name__,
+                'message': str(e),
+                'timestamp': datetime.now(TIMEZONE).isoformat()
+            }
+            
+            self._log_json("error", "task_failed", 
+                          task=task_name, duration_ms=execution_time,
+                          error_type=type(e).__name__, error_msg=str(e))
     
     async def _safe_get_cog(self, cog_name: str) -> Optional[Any]:
         """
@@ -99,7 +197,10 @@ class TaskScheduler:
         """
         cog = self.bot.get_cog(cog_name)
         if not cog:
-            logging.warning(f"[Scheduler] {cog_name} cog not found, skipping related tasks")
+            self._log_json("warning", "cog_not_found", cog=cog_name)
+            for task_name, mapped_cog in TASK_COG_MAPPING.items():
+                if mapped_cog == cog_name:
+                    self._task_metrics[task_name]['skipped_no_cog'] += 1
         return cog
 
 # #################################################################################### #
@@ -117,15 +218,28 @@ class TaskScheduler:
         - Attendance checks
         - Wishlist updates
         """
-        now = datetime.now(TIMEZONE).strftime("%H:%M")
-        now_time = datetime.now(TIMEZONE)
+        if not self.bot.is_ready():
+            now = time.perf_counter()
+            if now - self._last_not_ready_log > 300:
+                self._log_json("warning", "bot_still_not_ready", 
+                             message="Bot not ready for 5+ minutes")
+                self._last_not_ready_log = now
+            
+            for task_name in self._task_metrics.keys():
+                self._task_metrics[task_name]['skipped_not_ready'] += 1
+            return
 
-        if now == "03:30" and self._should_execute('epic_items_scraping', now):
+        now_dt = datetime.now(TIMEZONE)
+        now_str = now_dt.strftime("%H:%M")
+        slot_exact = now_dt.strftime("%Y%m%d-%H%M")
+        slot_5min = f"{now_dt.strftime('%Y%m%d-%H')}-{now_dt.minute//5}"
+
+        if now_str == "03:30" and self._should_execute('epic_items_scraping', slot_exact):
             if self._task_locks['epic_items_scraping'].locked():
-                logging.warning("[Scheduler] Epic items scraping already running, skipping")
+                self._log_json("warning", "lock_skipped", task="epic_items_scraping")
             else:
                 async with self._task_locks['epic_items_scraping']:
-                    logging.info("[Scheduler] Automatic Epic T2 items scraping triggered")
+                    self._log_json("info", "task_triggered", task="epic_items_scraping")
                     epic_items_cog = await self._safe_get_cog("EpicItemsScraper")
                     if epic_items_cog:
                         await self._execute_with_monitoring(
@@ -133,12 +247,12 @@ class TaskScheduler:
                             epic_items_cog.scrape_epic_items
                         )
 
-        if now == "06:30" and self._should_execute('contracts', now):
+        if now_str == "06:30" and self._should_execute('contracts', slot_exact):
             if self._task_locks['contracts'].locked():
-                logging.warning("[Scheduler] Contract deletion already running, skipping")
+                self._log_json("warning", "lock_skipped", task="contracts")
             else:
                 async with self._task_locks['contracts']:
-                    logging.info("[Scheduler] Automatic deletion of contracts")
+                    self._log_json("info", "task_triggered", task="contracts")
                     contracts = await self._safe_get_cog("Contract")
                     if contracts:
                         await self._execute_with_monitoring(
@@ -146,12 +260,12 @@ class TaskScheduler:
                             contracts.contract_delete_cron
                         )
 
-        if now in {"05:00", "11:00", "17:00", "23:00"} and self._should_execute('roster', now):
+        if now_str in ROSTER_SLOTS and self._should_execute('roster', slot_exact):
             if self._task_locks['roster'].locked():
-                logging.warning("[Scheduler] Roster update already running, skipping")
+                self._log_json("warning", "lock_skipped", task="roster")
             else:
                 async with self._task_locks['roster']:
-                    logging.info("[Scheduler] Launching roster update for all guilds")
+                    self._log_json("info", "task_triggered", task="roster")
                     guild_members_cog = await self._safe_get_cog("GuildMembers")
                     if guild_members_cog:
                         await self._execute_with_monitoring(
@@ -160,12 +274,12 @@ class TaskScheduler:
                             guild_members_cog
                         )
 
-        if now == "12:00" and self._should_execute('events_create', now):
+        if now_str == "12:00" and self._should_execute('events_create', slot_exact):
             if self._task_locks['events_create'].locked():
-                logging.warning("[Scheduler] Event creation already running, skipping")
+                self._log_json("warning", "lock_skipped", task="events_create")
             else:
                 async with self._task_locks['events_create']:
-                    logging.info("[Scheduler] Automatic event creation triggered")
+                    self._log_json("info", "task_triggered", task="events_create")
                     events_cog = await self._safe_get_cog("GuildEvents")
                     if events_cog:
                         await self._execute_with_monitoring(
@@ -173,12 +287,12 @@ class TaskScheduler:
                             events_cog.create_events_for_all_premium_guilds
                         )
 
-        if now in ["13:00", "18:00"] and self._should_execute('events_reminder', now):
+        if now_str in REMINDER_SLOTS and self._should_execute('events_reminder', slot_exact):
             if self._task_locks['events_reminder'].locked():
-                logging.warning("[Scheduler] Event reminder already running, skipping")
+                self._log_json("warning", "lock_skipped", task="events_reminder")
             else:
                 async with self._task_locks['events_reminder']:
-                    logging.info("[Scheduler] Automatic registration reminder triggered")
+                    self._log_json("info", "task_triggered", task="events_reminder")
                     events_cog = await self._safe_get_cog("GuildEvents")
                     if events_cog:
                         await self._execute_with_monitoring(
@@ -186,12 +300,12 @@ class TaskScheduler:
                             events_cog.event_reminder_cron
                         )
 
-        if now in ["23:30", "04:30"] and self._should_execute('events_delete', now):
+        if now_str in EVENTS_DELETE_SLOTS and self._should_execute('events_delete', slot_exact):
             if self._task_locks['events_delete'].locked():
-                logging.warning("[Scheduler] Event deletion already running, skipping")
+                self._log_json("warning", "lock_skipped", task="events_delete")
             else:
                 async with self._task_locks['events_delete']:
-                    logging.info("[Scheduler] Automatic deletion of finished events")
+                    self._log_json("info", "task_triggered", task="events_delete")
                     events_cog = await self._safe_get_cog("GuildEvents")
                     if events_cog:
                         await self._execute_with_monitoring(
@@ -199,12 +313,12 @@ class TaskScheduler:
                             events_cog.event_delete_cron
                         )
 
-        if now_time.minute % 5 == 0 and self._should_execute('events_close', f"{now}:{now_time.minute//5}"):
+        if now_dt.minute % 5 == 0 and self._should_execute('events_close', slot_5min):
             if self._task_locks['events_close'].locked():
-                logging.debug("[Scheduler] Event closure already running, skipping")
+                self._log_json("debug", "lock_skipped", task="events_close")
             else:
                 async with self._task_locks['events_close']:
-                    logging.info("[Scheduler] Automatic closure of confirmed events")
+                    self._log_json("info", "task_triggered", task="events_close")
                     events_cog = await self._safe_get_cog("GuildEvents")
                     if events_cog:
                         await self._execute_with_monitoring(
@@ -212,12 +326,12 @@ class TaskScheduler:
                             events_cog.event_close_cron
                         )
 
-        if now_time.minute % 5 == 0 and self._should_execute('attendance_check', f"{now}:{now_time.minute//5}"):
+        if now_dt.minute % 5 == 0 and self._should_execute('attendance_check', slot_5min):
             if self._task_locks['attendance_check'].locked():
-                logging.debug("[Scheduler] Attendance check already running, skipping")
+                self._log_json("debug", "lock_skipped", task="attendance_check")
             else:
                 async with self._task_locks['attendance_check']:
-                    logging.debug("[Scheduler] Automatic voice presence check")
+                    self._log_json("debug", "task_triggered", task="attendance_check")
                     attendance_cog = await self._safe_get_cog("GuildAttendance")
                     if attendance_cog:
                         await self._execute_with_monitoring(
@@ -225,12 +339,12 @@ class TaskScheduler:
                             attendance_cog.check_voice_presence
                         )
 
-        if now in ["09:00", "22:00"] and self._should_execute('wishlist_update', now):
+        if now_str in WISHLIST_SLOTS and self._should_execute('wishlist_update', slot_exact):
             if self._task_locks['wishlist_update'].locked():
-                logging.warning("[Scheduler] Wishlist update already running, skipping")
+                self._log_json("warning", "lock_skipped", task="wishlist_update")
             else:
                 async with self._task_locks['wishlist_update']:
-                    logging.info(f"[Scheduler] Automatic wishlist update triggered at {now}")
+                    self._log_json("info", "task_triggered", task="wishlist_update", time=now_str)
                     loot_wishlist_cog = await self._safe_get_cog("LootWishlist")
                     if loot_wishlist_cog:
                         await self._execute_with_monitoring(
@@ -247,15 +361,15 @@ class TaskScheduler:
             loot_wishlist_cog: LootWishlist cog instance
         """
         if not self.bot.is_ready():
-            logging.warning("[Scheduler] Bot not ready, skipping wishlist update")
+            self._log_json("warning", "bot_not_ready", task="wishlist_update")
             return
             
         guild_ids = [guild.id for guild in self.bot.guilds]
         if not guild_ids:
-            logging.warning("[Scheduler] No guilds found for wishlist update - bot may be disconnected")
+            self._log_json("warning", "no_guilds_found", task="wishlist_update")
             return
         
-        semaphore = asyncio.Semaphore(3)
+        semaphore = asyncio.Semaphore(5)
         successful_updates = 0
         failed_updates = 0
         
@@ -263,27 +377,30 @@ class TaskScheduler:
             nonlocal successful_updates, failed_updates
             async with semaphore:
                 try:
-                    guild = self.bot.get_guild(int(guild_id))
+                    guild = self.bot.get_guild(guild_id)
                     if not guild:
-                        logging.warning(f"[Scheduler] Guild {guild_id} not accessible by bot")
+                        self._log_json("warning", "guild_not_accessible", guild_id=guild_id)
                         failed_updates += 1
                         return
                         
                     success = await loot_wishlist_cog.update_wishlist_message(guild_id)
                     if success:
                         successful_updates += 1
-                        logging.debug(f"[Scheduler] Wishlist updated for guild {guild_id}")
+                        self._log_json("debug", "wishlist_updated", guild_id=guild_id)
                     else:
                         failed_updates += 1
-                        logging.debug(f"[Scheduler] Wishlist update returned false for guild {guild_id}")
+                        self._log_json("debug", "wishlist_update_false", guild_id=guild_id)
                 except Exception as e:
                     failed_updates += 1
-                    logging.error(f"[Scheduler] Error updating wishlist for guild {guild_id}: {e}")
+                    self._log_json("error", "wishlist_update_error", 
+                                  guild_id=guild_id, error=str(e))
 
         tasks = [update_guild_wishlist(guild_id) for guild_id in guild_ids]
         await asyncio.gather(*tasks, return_exceptions=True)
         
-        logging.info(f"[Scheduler] Wishlist update completed: {successful_updates} successful, {failed_updates} failed")
+        self._log_json("info", "wishlist_update_completed", 
+                      successful=successful_updates, failed=failed_updates,
+                      guild_count=len(guild_ids))
 
     async def _process_roster_updates_parallel(self, guild_members_cog):
         """
@@ -294,7 +411,7 @@ class TaskScheduler:
         """
         guild_ids = [guild.id for guild in self.bot.guilds]
         if not guild_ids:
-            logging.info("[Scheduler] No guilds found for roster update")
+            self._log_json("info", "no_guilds_found", task="roster_update")
             return
 
         semaphore = asyncio.Semaphore(5)
@@ -304,45 +421,58 @@ class TaskScheduler:
                 try:
                     guild_ptb_config = await self.bot.cache.get_guild_data(guild_id, 'ptb_settings')
                     if guild_ptb_config and guild_ptb_config.get('ptb_guild_id') == guild_id:
-                        logging.debug(f"[Scheduler] Skipping roster update for PTB guild {guild_id}")
+                        self._log_json("debug", "ptb_guild_skipped", guild_id=guild_id)
                         return
                     
                     await guild_members_cog.run_maj_roster(guild_id)
-                    logging.debug(f"[Scheduler] Roster updated for guild {guild_id}")
+                    self._log_json("debug", "roster_updated", guild_id=guild_id)
                     
                     guild_events_cog = self.bot.get_cog("GuildEvents")
                     if guild_events_cog:
                         await guild_events_cog.update_static_groups_message_for_cron(guild_id)
-                        logging.debug(f"[Scheduler] Static groups updated for guild {guild_id}")
+                        self._log_json("debug", "static_groups_updated", guild_id=guild_id)
                     
                 except Exception as e:
-                    logging.error(f"[Scheduler] Roster update failed for guild {guild_id}: {e}")
-                await asyncio.sleep(0.5)
+                    self._log_json("error", "roster_update_failed", 
+                                  guild_id=guild_id, error=str(e))
         
         await asyncio.gather(*[process_guild(guild_id) for guild_id in guild_ids], return_exceptions=True)
-        logging.info(f"[Scheduler] Roster update completed for {len(guild_ids)} guilds")
+        self._log_json("info", "roster_update_completed", guild_count=len(guild_ids))
 
 # #################################################################################### #
 #                            Health Monitoring and Status
 # #################################################################################### #
-    def get_health_status(self) -> dict:
+    def get_health_status(self) -> Dict[str, Any]:
         """
         Get scheduler health status and metrics.
         
         Returns:
             Dictionary containing task metrics, active locks, and last executions
         """
+        enriched_metrics = {}
+        for task_name, metrics in self._task_metrics.items():
+            total_runs = metrics['success'] + metrics['failures']
+            avg_ms = metrics['total_time'] // total_runs if total_runs > 0 else 0
+            
+            enriched_metrics[task_name] = {
+                **metrics,
+                'avg_ms': avg_ms,
+                'total_runs': total_runs,
+                'last_run': self._last_execution.get(task_name)
+            }
+        
         return {
-            'task_metrics': self._task_metrics,
+            'task_metrics': enriched_metrics,
             'active_locks': {name: lock.locked() for name, lock in self._task_locks.items()},
-            'last_executions': self._last_execution
+            'last_executions': self._last_execution,
+            'scheduler_running': self._scheduler_running
         }
 
 # #################################################################################### #
 #                            Global Scheduler Components
 # #################################################################################### #
-_scheduler_instance = None
-_scheduled_task = None
+_scheduler_instance: Optional[TaskScheduler] = None
+_scheduled_task: Optional[tasks.Loop] = None
 
 def setup_task_scheduler(bot):
     """
@@ -355,6 +485,16 @@ def setup_task_scheduler(bot):
         TaskScheduler instance
     """
     global _scheduler_instance, _scheduled_task
+
+    if _scheduled_task and _scheduled_task.is_running():
+        logging.warning(json.dumps({
+            "timestamp": datetime.now(TIMEZONE).isoformat(),
+            "level": "WARNING",
+            "event": "scheduler_already_running",
+            "component": "scheduler",
+            "version": "1.0"
+        }))
+        return _scheduler_instance
     
     _scheduler_instance = TaskScheduler(bot)
     
@@ -365,16 +505,18 @@ def setup_task_scheduler(bot):
     
     @scheduled_tasks.before_loop
     async def before_scheduled_tasks():
-        logging.debug("[Scheduler] Waiting for bot to be ready...")
+        _scheduler_instance._log_json("debug", "waiting_for_bot")
         await bot.wait_until_ready()
-        logging.debug("[Scheduler] Bot is ready, starting scheduler")
+        _scheduler_instance._scheduler_running = True
+        _scheduler_instance._log_json("info", "scheduler_started")
     
     @scheduled_tasks.after_loop
     async def after_scheduled_tasks():
+        _scheduler_instance._scheduler_running = False
         if scheduled_tasks.is_being_cancelled():
-            logging.info("[Scheduler] Scheduled tasks stopped")
+            _scheduler_instance._log_json("info", "scheduler_stopped")
         else:
-            logging.warning("[Scheduler] Scheduled tasks stopped unexpectedly")
+            _scheduler_instance._log_json("warning", "scheduler_stopped_unexpectedly")
     
     _scheduled_task = scheduled_tasks
 
@@ -383,13 +525,13 @@ def setup_task_scheduler(bot):
     
     try:
         scheduled_tasks.start()
-        logging.info("[Scheduler] Task scheduler started successfully")
+        _scheduler_instance._log_json("info", "scheduler_launch_success")
     except Exception as e:
-        logging.error(f"[Scheduler] Error starting task scheduler: {e}")
+        _scheduler_instance._log_json("error", "scheduler_launch_failed", error=str(e))
     
     return _scheduler_instance
 
-def get_scheduler_health_status() -> dict:
+def get_scheduler_health_status() -> Dict[str, Any]:
     """
     Get current scheduler health status.
     
@@ -398,13 +540,35 @@ def get_scheduler_health_status() -> dict:
     """
     if _scheduler_instance:
         return _scheduler_instance.get_health_status()
-    return {'error': 'Scheduler not initialized'}
+    return {'error': 'Scheduler not initialized', 'scheduler_running': False}
 
-def stop_scheduler():
+async def stop_scheduler():
     """
-    Stop the task scheduler and cancel all scheduled tasks.
+    Stop the task scheduler and cancel all scheduled tasks properly.
     """
     global _scheduled_task
-    if _scheduled_task:
-        _scheduled_task.cancel()
-        logging.info("[Scheduler] Task scheduler stopped")
+    if not _scheduled_task:
+        if _scheduler_instance:
+            _scheduler_instance._log_json("debug", "scheduler_not_running")
+        return
+
+    _scheduled_task.cancel()
+
+    max_wait = 5.0
+    poll_interval = 0.1
+    start = time.perf_counter()
+    
+    while _scheduled_task.is_running():
+        elapsed = time.perf_counter() - start
+        if elapsed >= max_wait:
+            if _scheduler_instance:
+                _scheduler_instance._log_json("warning", "scheduler_stop_timeout", 
+                                             waited_ms=int(elapsed * 1000))
+            break
+        await asyncio.sleep(poll_interval)
+    
+    if not _scheduled_task.is_running():
+        if _scheduler_instance:
+            elapsed = time.perf_counter() - start
+            _scheduler_instance._log_json("info", "scheduler_stopped_cleanly", 
+                                         waited_ms=int(elapsed * 1000))

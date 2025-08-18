@@ -13,16 +13,17 @@ import os
 import sys
 import json
 import logging
+import re
+import tempfile
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union, Mapping
+from types import MappingProxyType
 from contextvars import ContextVar
 
 from dotenv import load_dotenv
 
-# Context variables for correlation tracking
 correlation_id_context: ContextVar[Optional[str]] = ContextVar('correlation_id', default=None)
 
-# Custom exception for configuration errors
 class ConfigError(Exception):
     """Custom exception for configuration-related errors."""
     pass
@@ -34,7 +35,20 @@ load_dotenv(env_path)
 #                            Validation Ranges and Logging
 # #################################################################################### #
 
-# Centralized validation ranges for DRY principle
+def parse_bool(value: str, default: bool = False) -> bool:
+    """Parse boolean value from string with consistent normalization.
+    
+    Args:
+        value: String value to parse
+        default: Default value if empty or None
+        
+    Returns:
+        Parsed boolean value
+    """
+    if not value:
+        return default
+    return value.strip().lower() in ("true", "1", "yes", "on", "y")
+
 VALIDATION_RANGES = {
     'MAX_MEMORY_MB': (50, 2048),
     'MAX_CPU_PERCENT': (10, 95),
@@ -56,24 +70,20 @@ def _log_json(level: str, event: str, **fields) -> None:
         "component": "config",
         "version": "1.0"
     }
-    
-    # Add correlation ID if available
+
     correlation_id = correlation_id_context.get(None)
     if correlation_id:
         log_entry["correlation_id"] = correlation_id
-    
-    # Add fields with PII masking in production
-    is_production = os.environ.get('PRODUCTION', 'False').lower() == 'true'
+
+    is_production = parse_bool(os.environ.get('PRODUCTION', 'False'))
     for key, value in fields.items():
-        # Never log sensitive data
         if 'password' in key.lower() or 'token' in key.lower() or 'secret' in key.lower():
             log_entry[key] = "REDACTED"
         elif is_production and key in ('guild_id', 'user_id'):
             log_entry[key] = "REDACTED"
         else:
             log_entry[key] = value
-    
-    # Log as JSON string
+
     log_msg = json.dumps(log_entry)
     if level == "debug":
         logging.debug(log_msg)
@@ -132,36 +142,40 @@ def validate_int_env_var(var_name: str, value: Optional[str], default: Optional[
         return default
     try:
         parsed_value = int(value)
-        
-        # Apply auto-clamping if enabled and range is defined
+
         if auto_clamp and var_name in VALIDATION_RANGES:
             min_val, max_val = VALIDATION_RANGES[var_name]
             if parsed_value < min_val:
                 _log_json("warning", "config_value_clamped", 
                          variable=var_name, original=parsed_value, clamped=min_val, 
-                         reason="below_minimum")
+                         reason="below_minimum", range_min=min_val, range_max=max_val)
                 return min_val
             elif parsed_value > max_val:
                 _log_json("warning", "config_value_clamped", 
                          variable=var_name, original=parsed_value, clamped=max_val, 
-                         reason="above_maximum")
+                         reason="above_maximum", range_min=min_val, range_max=max_val)
                 return max_val
         
         return parsed_value
     except ValueError:
         raise ConfigError(f"Invalid integer value for {var_name}: {value}")
 
-def validate_file_exists(file_path: str, var_name: str) -> bool:
-    """Validate that a file exists and is readable."""
+def validate_file_exists(file_path: str, var_name: str) -> Union[int, bool]:
+    """Validate that a file exists and is readable.
+    
+    Returns:
+        File size in bytes if file exists and is readable, False otherwise.
+    """
     if not os.path.isfile(file_path):
         _log_json("error", "file_not_found", variable=var_name, file_path=file_path)
         return False
     
     try:
+        file_size = os.path.getsize(file_path)
         with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read(1)  # Try to read first byte
-        _log_json("debug", "file_validated", variable=var_name, file_path=file_path)
-        return True
+            content = f.read(1)
+        _log_json("debug", "file_validated", variable=var_name, file_path=file_path, size_bytes=file_size)
+        return file_size
     except (IOError, OSError) as e:
         _log_json("error", "file_read_error", variable=var_name, file_path=file_path, 
                  error_type=type(e).__name__, error_msg=str(e))
@@ -180,7 +194,7 @@ def validate_ranges(var_name: str, value: int) -> None:
 #                            Configuration Loading Function
 # #################################################################################### #
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> Mapping[str, Any]:
     """
     Load and validate all configuration from environment variables.
     
@@ -191,28 +205,33 @@ def load_config() -> Dict[str, Any]:
         ConfigError: If critical configuration is invalid or missing
     """
     config = {}
-    auto_clamp = os.getenv('CONFIG_AUTO_CLAMP', 'False').lower() == 'true'
+    auto_clamp = parse_bool(os.getenv('CONFIG_AUTO_CLAMP', 'False'))
     
     try:
         # ==================================================================================== #
         #                            Debug and Logging Configuration
         # ==================================================================================== #
-        config['DEBUG'] = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+        config['DEBUG'] = parse_bool(os.getenv("DEBUG", "False"))
         
         LOG_DIR = "logs"
+        log_fallback = False
         try:
             if not os.path.exists(LOG_DIR):
                 os.makedirs(LOG_DIR, mode=0o750)
-        except OSError as e:
-            raise ConfigError(f"Cannot create log directory {LOG_DIR}: {e}")
-        
-        config['LOG_FILE'] = os.path.join(LOG_DIR, "discord-bot.log")
-        
-        try:
+            config['LOG_FILE'] = os.path.join(LOG_DIR, "discord-bot.log")
             with open(config['LOG_FILE'], 'a') as f:
                 pass
-        except IOError as e:
-            raise ConfigError(f"Cannot write to log file {config['LOG_FILE']}: {e}")
+        except (OSError, IOError) as e:
+            _log_json("warning", "log_dir_fallback", original_dir=LOG_DIR, error=str(e))
+            try:
+                fallback_log = os.path.join(tempfile.gettempdir(), "discord-bot.log")
+                with open(fallback_log, 'a') as f:
+                    pass
+                config['LOG_FILE'] = fallback_log
+                log_fallback = True
+                _log_json("info", "log_file_fallback_success", fallback_path=fallback_log)
+            except (OSError, IOError) as fallback_error:
+                raise ConfigError(f"Cannot create log file in any location: {fallback_error}")
         
         # ==================================================================================== #
         #                            Discord Bot Configuration
@@ -220,12 +239,17 @@ def load_config() -> Dict[str, Any]:
         bot_token = os.getenv("BOT_TOKEN")
         discord_token = os.getenv("DISCORD_TOKEN")
         
-        if bot_token:
+        if bot_token and discord_token:
+            _log_json("warning", "multiple_token_sources", 
+                     message="Both BOT_TOKEN and DISCORD_TOKEN are defined. Using BOT_TOKEN.")
             config['TOKEN'] = bot_token
-            _log_json("debug", "token_source_detected", source="BOT_TOKEN")
+            _log_json("info", "token_source_selected", source="BOT_TOKEN")
+        elif bot_token:
+            config['TOKEN'] = bot_token
+            _log_json("info", "token_source_detected", source="BOT_TOKEN")
         elif discord_token:
             config['TOKEN'] = discord_token
-            _log_json("debug", "token_source_detected", source="DISCORD_TOKEN")
+            _log_json("info", "token_source_detected", source="DISCORD_TOKEN")
         else:
             raise ConfigError("Missing required environment variable: BOT_TOKEN or DISCORD_TOKEN")
         
@@ -236,7 +260,6 @@ def load_config() -> Dict[str, Any]:
         #                            Database Configuration  
         # ==================================================================================== #
         config['DB_USER'] = validate_env_var("DB_USER", os.getenv("DB_USER"))
-        # DB_PASSWORD is never stored in config dict for security
         db_password = validate_env_var("DB_PASSWORD", os.getenv("DB_PASSWORD") or os.getenv("DB_PASS"))
         
         db_host = os.getenv("DB_HOST", "localhost")
@@ -250,6 +273,8 @@ def load_config() -> Dict[str, Any]:
         config['DB_NAME'] = validate_env_var("DB_NAME", os.getenv("DB_NAME"))
         if len(config['DB_NAME']) > 64:
             raise ConfigError(f"DB_NAME too long: {len(config['DB_NAME'])} characters (max 64)")
+        if not re.match(r'^[A-Za-z0-9_]+$', config['DB_NAME']):
+            raise ConfigError(f"DB_NAME contains invalid characters. Only alphanumeric and underscore allowed: {config['DB_NAME']}")
         
         # ==================================================================================== #
         #                            Performance and Resource Limits
@@ -281,29 +306,32 @@ def load_config() -> Dict[str, Any]:
         # ==================================================================================== #
         #                            Translation System Configuration
         # ==================================================================================== #
-        default_translation_path = os.path.join(os.path.dirname(__file__), 'core', 'translation.json')
-        translation_file = validate_env_var("TRANSLATION_FILE", os.getenv("TRANSLATION_FILE"), required=False) or default_translation_path
-        
-        # Verify file exists and is readable
-        if not translation_file.endswith('.json'):
-            _log_json("warning", "translation_file_extension", file_path=translation_file, expected=".json")
-        
-        if validate_file_exists(translation_file, "TRANSLATION_FILE"):
-            config['TRANSLATION_FILE'] = translation_file
-        else:
-            raise ConfigError(f"Translation file not found or not readable: {translation_file}")
-        
         config['MAX_TRANSLATION_FILE_SIZE'] = validate_int_env_var("MAX_TRANSLATION_FILE_SIZE", os.getenv("MAX_TRANSLATION_FILE_SIZE"), default=5 * 1024 * 1024, auto_clamp=auto_clamp)
         validate_ranges('MAX_TRANSLATION_FILE_SIZE', config['MAX_TRANSLATION_FILE_SIZE'])
         
+        default_translation_path = os.path.join(os.path.dirname(__file__), 'core', 'translation.json')
+        translation_file = validate_env_var("TRANSLATION_FILE", os.getenv("TRANSLATION_FILE"), required=False) or default_translation_path
+        
+        if not translation_file.endswith('.json'):
+            _log_json("warning", "translation_file_extension", file_path=translation_file, expected=".json")
+        
+        file_size_or_false = validate_file_exists(translation_file, "TRANSLATION_FILE")
+        if file_size_or_false:
+            abs_translation_file = os.path.abspath(translation_file)
+            if file_size_or_false > config['MAX_TRANSLATION_FILE_SIZE']:
+                raise ConfigError(f"Translation file too large: {file_size_or_false} bytes (max {config['MAX_TRANSLATION_FILE_SIZE']} bytes)")
+            config['TRANSLATION_FILE'] = abs_translation_file
+        else:
+            raise ConfigError(f"Translation file not found or not readable: {translation_file}")
+        
         _log_json("info", "config_loaded_successfully", 
                  total_vars=len(config), 
-                 auto_clamp_enabled=auto_clamp)
-        
-        # Return config with DB password getter function for security
+                 auto_clamp_enabled=auto_clamp,
+                 log_fallback_used=log_fallback)
+
         config['get_db_password'] = lambda: db_password
         
-        return config
+        return MappingProxyType(config)
         
     except ConfigError:
         raise
@@ -314,10 +342,8 @@ def load_config() -> Dict[str, Any]:
 #                            Global Configuration (Optional Immediate Load)
 # ==================================================================================== #
 
-# Global variables for backwards compatibility (only loaded if accessed)
-_config_cache: Optional[Dict[str, Any]] = None
+_config_cache: Optional[Mapping[str, Any]] = None
 
-# Backward compatibility assignment (happens after config is loaded)
 def _assign_module_vars():
     """Assign values to module-level variables for backwards compatibility."""
     global TOKEN, DEBUG, LOG_FILE, DB_USER, DB_HOST, DB_PORT, DB_NAME
@@ -342,18 +368,17 @@ def _assign_module_vars():
     TRANSLATION_FILE = config['TRANSLATION_FILE']
     MAX_TRANSLATION_FILE_SIZE = config['MAX_TRANSLATION_FILE_SIZE']
 
-def _get_config_direct() -> Dict[str, Any]:
+def _get_config_direct() -> Mapping[str, Any]:
     """Get cached configuration directly without triggering assignment."""
     global _config_cache
     if _config_cache is None:
         _config_cache = load_config()
     return _config_cache
 
-def _get_config() -> Dict[str, Any]:
+def _get_config() -> Mapping[str, Any]:
     """Get cached configuration, loading it if necessary."""
     return _get_config_direct()
 
-# Lazy loading functions for backwards compatibility
 def get_token() -> str:
     """Get Discord bot token."""
     return _get_config()['TOKEN']
@@ -422,8 +447,6 @@ def get_max_translation_file_size() -> int:
     """Get maximum translation file size in bytes."""
     return _get_config()['MAX_TRANSLATION_FILE_SIZE']
 
-# Module-level variables for backwards compatibility (lazy loading)
-# These will trigger config loading when accessed
 TOKEN: str = None  # type: ignore
 DEBUG: bool = None  # type: ignore
 LOG_FILE: str = None  # type: ignore
@@ -446,12 +469,12 @@ MAX_TRANSLATION_FILE_SIZE: int = None  # type: ignore
 #                            Immediate Validation (Optional)
 # ==================================================================================== #
 
-# Only perform immediate loading if not in test context
-if not ('pytest' in sys.modules or 'unittest' in sys.modules):
+config_immediate_load = parse_bool(os.getenv('CONFIG_IMMEDIATE_LOAD', 'True'), default=True)
+
+if config_immediate_load and not ('pytest' in sys.modules or 'unittest' in sys.modules):
     try:
-        # Trigger configuration loading and validation
         _config_cache = load_config()
-        _assign_module_vars()  # Assign to module-level variables
+        _assign_module_vars()
         _log_json("info", "config_module_initialized", immediate_load=True)
     except ConfigError as e:
         _log_json("critical", "config_initialization_failed", error_msg=str(e))
@@ -462,3 +485,50 @@ if not ('pytest' in sys.modules or 'unittest' in sys.modules):
         sys.exit(1)
 else:
     _log_json("debug", "config_module_initialized", immediate_load=False, reason="test_context")
+
+# ==================================================================================== #
+#                            Public API Export
+# ==================================================================================== #
+
+__all__ = [
+    'load_config',
+    'ConfigError',
+    
+    'get_token',
+    'get_debug',
+    'get_log_file',
+    'get_db_user',
+    'get_db_host',
+    'get_db_port',
+    'get_db_name',
+    'get_db_password',
+    'get_max_memory_mb',
+    'get_max_cpu_percent',
+    'get_max_reconnect_attempts',
+    'get_rate_limit_per_minute',
+    'get_db_pool_size',
+    'get_db_timeout',
+    'get_db_circuit_breaker_threshold',
+    'get_translation_file',
+    'get_max_translation_file_size',
+    
+    'TOKEN',
+    'DEBUG',
+    'LOG_FILE',
+    'DB_USER',
+    'DB_HOST',
+    'DB_PORT',
+    'DB_NAME',
+    'MAX_MEMORY_MB',
+    'MAX_CPU_PERCENT',
+    'MAX_RECONNECT_ATTEMPTS',
+    'RATE_LIMIT_PER_MINUTE',
+    'DB_POOL_SIZE',
+    'DB_TIMEOUT',
+    'DB_CIRCUIT_BREAKER_THRESHOLD',
+    'TRANSLATION_FILE',
+    'MAX_TRANSLATION_FILE_SIZE',
+    
+    'parse_bool',
+    'correlation_id_context'
+]

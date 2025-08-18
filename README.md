@@ -27,6 +27,7 @@ Automatiser **jusqu'à 95% des tâches administratives** des guildes Discord ave
 
 ### ⚡ **Performance Exceptionnelle** 
 - **Score startup** : 100/100 (A+ Excellent) + observabilité complète
+- **Database async pur** : Migration asyncmy pour performances natives
 - **Cache intelligent** : O(1) percentiles + deque rate limiter optimisé haute charge
 - **Bounded operations** : Shutdown garanti + aiohttp connector closure
 - **Watchdog robuste** : Heartbeat mechanism anti-deadlock avec alerting
@@ -67,7 +68,7 @@ Automatiser **jusqu'à 95% des tâches administratives** des guildes Discord ave
 app/                    # 🎯 Code applicatif principal
 ├── bot.py             # Point d'entrée et orchestration
 ├── cache.py           # Système de cache global TTL
-├── db.py              # Couche d'abstraction MariaDB
+├── db.py              # Couche d'abstraction async MySQL/MariaDB (asyncmy)
 ├── scheduler.py       # Planificateur de tâches cron
 ├── core/              # 🔧 Modules utilitaires partagés
 │   ├── translation.py # Système multilingue

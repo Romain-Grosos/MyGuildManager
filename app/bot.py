@@ -1,3 +1,53 @@
+"""
+Discord Bot Main Module - Enterprise-grade Discord bot for guild management.
+
+This module provides a comprehensive Discord bot system featuring:
+
+🏗️ ARCHITECTURE:
+- Async/await throughout with high-performance connection pooling
+- Event-driven architecture with robust error handling
+- Modular cog system for feature separation
+- Centralized configuration management with validation
+- Enterprise logging with JSON structured output
+
+🔧 CORE SYSTEMS:
+- BotOptimizer: Intelligent caching and performance monitoring
+- TaskScheduler: Automated task orchestration with timezone support
+- DatabaseManager: Async MySQL/MariaDB with circuit breaker pattern
+- Cache System: Multi-layer caching with smart preloading
+- Rate Limiter: Per-guild rate limiting with automatic cleanup
+
+🛡️ RELIABILITY:
+- Circuit breaker pattern for external dependencies
+- Graceful shutdown with resource cleanup
+- Health monitoring and alerting
+- Automatic retry logic with exponential backoff
+- Resource monitoring (CPU, memory) with thresholds
+
+📊 OBSERVABILITY:
+- Structured JSON logging with correlation IDs
+- Performance metrics and SLO tracking
+- Real-time health checks and status endpoints
+- Command execution tracking and latency histograms
+- Background task monitoring with deadlock detection
+
+🚀 PERFORMANCE:
+- Connection pooling for Discord API and database
+- Intelligent caching with TTL and invalidation
+- Parallel processing with semaphore-based concurrency
+- Memory-efficient data structures and cleanup
+- High-resolution timing for accurate metrics
+
+🔐 SECURITY:
+- Secure credential management (no tokens in logs)
+- PII masking in production environments
+- Input validation and sanitization
+- Role-based permission system integration
+
+The bot handles guild member management, event scheduling, loot distribution,
+attendance tracking, and provides comprehensive administrative tools.
+"""
+
 import asyncio
 import json
 import logging
@@ -28,7 +78,7 @@ import discord
 from discord.ext import commands
 
 import config
-from db import run_db_query
+from db import run_db_query, initialize_db_pool, close_db_pool
 from scheduler import setup_task_scheduler
 from cache import get_global_cache, start_cache_maintenance_task
 from cache_loader import get_cache_loader
@@ -1237,6 +1287,20 @@ async def on_ready() -> None:
     """
     logging.info("[Discord] Connected as %s (%s)", bot.user, bot.user.id)
 
+    if not hasattr(bot, '_db_pool_initialized'):
+        bot._db_pool_initialized = True
+        try:
+            db_initialized = await initialize_db_pool()
+            if not db_initialized:
+                logging.critical("[Bot] Failed to initialize database pool - shutting down")
+                await bot.close()
+                raise SystemExit(1)
+            logging.info("[Bot] Async database pool initialized successfully")
+        except Exception as e:
+            logging.critical(f"[Bot] Database initialization error: {e}")
+            await bot.close()
+            raise SystemExit(1)
+
     if not hasattr(bot, '_background_tasks'):
         bot._background_tasks = []
 
@@ -1643,6 +1707,13 @@ async def cleanup_background_tasks():
             logging.warning(f"[Bot] Error closing HTTP session: {e}")
         finally:
             bot.http_session = None
+
+    if hasattr(bot, '_db_pool_initialized') and bot._db_pool_initialized:
+        try:
+            await close_db_pool()
+            logging.debug("[Bot] Database pool closed")
+        except Exception as e:
+            logging.warning(f"[Bot] Error closing database pool: {e}")
 
 def _graceful_exit(sig_name):
     """
