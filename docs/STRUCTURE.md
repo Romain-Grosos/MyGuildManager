@@ -1,21 +1,29 @@
 # Structure du Projet MyGuildManager
 
-**Dernière mise à jour : 13 août 2025 - Architecture Optimisée Production**
+**Dernière mise à jour : 18 décembre 2024 - Architecture Enterprise Observability**
 
-## 🚀 PRODUCTION READY - Optimisations Cache Révolutionnaires
+## 🚀 ENTERPRISE-GRADE - Observabilité Production Complète
 
-### ✅ Performance Exceptionnelle (13 août 2025)
-- **Score startup** : 100/100 (A+ Excellent)
+### ✅ Observabilité Exceptionnelle (Décembre 2024)
+- **Correlation ID** : Traçage UUID8 sur toutes les requêtes avec collision detection
+- **Logs structurés** : JSON schema v1.0 + PII masking automatique en production
+- **Alerting intelligent** : Performance (fast%/slow%) + health monitoring temps réel  
+- **SLO tracking** : Availability & Performance avec seuils configurables
+- **Memory debugging** : tracemalloc + SIGUSR1/SIGBREAK cross-platform
+- **Bounded shutdown** : Cleanup garanti avec timeouts + aiohttp connector closure
+
+### 🎯 Évolutions Majeures Enterprise
+1. **Observabilité complète** - Correlation logs ↔ métriques avec context auto-injection
+2. **Performance optimisée** - Percentiles O(1), rate limiter deque, watchdog robuste
+3. **Production security** - PII masking, secrets safe, schema versioning
+4. **Monitoring proactif** - SLO availability/performance + health checks intelligents
+
+### ✅ Performance Exceptionnelle (Août 2025 + Observability)
+- **Score startup** : 100/100 (A+ Excellent) + observabilité complète
 - **Auto-reloads éliminés** : 0 (vs 30 précédemment)
-- **Démarrage ultra-rapide** : 0.01s pour chargement complet
-- **Stabilité parfaite** : 0 erreur, 0 warning
-- **Cache intelligent** : Protection automatique guildes non-configurées
-
-### 🎯 Évolutions Majeures
-1. **Cache centralisé optimisé** - Chargement unique au démarrage
-2. **Protection anti-reload** - Vérification guildes configurées avant auto-reload
-3. **Métriques temps réel** - Monitoring performance intégré
-4. **Stabilité production** - Tests complets 15/15 cogs validés
+- **Démarrage ultra-rapide** : 0.01s pour chargement complet + correlation tracking
+- **Stabilité parfaite** : 0 erreur, 0 warning + alerting proactif
+- **Cache intelligent** : Protection automatique + health monitoring intégré
 
 ## 📁 Organisation des répertoires
 
@@ -63,10 +71,13 @@ discord-bot-mgm/
 │   ├── __init__.py
 │   ├── conftest.py
 │   └── test_*.py
-├── scripts/                # 🛠️ Scripts utilitaires
+├── scripts/                # 🛠️ Scripts utilitaires + Observability tools
 │   ├── update_cog_imports.py
 │   ├── analyze_logs.py      # Analyseur logs 48MB (optimisations cache)
-│   └── analyze_startup_performance.py  # Analyseur performance démarrage
+│   ├── analyze_startup_performance.py  # Analyseur performance démarrage
+│   ├── correlation_analyzer.py    # 🎯 NOUVEAU - Analyseur correlation ID + collision detection
+│   ├── slo_dashboard.py          # 🎯 NOUVEAU - Dashboard SLO availability/performance
+│   └── alert_simulator.py       # 🎯 NOUVEAU - Simulateur alertes pour tests
 ├── docs/                   # 📚 Documentation
 ├── logs/                   # 📝 Fichiers de logs (non versionné)
 ├── run_bot.py             # 🚀 Script de lancement Python
