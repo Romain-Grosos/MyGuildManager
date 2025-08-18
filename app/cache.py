@@ -19,7 +19,7 @@ from functools import wraps
 from typing import Dict, Any, Optional, Set, List, Callable
 from contextvars import ContextVar
 
-from core.logger import ComponentLogger
+from .core.logger import ComponentLogger
 
 correlation_id_context: ContextVar[Optional[str]] = ContextVar('correlation_id', default=None)
 

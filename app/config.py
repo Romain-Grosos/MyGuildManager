@@ -18,7 +18,7 @@ from types import MappingProxyType
 from contextvars import ContextVar
 
 from dotenv import load_dotenv
-from core.logger import ComponentLogger
+from .core.logger import ComponentLogger
 
 correlation_id_context: ContextVar[Optional[str]] = ContextVar(
     "correlation_id", default=None
@@ -202,6 +202,7 @@ def load_config() -> Mapping[str, Any]:
         #                            Debug and Logging Configuration
         # #################################################################################### #
         config["DEBUG"] = parse_bool(os.getenv("DEBUG", "False"))
+        config["PRODUCTION"] = parse_bool(os.getenv("PRODUCTION", "False"))
 
         LOG_DIR = "logs"
         log_fallback = False
@@ -355,7 +356,7 @@ def load_config() -> Mapping[str, Any]:
         )
 
         default_translation_path = os.path.join(
-            os.path.dirname(__file__), "core", "translation.json"
+            os.path.dirname(__file__), "config", "translation.json"
         )
         translation_file = (
             validate_env_var(
@@ -405,13 +406,14 @@ _config_cache: Optional[Mapping[str, Any]] = None
 
 def _assign_module_vars():
     """Assign values to module-level variables for backwards compatibility."""
-    global TOKEN, DEBUG, LOG_FILE, DB_USER, DB_HOST, DB_PORT, DB_NAME
+    global TOKEN, DEBUG, PRODUCTION, LOG_FILE, DB_USER, DB_HOST, DB_PORT, DB_NAME
     global MAX_MEMORY_MB, MAX_CPU_PERCENT, MAX_RECONNECT_ATTEMPTS, RATE_LIMIT_PER_MINUTE
     global DB_POOL_SIZE, DB_TIMEOUT, DB_CIRCUIT_BREAKER_THRESHOLD, TRANSLATION_FILE, MAX_TRANSLATION_FILE_SIZE
 
     config = _get_config_direct()
     TOKEN = config["TOKEN"]
     DEBUG = config["DEBUG"]
+    PRODUCTION = config["PRODUCTION"]
     LOG_FILE = config["LOG_FILE"]
     DB_USER = config["DB_USER"]
     DB_HOST = config["DB_HOST"]
@@ -445,6 +447,10 @@ def get_token() -> str:
 def get_debug() -> bool:
     """Get debug mode setting."""
     return _get_config()["DEBUG"]
+
+def get_production() -> bool:
+    """Get production mode setting."""
+    return _get_config()["PRODUCTION"]
 
 def get_log_file() -> str:
     """Get log file path."""
@@ -508,6 +514,7 @@ def get_max_translation_file_size() -> int:
 
 TOKEN: str = None  # type: ignore
 DEBUG: bool = None  # type: ignore
+PRODUCTION: bool = None  # type: ignore
 LOG_FILE: str = None  # type: ignore
 DB_USER: str = None  # type: ignore
 DB_HOST: str = None  # type: ignore
@@ -558,6 +565,7 @@ __all__ = [
     "ConfigError",
     "get_token",
     "get_debug",
+    "get_production",
     "get_log_file",
     "get_db_user",
     "get_db_host",
@@ -575,6 +583,7 @@ __all__ = [
     "get_max_translation_file_size",
     "TOKEN",
     "DEBUG",
+    "PRODUCTION",
     "LOG_FILE",
     "DB_USER",
     "DB_HOST",

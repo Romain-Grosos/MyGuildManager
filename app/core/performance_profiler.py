@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Dict, List, Callable, Any, Optional, DefaultDict
 from typing_extensions import TypedDict
 
-from core.logger import ComponentLogger
+from .logger import ComponentLogger
 
 _logger = ComponentLogger("performance_profiler")
 

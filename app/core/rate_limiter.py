@@ -35,7 +35,7 @@ import asyncio
 import time
 from collections import deque
 
-from core.logger import ComponentLogger
+from .logger import ComponentLogger
 from functools import wraps
 from typing import Dict, Tuple, Callable, Deque, Union
 from contextvars import ContextVar

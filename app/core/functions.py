@@ -32,7 +32,7 @@ and fallback mechanisms ensuring 100% message delivery reliability.
 """
 
 import re
-from core.logger import ComponentLogger
+from .logger import ComponentLogger
 
 # #################################################################################### #
 #                            Translation System Utilities

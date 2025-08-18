@@ -68,25 +68,20 @@ from logging.handlers import TimedRotatingFileHandler, RotatingFileHandler
 from pathlib import Path
 from typing import Final, Dict, Any, Optional
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, current_dir)
-sys.path.insert(0, parent_dir)
-
 import aiohttp
 import discord
 from discord.ext import commands
 
-import config
-from db import run_db_query, initialize_db_pool, close_db_pool
-from scheduler import setup_task_scheduler
-from cache import get_global_cache, start_cache_maintenance_task
-from cache_loader import get_cache_loader
-from core.translation import translations
-from core.rate_limiter import start_cleanup_task
-from core.performance_profiler import get_profiler
-from core.reliability import setup_reliability_system
-from core.logger import ComponentLogger
+from . import config
+from .db import run_db_query, initialize_db_pool, close_db_pool
+from .scheduler import setup_task_scheduler
+from .cache import get_global_cache, start_cache_maintenance_task
+from .cache_loader import get_cache_loader
+from .core.translation import translations
+from .core.rate_limiter import start_cleanup_task
+from .core.performance_profiler import get_profiler
+from .core.reliability import setup_reliability_system
+from .core.logger import ComponentLogger
 
 _bot_logger = ComponentLogger("bot")
 _optimizer_logger = ComponentLogger("bot_optimizer") 
@@ -156,12 +151,12 @@ class JSONFormatter(logging.Formatter):
         }
 
         if hasattr(record, "guild_id") and record.guild_id:
-            if config.DEBUG or not getattr(config, "PRODUCTION", False):
+            if config.DEBUG or not config.PRODUCTION:
                 log_obj["guild_id"] = record.guild_id
             else:
                 log_obj["guild_id"] = "REDACTED"
         if hasattr(record, "user_id") and record.user_id:
-            if config.DEBUG or not getattr(config, "PRODUCTION", False):
+            if config.DEBUG or not config.PRODUCTION:
                 log_obj["user_id"] = record.user_id
             else:
                 log_obj["user_id"] = "REDACTED"
@@ -171,7 +166,7 @@ class JSONFormatter(logging.Formatter):
             log_obj["correlation_id"] = record.correlation_id
 
         if record.exc_info and (
-            config.DEBUG and not getattr(config, "PRODUCTION", False)
+            config.DEBUG and not config.PRODUCTION
         ):
             log_obj["exception"] = self.formatException(record.exc_info)
         elif record.exc_info:
@@ -238,7 +233,7 @@ def _global_exception_hook(exc_type, exc_value, exc_tb):
         exc_value: Exception value
         exc_tb: Exception traceback
     """
-    if config.DEBUG and not getattr(config, "PRODUCTION", False):
+    if config.DEBUG and not config.PRODUCTION:
         _bot_logger.critical("uncaught_exception", exc_info=(exc_type, exc_value, exc_tb))
     else:
         _bot_logger.critical("uncaught_exception", error_type=exc_type.__name__, error_msg=str(exc_value))
@@ -756,7 +751,7 @@ async def optimized_run_db_query(
         if execution_time > 100:
             query_preview = query[:100] + "..." if len(query) > 100 else query
             context_info = ""
-            if config.DEBUG and not getattr(config, "PRODUCTION", False):
+            if config.DEBUG and not config.PRODUCTION:
                 ctx = current_command_context.get()
                 if ctx:
                     if ctx.guild:
@@ -911,7 +906,7 @@ def validate_token():
         _bot_logger.critical("placeholder_token_detected", token_value=token.lower())
         raise SystemExit(1)
 
-    if config.DEBUG and not getattr(config, "PRODUCTION", False):
+    if config.DEBUG and not config.PRODUCTION:
         masked_token = f"{token[:10]}...{token[-4:]}"
         _bot_logger.debug("token_validated", masked_token=masked_token)
     return token
@@ -1164,7 +1159,7 @@ def setup_global_group_error_handlers(bot: discord.Bot) -> None:
         elif hasattr(ctx.command, "name"):
             command_name = ctx.command.name
 
-        if config.DEBUG and not getattr(config, "PRODUCTION", False):
+        if config.DEBUG and not config.PRODUCTION:
             _bot_logger.error("command_error_debug",
                 group_name=group_name,
                 command_name=command_name,

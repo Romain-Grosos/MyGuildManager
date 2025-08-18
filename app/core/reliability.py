@@ -51,7 +51,7 @@ import time
 from collections import defaultdict
 from datetime import datetime
 
-from core.logger import ComponentLogger
+from .logger import ComponentLogger
 from functools import wraps
 from typing import Dict, Any, Optional, Callable, List
 from contextvars import ContextVar
@@ -107,7 +107,7 @@ class ServiceCircuitBreaker:
             if time.monotonic() - self.last_failure_time > self.timeout:
                 self.state = "HALF_OPEN"
                 self.half_open_calls = 0
-                self._logger.info("cb_state_transition",
+                _logger.info("cb_state_transition",
                     service=self.service_name,
                     new_state="HALF_OPEN",
                     reason="timeout_expired",
@@ -146,7 +146,7 @@ class ServiceCircuitBreaker:
                 self.state = "CLOSED"
                 self.failure_count = 0
                 self.success_count = 0
-                self._logger.info("cb_closed",
+                _logger.info("cb_closed",
                     service=self.service_name,
                     reason="service_recovered",
                 )
@@ -164,14 +164,14 @@ class ServiceCircuitBreaker:
         if self.state == "HALF_OPEN":
             self.half_open_calls += 1
             self.state = "OPEN"
-            self._logger.warning("cb_opened",
+            _logger.warning("cb_opened",
                 service=self.service_name,
                 reason="half_open_test_failed",
                 failure_count=self.failure_count,
             )
         elif self.failure_count >= self.failure_threshold:
             self.state = "OPEN"
-            self._logger.warning("cb_opened",
+            _logger.warning("cb_opened",
                 service=self.service_name,
                 reason="failure_threshold_reached",
                 failure_count=self.failure_count,
@@ -273,7 +273,7 @@ class RetryManager:
                 func_name = getattr(func, "__name__", "unknown_function")
                 self.retry_attempts_count[func_name] += 1
 
-                self._logger.debug("retry_scheduled",
+                _logger.debug("retry_scheduled",
                     attempt=attempt + 1,
                     delay_seconds=round(delay, 2),
                     exception=str(e)[:200],
@@ -322,7 +322,7 @@ class GracefulDegradation:
             "duration": duration,
             "expires_at": now + duration,
         }
-        self._logger.warning("service_degraded",
+        _logger.warning("service_degraded",
             service=service_name,
             reason=reason,
             duration=duration,
@@ -337,7 +337,7 @@ class GracefulDegradation:
         """
         if service_name in self.degraded_services:
             del self.degraded_services[service_name]
-            self._logger.info("service_restored", service=service_name)
+            _logger.info("service_restored", service=service_name)
 
     def is_degraded(self, service_name: str) -> bool:
         """
@@ -375,7 +375,7 @@ class GracefulDegradation:
             Result of primary function or fallback handler
         """
         if self.is_degraded(service_name) and service_name in self.fallback_handlers:
-            self._logger.info("fallback_used", service=service_name)
+            _logger.info("fallback_used", service=service_name)
             return await self.fallback_handlers[service_name](*args, **kwargs)
 
         try:
@@ -388,7 +388,7 @@ class GracefulDegradation:
             return result
         except Exception as e:
             if service_name in self.fallback_handlers:
-                self._logger.warning("primary_failed_fallback_used",
+                _logger.warning("primary_failed_fallback_used",
                     service=service_name,
                     error=str(e),
                 )
@@ -435,7 +435,7 @@ class DataBackupManager:
         )
 
         backup_start = time.monotonic()
-        self._logger.info("backup_started", guild_id=guild_id)
+        _logger.info("backup_started", guild_id=guild_id)
 
         try:
             guild_data = {}
@@ -546,7 +546,7 @@ class DataBackupManager:
             file_size = await asyncio.to_thread(write_backup)
             backup_duration = time.monotonic() - backup_start
 
-            self._logger.info("backup_completed",
+            _logger.info("backup_completed",
                 guild_id=guild_id,
                 backup_file=backup_file,
                 file_size_bytes=file_size,
@@ -556,7 +556,7 @@ class DataBackupManager:
 
         except Exception as e:
             backup_duration = time.monotonic() - backup_start
-            self._logger.error("backup_failed",
+            _logger.error("backup_failed",
                 guild_id=guild_id,
                 error=str(e),
                 duration_ms=round(backup_duration * 1000, 2),
@@ -576,12 +576,11 @@ class DataBackupManager:
             True if restoration succeeded, False otherwise
         """
         restore_start = time.monotonic()
-        self._logger.info("restore_started", guild_id=guild_id, backup_file=backup_file
-        )
+        _logger.info("restore_started", guild_id=guild_id, backup_file=backup_file)
 
         try:
             if not os.path.exists(backup_file):
-                self._logger.error("restore_failed",
+                _logger.error("restore_failed",
                     guild_id=guild_id,
                     error="backup_file_not_found",
                     backup_file=backup_file,
@@ -684,7 +683,7 @@ class DataBackupManager:
             restore_duration = time.monotonic() - restore_start
 
             if success:
-                self._logger.info("restore_completed",
+                _logger.info("restore_completed",
                     guild_id=guild_id,
                     backup_file=backup_file,
                     duration_ms=round(restore_duration * 1000, 2),
@@ -692,7 +691,7 @@ class DataBackupManager:
                 )
                 return True
             else:
-                self._logger.error("restore_failed",
+                _logger.error("restore_failed",
                     guild_id=guild_id,
                     error="transaction_failed",
                     duration_ms=round(restore_duration * 1000, 2),
@@ -701,7 +700,7 @@ class DataBackupManager:
 
         except Exception as e:
             restore_duration = time.monotonic() - restore_start
-            self._logger.error("restore_failed",
+            _logger.error("restore_failed",
                 guild_id=guild_id,
                 error=str(e),
                 duration_ms=round(restore_duration * 1000, 2),
@@ -748,13 +747,13 @@ class DataBackupManager:
                                 }
                             )
                     except (OSError, IOError) as e:
-                        self._logger.warning("backup_file_access_error",
+                        _logger.warning("backup_file_access_error",
                             filename=filename,
                             error=str(e),
                         )
                         continue
         except (OSError, IOError) as e:
-            self._logger.error("backup_directory_access_error",
+            _logger.error("backup_directory_access_error",
                 backup_dir=self.backup_dir,
                 error=str(e),
             )
@@ -829,7 +828,7 @@ class ReliabilitySystem:
         self, guild_id: int, member_id: int, role_id: int
     ):
         """Fallback for role assignment - queue for later processing."""
-        self._logger.info("role_assignment_queued",
+        _logger.info("role_assignment_queued",
             guild_id=guild_id,
             member_id=member_id,
             role_id=role_id,
@@ -841,7 +840,7 @@ class ReliabilitySystem:
         self, guild_id: int, channel_name: str, channel_type: str
     ):
         """Fallback for channel creation - return None and log for manual intervention."""
-        self._logger.warning("channel_creation_failed",
+        _logger.warning("channel_creation_failed",
             guild_id=guild_id,
             channel_name=channel_name,
             channel_type=channel_type,
@@ -883,7 +882,7 @@ class ReliabilitySystem:
         circuit_breaker = self.get_circuit_breaker(service_name)
 
         if circuit_breaker and not circuit_breaker.can_execute():
-            self._logger.warning("cb_open_blocked", service=service_name)
+            _logger.warning("cb_open_blocked", service=service_name)
             raise Exception(f"Service {service_name} circuit breaker is open")
 
         async def monitored_execution():
@@ -901,7 +900,7 @@ class ReliabilitySystem:
                 if circuit_breaker:
                     circuit_breaker.record_failure()
                 self.failure_counts[service_name] += 1
-                self._logger.warning("service_failure",
+                _logger.warning("service_failure",
                     service=service_name,
                     error=str(e),
                     failure_count=self.failure_counts[service_name],
@@ -1099,7 +1098,7 @@ def discord_resilient(service_name: str = "discord_api", max_retries: int = 3):
                             not hasattr(execute, "_rate_limit_logged")
                             or execute._rate_limit_logged != fallback_key
                         ):
-                            reliability_system._logger.warning("discord_rate_limited",
+                            _logger.warning("discord_rate_limited",
                                 function=func.__name__,
                                 retry_after=retry_after,
                             )

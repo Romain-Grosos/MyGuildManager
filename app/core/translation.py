@@ -23,8 +23,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from config import TRANSLATION_FILE, MAX_TRANSLATION_FILE_SIZE
-from core.logger import ComponentLogger
+from ..config import TRANSLATION_FILE, MAX_TRANSLATION_FILE_SIZE
+from .logger import ComponentLogger
 
 # #################################################################################### #
 #                                    Constants
@@ -237,12 +237,16 @@ class JSONLogger:
 
         log_msg = json.dumps(log_entry, separators=(",", ":"))
 
+        event_name = log_entry.pop("event", "unknown")
+        log_entry.pop("level", None)
+        log_entry.pop("component", None)
+        
         if level == "ERROR":
-            _logger.error("translation_system_error", **log_entry)
+            _logger.error(event_name, **log_entry)
         elif level == "WARNING":
-            _logger.warning("translation_system_warning", **log_entry)
+            _logger.warning(event_name, **log_entry)
         else:
-            _logger.info("translation_system_info", **log_entry)
+            _logger.info(event_name, **log_entry)
 
 logger = JSONLogger()
 
@@ -287,11 +291,14 @@ class SecurityValidator:
         path = Path(file_path).resolve()
 
         app_home = Path(os.environ.get("APP_HOME", os.getcwd())).resolve()
-        allowed_dir = app_home / "config"
+        allowed_dirs = [
+            app_home / "config",
+            app_home / "app" / "config"
+        ]
 
-        if not path.is_relative_to(allowed_dir):
+        if not any(path.is_relative_to(allowed_dir) for allowed_dir in allowed_dirs):
             metrics.record_security_denied()
-            raise TranslationsSecurityError(f"Path outside allowed directory: {path}")
+            raise TranslationsSecurityError(f"Path outside allowed directories: {path}")
 
         if path.is_symlink():
             metrics.record_security_denied()
@@ -722,8 +729,9 @@ def stats() -> Dict[str, Any]:
 #                                  Auto-load
 # #################################################################################### #
 try:
-    load_translations(allow_fallback=True)
+    translations = load_translations(allow_fallback=True)
 except Exception as e:
     logger.log(
         "CRITICAL", "init", status="fail", error_type=type(e).__name__, msg=str(e)
     )
+    translations = None
