@@ -20,7 +20,6 @@ API Overview:
 
 import asyncio
 import contextlib
-import logging
 import time
 from typing import Optional, Any, List, Tuple
 
@@ -31,20 +30,22 @@ from asyncmy.errors import (
     IntegrityError,
     OperationalError,
     ProgrammingError,
-    PoolError
+    PoolError,
 )
 
 import config
+from core.logger import ComponentLogger
 
 # #################################################################################### #
 #                            Database Pool Initialization
 # #################################################################################### #
 db_pool: Optional[pool.Pool] = None
+_logger = ComponentLogger("database")
 
 async def initialize_db_pool() -> bool:
     """
     Initialize async MySQL/MariaDB connection pool with configuration settings.
-    
+
     Returns:
         True if pool initialization succeeded, False otherwise
     """
@@ -61,16 +62,25 @@ async def initialize_db_pool() -> bool:
             connect_timeout=config.get_db_timeout(),
             pool_recycle=3600,
             echo=config.get_debug(),
-            charset='utf8mb4',
-            autocommit=True
+            charset="utf8mb4",
+            autocommit=True,
         )
-        logging.info(f"[DBManager] Async DB pool initialized (size: {config.get_db_pool_size()}, timeout: {config.get_db_timeout()}s)")
+        _logger.info("pool_initialized",
+            pool_size=config.get_db_pool_size(),
+            timeout=config.get_db_timeout()
+        )
         return True
     except AsyncMyError as e:
-        logging.critical(f"[DBManager] Failed to initialize async DB pool: {type(e).__name__}: {e}")
+        _logger.critical("pool_init_failed",
+            error_type=type(e).__name__,
+            error_msg=str(e)
+        )
         return False
     except Exception as e:
-        logging.critical(f"[DBManager] Unexpected error initializing DB pool: {type(e).__name__}: {e}")
+        _logger.critical("pool_init_unexpected_error",
+            error_type=type(e).__name__,
+            error_msg=str(e)
+        )
         return False
 
 async def close_db_pool():
@@ -82,7 +92,7 @@ async def close_db_pool():
         db_pool.close()
         await db_pool.wait_closed()
         db_pool = None
-        logging.info("[DBManager] Database pool closed")
+        _logger.info("pool_closed")
 
 # #################################################################################### #
 #                            Query Logging Utilities
@@ -90,70 +100,81 @@ async def close_db_pool():
 def safe_log_query(query: str, params: tuple):
     """
     Log query execution safely without exposing sensitive data.
-    
+
     Args:
         query: SQL query string
         params: Query parameters tuple
     """
     safe_query = query[:100] + "..." if len(query) > 100 else query
     param_count = len(params) if params else 0
-    logging.debug(f"[DBManager] Executing query (params: {param_count}): {safe_query}")
+    _logger.debug("query_executing",
+        param_count=param_count,
+        query_preview=safe_query
+    )
 
 def safe_log_error(error: Exception, query: str):
     """
     Log query errors safely without exposing sensitive data.
-    
+
     Args:
         error: Exception that occurred
         query: SQL query that failed
     """
     safe_query = query[:50] + "..." if len(query) > 50 else query
-    logging.error(f"[DBManager] Query failed: {type(error).__name__} | Query: {safe_query}")
+    _logger.error("query_failed",
+        error_type=type(error).__name__,
+        query_preview=safe_query
+    )
 
 # #################################################################################### #
 #                            Circuit Breaker Pattern
 # #################################################################################### #
 class CircuitBreaker:
     """Circuit breaker to prevent cascading failures when database is unavailable."""
-    
+
     def __init__(self, failure_threshold: int | None = None, timeout: int = 60):
         """
         Initialize circuit breaker with failure threshold and timeout.
-        
+
         Args:
             failure_threshold: Number of failures before opening circuit
             timeout: Timeout in seconds before attempting to close circuit
         """
-        self.failure_threshold = failure_threshold or config.DB_CIRCUIT_BREAKER_THRESHOLD
+        self.failure_threshold = (
+            failure_threshold or config.DB_CIRCUIT_BREAKER_THRESHOLD
+        )
         self.timeout = timeout
         self.failure_count = 0
         self.last_failure_time: float | None = None
         self.state = "CLOSED"
-    
+
     def is_open(self) -> bool:
         """
         Check if circuit breaker is open (blocking requests).
-        
+
         Returns:
             True if circuit breaker is open, False otherwise
         """
         if self.state == "OPEN":
-            if self.last_failure_time and time.time() - self.last_failure_time > self.timeout:
+            if (
+                self.last_failure_time
+                and time.time() - self.last_failure_time > self.timeout
+            ):
                 self.state = "HALF_OPEN"
-                logging.info("[DBManager] Circuit breaker entering HALF_OPEN state")
+                _logger.info("circuit_breaker_half_open")
                 return False
             return True
         return False
-    
+
     def record_success(self):
         """
         Record successful operation, potentially closing the breaker.
         """
         if self.state == "HALF_OPEN":
-            logging.info("[DBManager] Circuit breaker CLOSED - DB recovered")
+            _logger.info("circuit_breaker_closed", reason="db_recovered")
         self.failure_count = 0
         self.state = "CLOSED"
-    
+
     def record_failure(self):
         """
         Record failed operation, potentially opening the breaker.
@@ -162,14 +183,17 @@ class CircuitBreaker:
         self.last_failure_time = time.time()
         if self.failure_count >= self.failure_threshold:
             self.state = "OPEN"
-            logging.warning(f"[DBManager] Circuit breaker OPEN - DB temporarily unavailable (failures: {self.failure_count})")
+            _logger.warning("circuit_breaker_open",
+                failure_count=self.failure_count,
+                reason="db_temporarily_unavailable"
+            )
 
 # #################################################################################### #
 #                            Database Connection Manager
 # #################################################################################### #
 class DatabaseManager:
     """Manages async database connections with native pooling and timeout handling."""
-    
+
     def __init__(self):
         """
         Initialize database manager with async pooling and metrics.
@@ -178,33 +202,38 @@ class DatabaseManager:
         self.waiting_queue = 0
         self.query_metrics = {}
         self.slow_query_threshold = 2.0
-    
+
     @contextlib.asynccontextmanager
     async def get_connection_with_timeout(self):
         """
         Get async database connection with timeout and proper resource management.
-        
+
         Yields:
             Async database connection from the pool
-            
+
         Raises:
             asyncio.TimeoutError: If connection acquisition times out
             DBQueryError: If pool is not initialized
         """
         if not db_pool:
             raise DBQueryError("Database pool not initialized")
-            
+
         self.waiting_queue += 1
-        
+
         try:
             conn = await asyncio.wait_for(
-                db_pool.acquire(),
-                timeout=config.get_db_timeout()
+                db_pool.acquire(), timeout=config.get_db_timeout()
             )
-            
-            if self.waiting_queue > config.get_db_pool_size() * 1.5 and self.waiting_queue % 10 == 0:
-                logging.warning(f"[DBManager] High queue: {self.waiting_queue - 1} waiting, {self.active_connections} active")
-            
+
+            if (
+                self.waiting_queue > config.get_db_pool_size() * 1.5
+                and self.waiting_queue % 10 == 0
+            ):
+                _logger.warning("high_connection_queue",
+                    waiting=self.waiting_queue - 1,
+                    active=self.active_connections
+                )
+
             try:
                 self.active_connections += 1
                 yield conn
@@ -213,59 +242,62 @@ class DatabaseManager:
                 await db_pool.release(conn)
         finally:
             self.waiting_queue -= 1
-    
+
     def log_query_metrics(self, query: str, execution_time: float):
         """
         Log query execution metrics and detect slow queries.
-        
+
         Args:
             query: SQL query that was executed
             execution_time: Query execution time in seconds
         """
         query_type = query.strip().split()[0].upper()
-        
+
         if query_type not in self.query_metrics:
             self.query_metrics[query_type] = {
-                'count': 0,
-                'total_time': 0,
-                'avg_time': 0,
-                'slow_queries': 0
+                "count": 0,
+                "total_time": 0,
+                "avg_time": 0,
+                "slow_queries": 0,
             }
-        
+
         metrics = self.query_metrics[query_type]
-        metrics['count'] += 1
-        metrics['total_time'] += execution_time
-        metrics['avg_time'] = metrics['total_time'] / metrics['count']
-        
+        metrics["count"] += 1
+        metrics["total_time"] += execution_time
+        metrics["avg_time"] = metrics["total_time"] / metrics["count"]
+
         if execution_time > self.slow_query_threshold:
-            metrics['slow_queries'] += 1
+            metrics["slow_queries"] += 1
             safe_query = query[:100] + "..." if len(query) > 100 else query
-            logging.warning(f"[DBManager] Slow query detected ({execution_time:.2f}s): {safe_query}")
-    
+            _logger.warning("slow_query_detected",
+                execution_time_s=round(execution_time, 2),
+                query_preview=safe_query
+            )
+
     def get_performance_metrics(self) -> dict:
         """
         Get database performance metrics including pool statistics.
-        
+
         Returns:
             Dictionary containing performance metrics
         """
         pool_stats = {}
         if db_pool:
             pool_stats = {
-                'pool_size': db_pool.size,
-                'pool_free': db_pool.freesize,
-                'pool_used': db_pool.size - db_pool.freesize,
-                'pool_maxsize': db_pool.maxsize,
-                'pool_minsize': db_pool.minsize
+                "pool_size": db_pool.size,
+                "pool_free": db_pool.freesize,
+                "pool_used": db_pool.size - db_pool.freesize,
+                "pool_maxsize": db_pool.maxsize,
+                "pool_minsize": db_pool.minsize,
             }
-        
+
         return {
-            'active_connections': self.active_connections,
-            'waiting_queue': self.waiting_queue,
-            'query_metrics': self.query_metrics.copy(),
-            'circuit_breaker_state': db_circuit_breaker.state,
-            'circuit_breaker_failures': db_circuit_breaker.failure_count,
-            **pool_stats
+            "active_connections": self.active_connections,
+            "waiting_queue": self.waiting_queue,
+            "query_metrics": self.query_metrics.copy(),
+            "circuit_breaker_state": db_circuit_breaker.state,
+            "circuit_breaker_failures": db_circuit_breaker.failure_count,
+            **pool_stats,
         }
 
 # #################################################################################### #
@@ -283,37 +315,43 @@ class DBQueryError(Exception):
 # #################################################################################### #
 #                            Main Database Query Function
 # #################################################################################### #
-async def run_db_query(query: str, params: tuple = (), commit: bool = False, fetch_one: bool = False, fetch_all: bool = False) -> Optional[Any]:
+async def run_db_query(
+    query: str,
+    params: tuple = (),
+    commit: bool = False,
+    fetch_one: bool = False,
+    fetch_all: bool = False,
+) -> Optional[Any]:
     """
     Execute database query with resilience patterns and proper error handling.
-    
+
     Args:
         query: SQL query string
         params: Query parameters tuple (default: empty)
         commit: Whether to commit the transaction (default: False)
         fetch_one: Whether to fetch one row (default: False)
         fetch_all: Whether to fetch all rows (default: False)
-        
+
     Returns:
         Query result or None depending on fetch parameters
-        
+
     Raises:
         DBQueryError: If query execution fails
     """
-    
+
     if db_circuit_breaker.is_open():
-        logging.warning("[DBManager] Database circuit breaker is open - query blocked")
+        _logger.warning("query_blocked_circuit_open")
         raise DBQueryError("Database temporarily unavailable (circuit breaker open)")
-    
+
     safe_log_query(query, params)
-    
+
     async def _execute():
         start_time = time.perf_counter()
         async with db_manager.get_connection_with_timeout() as conn:
             async with conn.cursor() as cursor:
                 try:
                     await cursor.execute(query, params)
-                    
+
                     result = None
                     if commit:
                         await conn.commit()
@@ -321,12 +359,12 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
                         result = await cursor.fetchone()
                     elif fetch_all:
                         result = await cursor.fetchall()
-                    
+
                     execution_time = time.perf_counter() - start_time
                     db_manager.log_query_metrics(query, execution_time)
                     db_circuit_breaker.record_success()
                     return result
-                    
+
                 except (DataError, IntegrityError) as e:
                     safe_log_error(e, query)
                     db_circuit_breaker.record_failure()
@@ -338,7 +376,9 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
                 except PoolError as e:
                     safe_log_error(e, query)
                     db_circuit_breaker.record_failure()
-                    raise DBQueryError("Connection pool exhausted - too many concurrent requests")
+                    raise DBQueryError(
+                        "Connection pool exhausted - too many concurrent requests"
+                    )
                 except ProgrammingError as e:
                     safe_log_error(e, query)
                     raise DBQueryError(f"Database query error: {type(e).__name__}")
@@ -352,7 +392,10 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
         try:
             return await asyncio.wait_for(_execute(), timeout=config.get_db_timeout())
         except asyncio.TimeoutError:
-            logging.warning(f"[DBManager] Query timeout (attempt {attempt+1}/{max_attempts})")
+            _logger.warning("query_timeout",
+                attempt=attempt+1,
+                max_attempts=max_attempts
+            )
             if attempt == max_attempts - 1:
                 db_circuit_breaker.record_failure()
                 raise DBQueryError("Query timeout after multiple attempts")
@@ -363,7 +406,11 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
                 if attempt == max_attempts - 1:
                     raise
                 wait_time = min(2.0 * (attempt + 1), 5.0)
-                logging.warning(f"[DBManager] Pool exhausted, retrying in {wait_time}s (attempt {attempt+1}/{max_attempts})")
+                _logger.warning("pool_exhausted_retry",
+                    wait_time_s=wait_time,
+                    attempt=attempt+1,
+                    max_attempts=max_attempts
+                )
                 await asyncio.sleep(wait_time)
                 continue
             elif "temporarily unavailable" in error_msg:
@@ -376,22 +423,24 @@ async def run_db_query(query: str, params: tuple = (), commit: bool = False, fet
                 db_circuit_breaker.record_failure()
                 raise DBQueryError(f"Unexpected database error: {type(e).__name__}")
 
-async def run_db_transaction(queries_and_params: List[Tuple[str, tuple]], max_attempts: int = 3) -> bool:
+async def run_db_transaction(
+    queries_and_params: List[Tuple[str, tuple]], max_attempts: int = 3
+) -> bool:
     """Execute multiple queries in a single transaction with rollback support.
-    
+
     Args:
         queries_and_params: List of tuples (query, params)
         max_attempts: Maximum retry attempts
-        
+
     Returns:
         bool: True if transaction succeeded, False otherwise
-        
+
     Raises:
         DBQueryError: If transaction fails after all attempts
     """
     if db_circuit_breaker.is_open():
         raise DBQueryError("Database temporarily unavailable (circuit breaker open)")
-    
+
     for attempt in range(max_attempts):
         try:
             async def _execute_transaction():
@@ -404,31 +453,46 @@ async def run_db_transaction(queries_and_params: List[Tuple[str, tuple]], max_at
                                     await cursor.execute(query, params)
 
                             db_circuit_breaker.record_success()
-                            logging.info(f"[DBManager] Transaction completed successfully ({len(queries_and_params)} queries)")
+                            _logger.info("transaction_completed",
+                                query_count=len(queries_and_params)
+                            )
                             return True
-                            
+
                         except Exception as e:
-                            logging.warning(f"[DBManager] Transaction rolled back due to error: {type(e).__name__}")
+                            _logger.warning("transaction_rolled_back",
+                                error_type=type(e).__name__
+                            )
 
                             if isinstance(e, (DataError, IntegrityError)):
                                 safe_log_error(e, "TRANSACTION")
                                 db_circuit_breaker.record_failure()
-                                raise DBQueryError(f"Transaction constraint error: {type(e).__name__}")
+                                raise DBQueryError(
+                                    f"Transaction constraint error: {type(e).__name__}"
+                                )
                             elif isinstance(e, OperationalError):
                                 safe_log_error(e, "TRANSACTION")
                                 db_circuit_breaker.record_failure()
-                                raise DBQueryError(f"Transaction operational error: {type(e).__name__}")
+                                raise DBQueryError(
+                                    f"Transaction operational error: {type(e).__name__}"
+                                )
                             elif isinstance(e, AsyncMyError):
                                 safe_log_error(e, "TRANSACTION")
                                 db_circuit_breaker.record_failure()
-                                raise DBQueryError(f"Transaction database error: {type(e).__name__}")
+                                raise DBQueryError(
+                                    f"Transaction database error: {type(e).__name__}"
+                                )
                             else:
                                 raise
-            
-            return await asyncio.wait_for(_execute_transaction(), timeout=config.get_db_timeout() * 2)
-            
+
+            return await asyncio.wait_for(
+                _execute_transaction(), timeout=config.get_db_timeout() * 2
+            )
+
         except asyncio.TimeoutError:
-            logging.warning(f"[DBManager] Transaction timeout (attempt {attempt+1}/{max_attempts})")
+            _logger.warning("transaction_timeout",
+                attempt=attempt+1,
+                max_attempts=max_attempts
+            )
             if attempt == max_attempts - 1:
                 db_circuit_breaker.record_failure()
                 raise DBQueryError("Transaction timeout after multiple attempts")
@@ -441,7 +505,9 @@ async def run_db_transaction(queries_and_params: List[Tuple[str, tuple]], max_at
                 if attempt == max_attempts - 1:
                     raise
                 wait_time = min(2.0 * (attempt + 1), 5.0)
-                logging.warning(f"[DBManager] Pool exhausted during transaction, retrying in {wait_time}s")
+                _logger.warning("transaction_pool_exhausted_retry",
+                    wait_time_s=wait_time
+                )
                 await asyncio.sleep(wait_time)
                 continue
             else:
@@ -452,5 +518,5 @@ async def run_db_transaction(queries_and_params: List[Tuple[str, tuple]], max_at
                 db_circuit_breaker.record_failure()
                 raise DBQueryError(f"Unexpected transaction error: {type(e).__name__}")
             await asyncio.sleep(0.5 * (attempt + 1))
-    
+
     return False

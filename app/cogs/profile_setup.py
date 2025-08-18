@@ -16,18 +16,21 @@ from core.translation import translations as global_translations
 from db import DBQueryError
 
 MAX_PLAYTIME_LEN = 64
-SUPPORTED_LOCALES = global_translations.get("global", {}).get("supported_locales", ["en-US", "fr", "es-ES", "de", "it"])
+SUPPORTED_LOCALES = global_translations.get("global", {}).get(
+    "supported_locales", ["en-US", "fr", "es-ES", "de", "it"]
+)
 LANGUAGE_NAMES = global_translations.get("global", {}).get("language_names", {})
 WELCOME_MP = global_translations.get("welcome_mp", {})
 PROFILE_SETUP_DATA = global_translations.get("profile_setup", {})
 
+
 class ProfileSetup(commands.Cog):
     """Cog for managing member profile creation and role assignment workflow."""
-    
+
     def __init__(self, bot: discord.Bot) -> None:
         """
         Initialize the ProfileSetup cog.
-        
+
         Args:
             bot: Discord bot instance
         """
@@ -38,11 +41,11 @@ class ProfileSetup(commands.Cog):
     async def load_session(self, guild_id: int, user_id: int) -> Dict[str, Any]:
         """
         Load or create a user session for profile setup.
-        
+
         Args:
             guild_id: Discord guild ID
             user_id: Discord user ID
-            
+
         Returns:
             Dictionary containing user session data
         """
@@ -52,88 +55,90 @@ class ProfileSetup(commands.Cog):
         if key not in self.session_locks:
             self.session_locks[key] = asyncio.Lock()
         return self.sessions[key]
-    
+
     async def get_guild_lang(self, guild_id: int) -> str:
         """
         Get guild language from cache.
-        
+
         Args:
             guild_id: Discord guild ID
-            
+
         Returns:
             Guild language code (default: en-US)
         """
-        guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')
+        guild_lang = await self.bot.cache.get_guild_data(guild_id, "guild_lang")
         return guild_lang or "en-US"
-    
+
     async def get_guild_settings(self, guild_id: int) -> Dict[str, Any]:
         """
         Get guild settings from cache.
-        
+
         Args:
             guild_id: Discord guild ID
-            
+
         Returns:
             Dictionary containing guild settings
         """
-        settings = await self.bot.cache.get_guild_data(guild_id, 'guild_settings')
+        settings = await self.bot.cache.get_guild_data(guild_id, "guild_settings")
         return settings or {}
-    
+
     async def get_guild_roles(self, guild_id: int) -> Dict[str, Any]:
         """
         Get guild roles from cache.
-        
+
         Args:
             guild_id: Discord guild ID
-            
+
         Returns:
             Dictionary containing guild role IDs
         """
-        roles = await self.bot.cache.get_guild_data(guild_id, 'roles')
+        roles = await self.bot.cache.get_guild_data(guild_id, "roles")
         return roles or {}
-    
+
     async def get_guild_channels(self, guild_id: int) -> Dict[str, Any]:
         """
         Get guild channels from cache.
-        
+
         Args:
             guild_id: Discord guild ID
-            
+
         Returns:
             Dictionary containing guild channel IDs
         """
-        channels = await self.bot.cache.get_guild_data(guild_id, 'channels')
+        channels = await self.bot.cache.get_guild_data(guild_id, "channels")
         return channels or {}
-    
-    async def get_welcome_message_for_user(self, guild_id: int, user_id: int) -> Optional[Dict[str, Any]]:
+
+    async def get_welcome_message_for_user(
+        self, guild_id: int, user_id: int
+    ) -> Optional[Dict[str, Any]]:
         """
         Get welcome message for a specific user from cache.
-        
+
         Args:
             guild_id: Discord guild ID
             user_id: Discord user ID
-            
+
         Returns:
             Dictionary with welcome message info or None if not found
         """
-        return await self.bot.cache.get_user_data(guild_id, user_id, 'welcome_message')
-    
+        return await self.bot.cache.get_user_data(guild_id, user_id, "welcome_message")
+
     async def get_pending_validations(self) -> Dict[str, Dict[str, Any]]:
         """
         Get pending validations from cache.
-        
+
         Returns:
             Dictionary containing pending diplomat validations
         """
-        validations = await self.bot.cache.get('temporary', 'pending_validations')
+        validations = await self.bot.cache.get("temporary", "pending_validations")
         return validations or {}
 
     def _sanitize_llm_input(self, text: str) -> str:
         """Sanitize text input for LLM queries to prevent prompt injection attacks.
-        
+
         Args:
             text: Raw text input from user
-            
+
         Returns:
             str: Sanitized text safe for LLM prompts
         """
@@ -141,48 +146,52 @@ class ProfileSetup(commands.Cog):
             return ""
 
         dangerous_patterns = [
-            r'```.*?```',
-            r'`[^`]*`',
-            r'\n\s*[Rr]esponse:',
-            r'\n\s*[Ii]nstruct(ion)?s?:',
-            r'\n\s*[Tt]ask:',
-            r'\n\s*[Ss]ystem:',
-            r'\n\s*[Aa]ssistant:',
-            r'\n\s*[Uu]ser:',
-            r'<\|.*?\|>',
-            r'\[INST\].*?\[/INST\]',
-            r'###.*?###',
+            r"```.*?```",
+            r"`[^`]*`",
+            r"\n\s*[Rr]esponse:",
+            r"\n\s*[Ii]nstruct(ion)?s?:",
+            r"\n\s*[Tt]ask:",
+            r"\n\s*[Ss]ystem:",
+            r"\n\s*[Aa]ssistant:",
+            r"\n\s*[Uu]ser:",
+            r"<\|.*?\|>",
+            r"\[INST\].*?\[/INST\]",
+            r"###.*?###",
         ]
-        
+
         sanitized = text
         for pattern in dangerous_patterns:
-            sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE | re.DOTALL)
+            sanitized = re.sub(pattern, "", sanitized, flags=re.IGNORECASE | re.DOTALL)
 
-        sanitized = re.sub(r'\n+', ' ', sanitized)
-        sanitized = re.sub(r'\s+', ' ', sanitized)
+        sanitized = re.sub(r"\n+", " ", sanitized)
+        sanitized = re.sub(r"\s+", " ", sanitized)
 
-        sanitized = re.sub(r'[<>"\'`\\]', '', sanitized)
+        sanitized = re.sub(r'[<>"\'`\\]', "", sanitized)
 
         max_length = 100
         if len(sanitized) > max_length:
             sanitized = sanitized[:max_length].strip()
-            logging.debug(f"[ProfileSetup] Truncated LLM input to {max_length} characters")
+            logging.debug(
+                f"[ProfileSetup] Truncated LLM input to {max_length} characters"
+            )
 
         sanitized = sanitized.strip()
         if not sanitized:
             logging.warning("[ProfileSetup] Input became empty after LLM sanitization")
             return "Unknown"
-        
+
         return sanitized
 
-    def _validate_llm_response(self, response: str, original_input: str, valid_options: list) -> str:
+    def _validate_llm_response(
+        self, response: str, original_input: str, valid_options: list
+    ) -> str:
         """Validate LLM response to prevent malicious or unexpected outputs.
-        
+
         Args:
             response: Raw response from LLM
             original_input: The original user input
             valid_options: List of valid response options
-            
+
         Returns:
             str: Validated response or original input if validation fails
         """
@@ -193,27 +202,31 @@ class ProfileSetup(commands.Cog):
         cleaned_response = response.strip().strip('"').strip("'")
 
         if len(cleaned_response) > 200:
-            logging.warning(f"[ProfileSetup] LLM response too long ({len(cleaned_response)} chars), rejecting")
+            logging.warning(
+                f"[ProfileSetup] LLM response too long ({len(cleaned_response)} chars), rejecting"
+            )
             return original_input
 
         dangerous_patterns = [
-            r'```.*?```',
-            r'<script',
-            r'javascript:',
-            r'data:',
-            r'<.*?>',
-            r'\n\s*[Ii]nstruct',
-            r'\n\s*[Ss]ystem',
+            r"```.*?```",
+            r"<script",
+            r"javascript:",
+            r"data:",
+            r"<.*?>",
+            r"\n\s*[Ii]nstruct",
+            r"\n\s*[Ss]ystem",
         ]
-        
+
         for pattern in dangerous_patterns:
             if re.search(pattern, cleaned_response, re.IGNORECASE | re.DOTALL):
-                logging.warning(f"[ProfileSetup] LLM response contains dangerous pattern, rejecting")
+                logging.warning(
+                    f"[ProfileSetup] LLM response contains dangerous pattern, rejecting"
+                )
                 return original_input
 
         if cleaned_response == original_input:
             return cleaned_response
-        
+
         if cleaned_response in valid_options:
             return cleaned_response
 
@@ -222,14 +235,15 @@ class ProfileSetup(commands.Cog):
             if option.lower() == cleaned_lower:
                 return option
 
-        logging.warning(f"[ProfileSetup] LLM response '{cleaned_response}' not in valid options, using original")
+        logging.warning(
+            f"[ProfileSetup] LLM response '{cleaned_response}' not in valid options, using original"
+        )
         return original_input
-
 
     async def _load_pending_validations(self) -> None:
         """
         Load pending diplomat validations into cache.
-        
+
         Retrieves all pending diplomat validations from database and stores
         them in cache for restoration after bot restart.
         """
@@ -243,7 +257,9 @@ class ProfileSetup(commands.Cog):
             rows = await self.bot.run_db_query(query, fetch_all=True)
             pending_validations = {}
             for row in rows:
-                guild_id, member_id, guild_name, channel_id, message_id, created_at = row
+                guild_id, member_id, guild_name, channel_id, message_id, created_at = (
+                    row
+                )
                 key = f"{guild_id}_{member_id}_{guild_name}"
                 pending_validations[key] = {
                     "guild_id": guild_id,
@@ -251,27 +267,32 @@ class ProfileSetup(commands.Cog):
                     "guild_name": guild_name,
                     "channel_id": channel_id,
                     "message_id": message_id,
-                    "created_at": created_at
+                    "created_at": created_at,
                 }
-            await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
-            logging.debug(f"[ProfileSetup] Pending validations loaded: {len(pending_validations)} entries")
+            await self.bot.cache.set(
+                "temporary", pending_validations, "pending_validations"
+            )
+            logging.debug(
+                f"[ProfileSetup] Pending validations loaded: {len(pending_validations)} entries"
+            )
         except Exception as e:
-            logging.error(f"[ProfileSetup] Error loading pending validations: {e}", exc_info=True)
-
+            logging.error(
+                f"[ProfileSetup] Error loading pending validations: {e}", exc_info=True
+            )
 
     async def restore_pending_validation_views(self) -> None:
         """
         Restore pending validation views after bot restart.
-        
+
         Re-attaches Discord UI views to pending validation messages
         so buttons remain functional after bot restarts.
         """
         logging.debug("[ProfileSetup] Restoring pending validation views")
-        
+
         await asyncio.sleep(2)
 
         await self._load_pending_validations()
-        
+
         pending_validations = await self.get_pending_validations()
         for key, validation_data in pending_validations.items():
             try:
@@ -280,44 +301,67 @@ class ProfileSetup(commands.Cog):
                 guild_name = validation_data["guild_name"]
                 channel_id = validation_data["channel_id"]
                 message_id = validation_data["message_id"]
-                
+
                 guild = self.bot.get_guild(guild_id)
                 if not guild:
-                    logging.warning(f"[ProfileSetup] Guild {guild_id} not found for pending validation")
+                    logging.warning(
+                        f"[ProfileSetup] Guild {guild_id} not found for pending validation"
+                    )
                     continue
-                
+
                 member = guild.get_member(member_id)
                 if not member:
-                    logging.warning(f"[ProfileSetup] Member {member_id} not found for pending validation")
+                    logging.warning(
+                        f"[ProfileSetup] Member {member_id} not found for pending validation"
+                    )
                     continue
-                
+
                 channel = await self.bot.fetch_channel(channel_id)
                 if not channel:
-                    logging.warning(f"[ProfileSetup] Channel {channel_id} not found for pending validation")
+                    logging.warning(
+                        f"[ProfileSetup] Channel {channel_id} not found for pending validation"
+                    )
                     continue
-                
+
                 try:
                     message = await channel.fetch_message(message_id)
                 except discord.NotFound:
-                    logging.warning(f"[ProfileSetup] Message {message_id} not found, removing from pending validations")
-                    await self.remove_pending_validation(guild_id, member_id, guild_name)
+                    logging.warning(
+                        f"[ProfileSetup] Message {message_id} not found, removing from pending validations"
+                    )
+                    await self.remove_pending_validation(
+                        guild_id, member_id, guild_name
+                    )
                     continue
-                
+
                 guild_lang = await self.get_guild_lang(guild_id)
-                view = self.DiplomatValidationView(member, channel, guild_lang, guild_name, self.bot)
+                view = self.DiplomatValidationView(
+                    member, channel, guild_lang, guild_name, self.bot
+                )
                 view.original_message = message
-                
+
                 self.bot.add_view(view, message_id=message_id)
-                
-                logging.info(f"[ProfileSetup] Restored validation view for {member.display_name} in guild '{guild_name}'")
-                
+
+                logging.info(
+                    f"[ProfileSetup] Restored validation view for {member.display_name} in guild '{guild_name}'"
+                )
+
             except Exception as e:
-                logging.error(f"[ProfileSetup] Error restoring validation view for key {key}: {e}")
-    async def save_pending_validation(self, guild_id: int, member_id: int, guild_name: str, 
-                                    channel_id: int, message_id: int) -> None:
+                logging.error(
+                    f"[ProfileSetup] Error restoring validation view for key {key}: {e}"
+                )
+
+    async def save_pending_validation(
+        self,
+        guild_id: int,
+        member_id: int,
+        guild_name: str,
+        channel_id: int,
+        message_id: int,
+    ) -> None:
         """
         Save pending validation to database and cache.
-        
+
         Args:
             guild_id: Discord guild ID
             member_id: Discord member ID requiring validation
@@ -331,8 +375,12 @@ class ProfileSetup(commands.Cog):
             VALUES (%s, %s, %s, %s, %s, 'pending')
         """
         try:
-            await self.bot.run_db_query(query, (guild_id, member_id, guild_name, channel_id, message_id), commit=True)
-            
+            await self.bot.run_db_query(
+                query,
+                (guild_id, member_id, guild_name, channel_id, message_id),
+                commit=True,
+            )
+
             key = f"{guild_id}_{member_id}_{guild_name}"
             pending_validations = await self.get_pending_validations()
             pending_validations[key] = {
@@ -341,24 +389,34 @@ class ProfileSetup(commands.Cog):
                 "guild_name": guild_name,
                 "channel_id": channel_id,
                 "message_id": message_id,
-                "created_at": "now"
+                "created_at": "now",
             }
-            await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
-            logging.debug(f"[ProfileSetup] Saved pending validation for {member_id} in guild '{guild_name}'")
+            await self.bot.cache.set(
+                "temporary", pending_validations, "pending_validations"
+            )
+            logging.debug(
+                f"[ProfileSetup] Saved pending validation for {member_id} in guild '{guild_name}'"
+            )
         except Exception as e:
             error_msg = str(e).lower()
             if "duplicate entry" in error_msg or "1062" in error_msg:
-                logging.warning(f"[ProfileSetup] Pending validation already exists for {member_id} in guild '{guild_name}'")
+                logging.warning(
+                    f"[ProfileSetup] Pending validation already exists for {member_id} in guild '{guild_name}'"
+                )
             elif "foreign key constraint" in error_msg or "1452" in error_msg:
-                logging.error(f"[ProfileSetup] Foreign key constraint failed for pending validation: {e}")
+                logging.error(
+                    f"[ProfileSetup] Foreign key constraint failed for pending validation: {e}"
+                )
             else:
                 logging.error(f"[ProfileSetup] Error saving pending validation: {e}")
             raise
 
-    async def remove_pending_validation(self, guild_id: int, member_id: int, guild_name: str) -> None:
+    async def remove_pending_validation(
+        self, guild_id: int, member_id: int, guild_name: str
+    ) -> None:
         """
         Remove pending validation from database and cache.
-        
+
         Args:
             guild_id: Discord guild ID
             member_id: Discord member ID to remove validation for
@@ -370,54 +428,74 @@ class ProfileSetup(commands.Cog):
             WHERE guild_id = %s AND member_id = %s AND guild_name = %s AND status = 'pending'
         """
         try:
-            await self.bot.run_db_query(query, (guild_id, member_id, guild_name), commit=True)
-            
+            await self.bot.run_db_query(
+                query, (guild_id, member_id, guild_name), commit=True
+            )
+
             key = f"{guild_id}_{member_id}_{guild_name}"
             pending_validations = await self.get_pending_validations()
             if key in pending_validations:
                 del pending_validations[key]
-                await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
-                
-            logging.debug(f"[ProfileSetup] Removed pending validation for {member_id} in guild '{guild_name}'")
+                await self.bot.cache.set(
+                    "temporary", pending_validations, "pending_validations"
+                )
+
+            logging.debug(
+                f"[ProfileSetup] Removed pending validation for {member_id} in guild '{guild_name}'"
+            )
         except Exception as e:
             logging.error(f"[ProfileSetup] Error removing pending validation: {e}")
 
-    async def validate_guild_name_with_llm(self, guild_name: str, category_channel) -> str:
+    async def validate_guild_name_with_llm(
+        self, guild_name: str, category_channel
+    ) -> str:
         """
         Validate guild name with LLM to detect similar existing guilds.
-        
+
         Args:
             guild_name: Guild name to validate
             category_channel: Discord category channel containing diplomat channels
-            
+
         Returns:
             Validated guild name (may be corrected if similar guild found)
         """
         try:
             existing_guild_names = []
             for channel in category_channel.channels:
-                if isinstance(channel, discord.TextChannel) and channel.name.startswith("diplomat-"):
-                    channel_guild_name = channel.name.replace("diplomat-", "").replace("-", " ").title()
+                if isinstance(channel, discord.TextChannel) and channel.name.startswith(
+                    "diplomat-"
+                ):
+                    channel_guild_name = (
+                        channel.name.replace("diplomat-", "").replace("-", " ").title()
+                    )
                     existing_guild_names.append(channel_guild_name)
-            
+
             if not existing_guild_names:
                 return guild_name
-            
+
             llm_cog = self.bot.get_cog("LLMInteraction")
             if not llm_cog:
-                logging.warning("[ProfileSetup] LLMInteraction cog not found for guild name validation")
+                logging.warning(
+                    "[ProfileSetup] LLMInteraction cog not found for guild name validation"
+                )
                 return guild_name
-            
-            if not hasattr(llm_cog, 'safe_ai_query'):
-                logging.warning("[ProfileSetup] LLMInteraction cog missing safe_ai_query method")
+
+            if not hasattr(llm_cog, "safe_ai_query"):
+                logging.warning(
+                    "[ProfileSetup] LLMInteraction cog missing safe_ai_query method"
+                )
                 return guild_name
 
             sanitized_guild_name = self._sanitize_llm_input(guild_name)
-            sanitized_existing_names = [self._sanitize_llm_input(name) for name in existing_guild_names]
+            sanitized_existing_names = [
+                self._sanitize_llm_input(name) for name in existing_guild_names
+            ]
 
             if len(sanitized_existing_names) > 20:
                 sanitized_existing_names = sanitized_existing_names[:20]
-                logging.warning(f"[ProfileSetup] Truncated existing guild names list for LLM validation (guild: {category_channel.guild.id})")
+                logging.warning(
+                    f"[ProfileSetup] Truncated existing guild names list for LLM validation (guild: {category_channel.guild.id})"
+                )
 
             prompt = f"""Task: Compare guild names for similarity detection.\n
             Input guild name: "{sanitized_guild_name}"\n
@@ -431,28 +509,38 @@ class ProfileSetup(commands.Cog):
             - Input "MGM" vs existing "MGM Guild" -> return "MGM Guild"\n
             - Input "DarK Knight" vs existing "Dark Knights" -> return "Dark Knights"\n
             Response:"""
-            
+
             try:
                 response = await llm_cog.safe_ai_query(prompt)
                 if not response:
-                    logging.warning("[ProfileSetup] LLM returned empty response, using original guild name")
+                    logging.warning(
+                        "[ProfileSetup] LLM returned empty response, using original guild name"
+                    )
                     return guild_name
 
-                validated_name = self._validate_llm_response(response, guild_name, existing_guild_names)
-                
+                validated_name = self._validate_llm_response(
+                    response, guild_name, existing_guild_names
+                )
+
                 if validated_name in existing_guild_names:
-                    logging.info(f"[ProfileSetup] LLM detected similar guild: '{guild_name}' -> '{validated_name}'")
+                    logging.info(
+                        f"[ProfileSetup] LLM detected similar guild: '{guild_name}' -> '{validated_name}'"
+                    )
                     return validated_name
                 elif validated_name == guild_name:
                     return guild_name
                 else:
-                    logging.warning(f"[ProfileSetup] LLM returned unexpected result: '{validated_name}', using original: '{guild_name}'")
+                    logging.warning(
+                        f"[ProfileSetup] LLM returned unexpected result: '{validated_name}', using original: '{guild_name}'"
+                    )
                     return guild_name
-                    
+
             except Exception as e:
-                logging.error(f"[ProfileSetup] Error calling LLM for guild name validation: {e}")
+                logging.error(
+                    f"[ProfileSetup] Error calling LLM for guild name validation: {e}"
+                )
                 return guild_name
-                
+
         except Exception as e:
             logging.error(f"[ProfileSetup] Error in validate_guild_name_with_llm: {e}")
             return guild_name
@@ -460,13 +548,16 @@ class ProfileSetup(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize profile setup data on bot ready."""
-        
+
         async def safe_restore_pending_validation_views():
             try:
                 await self.restore_pending_validation_views()
             except Exception as e:
-                logging.error(f"[ProfileSetup] Error restoring pending validation views: {e}", exc_info=True)
-        
+                logging.error(
+                    f"[ProfileSetup] Error restoring pending validation views: {e}",
+                    exc_info=True,
+                )
+
         asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
         asyncio.create_task(safe_restore_pending_validation_views())
         logging.debug("[Profile_Setup] Waiting for initial cache load")
@@ -474,7 +565,7 @@ class ProfileSetup(commands.Cog):
     async def finalize_profile(self, guild_id: int, user_id: int) -> None:
         """
         Finalize user profile setup and assign roles.
-        
+
         Args:
             guild_id: Discord guild ID
             user_id: Discord user ID to finalize profile for
@@ -485,22 +576,22 @@ class ProfileSetup(commands.Cog):
         def _values_from_session(s: Dict[str, Any]) -> Tuple[Any, ...]:
             """Internal method: Values from session."""
             return (
-                    guild_id,
-                    user_id,
-                    s.get("nickname"),
-                    s.get("locale"),
-                    s.get("motif"),
-                    s.get("friend_pseudo"),
-                    s.get("weapons"),
-                    s.get("guild_name"),
-                    s.get("guild_acronym"),
-                    s.get("gs"),
-                    s.get("playtime"),
-                    s.get("game_mode"),
-                    s.get("nickname"),
-                    s.get("locale"),
-                    s.get("motif"),
-                    s.get("friend_pseudo"),
+                guild_id,
+                user_id,
+                s.get("nickname"),
+                s.get("locale"),
+                s.get("motif"),
+                s.get("friend_pseudo"),
+                s.get("weapons"),
+                s.get("guild_name"),
+                s.get("guild_acronym"),
+                s.get("gs"),
+                s.get("playtime"),
+                s.get("game_mode"),
+                s.get("nickname"),
+                s.get("locale"),
+                s.get("motif"),
+                s.get("friend_pseudo"),
                 s.get("weapons"),
                 s.get("guild_name"),
                 s.get("guild_acronym"),
@@ -519,7 +610,9 @@ class ProfileSetup(commands.Cog):
         """
 
         try:
-            await self.bot.run_db_query(query, _values_from_session(session), commit=True)
+            await self.bot.run_db_query(
+                query, _values_from_session(session), commit=True
+            )
         except DBQueryError as exc:
             if "Data too long" in str(exc) and "playtime" in str(exc):
                 truncated = (session.get("playtime") or "")[:MAX_PLAYTIME_LEN]
@@ -528,7 +621,9 @@ class ProfileSetup(commands.Cog):
                     "[ProfileSetup] Playtime truncated to fit DB column "
                     f"(user {user_id}, guild {guild_id})"
                 )
-                await self.bot.run_db_query(query, _values_from_session(session), commit=True)
+                await self.bot.run_db_query(
+                    query, _values_from_session(session), commit=True
+                )
             else:
                 logging.error(f"[ProfileSetup] DB insertion failed: {exc}")
                 raise
@@ -558,7 +653,7 @@ class ProfileSetup(commands.Cog):
                 config_ok_role = guild.get_role(config_ok_role_id)
                 if config_ok_role:
                     await member.add_roles(config_ok_role)
-            
+
             if role_id:
                 role = guild.get_role(role_id)
                 if role:
@@ -575,7 +670,10 @@ class ProfileSetup(commands.Cog):
                     f"[ProfileSetup] No role assigned for motif {motif} in guild {guild_id}."
                 )
         except Exception:
-            logging.error("[ProfileSetup] Error while assigning role in finalize_profile", exc_info=True)
+            logging.error(
+                "[ProfileSetup] Error while assigning role in finalize_profile",
+                exc_info=True,
+            )
 
         try:
             nickname = session.get("nickname", "")
@@ -590,14 +688,17 @@ class ProfileSetup(commands.Cog):
                 guild_acronym = session.get("guild_acronym", "")
                 new_nickname = f"[{guild_acronym}] {nickname}"
             await member.edit(nick=new_nickname)
-            logging.debug(f"[ProfileSetup] Nickname updated for {member.name} to '{new_nickname}'")
+            logging.debug(
+                f"[ProfileSetup] Nickname updated for {member.name} to '{new_nickname}'"
+            )
         except discord.Forbidden:
             logging.error(
                 f"[ProfileSetup] ⚠️ Cannot modify nickname of {member.name} (missing permissions)."
             )
         except Exception as e:
             logging.error(
-                f"[ProfileSetup] Error updating nickname for {member.name}: {e}", exc_info=True
+                f"[ProfileSetup] Error updating nickname for {member.name}: {e}",
+                exc_info=True,
             )
 
         channels_data = await self.get_guild_channels(guild_id)
@@ -635,33 +736,56 @@ class ProfileSetup(commands.Cog):
                 embed_color = discord.Color.gold()
             else:
                 embed_color = discord.Color.blue()
-            
-            logging.debug(f"[ProfileSetup] Embed color for motif '{motif}': {embed_color}")
-            
+
+            logging.debug(
+                f"[ProfileSetup] Embed color for motif '{motif}': {embed_color}"
+            )
+
             embed = discord.Embed(
-                title=PROFILE_SETUP_DATA.get("notification", {}).get("title", {}).get(
-                    locale, PROFILE_SETUP_DATA.get("notification", {}).get("title", {}).get("en-US", "📋 New Profile Configured")
+                title=PROFILE_SETUP_DATA.get("notification", {})
+                .get("title", {})
+                .get(
+                    locale,
+                    PROFILE_SETUP_DATA.get("notification", {})
+                    .get("title", {})
+                    .get("en-US", "📋 New Profile Configured"),
                 ),
                 color=embed_color,
             )
             embed.add_field(
-                name=PROFILE_SETUP_DATA.get("notification", {}).get("fields", {}).get("user", {}).get(
-                    locale, PROFILE_SETUP_DATA.get("notification", {}).get("fields", {}).get("user", {}).get("en-US", "User")
+                name=PROFILE_SETUP_DATA.get("notification", {})
+                .get("fields", {})
+                .get("user", {})
+                .get(
+                    locale,
+                    PROFILE_SETUP_DATA.get("notification", {})
+                    .get("fields", {})
+                    .get("user", {})
+                    .get("en-US", "User"),
                 ),
                 value=f"<@{user_id}>",
                 inline=False,
             )
             embed.add_field(
-                name=PROFILE_SETUP_DATA.get("notification", {}).get("fields", {}).get("discord_name", {}).get(
+                name=PROFILE_SETUP_DATA.get("notification", {})
+                .get("fields", {})
+                .get("discord_name", {})
+                .get(
                     locale,
-                    PROFILE_SETUP_DATA.get("notification", {}).get("fields", {}).get("discord_name", {}).get("en-US", "Discord Name"),
+                    PROFILE_SETUP_DATA.get("notification", {})
+                    .get("fields", {})
+                    .get("discord_name", {})
+                    .get("en-US", "Discord Name"),
                 ),
                 value=f"`{session.get('nickname', 'Unknown')}`",
                 inline=False,
             )
             embed.set_footer(
                 text=PROFILE_SETUP_DATA.get("footer", {}).get(
-                    locale, PROFILE_SETUP_DATA.get("footer", {}).get("en-US", "Profile configured")
+                    locale,
+                    PROFILE_SETUP_DATA.get("footer", {}).get(
+                        "en-US", "Profile configured"
+                    ),
                 )
             )
 
@@ -671,14 +795,17 @@ class ProfileSetup(commands.Cog):
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get(
                         locale,
-                        PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get("en-US"),
+                        PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get(
+                            "en-US"
+                        ),
                     ),
                     value=f"`{weapons}`",
                     inline=True,
                 )
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get(
-                        locale, PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get("en-US")
+                        locale,
+                        PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get("en-US"),
                     ),
                     value=f"`{gs}`",
                     inline=True,
@@ -691,14 +818,17 @@ class ProfileSetup(commands.Cog):
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get(
                         locale,
-                        PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get("en-US"),
+                        PROFILE_SETUP_DATA["notification"]["fields"]["weapons"].get(
+                            "en-US"
+                        ),
                     ),
                     value=f"`{weapons}`",
                     inline=True,
                 )
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get(
-                        locale, PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get("en-US")
+                        locale,
+                        PROFILE_SETUP_DATA["notification"]["fields"]["gs"].get("en-US"),
                     ),
                     value=f"`{gs}`",
                     inline=True,
@@ -706,7 +836,9 @@ class ProfileSetup(commands.Cog):
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["playtime"].get(
                         locale,
-                        PROFILE_SETUP_DATA["notification"]["fields"]["playtime"].get("en-US"),
+                        PROFILE_SETUP_DATA["notification"]["fields"]["playtime"].get(
+                            "en-US"
+                        ),
                     ),
                     value=f"`{playtime}`",
                     inline=False,
@@ -714,7 +846,9 @@ class ProfileSetup(commands.Cog):
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["game_mode"].get(
                         locale,
-                        PROFILE_SETUP_DATA["notification"]["fields"]["game_mode"].get("en-US"),
+                        PROFILE_SETUP_DATA["notification"]["fields"]["game_mode"].get(
+                            "en-US"
+                        ),
                     ),
                     value=f"`{game_mode}`",
                     inline=False,
@@ -725,7 +859,10 @@ class ProfileSetup(commands.Cog):
                 guild_acronym = session.get("guild_acronym", "N/A")
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["guild"].get(
-                        locale, PROFILE_SETUP_DATA["notification"]["fields"]["guild"].get("en-US")
+                        locale,
+                        PROFILE_SETUP_DATA["notification"]["fields"]["guild"].get(
+                            "en-US"
+                        ),
                     ),
                     value=f"`{guild_name}` ({guild_acronym})",
                     inline=False,
@@ -734,9 +871,13 @@ class ProfileSetup(commands.Cog):
                 guild_name = session.get("guild_name", "N/A")
                 guild_acronym = session.get("guild_acronym", "N/A")
                 embed.add_field(
-                    name=PROFILE_SETUP_DATA["notification"]["fields"]["allied_guild"].get(
+                    name=PROFILE_SETUP_DATA["notification"]["fields"][
+                        "allied_guild"
+                    ].get(
                         locale,
-                        PROFILE_SETUP_DATA["notification"]["fields"]["allied_guild"].get("en-US"),
+                        PROFILE_SETUP_DATA["notification"]["fields"][
+                            "allied_guild"
+                        ].get("en-US"),
                     ),
                     value=f"`{guild_name}` ({guild_acronym})",
                     inline=False,
@@ -746,14 +887,18 @@ class ProfileSetup(commands.Cog):
                 embed.add_field(
                     name=PROFILE_SETUP_DATA["notification"]["fields"]["friend"].get(
                         locale,
-                        PROFILE_SETUP_DATA["notification"]["fields"]["friend"].get("en-US"),
+                        PROFILE_SETUP_DATA["notification"]["fields"]["friend"].get(
+                            "en-US"
+                        ),
                     ),
                     value=f"`{friend_pseudo}`",
                     inline=False,
                 )
 
             await channel.send(embed=embed)
-            logging.debug(f"[ProfileSetup] Notification sent in {channel.name} for user {user_id}.")
+            logging.debug(
+                f"[ProfileSetup] Notification sent in {channel.name} for user {user_id}."
+            )
         except Exception as e:
             logging.error(
                 f"[ProfileSetup] ❌ Unable to send notification for user {user_id}: {e}",
@@ -780,9 +925,15 @@ class ProfileSetup(commands.Cog):
                     "friends": discord.Color.gold(),
                 }
                 motif_value = session.get("motif")
-                embed.color = colors.get(str(motif_value) if motif_value else "", discord.Color.default())
+                embed.color = colors.get(
+                    str(motif_value) if motif_value else "", discord.Color.default()
+                )
                 tz_france = pytz.timezone("Europe/Paris")
-                now = datetime.now(pytz.utc).astimezone(tz_france).strftime("%d/%m/%Y à %Hh%M")
+                now = (
+                    datetime.now(pytz.utc)
+                    .astimezone(tz_france)
+                    .strftime("%d/%m/%Y à %Hh%M")
+                )
                 pending_text = PROFILE_SETUP_DATA["pending"].get(
                     guild_lang, PROFILE_SETUP_DATA["pending"].get("en-US")
                 )
@@ -790,39 +941,55 @@ class ProfileSetup(commands.Cog):
                     template = PROFILE_SETUP_DATA["accepted_member"].get(
                         guild_lang, PROFILE_SETUP_DATA["accepted_member"].get("en-US")
                     )
-                    new_text = template.format(new_nickname=new_nickname, gs=gs, now=now)
+                    new_text = template.format(
+                        new_nickname=new_nickname, gs=gs, now=now
+                    )
                 elif motif == "application":
                     template = PROFILE_SETUP_DATA["accepted_application"].get(
-                        guild_lang, PROFILE_SETUP_DATA["accepted_application"].get("en-US")
+                        guild_lang,
+                        PROFILE_SETUP_DATA["accepted_application"].get("en-US"),
                     )
-                    new_text = template.format(new_nickname=new_nickname, gs=gs, now=now)
+                    new_text = template.format(
+                        new_nickname=new_nickname, gs=gs, now=now
+                    )
                 elif motif == "diplomat":
                     guild_name = session.get("guild_name", "Unknown")
                     template = PROFILE_SETUP_DATA["accepted_diplomat"].get(
                         guild_lang, PROFILE_SETUP_DATA["accepted_diplomat"].get("en-US")
                     )
-                    new_text = template.format(new_nickname=new_nickname, guild_name=guild_name, now=now)
+                    new_text = template.format(
+                        new_nickname=new_nickname, guild_name=guild_name, now=now
+                    )
                 elif motif == "allies":
                     guild_name = session.get("guild_name", "Unknown")
                     template = PROFILE_SETUP_DATA["accepted_allies"].get(
                         guild_lang, PROFILE_SETUP_DATA["accepted_allies"].get("en-US")
                     )
-                    new_text = template.format(new_nickname=new_nickname, guild_name=guild_name, now=now)
+                    new_text = template.format(
+                        new_nickname=new_nickname, guild_name=guild_name, now=now
+                    )
                 elif motif == "friends":
                     friend_pseudo = session.get("friend_pseudo", "Unknown")
                     template = PROFILE_SETUP_DATA["accepted_friends"].get(
                         guild_lang, PROFILE_SETUP_DATA["accepted_friends"].get("en-US")
                     )
-                    new_text = template.format(new_nickname=new_nickname, friend_pseudo=friend_pseudo, now=now)
+                    new_text = template.format(
+                        new_nickname=new_nickname, friend_pseudo=friend_pseudo, now=now
+                    )
                 embed.description = embed.description.replace(pending_text, new_text)
                 await message.edit(embed=embed)
                 logging.debug(
                     f"[ProfileSetup] Welcome message updated for {session.get('nickname', 'Unknown')} with motif {motif}."
                 )
             except Exception as e:
-                logging.error(f"[ProfileSetup] ❌ Error updating welcome message: {e}", exc_info=True)
+                logging.error(
+                    f"[ProfileSetup] ❌ Error updating welcome message: {e}",
+                    exc_info=True,
+                )
         else:
-            logging.debug(f"[ProfileSetup] No welcome message cached for user {user_id} in guild {guild_id}.")
+            logging.debug(
+                f"[ProfileSetup] No welcome message cached for user {user_id} in guild {guild_id}."
+            )
 
         if motif == "application":
             channels_data = await self.get_guild_channels(guild_id)
@@ -839,13 +1006,19 @@ class ProfileSetup(commands.Cog):
                     )
                 else:
                     channel_name = f"{member.display_name}".replace(" ", "-").lower()
-                    overwrites = {guild.default_role: discord.PermissionOverwrite(view_channel=False)}
+                    overwrites = {
+                        guild.default_role: discord.PermissionOverwrite(
+                            view_channel=False
+                        )
+                    }
                     roles_config = await self.get_guild_roles(guild_id)
                     applicant_role_id = roles_config.get("applicant")
                     if applicant_role_id:
                         applicant_role = guild.get_role(applicant_role_id)
                         if applicant_role:
-                            overwrites[applicant_role] = discord.PermissionOverwrite(view_channel=False)
+                            overwrites[applicant_role] = discord.PermissionOverwrite(
+                                view_channel=False
+                            )
                     overwrites[member] = discord.PermissionOverwrite(
                         view_channel=True, send_messages=True, read_message_history=True
                     )
@@ -870,7 +1043,7 @@ class ProfileSetup(commands.Cog):
                         await new_channel.send(
                             content="@everyone",
                             embed=application_embed,
-                            allowed_mentions=discord.AllowedMentions(everyone=True)
+                            allowed_mentions=discord.AllowedMentions(everyone=True),
                         )
                         logging.info(
                             f"[ProfileSetup] Recruitment channel created: {new_channel.name} (ID: {new_channel.id}) for user {member.id}"
@@ -895,87 +1068,128 @@ class ProfileSetup(commands.Cog):
                     )
                 else:
                     guild_name = session.get("guild_name", "Unknown")
-                    
-                    validated_guild_name = await self.validate_guild_name_with_llm(guild_name, diplomats_category)
+
+                    validated_guild_name = await self.validate_guild_name_with_llm(
+                        guild_name, diplomats_category
+                    )
                     if validated_guild_name != guild_name:
                         logging.warning(
                             f"[ProfileSetup] Guild name similarity detected: '{guild_name}' -> '{validated_guild_name}'"
                         )
                         guild_name = validated_guild_name
                         session["guild_name"] = validated_guild_name
-                    
+
                     normalized_guild_name = guild_name.replace(" ", "-").lower()
-                    
+
                     existing_channels = [
-                        ch for ch in diplomats_category.channels 
-                        if isinstance(ch, discord.TextChannel) and normalized_guild_name in ch.name.lower()
+                        ch
+                        for ch in diplomats_category.channels
+                        if isinstance(ch, discord.TextChannel)
+                        and normalized_guild_name in ch.name.lower()
                     ]
-                    
+
                     if existing_channels:
                         existing_channel = existing_channels[0]
                         logging.info(
                             f"[ProfileSetup] Found existing diplomat channel for guild '{guild_name}': {existing_channel.name}"
                         )
-                        
+
                         roles_config = await self.get_guild_roles(guild_id)
                         diplomat_role_id = roles_config.get("diplomats")
                         existing_members = [
-                            m for m in existing_channel.members 
-                            if m != guild.me and any(
-                                role.id == diplomat_role_id 
-                                for role in m.roles
-                            )
+                            m
+                            for m in existing_channel.members
+                            if m != guild.me
+                            and any(role.id == diplomat_role_id for role in m.roles)
                         ]
-                        
+
                         if existing_members:
                             logging.warning(
                                 f"[ProfileSetup] Anti-espionage: Channel for '{guild_name}' already has diplomat {existing_members[0].display_name}. "
                                 f"New diplomat {member.display_name} needs manual validation."
                             )
-                            
+
                             guild_lang = await self.get_guild_lang(guild_id)
-                            alert_text = PROFILE_SETUP_DATA["anti_espionage"]["alert_message"].get(
-                                guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["alert_message"].get("en-US")
-                            ).format(
-                                new_diplomat=member.display_name,
-                                guild_name=guild_name,
-                                existing_diplomat=existing_members[0].mention
+                            alert_text = (
+                                PROFILE_SETUP_DATA["anti_espionage"]["alert_message"]
+                                .get(
+                                    guild_lang,
+                                    PROFILE_SETUP_DATA["anti_espionage"][
+                                        "alert_message"
+                                    ].get("en-US"),
+                                )
+                                .format(
+                                    new_diplomat=member.display_name,
+                                    guild_name=guild_name,
+                                    existing_diplomat=existing_members[0].mention,
+                                )
                             )
-                            
+
                             diplomat_embed = embed.copy()
-                            
-                            view = self.DiplomatValidationView(member, existing_channel, guild_lang, guild_name, self.bot)
+
+                            view = self.DiplomatValidationView(
+                                member,
+                                existing_channel,
+                                guild_lang,
+                                guild_name,
+                                self.bot,
+                            )
                             message = await existing_channel.send(
                                 f"@everyone\n\n{alert_text}",
                                 embed=diplomat_embed,
                                 view=view,
-                                allowed_mentions=discord.AllowedMentions(everyone=True, users=True)
+                                allowed_mentions=discord.AllowedMentions(
+                                    everyone=True, users=True
+                                ),
                             )
                             view.original_message = message
-                            
-                            await self.save_pending_validation(guild_id, member.id, guild_name, existing_channel.id, message.id)
-                            
-                            overwrites = existing_channel.overwrites.copy()
-                            overwrites[member] = discord.PermissionOverwrite(view_channel=False)
-                            
-                            await existing_channel.edit(overwrites=overwrites)
-                            
-                            user_locale = session.get("locale", "en-US")
-                            pending_message = PROFILE_SETUP_DATA["anti_espionage"]["pending_notification"].get(
-                                user_locale, PROFILE_SETUP_DATA["anti_espionage"]["pending_notification"].get("en-US")
-                            ).format(
-                                diplomat_name=member.display_name,
-                                guild_name=guild_name
+
+                            await self.save_pending_validation(
+                                guild_id,
+                                member.id,
+                                guild_name,
+                                existing_channel.id,
+                                message.id,
                             )
-                            
+
+                            overwrites = existing_channel.overwrites.copy()
+                            overwrites[member] = discord.PermissionOverwrite(
+                                view_channel=False
+                            )
+
+                            await existing_channel.edit(overwrites=overwrites)
+
+                            user_locale = session.get("locale", "en-US")
+                            pending_message = (
+                                PROFILE_SETUP_DATA["anti_espionage"][
+                                    "pending_notification"
+                                ]
+                                .get(
+                                    user_locale,
+                                    PROFILE_SETUP_DATA["anti_espionage"][
+                                        "pending_notification"
+                                    ].get("en-US"),
+                                )
+                                .format(
+                                    diplomat_name=member.display_name,
+                                    guild_name=guild_name,
+                                )
+                            )
+
                             try:
                                 await member.send(pending_message)
-                                logging.info(f"[ProfileSetup] Pending notification sent to diplomat {member.display_name}")
+                                logging.info(
+                                    f"[ProfileSetup] Pending notification sent to diplomat {member.display_name}"
+                                )
                             except discord.Forbidden:
-                                logging.warning(f"[ProfileSetup] Could not send pending notification to {member.display_name} - DMs disabled")
+                                logging.warning(
+                                    f"[ProfileSetup] Could not send pending notification to {member.display_name} - DMs disabled"
+                                )
                             except Exception as e:
-                                logging.error(f"[ProfileSetup] Error sending pending notification to {member.display_name}: {e}")
-                            
+                                logging.error(
+                                    f"[ProfileSetup] Error sending pending notification to {member.display_name}: {e}"
+                                )
+
                             logging.info(
                                 f"[ProfileSetup] Diplomat {member.display_name} added to pending validation for guild '{guild_name}'"
                             )
@@ -984,33 +1198,43 @@ class ProfileSetup(commands.Cog):
                             overwrites[member] = discord.PermissionOverwrite(
                                 view_channel=True,
                                 send_messages=True,
-                                read_message_history=True
+                                read_message_history=True,
                             )
                             await existing_channel.edit(overwrites=overwrites)
-                            
+
                             diplomat_embed = embed.copy()
                             await existing_channel.send(
                                 embed=diplomat_embed,
-                                allowed_mentions=discord.AllowedMentions(everyone=False)
+                                allowed_mentions=discord.AllowedMentions(
+                                    everyone=False
+                                ),
                             )
-                            
+
                             logging.info(
                                 f"[ProfileSetup] Diplomat {member.display_name} added to existing channel for guild '{guild_name}'"
                             )
                     else:
                         channel_name = f"diplomat-{normalized_guild_name}"
-                        overwrites = {guild.default_role: discord.PermissionOverwrite(view_channel=False)}
-                        
+                        overwrites = {
+                            guild.default_role: discord.PermissionOverwrite(
+                                view_channel=False
+                            )
+                        }
+
                         diplomat_role_id = roles_config.get("diplomats")
                         if diplomat_role_id:
                             diplomat_role = guild.get_role(diplomat_role_id)
                             if diplomat_role:
-                                overwrites[diplomat_role] = discord.PermissionOverwrite(view_channel=False)
-                        
+                                overwrites[diplomat_role] = discord.PermissionOverwrite(
+                                    view_channel=False
+                                )
+
                         overwrites[member] = discord.PermissionOverwrite(
-                            view_channel=True, send_messages=True, read_message_history=True
+                            view_channel=True,
+                            send_messages=True,
+                            read_message_history=True,
                         )
-                        
+
                         for role_name in ["guild_master", "officer", "guardian"]:
                             role_id = roles_config.get(role_name)
                             if role_id:
@@ -1022,7 +1246,7 @@ class ProfileSetup(commands.Cog):
                                         read_message_history=True,
                                         manage_channels=True,
                                     )
-                        
+
                         try:
                             new_channel = await guild.create_text_channel(
                                 name=channel_name,
@@ -1030,13 +1254,15 @@ class ProfileSetup(commands.Cog):
                                 topic=f"Diplomatic channel for guild {guild_name}",
                                 overwrites=overwrites,
                             )
-                            
+
                             diplomat_embed = embed.copy()
                             await new_channel.send(
                                 embed=diplomat_embed,
-                                allowed_mentions=discord.AllowedMentions(everyone=False)
+                                allowed_mentions=discord.AllowedMentions(
+                                    everyone=False
+                                ),
                             )
-                            
+
                             logging.info(
                                 f"[ProfileSetup] Diplomat channel created: {new_channel.name} (ID: {new_channel.id}) for guild '{guild_name}'"
                             )
@@ -1045,26 +1271,30 @@ class ProfileSetup(commands.Cog):
                                 f"[ProfileSetup] Error creating diplomat channel for guild '{guild_name}': {e}"
                             )
 
-        await self.bot.cache.invalidate_category('user_data')
+        await self.bot.cache.invalidate_category("user_data")
 
     class LangButton(discord.ui.Button):
         """Button for language selection."""
-        
+
         def __init__(self, locale: str):
             """
             Initialize language button.
-            
+
             Args:
                 locale: Language locale code
             """
             label = LANGUAGE_NAMES.get(locale, locale)
-            super().__init__(label=label, style=discord.ButtonStyle.primary, custom_id=f"lang_{locale}")
+            super().__init__(
+                label=label,
+                style=discord.ButtonStyle.primary,
+                custom_id=f"lang_{locale}",
+            )
             self.locale = locale
 
         async def callback(self, interaction: discord.Interaction):
             """
             Handle language selection.
-            
+
             Args:
                 interaction: Discord interaction from button click
             """
@@ -1077,15 +1307,17 @@ class ProfileSetup(commands.Cog):
                 self.locale, PROFILE_SETUP_DATA["language_saved"].get("en-US")
             )
             await interaction.response.send_message(lang_msg, ephemeral=True)
-            await interaction.user.send(view=ProfileSetup.MotifModalView(cog, self.locale, guild_id))
+            await interaction.user.send(
+                view=ProfileSetup.MotifModalView(cog, self.locale, guild_id)
+            )
 
     class LangSelectView(discord.ui.View):
         """View for language selection."""
-        
+
         def __init__(self, cog: "ProfileSetup", guild_id: int):
             """
             Initialize language selection view.
-            
+
             Args:
                 cog: ProfileSetup cog instance
                 guild_id: Discord guild ID
@@ -1098,11 +1330,11 @@ class ProfileSetup(commands.Cog):
 
     class MotifSelect(discord.ui.Select):
         """Select menu for choosing profile motif."""
-        
+
         def __init__(self, locale: str, guild_id: int):
             """
             Initialize motif selection.
-            
+
             Args:
                 locale: Language locale code
                 guild_id: Discord guild ID
@@ -1113,17 +1345,25 @@ class ProfileSetup(commands.Cog):
             for item in PROFILE_SETUP_DATA["motif_select_options"]:
                 label = item["label"].get(locale, item["label"].get("en-US"))
                 value = item["value"]
-                description = item["description"].get(locale, item["description"].get("en-US"))
-                options.append(discord.SelectOption(label=label, value=value, description=description))
+                description = item["description"].get(
+                    locale, item["description"].get("en-US")
+                )
+                options.append(
+                    discord.SelectOption(
+                        label=label, value=value, description=description
+                    )
+                )
             placeholder = PROFILE_SETUP_DATA["motif_select"].get(
                 locale, PROFILE_SETUP_DATA["motif_select"].get("en-US")
             )
-            super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options)
+            super().__init__(
+                placeholder=placeholder, min_values=1, max_values=1, options=options
+            )
 
         async def callback(self, interaction: discord.Interaction):
             """
             Handle motif selection.
-            
+
             Args:
                 interaction: Discord interaction from select menu
             """
@@ -1131,7 +1371,9 @@ class ProfileSetup(commands.Cog):
                 cog: ProfileSetup = self.view.cog
                 guild_id = self.guild_id
                 user_id = interaction.user.id
-                logging.debug(f"[ProfileSetup] MotifSelect callback for guild_id={guild_id}, user_id={user_id}")
+                logging.debug(
+                    f"[ProfileSetup] MotifSelect callback for guild_id={guild_id}, user_id={user_id}"
+                )
                 session = await cog.load_session(guild_id, user_id)
                 session["motif"] = self.values[0]
                 message = PROFILE_SETUP_DATA["motif_saved"].get(
@@ -1139,18 +1381,22 @@ class ProfileSetup(commands.Cog):
                 )
                 await interaction.response.send_message(message, ephemeral=True)
                 await interaction.user.send(
-                    view=ProfileSetup.QuestionsSelectView(cog, self.locale, guild_id, self.values[0])
+                    view=ProfileSetup.QuestionsSelectView(
+                        cog, self.locale, guild_id, self.values[0]
+                    )
                 )
             except Exception:
-                logging.error("[ProfileSetup] Error in MotifSelect callback", exc_info=True)
+                logging.error(
+                    "[ProfileSetup] Error in MotifSelect callback", exc_info=True
+                )
 
     class MotifModalView(discord.ui.View):
         """View for motif selection modal."""
-        
+
         def __init__(self, cog: "ProfileSetup", locale: str, guild_id: int):
             """
             Initialize motif modal view.
-            
+
             Args:
                 cog: ProfileSetup cog instance
                 locale: Language locale code
@@ -1164,17 +1410,19 @@ class ProfileSetup(commands.Cog):
 
     class QuestionsSelect(discord.ui.Modal):
         """Modal for collecting profile information based on motif."""
-        
+
         def __init__(self, locale: str, guild_id: int, motif: str):
             """
             Initialize questions modal for profile setup.
-            
+
             Args:
                 locale: Language locale code
                 guild_id: Discord guild ID
                 motif: Profile motif (member, application, diplomat, etc.)
             """
-            title = PROFILE_SETUP_DATA["questions_title"].get(locale, PROFILE_SETUP_DATA["questions_title"].get("en-US"))
+            title = PROFILE_SETUP_DATA["questions_title"].get(
+                locale, PROFILE_SETUP_DATA["questions_title"].get("en-US")
+            )
             super().__init__(title=title)
             self.locale = locale
             self.guild_id = guild_id
@@ -1184,7 +1432,9 @@ class ProfileSetup(commands.Cog):
             )
 
             self.nickname = discord.ui.InputText(
-                label=PROFILE_SETUP_DATA["nickname_select"].get(locale, PROFILE_SETUP_DATA["nickname_select"].get("en-US")),
+                label=PROFILE_SETUP_DATA["nickname_select"].get(
+                    locale, PROFILE_SETUP_DATA["nickname_select"].get("en-US")
+                ),
                 min_length=3,
                 max_length=16,
                 required=True,
@@ -1193,7 +1443,9 @@ class ProfileSetup(commands.Cog):
 
             if motif in ["diplomat", "allies"]:
                 self.guild_name = discord.ui.InputText(
-                    label=PROFILE_SETUP_DATA["guild_select"].get(locale, PROFILE_SETUP_DATA["guild_select"].get("en-US")),
+                    label=PROFILE_SETUP_DATA["guild_select"].get(
+                        locale, PROFILE_SETUP_DATA["guild_select"].get("en-US")
+                    ),
                     min_length=3,
                     max_length=16,
                     required=True,
@@ -1201,7 +1453,9 @@ class ProfileSetup(commands.Cog):
                 self.add_item(self.guild_name)
 
                 self.guild_acronym = discord.ui.InputText(
-                    label=PROFILE_SETUP_DATA["guild_acronym"].get(locale, PROFILE_SETUP_DATA["guild_acronym"].get("en-US")),
+                    label=PROFILE_SETUP_DATA["guild_acronym"].get(
+                        locale, PROFILE_SETUP_DATA["guild_acronym"].get("en-US")
+                    ),
                     min_length=3,
                     max_length=3,
                     required=True,
@@ -1210,7 +1464,9 @@ class ProfileSetup(commands.Cog):
 
             if motif == "friends":
                 self.friend_pseudo = discord.ui.InputText(
-                    label=PROFILE_SETUP_DATA["friend_pseudo"].get(locale, PROFILE_SETUP_DATA["friend_pseudo"].get("en-US")),
+                    label=PROFILE_SETUP_DATA["friend_pseudo"].get(
+                        locale, PROFILE_SETUP_DATA["friend_pseudo"].get("en-US")
+                    ),
                     min_length=3,
                     max_length=16,
                     required=True,
@@ -1219,14 +1475,18 @@ class ProfileSetup(commands.Cog):
 
             if motif in ["application", "member"]:
                 self.weapons = discord.ui.InputText(
-                    label=PROFILE_SETUP_DATA["weapons_select"].get(locale, PROFILE_SETUP_DATA["weapons_select"].get("en-US")),
+                    label=PROFILE_SETUP_DATA["weapons_select"].get(
+                        locale, PROFILE_SETUP_DATA["weapons_select"].get("en-US")
+                    ),
                     required=True,
                     placeholder="SNS / GS / SP / DG / B / S / W / CB",
                 )
                 self.add_item(self.weapons)
 
                 self.gs = discord.ui.InputText(
-                    label=PROFILE_SETUP_DATA["gs"].get(locale, PROFILE_SETUP_DATA["gs"].get("en-US")),
+                    label=PROFILE_SETUP_DATA["gs"].get(
+                        locale, PROFILE_SETUP_DATA["gs"].get("en-US")
+                    ),
                     required=True,
                     min_length=3,
                     max_length=4,
@@ -1235,14 +1495,18 @@ class ProfileSetup(commands.Cog):
 
             if motif == "application":
                 self.game_mode = discord.ui.InputText(
-                    label=PROFILE_SETUP_DATA["game_mode_select"].get(locale, PROFILE_SETUP_DATA["game_mode_select"].get("en-US")),
+                    label=PROFILE_SETUP_DATA["game_mode_select"].get(
+                        locale, PROFILE_SETUP_DATA["game_mode_select"].get("en-US")
+                    ),
                     required=True,
                     placeholder="PvE / PvP / PvE + PvP",
                 )
                 self.add_item(self.game_mode)
 
                 self.playtime = discord.ui.InputText(
-                    label=PROFILE_SETUP_DATA["playtime_select"].get(locale, PROFILE_SETUP_DATA["playtime_select"].get("en-US")),
+                    label=PROFILE_SETUP_DATA["playtime_select"].get(
+                        locale, PROFILE_SETUP_DATA["playtime_select"].get("en-US")
+                    ),
                     required=True,
                     placeholder="**h / week",
                 )
@@ -1251,14 +1515,16 @@ class ProfileSetup(commands.Cog):
         async def callback(self, interaction: discord.Interaction):
             """
             Handle profile information submission.
-            
+
             Args:
                 interaction: Discord interaction from modal submission
             """
             await interaction.response.defer(ephemeral=True)
-            
+
             try:
-                logging.debug(f"[ProfileSetup] QuestionsSelect submitted by user {interaction.user.id} in guild {self.guild_id}.")
+                logging.debug(
+                    f"[ProfileSetup] QuestionsSelect submitted by user {interaction.user.id} in guild {self.guild_id}."
+                )
                 cog: ProfileSetup = interaction.client.get_cog("ProfileSetup")
                 if not cog:
                     logging.error("[ProfileSetup] Cog 'ProfileSetup' not found.")
@@ -1266,11 +1532,11 @@ class ProfileSetup(commands.Cog):
                     return
                 guild_id = self.guild_id
                 user_id = interaction.user.id
-                
+
                 session_key = f"{guild_id}_{user_id}"
                 if session_key not in cog.session_locks:
                     cog.session_locks[session_key] = asyncio.Lock()
-                
+
                 async with cog.session_locks[session_key]:
                     session = await cog.load_session(guild_id, user_id)
                     logging.debug(f"[ProfileSetup] Session before update: {session}")
@@ -1285,21 +1551,31 @@ class ProfileSetup(commands.Cog):
                         llm_cog = interaction.client.get_cog("LLMInteraction")
                         try:
                             if llm_cog:
-                                weapons_clean = await llm_cog.normalize_weapons(weapons_input)
+                                weapons_clean = await llm_cog.normalize_weapons(
+                                    weapons_input
+                                )
                                 if not weapons_clean:
                                     weapons_clean = weapons_input
                             else:
                                 weapons_clean = weapons_input
                         except Exception as e:
-                            logging.warning(f"[ProfileSetup] LLM weapons normalization failed: {e}")
+                            logging.warning(
+                                f"[ProfileSetup] LLM weapons normalization failed: {e}"
+                            )
                             weapons_clean = weapons_input
                         session["weapons"] = weapons_clean[:32]
-                        
+
                         try:
-                            gs_value = int(self.gs.value.strip()) if self.gs.value.strip() else 0
+                            gs_value = (
+                                int(self.gs.value.strip())
+                                if self.gs.value.strip()
+                                else 0
+                            )
                             session["gs"] = min(max(gs_value, 0), 99999)
                         except (ValueError, TypeError):
-                            logging.warning(f"[ProfileSetup] Invalid GS value '{self.gs.value}' for user {user_id}, using 0")
+                            logging.warning(
+                                f"[ProfileSetup] Invalid GS value '{self.gs.value}' for user {user_id}, using 0"
+                            )
                             session["gs"] = 0
                     if hasattr(self, "game_mode"):
                         raw_playtime = self.playtime.value.strip()
@@ -1312,37 +1588,53 @@ class ProfileSetup(commands.Cog):
                     logging.debug(f"[ProfileSetup] Session after update: {session}")
                     await cog.finalize_profile(guild_id, user_id)
                 setup_complete_msg = PROFILE_SETUP_DATA.get("setup_complete", {}).get(
-                    self.locale, 
-                    PROFILE_SETUP_DATA.get("setup_complete", {}).get("en-US", "✅ Profile setup complete!")
+                    self.locale,
+                    PROFILE_SETUP_DATA.get("setup_complete", {}).get(
+                        "en-US", "✅ Profile setup complete!"
+                    ),
                 )
                 await interaction.followup.send(setup_complete_msg, ephemeral=True)
-                logging.debug("[ProfileSetup] QuestionsSelect modal submission processed successfully.")
+                logging.debug(
+                    "[ProfileSetup] QuestionsSelect modal submission processed successfully."
+                )
             except Exception as e:
-                logging.exception(f"[ProfileSetup] Error in QuestionsSelect.callback: {e}")
+                logging.exception(
+                    f"[ProfileSetup] Error in QuestionsSelect.callback: {e}"
+                )
                 error_msg = PROFILE_SETUP_DATA.get("error_occurred", {}).get(
                     self.locale,
-                    PROFILE_SETUP_DATA.get("error_occurred", {}).get("en-US", "❌ An error occurred during profile submission.")
+                    PROFILE_SETUP_DATA.get("error_occurred", {}).get(
+                        "en-US", "❌ An error occurred during profile submission."
+                    ),
                 )
                 try:
                     await interaction.followup.send(error_msg, ephemeral=True)
                 except Exception as follow_error:
-                    logging.error(f"[ProfileSetup] Failed to send error message: {follow_error}")
+                    logging.error(
+                        f"[ProfileSetup] Failed to send error message: {follow_error}"
+                    )
 
     class QuestionsSelectButton(discord.ui.Button):
         """Button to open profile questions modal."""
-        
+
         def __init__(self, cog: "ProfileSetup", locale: str, guild_id: int, motif: str):
             """
             Initialize questions select button.
-            
+
             Args:
                 cog: ProfileSetup cog instance
                 locale: Language locale code
                 guild_id: Discord guild ID
                 motif: Profile motif type
             """
-            label = PROFILE_SETUP_DATA["comp_profile"].get(locale, PROFILE_SETUP_DATA["comp_profile"].get("en-US"))
-            super().__init__(label=label, style=discord.ButtonStyle.primary, custom_id="questions_select_button")
+            label = PROFILE_SETUP_DATA["comp_profile"].get(
+                locale, PROFILE_SETUP_DATA["comp_profile"].get("en-US")
+            )
+            super().__init__(
+                label=label,
+                style=discord.ButtonStyle.primary,
+                custom_id="questions_select_button",
+            )
             self.cog = cog
             self.locale = locale
             self.guild_id = guild_id
@@ -1351,30 +1643,41 @@ class ProfileSetup(commands.Cog):
         async def callback(self, interaction: discord.Interaction):
             """
             Handle button click to show profile modal.
-            
+
             Args:
                 interaction: Discord interaction from button click
             """
-            logging.debug(f"[ProfileSetup] QuestionsSelectButton clicked for user {interaction.user.id}")
+            logging.debug(
+                f"[ProfileSetup] QuestionsSelectButton clicked for user {interaction.user.id}"
+            )
             try:
-                modal = ProfileSetup.QuestionsSelect(self.locale, self.guild_id, self.motif)
+                modal = ProfileSetup.QuestionsSelect(
+                    self.locale, self.guild_id, self.motif
+                )
                 if len(modal.children) > 5:
-                    logging.error(f"[ProfileSetup] Modal contains {len(modal.children)} fields, exceeding Discord limit of 5.")
-                    await interaction.response.send_message("⚠️ Too many fields in the form! Contact an admin.", ephemeral=True)
+                    logging.error(
+                        f"[ProfileSetup] Modal contains {len(modal.children)} fields, exceeding Discord limit of 5."
+                    )
+                    await interaction.response.send_message(
+                        "⚠️ Too many fields in the form! Contact an admin.",
+                        ephemeral=True,
+                    )
                     return
                 await interaction.response.send_modal(modal)
                 logging.debug("[ProfileSetup] Modal sent successfully.")
             except Exception:
                 logging.error("[ProfileSetup] Failed to send modal.", exc_info=True)
-                await interaction.response.send_message("❌ Error while displaying the form.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ Error while displaying the form.", ephemeral=True
+                )
 
     class QuestionsSelectView(discord.ui.View):
         """View containing the profile questions button."""
-        
+
         def __init__(self, cog: "ProfileSetup", locale: str, guild_id: int, motif: str):
             """
             Initialize questions select view.
-            
+
             Args:
                 cog: ProfileSetup cog instance
                 locale: Language locale code
@@ -1386,16 +1689,26 @@ class ProfileSetup(commands.Cog):
             self.locale = locale
             self.guild_id = guild_id
             self.motif = motif
-            logging.debug(f"[ProfileSetup] Initializing QuestionsSelectView for guild_id={guild_id}, locale={locale}, motif={motif}")
-            self.add_item(ProfileSetup.QuestionsSelectButton(cog, locale, guild_id, motif))
+            logging.debug(
+                f"[ProfileSetup] Initializing QuestionsSelectView for guild_id={guild_id}, locale={locale}, motif={motif}"
+            )
+            self.add_item(
+                ProfileSetup.QuestionsSelectButton(cog, locale, guild_id, motif)
+            )
 
     class DiplomatValidationButton(discord.ui.Button):
         """Button for validating diplomat access to channels."""
-        
-        def __init__(self, member: discord.Member, channel: discord.TextChannel, guild_lang: str, guild_name: str = "Unknown"):
+
+        def __init__(
+            self,
+            member: discord.Member,
+            channel: discord.TextChannel,
+            guild_lang: str,
+            guild_name: str = "Unknown",
+        ):
             """
             Initialize diplomat validation button.
-            
+
             Args:
                 member: Discord member requiring validation
                 channel: Discord text channel for validation
@@ -1403,10 +1716,15 @@ class ProfileSetup(commands.Cog):
                 guild_name: Name of the guild being validated for
             """
             button_text = PROFILE_SETUP_DATA["anti_espionage"]["validation_button"].get(
-                guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["validation_button"].get("en-US")
+                guild_lang,
+                PROFILE_SETUP_DATA["anti_espionage"]["validation_button"].get("en-US"),
             )
             custom_id = f"validate_diplomat_{member.guild.id}_{member.id}_{hash(guild_name) % 10000}"
-            super().__init__(label=button_text, style=discord.ButtonStyle.success, custom_id=custom_id)
+            super().__init__(
+                label=button_text,
+                style=discord.ButtonStyle.success,
+                custom_id=custom_id,
+            )
             self.member = member
             self.channel = channel
             self.guild_lang = guild_lang
@@ -1415,100 +1733,160 @@ class ProfileSetup(commands.Cog):
         async def callback(self, interaction: discord.Interaction):
             """
             Handle diplomat validation button callback.
-            
+
             Args:
                 interaction: Discord interaction from button press
             """
             try:
                 channel_perms = self.channel.permissions_for(interaction.user)
-                can_manage = channel_perms.manage_channels or channel_perms.administrator
-                has_channel_access = channel_perms.view_channel and channel_perms.send_messages
-                
+                can_manage = (
+                    channel_perms.manage_channels or channel_perms.administrator
+                )
+                has_channel_access = (
+                    channel_perms.view_channel and channel_perms.send_messages
+                )
+
                 if not (can_manage or has_channel_access):
-                    permission_denied_text = PROFILE_SETUP_DATA["anti_espionage"]["permission_denied"].get(
-                        self.guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["permission_denied"].get("en-US")
+                    permission_denied_text = PROFILE_SETUP_DATA["anti_espionage"][
+                        "permission_denied"
+                    ].get(
+                        self.guild_lang,
+                        PROFILE_SETUP_DATA["anti_espionage"]["permission_denied"].get(
+                            "en-US"
+                        ),
                     )
-                    await interaction.response.send_message(permission_denied_text, ephemeral=True)
+                    await interaction.response.send_message(
+                        permission_denied_text, ephemeral=True
+                    )
                     return
 
                 overwrites = self.channel.overwrites
                 overwrites[self.member] = discord.PermissionOverwrite(
-                    view_channel=True,
-                    send_messages=True,
-                    read_message_history=True
+                    view_channel=True, send_messages=True, read_message_history=True
                 )
-                
+
                 await self.channel.edit(overwrites=overwrites)
-                
+
                 self.disabled = True
                 for item in self.view.children:
                     item.disabled = True
-                
-                success_text = PROFILE_SETUP_DATA["anti_espionage"]["validation_success"].get(
-                    self.guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["validation_success"].get("en-US")
-                ).format(diplomat_name=self.member.display_name)
-                
-                validated_by_template = PROFILE_SETUP_DATA["anti_espionage"]["validated_by"].get(
-                    self.guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["validated_by"].get("en-US")
+
+                success_text = (
+                    PROFILE_SETUP_DATA["anti_espionage"]["validation_success"]
+                    .get(
+                        self.guild_lang,
+                        PROFILE_SETUP_DATA["anti_espionage"]["validation_success"].get(
+                            "en-US"
+                        ),
+                    )
+                    .format(diplomat_name=self.member.display_name)
+                )
+
+                validated_by_template = PROFILE_SETUP_DATA["anti_espionage"][
+                    "validated_by"
+                ].get(
+                    self.guild_lang,
+                    PROFILE_SETUP_DATA["anti_espionage"]["validated_by"].get("en-US"),
                 )
                 validation_by_text = f"\n👤 {validated_by_template.format(user=interaction.user.mention)}"
                 full_message = success_text + validation_by_text
-                
+
                 await interaction.response.send_message(full_message, view=None)
-                
+
                 try:
                     if self.view.original_message:
                         await self.view.original_message.edit(view=self.view)
                 except discord.NotFound:
                     pass
                 except Exception as e:
-                    logging.error(f"[ProfileSetup] Error updating original message: {e}")
-                
+                    logging.error(
+                        f"[ProfileSetup] Error updating original message: {e}"
+                    )
+
                 try:
                     cog = interaction.client.get_cog("ProfileSetup")
                     if cog:
                         query = "SELECT locale FROM user_setup WHERE guild_id = %s AND user_id = %s"
-                        result = await interaction.client.run_db_query(query, (interaction.guild.id, self.member.id), fetch_one=True)
+                        result = await interaction.client.run_db_query(
+                            query,
+                            (interaction.guild.id, self.member.id),
+                            fetch_one=True,
+                        )
                         user_locale = result[0] if result else "en-US"
                     else:
                         user_locale = "en-US"
-                        
-                    granted_message = PROFILE_SETUP_DATA["anti_espionage"]["access_granted_notification"].get(
-                        user_locale, PROFILE_SETUP_DATA["anti_espionage"]["access_granted_notification"].get("en-US")
-                    ).format(
-                        diplomat_name=self.member.display_name,
-                        guild_name=self.guild_name
+
+                    granted_message = (
+                        PROFILE_SETUP_DATA["anti_espionage"][
+                            "access_granted_notification"
+                        ]
+                        .get(
+                            user_locale,
+                            PROFILE_SETUP_DATA["anti_espionage"][
+                                "access_granted_notification"
+                            ].get("en-US"),
+                        )
+                        .format(
+                            diplomat_name=self.member.display_name,
+                            guild_name=self.guild_name,
+                        )
                     )
-                    
+
                     await self.member.send(granted_message)
-                    logging.info(f"[ProfileSetup] Access granted notification sent to {self.member.display_name}")
-                    
+                    logging.info(
+                        f"[ProfileSetup] Access granted notification sent to {self.member.display_name}"
+                    )
+
                 except discord.Forbidden:
-                    logging.warning(f"[ProfileSetup] Could not send access granted notification to {self.member.display_name} - DMs disabled")
+                    logging.warning(
+                        f"[ProfileSetup] Could not send access granted notification to {self.member.display_name} - DMs disabled"
+                    )
                 except Exception as e:
-                    logging.error(f"[ProfileSetup] Error sending access granted notification to {self.member.display_name}: {e}")
-                
+                    logging.error(
+                        f"[ProfileSetup] Error sending access granted notification to {self.member.display_name}: {e}"
+                    )
+
                 cog = interaction.client.get_cog("ProfileSetup")
                 if cog:
-                    await cog.remove_pending_validation(self.member.guild.id, self.member.id, self.guild_name)
-                
-                logging.info(f"[ProfileSetup] Diplomat {self.member.display_name} validated by {interaction.user.display_name}")
-                
+                    await cog.remove_pending_validation(
+                        self.member.guild.id, self.member.id, self.guild_name
+                    )
+
+                logging.info(
+                    f"[ProfileSetup] Diplomat {self.member.display_name} validated by {interaction.user.display_name}"
+                )
+
             except Exception as e:
-                error_text = PROFILE_SETUP_DATA["anti_espionage"]["validation_error"].get(
-                    self.guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["validation_error"].get("en-US")
-                ).format(diplomat_name=self.member.display_name)
-                
+                error_text = (
+                    PROFILE_SETUP_DATA["anti_espionage"]["validation_error"]
+                    .get(
+                        self.guild_lang,
+                        PROFILE_SETUP_DATA["anti_espionage"]["validation_error"].get(
+                            "en-US"
+                        ),
+                    )
+                    .format(diplomat_name=self.member.display_name)
+                )
+
                 await interaction.response.send_message(error_text, ephemeral=True)
-                logging.error(f"[ProfileSetup] Error validating diplomat {self.member.display_name}: {e}")
+                logging.error(
+                    f"[ProfileSetup] Error validating diplomat {self.member.display_name}: {e}"
+                )
 
     class DiplomatValidationView(discord.ui.View):
         """View for diplomat validation buttons."""
-        
-        def __init__(self, member: discord.Member, channel: discord.TextChannel, guild_lang: str, guild_name: str = "Unknown", bot=None):
+
+        def __init__(
+            self,
+            member: discord.Member,
+            channel: discord.TextChannel,
+            guild_lang: str,
+            guild_name: str = "Unknown",
+            bot=None,
+        ):
             """
             Initialize diplomat validation view.
-            
+
             Args:
                 member: Discord member to validate
                 channel: Text channel for validation
@@ -1523,21 +1901,28 @@ class ProfileSetup(commands.Cog):
             self.guild_name = guild_name
             self.original_message = None
             self.bot = bot
-            self.add_item(ProfileSetup.DiplomatValidationButton(member, channel, guild_lang, guild_name))
-        
+            self.add_item(
+                ProfileSetup.DiplomatValidationButton(
+                    member, channel, guild_lang, guild_name
+                )
+            )
+
         async def on_timeout(self):
             """
             Handle view timeout after 24 hours.
-            
+
             Disables all buttons and updates database to mark validation as expired.
             """
             for item in self.children:
                 item.disabled = True
-            
-            message_text = PROFILE_SETUP_DATA["anti_espionage"]["validation_timeout"].get(
-                self.guild_lang, PROFILE_SETUP_DATA["anti_espionage"]["validation_timeout"].get("en-US")
+
+            message_text = PROFILE_SETUP_DATA["anti_espionage"][
+                "validation_timeout"
+            ].get(
+                self.guild_lang,
+                PROFILE_SETUP_DATA["anti_espionage"]["validation_timeout"].get("en-US"),
             )
-            
+
             try:
                 if self.bot:
                     cog = self.bot.get_cog("ProfileSetup")
@@ -1547,31 +1932,41 @@ class ProfileSetup(commands.Cog):
                             SET status = 'expired', completed_at = NOW()
                             WHERE guild_id = %s AND member_id = %s AND guild_name = %s AND status = 'pending'
                         """
-                        await self.bot.run_db_query(query, (self.member.guild.id, self.member.id, self.guild_name), commit=True)
-                        
+                        await self.bot.run_db_query(
+                            query,
+                            (self.member.guild.id, self.member.id, self.guild_name),
+                            commit=True,
+                        )
+
                         pending_validations = await cog.get_pending_validations()
-                        key = f"{self.member.guild.id}_{self.member.id}_{self.guild_name}"
+                        key = (
+                            f"{self.member.guild.id}_{self.member.id}_{self.guild_name}"
+                        )
                         if key in pending_validations:
                             del pending_validations[key]
-                            await self.bot.cache.set('temporary', pending_validations, 'pending_validations')
-                
+                            await self.bot.cache.set(
+                                "temporary", pending_validations, "pending_validations"
+                            )
+
                 if self.original_message:
                     try:
                         await self.original_message.edit(view=self)
                     except discord.NotFound:
                         pass
-                
+
                 await self.channel.send(message_text)
-                logging.info(f"[ProfileSetup] Validation timeout for diplomat {self.member.display_name}")
+                logging.info(
+                    f"[ProfileSetup] Validation timeout for diplomat {self.member.display_name}"
+                )
             except Exception as e:
                 logging.error(f"[ProfileSetup] Error handling timeout: {e}")
+
 
 def setup(bot: discord.Bot):
     """
     Setup function to add the ProfileSetup cog to the bot.
-    
+
     Args:
         bot: Discord bot instance
     """
     bot.add_cog(ProfileSetup(bot))
-

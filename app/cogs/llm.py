@@ -22,13 +22,14 @@ LLM_DATA = global_translations.get("llm", {})
 
 load_dotenv()
 
+
 def get_openai_client():
     """
     Initialize and return OpenAI client with API key from environment.
-    
+
     Returns:
         OpenAI client instance
-        
+
     Raises:
         ValueError: If API_KEY not found in environment variables
     """
@@ -36,6 +37,7 @@ def get_openai_client():
     if not api_key:
         raise ValueError("API_KEY not found in environment")
     return OpenAI(api_key=api_key)
+
 
 _FALLBACK = {
     "bow": "B",
@@ -60,13 +62,14 @@ _FALLBACK = {
     "baguette": "W",
 }
 
+
 def _ask_ai(prompt: str) -> str:
     """
     Query AI for weapon name normalization with specialized system prompt.
-    
+
     Args:
         prompt: User input containing weapon names to normalize
-        
+
     Returns:
         Normalized weapon codes separated by '/'
     """
@@ -85,18 +88,22 @@ def _ask_ai(prompt: str) -> str:
         "Given a list of weapon names, return only the corresponding codes (B, CB, DG, GS, S, SNS, SP, W) separated by '/'.\n"
         "Ignore any unknown weapons.\n"
     )
-    msgs: List[ChatCompletionMessageParam] = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+    msgs: List[ChatCompletionMessageParam] = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": prompt},
+    ]
     out = client.chat.completions.create(model="gpt-4o", messages=msgs, temperature=0)
     return out.choices[0].message.content.strip()
+
 
 def query_ai(prompt: str, model: str = "gpt-4o") -> str:
     """
     Main AI query function for general chat interactions with specialized system prompt.
-    
+
     Args:
         prompt: User question or request
         model: OpenAI model to use (default: gpt-4o)
-        
+
     Returns:
         AI-generated response text
     """
@@ -104,7 +111,6 @@ def query_ai(prompt: str, model: str = "gpt-4o") -> str:
     system_prompt = (
         "You are the intellectual core of 'My Guild Manager', a Discord bot designed to assist guild members with "
         "questions and clarifications concerning both the bot's functionalities and the video game 'Throne and Liberty'.\n\n"
-
         "Your core responsibilities include:\n"
         "  • **Bot Functionality**: Explaining how the bot commands work, such as:\n"
         "       - **/weapons weapon1 weapon2**: Accepts two weapon codes. The available codes are:\n"
@@ -140,26 +146,26 @@ def query_ai(prompt: str, model: str = "gpt-4o") -> str:
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": prompt}
+        {"role": "user", "content": prompt},
     ]
     completion = client.chat.completions.create(
-        model=model,
-        messages=messages  # type: ignore
+        model=model, messages=messages  # type: ignore
     )
     return completion.choices[0].message.content or ""
+
 
 def split_message(text: str, max_length: int = 2000) -> "List[str]":
     """
     Split long messages into chunks respecting Discord's message limit.
-    
+
     Args:
         text: Text to split into chunks
         max_length: Maximum length per chunk (default: 2000)
-        
+
     Returns:
         List of text chunks within size limits
     """
-    sentences = re.split(r'(?<=[.!?])\s+', text)
+    sentences = re.split(r"(?<=[.!?])\s+", text)
     chunks = []
     current_chunk = ""
     for sentence in sentences:
@@ -172,7 +178,10 @@ def split_message(text: str, max_length: int = 2000) -> "List[str]":
             if current_chunk:
                 chunks.append(current_chunk)
             if len(sentence) > max_length:
-                parts = [sentence[i:i+max_length] for i in range(0, len(sentence), max_length)]
+                parts = [
+                    sentence[i : i + max_length]
+                    for i in range(0, len(sentence), max_length)
+                ]
                 chunks.extend(parts)
                 current_chunk = ""
             else:
@@ -181,13 +190,14 @@ def split_message(text: str, max_length: int = 2000) -> "List[str]":
         chunks.append(current_chunk)
     return chunks
 
+
 class LLMInteraction(commands.Cog):
     """Cog for managing AI-powered chat interactions and weapon name normalization."""
-    
+
     def __init__(self, bot: discord.Bot) -> None:
         """
         Initialize the LLMInteraction cog.
-        
+
         Args:
             bot: Discord bot instance
         """
@@ -204,56 +214,56 @@ class LLMInteraction(commands.Cog):
     async def get_guild_premium_status(self, guild_id: int) -> bool:
         """
         Check if guild has premium status from centralized cache.
-        
+
         Args:
             guild_id: Discord guild ID to check
-            
+
         Returns:
             True if guild has premium status, False otherwise
         """
-        premium = await self.bot.cache.get_guild_data(guild_id, 'premium')
+        premium = await self.bot.cache.get_guild_data(guild_id, "premium")
         return premium in [True, 1, "1"]
-    
+
     def sanitize_prompt(self, prompt: str) -> str:
         """
         Sanitize user input to prevent prompt injection attacks.
-        
+
         Args:
             prompt: Raw user input to sanitize
-            
+
         Returns:
             Sanitized prompt with dangerous patterns filtered
         """
         prompt = prompt[:1000]
         dangerous_patterns = [
-            r'ignore.{0,10}previous',
-            r'system.{0,10}prompt',
-            r'jailbreak',
-            r'pretend.{0,10}you.{0,10}are'
+            r"ignore.{0,10}previous",
+            r"system.{0,10}prompt",
+            r"jailbreak",
+            r"pretend.{0,10}you.{0,10}are",
         ]
         for pattern in dangerous_patterns:
-            prompt = re.sub(pattern, '[FILTERED]', prompt, flags=re.IGNORECASE)
+            prompt = re.sub(pattern, "[FILTERED]", prompt, flags=re.IGNORECASE)
         return prompt
-    
+
     def get_safe_user_info(self, user):
         """
         Get safe user information for logging purposes.
-        
+
         Args:
             user: Discord user object
-            
+
         Returns:
             Safe user identifier string for logs
         """
         return f"User{user.id}"
-    
+
     def check_rate_limit(self, user_id: int) -> bool:
         """
         Check if user has exceeded rate limit for AI requests.
-        
+
         Args:
             user_id: Discord user ID to check
-            
+
         Returns:
             True if user can make request, False if rate limited
         """
@@ -261,30 +271,31 @@ class LLMInteraction(commands.Cog):
         if user_id not in self.user_requests:
             self.user_requests[user_id] = []
 
-        self.user_requests[user_id] = [req_time for req_time in self.user_requests[user_id] if now - req_time < 60]
-        
+        self.user_requests[user_id] = [
+            req_time for req_time in self.user_requests[user_id] if now - req_time < 60
+        ]
+
         if len(self.user_requests[user_id]) >= self.max_requests_per_minute:
             return False
-        
+
         self.user_requests[user_id].append(now)
         return True
-    
+
     async def safe_ai_query(self, prompt: str, max_retries: int = 2) -> str:
         """
         Execute AI query with timeout and retry logic.
-        
+
         Args:
             prompt: User prompt to send to AI
             max_retries: Maximum number of retry attempts (default: 2)
-            
+
         Returns:
             AI response text or timeout message
         """
         for attempt in range(max_retries):
             try:
                 return await asyncio.wait_for(
-                    self.bot.loop.run_in_executor(None, query_ai, prompt),
-                    timeout=30.0
+                    self.bot.loop.run_in_executor(None, query_ai, prompt), timeout=30.0
                 )
             except asyncio.TimeoutError:
                 if attempt == max_retries - 1:
@@ -295,24 +306,28 @@ class LLMInteraction(commands.Cog):
     async def normalize_weapons(self, raw: str) -> str:
         """
         Normalize weapon names to standardized codes using AI and fallback logic.
-        
+
         Args:
             raw: Raw weapon names input from user
-            
+
         Returns:
             Normalized weapon codes separated by '/' (max 32 chars)
         """
         try:
             sanitized_input = self.sanitize_prompt(raw)
             ai_out = await asyncio.wait_for(
-                self.bot.loop.run_in_executor(None, _ask_ai, f"Input: {sanitized_input}"),
-                timeout=15.0
+                self.bot.loop.run_in_executor(
+                    None, _ask_ai, f"Input: {sanitized_input}"
+                ),
+                timeout=15.0,
             )
             codes = re.findall(r"\b(?:B|CB|DG|GS|S|SNS|SP|W)\b", ai_out.upper())
             if codes:
                 return "/".join(dict.fromkeys(codes))[:32]
         except Exception as e:
-            logging.error(f"[LLMInteraction] AI normalization failed: {e}", exc_info=True)
+            logging.error(
+                f"[LLMInteraction] AI normalization failed: {e}", exc_info=True
+            )
         codes = []
         for token in re.split(r"[ ,;/|]+", raw.lower()):
             for k, v in _FALLBACK.items():
@@ -325,7 +340,7 @@ class LLMInteraction(commands.Cog):
     async def on_message(self, message: discord.Message):
         """
         Handle bot mentions for AI-powered chat interactions.
-        
+
         Args:
             message: Discord message object that potentially mentions the bot
         """
@@ -337,30 +352,50 @@ class LLMInteraction(commands.Cog):
 
             if not self.check_rate_limit(message.author.id):
                 logging.warning(f"[LLMInteraction] Rate limit exceeded for {safe_user}")
-                locale = await get_effective_locale(self.bot, message.guild.id, message.author.id)
-                rate_limit_msg = LLM_DATA.get("rate_limit", {}).get(locale, LLM_DATA.get("rate_limit", {}).get("en-US", "⚠️ Too many requests. Please wait before asking again."))
+                locale = await get_effective_locale(
+                    self.bot, message.guild.id, message.author.id
+                )
+                rate_limit_msg = LLM_DATA.get("rate_limit", {}).get(
+                    locale,
+                    LLM_DATA.get("rate_limit", {}).get(
+                        "en-US", "⚠️ Too many requests. Please wait before asking again."
+                    ),
+                )
                 await message.reply(rate_limit_msg)
                 return
-            
-            locale = await get_effective_locale(self.bot, message.guild.id, message.author.id)
+
+            locale = await get_effective_locale(
+                self.bot, message.guild.id, message.author.id
+            )
             try:
                 is_premium = await self.get_guild_premium_status(message.guild.id)
             except Exception as e:
-                logging.error(f"[LLMInteraction] Error checking premium status for guild {message.guild.id}: {e}", exc_info=True)
-                error_msg = LLM_DATA.get("error_check_premium", {}).get(locale,LLM_DATA.get("error_check_premium", {}).get("en-US"))
+                logging.error(
+                    f"[LLMInteraction] Error checking premium status for guild {message.guild.id}: {e}",
+                    exc_info=True,
+                )
+                error_msg = LLM_DATA.get("error_check_premium", {}).get(
+                    locale, LLM_DATA.get("error_check_premium", {}).get("en-US")
+                )
                 await message.reply(error_msg.format(error="Cache error"))
                 return
 
             if not is_premium:
-                not_premium = LLM_DATA.get("not_premium", {}).get(locale, LLM_DATA.get("not_premium", {}).get("en-US"))
+                not_premium = LLM_DATA.get("not_premium", {}).get(
+                    locale, LLM_DATA.get("not_premium", {}).get("en-US")
+                )
                 await message.reply(not_premium)
                 return
 
-            prompt = message.content.replace(f"<@!{self.bot.user.id}>", "").replace(f"<@{self.bot.user.id}>", "").strip()
+            prompt = (
+                message.content.replace(f"<@!{self.bot.user.id}>", "")
+                .replace(f"<@{self.bot.user.id}>", "")
+                .strip()
+            )
             if not prompt:
                 logging.debug(f"[LLMInteraction] Empty prompt from {safe_user}")
                 return
-            
+
             prompt = self.sanitize_prompt(prompt)
             logging.debug(f"[LLMInteraction] Processing request from {safe_user}")
 
@@ -376,16 +411,23 @@ class LLMInteraction(commands.Cog):
                     await message.reply(response_text)
                 logging.debug(f"[LLMInteraction] Response sent to {safe_user}")
             except Exception as e:
-                logging.error(f"[LLMInteraction] Error generating AI response for {safe_user}: {e}", exc_info=True)
-                error_gen = LLM_DATA.get("error_generation", {}).get(locale, LLM_DATA.get("error_generation", {}).get("en-US"))
-                await message.reply(error_gen.format(error="Service temporarily unavailable"))
+                logging.error(
+                    f"[LLMInteraction] Error generating AI response for {safe_user}: {e}",
+                    exc_info=True,
+                )
+                error_gen = LLM_DATA.get("error_generation", {}).get(
+                    locale, LLM_DATA.get("error_generation", {}).get("en-US")
+                )
+                await message.reply(
+                    error_gen.format(error="Service temporarily unavailable")
+                )
+
 
 def setup(bot: discord.Bot) -> None:
     """
     Setup function to add the LLMInteraction cog to the bot.
-    
+
     Args:
         bot: Discord bot instance
     """
     bot.add_cog(LLMInteraction(bot))
-

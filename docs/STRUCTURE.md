@@ -46,7 +46,10 @@ discord-bot-mgm/
 │   │   ├── translation.json # Fichier de traductions
 │   │   ├── reliability.py # Gestion de la fiabilité
 │   │   ├── rate_limiter.py # Limitation de débit
-│   │   └── performance_profiler.py # Profilage performances
+│   │   ├── performance_profiler.py # Profilage performances
+│   │   ├── logger.py      # 📝 ComponentLogger centralisé - Migration 100%
+│   │   ├── cache_audit.py # Monitoring cache production
+│   │   └── production_cache_agent.py # Agent surveillance cache
 │   └── cogs/              # 📦 Extensions Discord (commandes)
 │       ├── __init__.py
 │       ├── absence.py
@@ -158,6 +161,89 @@ from ..core.reliability import discord_resilient
 from ..config import SOME_CONFIG
 from ..db import run_db_query
 ```
+
+## 🚀 Patterns de Développement
+
+### Configuration
+```python
+# ✅ Bon - utiliser config.py
+from config import get_db_host
+
+# ❌ Éviter - accès direct
+import os
+host = os.getenv("DB_HOST")
+```
+
+### Cache
+```python
+# ✅ Bon - utiliser le cache global
+cache = get_global_cache()
+data = await cache.get("guild_data", guild_id)
+
+# ❌ Éviter - requêtes DB directes fréquentes
+data = await db.query("SELECT ...")
+```
+
+### Logging
+```python
+# ✅ Bon - utiliser le logger centralisé
+from core.logger import ComponentLogger
+logger = ComponentLogger("mon_module")
+logger.info("operation_completed", user_id=123)
+
+# ❌ Éviter - logging basique
+import logging
+logging.info("Opération terminée")
+```
+
+### Traduction
+```python
+# ✅ Bon - utiliser les fonctions core
+from core.functions import get_user_message
+msg = get_user_message(ctx, "welcome.message", username=user.name)
+
+# ❌ Éviter - hardcoder le texte
+msg = f"Bienvenue {user.name}!"
+```
+
+## 🎓 Niveaux de Contribution
+
+### **Niveau Débutant** - Modifier les Cogs
+- Ajouter commandes dans `cogs/`
+- Utiliser patterns existants
+- Pas de modifications du core
+
+### **Niveau Intermédiaire** - Étendre les Systèmes
+- Ajouter catégories cache
+- Nouvelles traductions
+- Modifier la logique métier
+
+### **Niveau Avancé** - Architecture Core
+- Modifier `cache.py`, `reliability.py`
+- Nouveaux patterns de monitoring
+- Optimisations performance
+
+## ⚠️ Points d'Attention
+
+### Cache
+- **Format de clés** : Toujours `category:type:id`
+- **TTL** : Définir dans `CACHE_CATEGORIES`
+- **Métriques** : Vérifier l'impact performance
+
+### Base de Données
+- **Pool** : Utiliser le pool existant
+- **Timeout** : Respecter les seuils configurés
+- **Circuit breaker** : Actif sur les erreurs
+
+### Logs
+- **Format JSON** : Structure obligatoire
+- **PII** : Masquage automatique en production
+- **Correlation ID** : Pour traçabilité
+
+### Performance
+- **Seuils** : 200ms pour requêtes simples
+- **Monitoring** : Métriques automatiques
+- **Alerting** : Logs structurés pour observabilité
 
 ## 🛠️ Commandes Make disponibles
 
@@ -313,8 +399,40 @@ after guild reset:
 9. **Permissions hiérarchisées** - Discord roles avec permissions automatiques (Maître/Officier/Gardien)
 10. **Accès membres étendu** - 11 commandes accessibles via permissions granulaires
 
+## 📝 SYSTÈME COMPONENTLOGGER (Août 2025)
+
+### 🎯 Migration Enterprise-Grade Complète
+**Migration terminée à 100%** - Remplacement du système `logging` standard par ComponentLogger centralisé :
+
+#### ✅ Architecture centralisée
+- **Module unique** : `core/logger.py` avec classe `ComponentLogger`
+- **Événements structurés** : Logging avec événements nommés (`cache_miss`, `db_error`, etc.)
+- **JSON uniforme** : Output cohérent via `log_json()` dans tous les modules
+- **Composants identifiés** : Chaque module a son ID unique (`bot`, `cache`, `db`, etc.)
+
+#### ✅ Pattern standardisé dans tous les modules
+```python
+from core.logger import ComponentLogger
+_logger = ComponentLogger("module_name")
+
+_logger.info("event_name", param1=value1, param2=value2)
+_logger.error("error_occurred", error_type=type(e).__name__, error=str(e))
+```
+
+#### ✅ Modules migrés (12/12 - 100%)
+- **Racine** : bot.py, cache.py, cache_loader.py, config.py, db.py, scheduler.py
+- **Core** : functions.py, translation.py, reliability.py, rate_limiter.py, performance_profiler.py, cache_audit.py
+- **Total** : 326+ appels `logging.*` → événements structurés
+
+#### ✅ Avantages obtenus
+- **Cohérence** : Format JSON uniforme dans tous les logs
+- **Maintenance** : Un seul point de configuration
+- **Performance** : Élimination f-strings coûteuses
+- **Monitoring** : Événements nommés pour alerting automatique
+
 ## 🔧 Maintenance
 
-- Les logs sont dans `logs/discord-bot.log`
+- Les logs sont dans `logs/discord-bot.log` au format JSON structuré
 - Le cache est géré automatiquement avec TTL
 - Les scripts SQL de migration doivent être numérotés chronologiquement
+- Logs ComponentLogger avec événements nommés pour monitoring avancé

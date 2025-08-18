@@ -3,6 +3,7 @@ py-cord==2.6.1
 
 # Database
 mariadb==1.1.10
+asyncmy==0.2.9
 
 # Web scraping
 selenium==4.25.0

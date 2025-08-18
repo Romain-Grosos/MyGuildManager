@@ -5,7 +5,7 @@ Discord bot cogs (extensions) for various guild management features.
 # List of all available cogs for easy loading
 AVAILABLE_COGS = [
     "absence",
-    "autorole", 
+    "autorole",
     "contract",
     "core",
     "dynamic_voice",
@@ -18,8 +18,9 @@ AVAILABLE_COGS = [
     "llm",
     "loot_wishlist",
     "notification",
-    "profile_setup"
+    "profile_setup",
 ]
+
 
 def get_cog_path(cog_name: str) -> str:
     """Get the import path for a cog."""

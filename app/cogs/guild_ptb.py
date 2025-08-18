@@ -16,43 +16,46 @@ from core.translation import translations as global_translations
 
 GUILD_PTB = global_translations.get("guild_ptb", {})
 
+
 class GuildPTB(commands.Cog):
     """
     Cog for managing Public Test Branch servers for guild event coordination.
-    
+
     This cog handles the creation, management, and coordination of Public Test Branch (PTB)
     Discord servers that are used for guild event organization and member coordination.
     It provides functionality for setting up PTB servers, managing member permissions,
     and coordinating events across main and PTB guilds.
     """
-    
+
     def __init__(self, bot: discord.Bot) -> None:
         """
         Initialize the GuildPTB cog.
-        
+
         Args:
             bot: The Discord bot instance
         """
         self.bot = bot
 
         self._register_admin_commands()
-    
+
     def _register_admin_commands(self):
         """Register PTB commands with the centralized admin_bot group."""
-        if hasattr(self.bot, 'admin_group'):
+        if hasattr(self.bot, "admin_group"):
 
             self.bot.admin_group.command(
                 name=GUILD_PTB["commands"]["ptb_init"]["name"]["en-US"],
                 description=GUILD_PTB["commands"]["ptb_init"]["description"]["en-US"],
                 name_localizations=GUILD_PTB["commands"]["ptb_init"]["name"],
-                description_localizations=GUILD_PTB["commands"]["ptb_init"]["description"]
+                description_localizations=GUILD_PTB["commands"]["ptb_init"][
+                    "description"
+                ],
             )(self.ptb_init)
 
     @commands.Cog.listener()
     async def on_ready(self):
         """
         Initialize PTB data when the bot becomes ready.
-        
+
         This method is called when the bot has finished logging in and is ready
         to receive events. It starts the process of loading PTB data from cache.
         """
@@ -62,127 +65,158 @@ class GuildPTB(commands.Cog):
     async def get_ptb_settings(self) -> Dict:
         """
         Get PTB settings for all guilds from centralized cache.
-        
+
         Returns:
             Dict: A dictionary mapping guild IDs to their PTB settings,
                  containing only guilds that have PTB configurations
         """
         all_ptb_settings = {}
         for guild in self.bot.guilds:
-            guild_ptb_settings = await self.bot.cache.get_guild_data(guild.id, 'ptb_settings')
+            guild_ptb_settings = await self.bot.cache.get_guild_data(
+                guild.id, "ptb_settings"
+            )
             if guild_ptb_settings:
                 all_ptb_settings[guild.id] = guild_ptb_settings
-        
+
         return all_ptb_settings
-    
+
     async def get_guild_ptb_settings(self, guild_id: int) -> Dict:
         """
         Get PTB settings for a specific guild from centralized cache.
-        
+
         Args:
             guild_id: The ID of the guild to get PTB settings for
-            
+
         Returns:
             Dict: The PTB settings for the specified guild, or empty dict if none found
         """
-        result = await self.bot.cache.get_guild_data(guild_id, 'ptb_settings')
+        result = await self.bot.cache.get_guild_data(guild_id, "ptb_settings")
         if not result:
-            logging.debug(f"[GuildPTB] No PTB settings found for guild {guild_id} in cache")
+            logging.debug(
+                f"[GuildPTB] No PTB settings found for guild {guild_id} in cache"
+            )
         return result or {}
-    
+
     async def get_active_events(self) -> Dict:
         """
         Get active events from temporary cache.
-        
+
         Returns:
             Dict: Dictionary of active PTB events, organized by guild ID and event ID
         """
-        active_events = await self.bot.cache.get('temporary', 'ptb_active_events')
+        active_events = await self.bot.cache.get("temporary", "ptb_active_events")
         return active_events or {}
-    
+
     async def set_active_events(self, active_events: Dict) -> None:
         """
         Set active events in temporary cache.
-        
+
         Args:
             active_events: Dictionary of active events to store in cache
         """
-        await self.bot.cache.set('temporary', active_events, 'ptb_active_events')
-    
-    async def _verify_ptb_ownership(self, main_guild_id: int, ptb_guild_id: int) -> bool:
+        await self.bot.cache.set("temporary", active_events, "ptb_active_events")
+
+    async def _verify_ptb_ownership(
+        self, main_guild_id: int, ptb_guild_id: int
+    ) -> bool:
         """
         Verify PTB guild ownership and permissions.
-        
+
         This method ensures that the bot has proper access and permissions in the PTB guild,
         and that the PTB guild is correctly associated with the main guild.
-        
+
         Args:
             main_guild_id: The ID of the main guild that owns the PTB
             ptb_guild_id: The ID of the PTB guild to verify
-            
+
         Returns:
             bool: True if ownership and permissions are valid, False otherwise
         """
         try:
             ptb_guild = self.bot.get_guild(ptb_guild_id)
             if not ptb_guild:
-                logging.error(f"[GuildPTB] PTB guild {ptb_guild_id} not found or bot has no access")
+                logging.error(
+                    f"[GuildPTB] PTB guild {ptb_guild_id} not found or bot has no access"
+                )
                 return False
 
             bot_member = ptb_guild.get_member(self.bot.user.id)
             if not bot_member:
-                logging.error(f"[GuildPTB] Bot is not a member of PTB guild {ptb_guild_id}")
+                logging.error(
+                    f"[GuildPTB] Bot is not a member of PTB guild {ptb_guild_id}"
+                )
                 return False
-            
-            if ptb_guild.owner_id != self.bot.user.id and not bot_member.guild_permissions.administrator:
-                logging.error(f"[GuildPTB] Bot lacks sufficient permissions in PTB guild {ptb_guild_id}")
+
+            if (
+                ptb_guild.owner_id != self.bot.user.id
+                and not bot_member.guild_permissions.administrator
+            ):
+                logging.error(
+                    f"[GuildPTB] Bot lacks sufficient permissions in PTB guild {ptb_guild_id}"
+                )
                 return False
 
             guild_ptb_settings = await self.get_guild_ptb_settings(main_guild_id)
             if not guild_ptb_settings:
-                logging.error(f"[GuildPTB] No PTB settings found for main guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] No PTB settings found for main guild {main_guild_id}"
+                )
                 return False
-            
+
             if guild_ptb_settings["ptb_guild_id"] != ptb_guild_id:
-                logging.error(f"[GuildPTB] PTB guild ID mismatch in database for guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] PTB guild ID mismatch in database for guild {main_guild_id}"
+                )
                 return False
 
             expected_roles = [f"G{i}" for i in range(1, 13)]
-            existing_roles = [role.name for role in ptb_guild.roles if role.name.startswith("G") and role.name[1:].isdigit()]
-            
+            existing_roles = [
+                role.name
+                for role in ptb_guild.roles
+                if role.name.startswith("G") and role.name[1:].isdigit()
+            ]
+
             if len(existing_roles) < 12:
-                logging.warning(f"[GuildPTB] PTB guild {ptb_guild_id} missing some expected roles (found {len(existing_roles)}/12)")
-            
+                logging.warning(
+                    f"[GuildPTB] PTB guild {ptb_guild_id} missing some expected roles (found {len(existing_roles)}/12)"
+                )
+
             return True
-            
+
         except Exception as e:
-            logging.error(f"[GuildPTB] Error verifying PTB ownership: {e}", exc_info=True)
+            logging.error(
+                f"[GuildPTB] Error verifying PTB ownership: {e}", exc_info=True
+            )
             return False
-    
-    @discord_resilient(service_name='discord_api', max_retries=2)
-    async def initialize_ptb_server(self, main_guild_id: int, authorized_user_id: Optional[int] = None) -> bool:
+
+    @discord_resilient(service_name="discord_api", max_retries=2)
+    async def initialize_ptb_server(
+        self, main_guild_id: int, authorized_user_id: Optional[int] = None
+    ) -> bool:
         """
         Initialize a new PTB server for a main guild.
-        
+
         Creates a new Discord server to serve as a Public Test Branch (PTB) for the main guild,
         setting up all necessary roles, channels, and permissions. The authorized user must have
         appropriate permissions in the main guild.
-        
+
         Args:
             main_guild_id: The ID of the main guild to create a PTB for
             authorized_user_id: The ID of the user authorizing the PTB creation
-            
+
         Returns:
             bool: True if PTB server was successfully initialized, False otherwise
-            
+
         Raises:
             Exception: If there's an error during PTB creation or setup
         """
         try:
             if not authorized_user_id:
-                logging.error(f"[GuildPTB] PTB server creation requires authorized user ID for guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] PTB server creation requires authorized user ID for guild {main_guild_id}"
+                )
                 return False
-                
+
             main_guild = self.bot.get_guild(main_guild_id)
             if not main_guild:
                 logging.error(f"[GuildPTB] Main guild {main_guild_id} not found")
@@ -190,77 +224,103 @@ class GuildPTB(commands.Cog):
 
             bot_member = main_guild.get_member(self.bot.user.id)
             if not bot_member or not bot_member.guild_permissions.administrator:
-                logging.error(f"[GuildPTB] Bot lacks administrator permissions in main guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] Bot lacks administrator permissions in main guild {main_guild_id}"
+                )
                 return False
 
             authorized_member = main_guild.get_member(authorized_user_id)
             if not authorized_member:
-                logging.error(f"[GuildPTB] Authorized user {authorized_user_id} not found in guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] Authorized user {authorized_user_id} not found in guild {main_guild_id}"
+                )
                 return False
 
             is_owner = authorized_member.id == main_guild.owner_id
             has_admin_perms = authorized_member.guild_permissions.administrator
             has_manage_guild = authorized_member.guild_permissions.manage_guild
-            
+
             if not (is_owner or (has_manage_guild and has_admin_perms)):
-                logging.error(f"[GuildPTB] User {authorized_user_id} insufficient permissions for PTB creation in guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] User {authorized_user_id} insufficient permissions for PTB creation in guild {main_guild_id}"
+                )
                 return False
 
-            initialized = await self.bot.cache.get_guild_data(main_guild_id, 'initialized')
-            
+            initialized = await self.bot.cache.get_guild_data(
+                main_guild_id, "initialized"
+            )
+
             if not initialized:
-                logging.error(f"[GuildPTB] Main guild {main_guild_id} is not properly initialized")
+                logging.error(
+                    f"[GuildPTB] Main guild {main_guild_id} is not properly initialized"
+                )
                 return False
 
-            ptb_guild_id = await self.bot.cache.get_guild_data(main_guild_id, 'guild_ptb')
+            ptb_guild_id = await self.bot.cache.get_guild_data(
+                main_guild_id, "guild_ptb"
+            )
             if ptb_guild_id:
-                logging.warning(f"[GuildPTB] PTB already exists for guild {main_guild_id}")
+                logging.warning(
+                    f"[GuildPTB] PTB already exists for guild {main_guild_id}"
+                )
                 return False
 
             ptb_guild = await self.bot.create_guild(
                 name=f"{main_guild.name} - PTB",
-                region=main_guild.region if hasattr(main_guild, 'region') else None
+                region=main_guild.region if hasattr(main_guild, "region") else None,
             )
-            
-            logging.info(f"[GuildPTB] Created PTB server {ptb_guild.id} for main guild {main_guild_id}")
+
+            logging.info(
+                f"[GuildPTB] Created PTB server {ptb_guild.id} for main guild {main_guild_id}"
+            )
 
             success = await self._setup_ptb_structure(main_guild_id, ptb_guild)
-            
+
             if success:
                 await self.bot.run_db_query(
                     "UPDATE guild_settings SET guild_ptb = %s WHERE guild_id = %s",
                     (ptb_guild.id, main_guild_id),
-                    commit=True
+                    commit=True,
                 )
 
-                await self.bot.cache.set_guild_data(main_guild_id, 'guild_ptb', ptb_guild.id)
-                
-                logging.info(f"[GuildPTB] Successfully initialized PTB server for guild {main_guild_id}")
+                await self.bot.cache.set_guild_data(
+                    main_guild_id, "guild_ptb", ptb_guild.id
+                )
+
+                logging.info(
+                    f"[GuildPTB] Successfully initialized PTB server for guild {main_guild_id}"
+                )
                 return True
             else:
                 await ptb_guild.delete()
-                logging.error(f"[GuildPTB] Failed to setup PTB structure, deleted server")
+                logging.error(
+                    f"[GuildPTB] Failed to setup PTB structure, deleted server"
+                )
                 return False
-                
+
         except Exception as e:
-            logging.error(f"[GuildPTB] Error initializing PTB server: {e}", exc_info=True)
+            logging.error(
+                f"[GuildPTB] Error initializing PTB server: {e}", exc_info=True
+            )
             return False
-    
-    @discord_resilient(service_name='discord_api', max_retries=2)
-    async def _setup_ptb_structure(self, main_guild_id: int, ptb_guild: discord.Guild) -> bool:
+
+    @discord_resilient(service_name="discord_api", max_retries=2)
+    async def _setup_ptb_structure(
+        self, main_guild_id: int, ptb_guild: discord.Guild
+    ) -> bool:
         """
         Setup the structure of a PTB guild with roles and channels.
-        
+
         Creates all necessary roles (G1-G12), voice channels, and an info channel
         with appropriate permissions for the PTB guild.
-        
+
         Args:
             main_guild_id: The ID of the main guild this PTB belongs to
             ptb_guild: The PTB guild object to set up
-            
+
         Returns:
             bool: True if structure was successfully set up, False otherwise
-            
+
         Raises:
             Exception: If there's an error during structure setup
         """
@@ -268,9 +328,7 @@ class GuildPTB(commands.Cog):
             roles = {}
             for i in range(1, 13):
                 role = await ptb_guild.create_role(
-                    name=f"G{i}",
-                    mentionable=True,
-                    reason="PTB Group Role"
+                    name=f"G{i}", mentionable=True, reason="PTB Group Role"
                 )
                 roles[f"G{i}"] = role
                 logging.debug(f"[GuildPTB] Created role G{i} ({role.id})")
@@ -278,19 +336,21 @@ class GuildPTB(commands.Cog):
             channels = {}
             for i in range(1, 13):
                 overwrites = {
-                    ptb_guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                    ptb_guild.default_role: discord.PermissionOverwrite(
+                        view_channel=False
+                    ),
                     roles[f"G{i}"]: discord.PermissionOverwrite(
                         view_channel=True,
                         connect=True,
                         speak=True,
-                        use_voice_activation=True
-                    )
+                        use_voice_activation=True,
+                    ),
                 }
-                
+
                 channel = await ptb_guild.create_voice_channel(
                     name=f"G{i}",
                     overwrites=overwrites,
-                    reason="PTB Group Voice Channel"
+                    reason="PTB Group Voice Channel",
                 )
                 channels[f"G{i}"] = channel
                 logging.debug(f"[GuildPTB] Created voice channel G{i} ({channel.id})")
@@ -300,14 +360,12 @@ class GuildPTB(commands.Cog):
                     view_channel=True,
                     send_messages=False,
                     add_reactions=True,
-                    read_message_history=True
+                    read_message_history=True,
                 )
             }
-            
+
             info_channel = await ptb_guild.create_text_channel(
-                name="infos",
-                overwrites=info_overwrites,
-                reason="PTB Info Channel"
+                name="infos", overwrites=info_overwrites, reason="PTB Info Channel"
             )
             logging.debug(f"[GuildPTB] Created info channel ({info_channel.id})")
 
@@ -316,35 +374,49 @@ class GuildPTB(commands.Cog):
                 new_permissions.update(change_nickname=False)
                 await ptb_guild.default_role.edit(
                     permissions=new_permissions,
-                    reason="PTB Configuration - Disable nickname changes for @everyone"
+                    reason="PTB Configuration - Disable nickname changes for @everyone",
                 )
-                logging.debug("[GuildPTB] Removed change_nickname permission from @everyone")
+                logging.debug(
+                    "[GuildPTB] Removed change_nickname permission from @everyone"
+                )
             except Exception as e:
-                logging.warning(f"[GuildPTB] Could not remove change_nickname permission: {e}")
+                logging.warning(
+                    f"[GuildPTB] Could not remove change_nickname permission: {e}"
+                )
 
-            await self._save_ptb_settings(main_guild_id, ptb_guild.id, info_channel.id, roles, channels)
-            
+            await self._save_ptb_settings(
+                main_guild_id, ptb_guild.id, info_channel.id, roles, channels
+            )
+
             return True
-            
+
         except Exception as e:
-            logging.error(f"[GuildPTB] Error setting up PTB structure: {e}", exc_info=True)
+            logging.error(
+                f"[GuildPTB] Error setting up PTB structure: {e}", exc_info=True
+            )
             return False
-    
-    async def _save_ptb_settings(self, main_guild_id: int, ptb_guild_id: int, info_channel_id: int, 
-                                roles: Dict[str, discord.Role], channels: Dict[str, discord.VoiceChannel]) -> None:
+
+    async def _save_ptb_settings(
+        self,
+        main_guild_id: int,
+        ptb_guild_id: int,
+        info_channel_id: int,
+        roles: Dict[str, discord.Role],
+        channels: Dict[str, discord.VoiceChannel],
+    ) -> None:
         """
         Save PTB settings to database and update cache.
-        
+
         Stores all PTB configuration data including role IDs, channel IDs,
         and other settings in the database and updates the cache.
-        
+
         Args:
             main_guild_id: The ID of the main guild
             ptb_guild_id: The ID of the PTB guild
             info_channel_id: The ID of the info channel
             roles: Dictionary mapping group names to Discord role objects
             channels: Dictionary mapping group names to Discord voice channel objects
-            
+
         Raises:
             Exception: If there's an error saving settings to database
         """
@@ -352,7 +424,7 @@ class GuildPTB(commands.Cog):
             data = {
                 "guild_id": main_guild_id,
                 "ptb_guild_id": ptb_guild_id,
-                "info_channel_id": info_channel_id
+                "info_channel_id": info_channel_id,
             }
 
             for i in range(1, 13):
@@ -379,57 +451,65 @@ class GuildPTB(commands.Cog):
                 %(g11_role_id)s, %(g11_channel_id)s, %(g12_role_id)s, %(g12_channel_id)s
             )
             """
-            
+
             await self.bot.run_db_query(query, data, commit=True)
 
-            await self.bot.cache.delete_guild_data(main_guild_id, 'ptb_settings')
-            await self.bot.cache_loader.reload_category('guild_ptb_settings')
-            
+            await self.bot.cache.delete_guild_data(main_guild_id, "ptb_settings")
+            await self.bot.cache_loader.reload_category("guild_ptb_settings")
+
             logging.info(f"[GuildPTB] Saved PTB settings for guild {main_guild_id}")
-            
+
         except Exception as e:
             logging.error(f"[GuildPTB] Error saving PTB settings: {e}", exc_info=True)
             raise
-    
-    async def assign_event_permissions(self, main_guild_id: int, event_id: int, groups_data: Dict) -> bool:
+
+    async def assign_event_permissions(
+        self, main_guild_id: int, event_id: int, groups_data: Dict
+    ) -> bool:
         """
         Assign event permissions to PTB guild members based on group assignments.
-        
+
         Assigns roles to members in the PTB guild based on their group assignments
         for a specific event, sends event recap, and invites missing members.
-        
+
         Args:
             main_guild_id: The ID of the main guild
             event_id: The ID of the event
             groups_data: Dictionary mapping group names to lists of member IDs
-            
+
         Returns:
             bool: True if permissions were successfully assigned, False otherwise
         """
         try:
             ptb_settings = await self.get_guild_ptb_settings(main_guild_id)
             if not ptb_settings:
-                logging.error(f"[GuildPTB] No PTB configuration found for guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] No PTB configuration found for guild {main_guild_id}"
+                )
                 return False
             ptb_guild_id = ptb_settings["ptb_guild_id"]
 
             if not await self._verify_ptb_ownership(main_guild_id, ptb_guild_id):
-                logging.error(f"[GuildPTB] PTB ownership verification failed for guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] PTB ownership verification failed for guild {main_guild_id}"
+                )
                 return False
-            
+
             ptb_guild = self.bot.get_guild(ptb_guild_id)
             if not ptb_guild:
-                logging.error(f"[GuildPTB] PTB guild not found after verification: {ptb_guild_id}")
+                logging.error(
+                    f"[GuildPTB] PTB guild not found after verification: {ptb_guild_id}"
+                )
                 return False
 
             active_events = await self.get_active_events()
             if main_guild_id not in active_events:
                 active_events[main_guild_id] = {}
-            
+
             active_events[main_guild_id][event_id] = {
                 "groups_data": groups_data,
                 "assigned_members": set(),
-                "start_time": datetime.now()
+                "start_time": datetime.now(),
             }
             await self.set_active_events(active_events)
 
@@ -439,33 +519,47 @@ class GuildPTB(commands.Cog):
                 role_key = f"{group_num}_role_id"
                 if role_key not in ptb_settings:
                     missing_groups.append(group_name)
-            
+
             if missing_groups:
-                logging.debug(f"[GuildPTB] Missing group configs: {missing_groups}, reloading PTB settings")
-                await self.bot.cache.invalidate_category('guild_data')
-                await self.bot.cache_loader.reload_category('guild_ptb_settings')
+                logging.debug(
+                    f"[GuildPTB] Missing group configs: {missing_groups}, reloading PTB settings"
+                )
+                await self.bot.cache.invalidate_category("guild_data")
+                await self.bot.cache_loader.reload_category("guild_ptb_settings")
                 ptb_settings = await self.get_guild_ptb_settings(main_guild_id)
                 if not ptb_settings:
-                    logging.error(f"[GuildPTB] Still no PTB settings after reload for guild {main_guild_id}")
+                    logging.error(
+                        f"[GuildPTB] Still no PTB settings after reload for guild {main_guild_id}"
+                    )
                     return False
 
             await self._assign_roles_to_members(ptb_guild, ptb_settings, groups_data)
 
-            await self._send_event_recap(ptb_guild, ptb_settings["info_channel_id"], event_id, groups_data)
+            await self._send_event_recap(
+                ptb_guild, ptb_settings["info_channel_id"], event_id, groups_data
+            )
 
-            await self._send_invitations_to_missing_members(main_guild_id, ptb_guild, groups_data)
-            
-            logging.info(f"[GuildPTB] Assigned event permissions for event {event_id} in guild {main_guild_id}")
+            await self._send_invitations_to_missing_members(
+                main_guild_id, ptb_guild, groups_data
+            )
+
+            logging.info(
+                f"[GuildPTB] Assigned event permissions for event {event_id} in guild {main_guild_id}"
+            )
             return True
-            
+
         except Exception as e:
-            logging.error(f"[GuildPTB] Error assigning event permissions: {e}", exc_info=True)
+            logging.error(
+                f"[GuildPTB] Error assigning event permissions: {e}", exc_info=True
+            )
             return False
-    
-    async def _assign_roles_to_members(self, ptb_guild: discord.Guild, ptb_settings: Dict, groups_data: Dict) -> None:
+
+    async def _assign_roles_to_members(
+        self, ptb_guild: discord.Guild, ptb_settings: Dict, groups_data: Dict
+    ) -> None:
         """
         Assign roles to PTB guild members based on group data.
-        
+
         Args:
             ptb_guild: The PTB guild object
             ptb_settings: Dictionary containing PTB configuration settings
@@ -475,37 +569,55 @@ class GuildPTB(commands.Cog):
             for group_name, member_ids in groups_data.items():
                 group_num = group_name.lower()
                 role_key = f"{group_num}_role_id"
-                
+
                 if role_key not in ptb_settings:
-                    logging.warning(f"[GuildPTB] Group {group_name} role not found in PTB settings")
+                    logging.warning(
+                        f"[GuildPTB] Group {group_name} role not found in PTB settings"
+                    )
                     continue
-                
+
                 role_id = ptb_settings[role_key]
                 role = ptb_guild.get_role(role_id)
-                
+
                 if not role:
-                    logging.error(f"[GuildPTB] Role {group_name} not found in PTB guild")
+                    logging.error(
+                        f"[GuildPTB] Role {group_name} not found in PTB guild"
+                    )
                     continue
-                
+
                 for member_id in member_ids:
                     member = ptb_guild.get_member(member_id)
                     if member and role not in member.roles:
                         try:
-                            await member.add_roles(role, reason=f"Event group assignment: {group_name}")
-                            logging.debug(f"[GuildPTB] Added role {group_name} to {member.display_name}")
+                            await member.add_roles(
+                                role, reason=f"Event group assignment: {group_name}"
+                            )
+                            logging.debug(
+                                f"[GuildPTB] Added role {group_name} to {member.display_name}"
+                            )
                         except Exception as e:
-                            logging.error(f"[GuildPTB] Error adding role to {member.display_name}: {e}")
-                            
+                            logging.error(
+                                f"[GuildPTB] Error adding role to {member.display_name}: {e}"
+                            )
+
         except Exception as e:
-            logging.error(f"[GuildPTB] Error assigning roles to members: {e}", exc_info=True)
-    
-    async def _send_event_recap(self, ptb_guild: discord.Guild, info_channel_id: int, event_id: int, groups_data: Dict) -> None:
+            logging.error(
+                f"[GuildPTB] Error assigning roles to members: {e}", exc_info=True
+            )
+
+    async def _send_event_recap(
+        self,
+        ptb_guild: discord.Guild,
+        info_channel_id: int,
+        event_id: int,
+        groups_data: Dict,
+    ) -> None:
         """
         Send event recap to PTB info channel.
-        
+
         Creates and sends an embed message to the PTB info channel with details
         about the event and group assignments.
-        
+
         Args:
             ptb_guild: The PTB guild object
             info_channel_id: The ID of the info channel
@@ -525,24 +637,32 @@ class GuildPTB(commands.Cog):
                 if settings["ptb_guild_id"] == ptb_guild.id:
                     main_guild_id = guild_id
                     break
-            
-            if main_guild_id:
-                guild_lang = await self.bot.cache.get_guild_data(main_guild_id, 'guild_lang') or "en-US"
 
-            title = GUILD_PTB["event_recap"]["title"].get(guild_lang, 
-                GUILD_PTB["event_recap"]["title"].get("en-US")).format(event_id=event_id)
-            description = GUILD_PTB["event_recap"]["description"].get(guild_lang,
-                GUILD_PTB["event_recap"]["description"].get("en-US"))
-            footer_text = GUILD_PTB["event_recap"]["footer"].get(guild_lang,
-                GUILD_PTB["event_recap"]["footer"].get("en-US"))
-            
+            if main_guild_id:
+                guild_lang = (
+                    await self.bot.cache.get_guild_data(main_guild_id, "guild_lang")
+                    or "en-US"
+                )
+
+            title = (
+                GUILD_PTB["event_recap"]["title"]
+                .get(guild_lang, GUILD_PTB["event_recap"]["title"].get("en-US"))
+                .format(event_id=event_id)
+            )
+            description = GUILD_PTB["event_recap"]["description"].get(
+                guild_lang, GUILD_PTB["event_recap"]["description"].get("en-US")
+            )
+            footer_text = GUILD_PTB["event_recap"]["footer"].get(
+                guild_lang, GUILD_PTB["event_recap"]["footer"].get("en-US")
+            )
+
             embed = discord.Embed(
                 title=title,
                 description=description,
-                color=0x00ff00,
-                timestamp=datetime.now()
+                color=0x00FF00,
+                timestamp=datetime.now(),
             )
-            
+
             for group_name, member_ids in groups_data.items():
                 members_list = []
                 for member_id in member_ids:
@@ -551,36 +671,40 @@ class GuildPTB(commands.Cog):
                         members_list.append(member.display_name)
                     else:
                         members_list.append(f"<@{member_id}>")
-                
+
                 if members_list:
                     if len(members_list) <= 10:
                         value = "\n".join(members_list)
                     else:
-                        members_count_text = GUILD_PTB["event_recap"]["members_count"].get(guild_lang,
-                            GUILD_PTB["event_recap"]["members_count"].get("en-US")).format(count=len(members_list))
+                        members_count_text = (
+                            GUILD_PTB["event_recap"]["members_count"]
+                            .get(
+                                guild_lang,
+                                GUILD_PTB["event_recap"]["members_count"].get("en-US"),
+                            )
+                            .format(count=len(members_list))
+                        )
                         value = members_count_text
-                    
-                    embed.add_field(
-                        name=f"🎯 {group_name}",
-                        value=value,
-                        inline=True
-                    )
-            
+
+                    embed.add_field(name=f"🎯 {group_name}", value=value, inline=True)
+
             embed.set_footer(text=footer_text)
-            
+
             await info_channel.send(embed=embed)
             logging.debug(f"[GuildPTB] Sent event recap for event {event_id}")
-            
+
         except Exception as e:
             logging.error(f"[GuildPTB] Error sending event recap: {e}", exc_info=True)
-    
-    async def _send_invitations_to_missing_members(self, main_guild_id: int, ptb_guild: discord.Guild, groups_data: Dict) -> None:
+
+    async def _send_invitations_to_missing_members(
+        self, main_guild_id: int, ptb_guild: discord.Guild, groups_data: Dict
+    ) -> None:
         """
         Send invitations to members who are not yet in the PTB guild.
-        
+
         Creates an invite link and sends it via DM to members who are assigned
         to groups but are not yet present in the PTB guild.
-        
+
         Args:
             main_guild_id: The ID of the main guild
             ptb_guild: The PTB guild object
@@ -596,26 +720,32 @@ class GuildPTB(commands.Cog):
                 if channel.permissions_for(ptb_guild.me).create_instant_invite:
                     info_channel = channel
                     break
-            
+
             if not info_channel:
-                logging.error(f"[GuildPTB] No suitable channel found for creating invite")
+                logging.error(
+                    f"[GuildPTB] No suitable channel found for creating invite"
+                )
                 return
-            
+
             invite = await info_channel.create_invite(
-                max_age=3600,
-                max_uses=0,
-                reason="Event group assignment invitation"
+                max_age=3600, max_uses=0, reason="Event group assignment invitation"
             )
 
             all_member_ids = set()
             for member_ids in groups_data.values():
                 all_member_ids.update(member_ids)
 
-            guild_lang = await self.bot.cache.get_guild_data(main_guild_id, 'guild_lang') or "en-US"
+            guild_lang = (
+                await self.bot.cache.get_guild_data(main_guild_id, "guild_lang")
+                or "en-US"
+            )
 
-            invitation_message = GUILD_PTB["invitation"]["dm_message"].get(guild_lang,
-                GUILD_PTB["invitation"]["dm_message"].get("en-US")).format(invite_url=invite.url)
-            
+            invitation_message = (
+                GUILD_PTB["invitation"]["dm_message"]
+                .get(guild_lang, GUILD_PTB["invitation"]["dm_message"].get("en-US"))
+                .format(invite_url=invite.url)
+            )
+
             for member_id in all_member_ids:
                 ptb_member = ptb_guild.get_member(member_id)
                 if not ptb_member:
@@ -623,97 +753,119 @@ class GuildPTB(commands.Cog):
                     if main_member:
                         try:
                             await main_member.send(invitation_message)
-                            logging.debug(f"[GuildPTB] Sent PTB invitation to {main_member.display_name}")
+                            logging.debug(
+                                f"[GuildPTB] Sent PTB invitation to {main_member.display_name}"
+                            )
                         except discord.Forbidden:
-                            logging.warning(f"[GuildPTB] Cannot send DM to {main_member.display_name}")
+                            logging.warning(
+                                f"[GuildPTB] Cannot send DM to {main_member.display_name}"
+                            )
                         except Exception as e:
-                            logging.error(f"[GuildPTB] Error sending invitation to {main_member.display_name}: {e}")
-                            
+                            logging.error(
+                                f"[GuildPTB] Error sending invitation to {main_member.display_name}: {e}"
+                            )
+
         except Exception as e:
             logging.error(f"[GuildPTB] Error sending invitations: {e}", exc_info=True)
-    
+
     async def remove_event_permissions(self, main_guild_id: int, event_id: int) -> bool:
         """
         Remove event permissions from PTB guild members after event ends.
-        
+
         Removes all group roles from members and cleans up active event data
         when an event concludes.
-        
+
         Args:
             main_guild_id: The ID of the main guild
             event_id: The ID of the event that ended
-            
+
         Returns:
             bool: True if permissions were successfully removed, False otherwise
         """
         try:
             active_events = await self.get_active_events()
-            if (main_guild_id not in active_events or 
-                event_id not in active_events[main_guild_id]):
-                logging.warning(f"[GuildPTB] No active event found: {main_guild_id}_{event_id}")
+            if (
+                main_guild_id not in active_events
+                or event_id not in active_events[main_guild_id]
+            ):
+                logging.warning(
+                    f"[GuildPTB] No active event found: {main_guild_id}_{event_id}"
+                )
                 return False
-            
+
             ptb_settings = await self.get_guild_ptb_settings(main_guild_id)
             if not ptb_settings:
-                logging.error(f"[GuildPTB] No PTB settings found for guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] No PTB settings found for guild {main_guild_id}"
+                )
                 return False
-            
+
             ptb_guild_id = ptb_settings["ptb_guild_id"]
 
             if not await self._verify_ptb_ownership(main_guild_id, ptb_guild_id):
-                logging.error(f"[GuildPTB] PTB ownership verification failed during cleanup for guild {main_guild_id}")
+                logging.error(
+                    f"[GuildPTB] PTB ownership verification failed during cleanup for guild {main_guild_id}"
+                )
                 return False
-            
+
             ptb_guild = self.bot.get_guild(ptb_guild_id)
             if not ptb_guild:
                 logging.error(f"[GuildPTB] PTB guild not found after verification")
                 return False
-            
+
             event_data = active_events[main_guild_id][event_id]
             groups_data = event_data["groups_data"]
 
             for group_name, member_ids in groups_data.items():
                 group_num = group_name.lower()
                 role_key = f"{group_num}_role_id"
-                
+
                 if role_key not in ptb_settings:
                     continue
-                
+
                 role_id = ptb_settings[role_key]
                 role = ptb_guild.get_role(role_id)
-                
+
                 if not role:
                     continue
-                
+
                 for member_id in member_ids:
                     member = ptb_guild.get_member(member_id)
                     if member and role in member.roles:
                         try:
-                            await member.remove_roles(role, reason=f"Event {event_id} ended")
-                            logging.debug(f"[GuildPTB] Removed role {group_name} from {member.display_name}")
+                            await member.remove_roles(
+                                role, reason=f"Event {event_id} ended"
+                            )
+                            logging.debug(
+                                f"[GuildPTB] Removed role {group_name} from {member.display_name}"
+                            )
                         except Exception as e:
-                            logging.error(f"[GuildPTB] Error removing role from {member.display_name}: {e}")
+                            logging.error(
+                                f"[GuildPTB] Error removing role from {member.display_name}: {e}"
+                            )
 
             del active_events[main_guild_id][event_id]
             if not active_events[main_guild_id]:
                 del active_events[main_guild_id]
             await self.set_active_events(active_events)
-            
+
             logging.info(f"[GuildPTB] Removed event permissions for event {event_id}")
             return True
-            
+
         except Exception as e:
-            logging.error(f"[GuildPTB] Error removing event permissions: {e}", exc_info=True)
+            logging.error(
+                f"[GuildPTB] Error removing event permissions: {e}", exc_info=True
+            )
             return False
-    
+
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         """
         Handle member joining PTB guild - auto-assign roles if part of active event.
-        
+
         When a member joins a PTB guild, automatically assigns appropriate roles
         if they are part of any active events, and syncs their nickname from the main guild.
-        
+
         Args:
             member: The Discord member who joined the guild
         """
@@ -726,12 +878,16 @@ class GuildPTB(commands.Cog):
                 if settings["ptb_guild_id"] == ptb_guild_id:
                     main_guild_id = guild_id
                     break
-            
+
             if not main_guild_id:
-                logging.debug(f"[GuildPTB] Member {member.display_name} joined guild {ptb_guild_id} but it's not a configured PTB")
+                logging.debug(
+                    f"[GuildPTB] Member {member.display_name} joined guild {ptb_guild_id} but it's not a configured PTB"
+                )
                 return
-            
-            logging.info(f"[GuildPTB] Member {member.display_name} joined PTB {ptb_guild_id} (main guild: {main_guild_id})")
+
+            logging.info(
+                f"[GuildPTB] Member {member.display_name} joined PTB {ptb_guild_id} (main guild: {main_guild_id})"
+            )
 
             active_events = await self.get_active_events()
             if main_guild_id in active_events:
@@ -743,74 +899,108 @@ class GuildPTB(commands.Cog):
                         if member.id in member_ids:
                             group_num = group_name.lower()
                             role_key = f"{group_num}_role_id"
-                            
+
                             if role_key in guild_ptb_settings:
                                 role_id = guild_ptb_settings[role_key]
                                 role = member.guild.get_role(role_id)
-                                
+
                                 if role:
-                                    await member.add_roles(role, reason=f"Auto-assignment for event {event_id}")
-                                    logging.info(f"[GuildPTB] Auto-assigned role {group_name} to {member.display_name} for event {event_id}")
+                                    await member.add_roles(
+                                        role,
+                                        reason=f"Auto-assignment for event {event_id}",
+                                    )
+                                    logging.info(
+                                        f"[GuildPTB] Auto-assigned role {group_name} to {member.display_name} for event {event_id}"
+                                    )
                             break
 
             await self._sync_nickname_from_main(member, main_guild_id)
-                        
+
         except Exception as e:
             logging.error(f"[GuildPTB] Error handling member join: {e}", exc_info=True)
-    
-    async def _sync_nickname_from_main(self, ptb_member: discord.Member, main_guild_id: int):
+
+    async def _sync_nickname_from_main(
+        self, ptb_member: discord.Member, main_guild_id: int
+    ):
         """
         Synchronize nickname from main guild to PTB guild.
-        
+
         Updates the member's nickname in the PTB guild to match their
         display name in the main guild.
-        
+
         Args:
             ptb_member: The member in the PTB guild
             main_guild_id: The ID of the main guild to sync from
         """
         try:
-            logging.debug(f"[GuildPTB] Attempting to sync nickname for {ptb_member.display_name} ({ptb_member.id}) from main guild {main_guild_id}")
-            
+            logging.debug(
+                f"[GuildPTB] Attempting to sync nickname for {ptb_member.display_name} ({ptb_member.id}) from main guild {main_guild_id}"
+            )
+
             main_guild = self.bot.get_guild(main_guild_id)
             if not main_guild:
-                logging.warning(f"[GuildPTB] Main guild {main_guild_id} not found for nickname sync")
+                logging.warning(
+                    f"[GuildPTB] Main guild {main_guild_id} not found for nickname sync"
+                )
                 return
-            
+
             main_member = main_guild.get_member(ptb_member.id)
             if not main_member:
-                logging.warning(f"[GuildPTB] Member {ptb_member.id} not found in main guild {main_guild_id} for nickname sync")
+                logging.warning(
+                    f"[GuildPTB] Member {ptb_member.id} not found in main guild {main_guild_id} for nickname sync"
+                )
                 return
 
             main_display_name = main_member.display_name
-            logging.debug(f"[GuildPTB] Main guild nickname: '{main_display_name}', PTB nickname: '{ptb_member.display_name}'")
+            logging.debug(
+                f"[GuildPTB] Main guild nickname: '{main_display_name}', PTB nickname: '{ptb_member.display_name}'"
+            )
 
             if ptb_member.display_name != main_display_name:
                 try:
-                    await ptb_member.edit(nick=main_display_name, reason="Synchronization from the main Discord")
-                    logging.info(f"[GuildPTB] Synchronized nickname for {ptb_member.id}: '{ptb_member.display_name}' -> '{main_display_name}'")
+                    await ptb_member.edit(
+                        nick=main_display_name,
+                        reason="Synchronization from the main Discord",
+                    )
+                    logging.info(
+                        f"[GuildPTB] Synchronized nickname for {ptb_member.id}: '{ptb_member.display_name}' -> '{main_display_name}'"
+                    )
                 except discord.Forbidden:
-                    logging.warning(f"[GuildPTB] Cannot change nickname for {ptb_member.id} - insufficient permissions")
+                    logging.warning(
+                        f"[GuildPTB] Cannot change nickname for {ptb_member.id} - insufficient permissions"
+                    )
                 except Exception as e:
-                    logging.error(f"[GuildPTB] Error changing nickname for {ptb_member.id}: {e}")
+                    logging.error(
+                        f"[GuildPTB] Error changing nickname for {ptb_member.id}: {e}"
+                    )
             else:
-                logging.debug(f"[GuildPTB] Nickname already synchronized for {ptb_member.id}")
-                    
+                logging.debug(
+                    f"[GuildPTB] Nickname already synchronized for {ptb_member.id}"
+                )
+
         except Exception as e:
-            logging.error(f"[GuildPTB] Error synchronizing nickname: {e}", exc_info=True)
-    
-    async def ptb_init(self, 
-                      ctx: discord.ApplicationContext, 
-                      main_guild_id: str = discord.Option(
-                          description=GUILD_PTB["commands"]["ptb_init"]["options"]["main_guild_id"]["description"]["en-US"],
-                          description_localizations=GUILD_PTB["commands"]["ptb_init"]["options"]["main_guild_id"]["description"]
-                      )):
+            logging.error(
+                f"[GuildPTB] Error synchronizing nickname: {e}", exc_info=True
+            )
+
+    async def ptb_init(
+        self,
+        ctx: discord.ApplicationContext,
+        main_guild_id: str = discord.Option(
+            description=GUILD_PTB["commands"]["ptb_init"]["options"]["main_guild_id"][
+                "description"
+            ]["en-US"],
+            description_localizations=GUILD_PTB["commands"]["ptb_init"]["options"][
+                "main_guild_id"
+            ]["description"],
+        ),
+    ):
         """
         Initialize PTB configuration for a main guild.
-        
+
         This slash command allows authorized users to configure the current guild
         as a PTB (Public Test Branch) server for a specified main guild.
-        
+
         Args:
             ctx: The Discord application context
             main_guild_id: The ID of the main guild to configure PTB for
@@ -818,9 +1008,17 @@ class GuildPTB(commands.Cog):
         try:
             guild_lang = "en-US"
 
-            if not ctx.author.guild_permissions.manage_guild and ctx.author.id != ctx.guild.owner_id:
-                error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["no_permissions"].get(
-                    guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["no_permissions"]["en-US"]
+            if (
+                not ctx.author.guild_permissions.manage_guild
+                and ctx.author.id != ctx.guild.owner_id
+            ):
+                error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"][
+                    "no_permissions"
+                ].get(
+                    guild_lang,
+                    GUILD_PTB["commands"]["ptb_init"]["messages"]["no_permissions"][
+                        "en-US"
+                    ],
                 )
                 await ctx.respond(error_msg, ephemeral=True)
                 return
@@ -830,93 +1028,162 @@ class GuildPTB(commands.Cog):
             try:
                 main_guild_id_int = int(main_guild_id)
             except ValueError:
-                error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["error"].get(
-                    guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["error"]["en-US"]
-                ).format(error="Invalid guild ID format")
+                error_msg = (
+                    GUILD_PTB["commands"]["ptb_init"]["messages"]["error"]
+                    .get(
+                        guild_lang,
+                        GUILD_PTB["commands"]["ptb_init"]["messages"]["error"]["en-US"],
+                    )
+                    .format(error="Invalid guild ID format")
+                )
                 await ctx.followup.send(error_msg, ephemeral=True)
                 return
 
             main_guild = self.bot.get_guild(main_guild_id_int)
             if not main_guild:
-                error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["main_guild_not_found"].get(
-                    guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["main_guild_not_found"]["en-US"]
-                ).format(guild_id=main_guild_id)
+                error_msg = (
+                    GUILD_PTB["commands"]["ptb_init"]["messages"][
+                        "main_guild_not_found"
+                    ]
+                    .get(
+                        guild_lang,
+                        GUILD_PTB["commands"]["ptb_init"]["messages"][
+                            "main_guild_not_found"
+                        ]["en-US"],
+                    )
+                    .format(guild_id=main_guild_id)
+                )
                 await ctx.followup.send(error_msg, ephemeral=True)
                 return
 
-            guild_lang = await self.bot.cache.get_guild_data(main_guild_id_int, 'guild_lang') or "en-US"
-            initialized = await self.bot.cache.get_guild_data(main_guild_id_int, 'initialized')
-            
+            guild_lang = (
+                await self.bot.cache.get_guild_data(main_guild_id_int, "guild_lang")
+                or "en-US"
+            )
+            initialized = await self.bot.cache.get_guild_data(
+                main_guild_id_int, "initialized"
+            )
+
             if not initialized:
-                error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["main_guild_not_initialized"].get(
-                    guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["main_guild_not_initialized"]["en-US"]
-                ).format(guild_id=main_guild_id)
+                error_msg = (
+                    GUILD_PTB["commands"]["ptb_init"]["messages"][
+                        "main_guild_not_initialized"
+                    ]
+                    .get(
+                        guild_lang,
+                        GUILD_PTB["commands"]["ptb_init"]["messages"][
+                            "main_guild_not_initialized"
+                        ]["en-US"],
+                    )
+                    .format(guild_id=main_guild_id)
+                )
                 await ctx.followup.send(error_msg, ephemeral=True)
                 return
 
-            ptb_guild_id = await self.bot.cache.get_guild_data(main_guild_id_int, 'guild_ptb')
+            ptb_guild_id = await self.bot.cache.get_guild_data(
+                main_guild_id_int, "guild_ptb"
+            )
             if ptb_guild_id:
-                error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["main_guild_already_has_ptb"].get(
-                    guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["main_guild_already_has_ptb"]["en-US"]
-                ).format(guild_id=main_guild_id)
+                error_msg = (
+                    GUILD_PTB["commands"]["ptb_init"]["messages"][
+                        "main_guild_already_has_ptb"
+                    ]
+                    .get(
+                        guild_lang,
+                        GUILD_PTB["commands"]["ptb_init"]["messages"][
+                            "main_guild_already_has_ptb"
+                        ]["en-US"],
+                    )
+                    .format(guild_id=main_guild_id)
+                )
                 await ctx.followup.send(error_msg, ephemeral=True)
                 return
 
             ptb_settings = await self.get_ptb_settings()
             for existing_main_guild_id, settings in ptb_settings.items():
                 if settings["ptb_guild_id"] == ctx.guild.id:
-                    error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["ptb_already_configured"].get(
-                        guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["ptb_already_configured"]["en-US"]
-                    ).format(main_guild_id=existing_main_guild_id)
+                    error_msg = (
+                        GUILD_PTB["commands"]["ptb_init"]["messages"][
+                            "ptb_already_configured"
+                        ]
+                        .get(
+                            guild_lang,
+                            GUILD_PTB["commands"]["ptb_init"]["messages"][
+                                "ptb_already_configured"
+                            ]["en-US"],
+                        )
+                        .format(main_guild_id=existing_main_guild_id)
+                    )
                     await ctx.followup.send(error_msg, ephemeral=True)
                     return
 
             success = await self._setup_ptb_structure(main_guild_id_int, ctx.guild)
-            
+
             if success:
                 await self.bot.run_db_query(
                     "UPDATE guild_settings SET guild_ptb = %s WHERE guild_id = %s",
                     (ctx.guild.id, main_guild_id_int),
-                    commit=True
+                    commit=True,
                 )
 
-                await self.bot.cache.set_guild_data(main_guild_id_int, 'guild_ptb', ctx.guild.id)
-                
-                success_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["success"].get(
-                    guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["success"]["en-US"]
-                ).format(ptb_name=ctx.guild.name, main_guild_name=main_guild.name)
-                
+                await self.bot.cache.set_guild_data(
+                    main_guild_id_int, "guild_ptb", ctx.guild.id
+                )
+
+                success_msg = (
+                    GUILD_PTB["commands"]["ptb_init"]["messages"]["success"]
+                    .get(
+                        guild_lang,
+                        GUILD_PTB["commands"]["ptb_init"]["messages"]["success"][
+                            "en-US"
+                        ],
+                    )
+                    .format(ptb_name=ctx.guild.name, main_guild_name=main_guild.name)
+                )
+
                 await ctx.followup.send(success_msg, ephemeral=True)
-                logging.info(f"[GuildPTB] PTB configured via slash command by {ctx.author} - PTB: {ctx.guild.id}, Main: {main_guild_id_int}")
+                logging.info(
+                    f"[GuildPTB] PTB configured via slash command by {ctx.author} - PTB: {ctx.guild.id}, Main: {main_guild_id_int}"
+                )
             else:
-                error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["error"].get(
-                    guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["error"]["en-US"]
-                ).format(error="PTB structure setup failed")
-                
+                error_msg = (
+                    GUILD_PTB["commands"]["ptb_init"]["messages"]["error"]
+                    .get(
+                        guild_lang,
+                        GUILD_PTB["commands"]["ptb_init"]["messages"]["error"]["en-US"],
+                    )
+                    .format(error="PTB structure setup failed")
+                )
+
                 await ctx.followup.send(error_msg, ephemeral=True)
-                
+
         except Exception as e:
-            error_msg = GUILD_PTB["commands"]["ptb_init"]["messages"]["error"].get(
-                guild_lang, GUILD_PTB["commands"]["ptb_init"]["messages"]["error"]["en-US"]
-            ).format(error=str(e))
-            
+            error_msg = (
+                GUILD_PTB["commands"]["ptb_init"]["messages"]["error"]
+                .get(
+                    guild_lang,
+                    GUILD_PTB["commands"]["ptb_init"]["messages"]["error"]["en-US"],
+                )
+                .format(error=str(e))
+            )
+
             if ctx.response.is_done():
                 await ctx.followup.send(error_msg, ephemeral=True)
             else:
                 await ctx.respond(error_msg, ephemeral=True)
-            
+
             logging.error(f"[GuildPTB] Error in ptb_init command: {e}", exc_info=True)
-    
+
     async def audit_ptb_security(self, main_guild_id: int) -> Dict:
         """
         Perform security audit on PTB configuration for a guild.
-        
+
         Checks the PTB configuration for security issues, missing components,
         and proper permissions setup.
-        
+
         Args:
             main_guild_id: The ID of the main guild to audit
-            
+
         Returns:
             Dict: Audit report containing status, issues, and recommendations
         """
@@ -924,11 +1191,13 @@ class GuildPTB(commands.Cog):
             "main_guild_id": main_guild_id,
             "status": "unknown",
             "issues": [],
-            "recommendations": []
+            "recommendations": [],
         }
-        
+
         try:
-            ptb_guild_id = await self.bot.cache.get_guild_data(main_guild_id, 'guild_ptb')
+            ptb_guild_id = await self.bot.cache.get_guild_data(
+                main_guild_id, "guild_ptb"
+            )
             if not ptb_guild_id:
                 audit_report["status"] = "no_ptb"
                 audit_report["issues"].append("PTB guild ID not found in settings")
@@ -938,12 +1207,14 @@ class GuildPTB(commands.Cog):
             if not ownership_ok:
                 audit_report["status"] = "security_issue"
                 audit_report["issues"].append("PTB ownership verification failed")
-                audit_report["recommendations"].append("Re-initialize PTB or check bot permissions")
+                audit_report["recommendations"].append(
+                    "Re-initialize PTB or check bot permissions"
+                )
                 return audit_report
 
             ptb_guild = self.bot.get_guild(ptb_guild_id)
             main_guild = self.bot.get_guild(main_guild_id)
-            
+
             if not ptb_guild or not main_guild:
                 audit_report["status"] = "access_issue"
                 audit_report["issues"].append("Cannot access PTB or main guild")
@@ -951,51 +1222,69 @@ class GuildPTB(commands.Cog):
 
             ptb_bot_member = ptb_guild.get_member(self.bot.user.id)
             main_bot_member = main_guild.get_member(self.bot.user.id)
-            
+
             if not ptb_bot_member or not ptb_bot_member.guild_permissions.administrator:
-                audit_report["issues"].append("Bot lacks administrator permissions in PTB")
-            
-            if not main_bot_member or not main_bot_member.guild_permissions.administrator:
-                audit_report["issues"].append("Bot lacks administrator permissions in main guild")
+                audit_report["issues"].append(
+                    "Bot lacks administrator permissions in PTB"
+                )
+
+            if (
+                not main_bot_member
+                or not main_bot_member.guild_permissions.administrator
+            ):
+                audit_report["issues"].append(
+                    "Bot lacks administrator permissions in main guild"
+                )
 
             expected_roles = [f"G{i}" for i in range(1, 13)]
-            existing_roles = [r.name for r in ptb_guild.roles if r.name in expected_roles]
+            existing_roles = [
+                r.name for r in ptb_guild.roles if r.name in expected_roles
+            ]
             missing_roles = set(expected_roles) - set(existing_roles)
-            
+
             if missing_roles:
-                audit_report["issues"].append(f"Missing PTB roles: {', '.join(missing_roles)}")
+                audit_report["issues"].append(
+                    f"Missing PTB roles: {', '.join(missing_roles)}"
+                )
 
             expected_channels = [f"G{i}" for i in range(1, 13)] + ["infos"]
-            existing_channels = [c.name for c in ptb_guild.channels if c.name in expected_channels]
+            existing_channels = [
+                c.name for c in ptb_guild.channels if c.name in expected_channels
+            ]
             missing_channels = set(expected_channels) - set(existing_channels)
-            
+
             if missing_channels:
-                audit_report["issues"].append(f"Missing PTB channels: {', '.join(missing_channels)}")
+                audit_report["issues"].append(
+                    f"Missing PTB channels: {', '.join(missing_channels)}"
+                )
 
             if not audit_report["issues"]:
                 audit_report["status"] = "secure"
             elif len(audit_report["issues"]) <= 2:
                 audit_report["status"] = "minor_issues"
-                audit_report["recommendations"].append("Address minor configuration issues")
+                audit_report["recommendations"].append(
+                    "Address minor configuration issues"
+                )
             else:
                 audit_report["status"] = "major_issues"
                 audit_report["recommendations"].append("Consider re-initializing PTB")
-            
+
             audit_report["ptb_guild_id"] = ptb_guild_id
             audit_report["ptb_guild_name"] = ptb_guild.name
             audit_report["member_count"] = ptb_guild.member_count
-            
+
         except Exception as e:
             audit_report["status"] = "error"
             audit_report["issues"].append(f"Audit failed: {str(e)}")
             logging.error(f"[GuildPTB] Error during security audit: {e}", exc_info=True)
-        
+
         return audit_report
+
 
 def setup(bot: discord.Bot):
     """
     Setup function for the cog.
-    
+
     Args:
         bot: The Discord bot instance to add the cog to
     """

@@ -11,15 +11,15 @@ Provides centralized caching for Discord bot data with features including:
 """
 
 import asyncio
-import logging
 import os
 import time
 from collections import defaultdict, deque, Counter
 from datetime import datetime
 from functools import wraps
 from typing import Dict, Any, Optional, Set, List, Callable
-import json
 from contextvars import ContextVar
+
+from core.logger import ComponentLogger
 
 correlation_id_context: ContextVar[Optional[str]] = ContextVar('correlation_id', default=None)
 
@@ -197,45 +197,10 @@ class GlobalCacheSystem:
         self._cold_start_seconds = int(os.environ.get('COLD_START_SECONDS', '300'))
         self._alert_cooldown_seconds = int(os.environ.get('ALERT_COOLDOWN_SECONDS', '300'))
         self._last_alert_times = {}
+        self._logger = ComponentLogger("cache")
         
-        self._log_json("info", "cache_initialized", component="cache", smart_features=True)
-    
-    def _log_json(self, level: str, event: str, **fields) -> None:
-        """Log structured JSON message with correlation ID and PII masking."""
-        import os
-        from datetime import datetime
-        
-        log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "level": level.upper(),
-            "event": event,
-            "component": "cache",
-            "version": "1.0"
-        }
-        
-        correlation_id = correlation_id_context.get(None)
-        if correlation_id:
-            log_entry["correlation_id"] = correlation_id
-        
-        is_production = os.environ.get('PRODUCTION', 'False').lower() == 'true'
-        for key, value in fields.items():
-            if is_production and key in ('guild_id', 'user_id'):
-                log_entry[key] = "REDACTED"
-            else:
-                log_entry[key] = value
-        
-        log_entry.pop('pii_masked', None)
-        
-        log_msg = json.dumps(log_entry)
-        if level == "debug":
-            logging.debug(log_msg)
-        elif level == "info":
-            logging.info(log_msg)
-        elif level == "warning":
-            logging.warning(log_msg)
-        elif level == "error":
-            logging.error(log_msg)
-    
+        self._logger.info("cache_initialized", component="cache", smart_features=True)
+
     def _generate_key(self, category: str, *args) -> str:
         """
         Generate cache key from category and arguments.
@@ -372,12 +337,12 @@ class GlobalCacheSystem:
         
         if category in self._category_metrics:
             self._category_metrics[category]['size'] = 0
-        self._log_json("info", "category_invalidated", category=category, entry_count=len(keys_to_remove))
+        self._logger.info("category_invalidated", category=category, entry_count=len(keys_to_remove))
         return len(keys_to_remove)
     
     async def stop(self) -> None:
         """Stop cache system with bounded shutdown."""
-        self._log_json("info", "cache_stopping")
+        self._logger.info("cache_stopping")
         
         if self._maintenance_task and not self._maintenance_task.done():
             self._maintenance_task.cancel()
@@ -403,11 +368,11 @@ class GlobalCacheSystem:
             self._preload_tasks.clear()
         
         self._maintenance_task = None
-        self._log_json("info", "cache_stopped")
+        self._logger.info("cache_stopped")
 
-# #################################################################################### #
-#                            Cache Invalidation Rules
-# #################################################################################### #
+    # #################################################################################### #
+    #                            Cache Invalidation Rules
+    # #################################################################################### #
     def add_invalidation_rule(self, trigger_category: str, affected_categories: List[str]):
         """
         Add rule to invalidate categories when trigger category changes.
@@ -439,9 +404,9 @@ class GlobalCacheSystem:
         
         return total_invalidated
 
-# #################################################################################### #
-#                            Specialized Cache Methods
-# #################################################################################### #
+    # #################################################################################### #
+    #                            Specialized Cache Methods
+    # #################################################################################### #
     async def get_guild_data(self, guild_id: int, data_type: str, _auto_reload: bool = True) -> Optional[Any]:
         """
         Get guild-specific data from cache with auto-reload if missing.
@@ -466,7 +431,7 @@ class GlobalCacheSystem:
 
         if result is None and _auto_reload and self._initial_load_complete and self.bot and hasattr(self.bot, 'cache_loader'):
             if not await self._is_guild_configured(guild_id):
-                self._log_json("debug", "skipping_auto_reload", reason="unconfigured_guild")
+                self._logger.debug("skipping_auto_reload", reason="unconfigured_guild")
                 return None
                 
             async with self._locks[key]:
@@ -500,12 +465,12 @@ class GlobalCacheSystem:
                 
                 category = category_map.get(data_type)
                 if category:
-                    self._log_json("debug", "auto_reloading", category=category, reason="missing_data")
+                    self._logger.debug("auto_reloading", category=category, reason="missing_data")
                     try:
                         await self.bot.cache_loader.reload_category(category)
                         result = await self.get_guild_data(guild_id, data_type, _auto_reload=False)
                     except Exception as e:
-                        self._log_json("error", "auto_reload_failed", category=category, 
+                        self._logger.error("auto_reload_failed", category=category, 
                                       error_type=type(e).__name__, error_msg=str(e))
             finally:
                 event.set()
@@ -543,11 +508,11 @@ class GlobalCacheSystem:
                         self._configured_guilds_cache.add(row[0])
                         
                 self._configured_guilds_cache_time = current_time
-                self._log_json("debug", "configured_guilds_refreshed", 
+                self._logger.debug("configured_guilds_refreshed", 
                               guild_count=len(self._configured_guilds_cache))
                 
             except Exception as e:
-                self._log_json("error", "configured_guilds_error", error_type=type(e).__name__, error_msg=str(e))
+                self._logger.error("configured_guilds_error", error_type=type(e).__name__, error_msg=str(e))
                 return False
         
         return guild_id in self._configured_guilds_cache
@@ -561,7 +526,7 @@ class GlobalCacheSystem:
         """
         self._configured_guilds_cache = None
         self._configured_guilds_cache_time = 0
-        self._log_json("debug", "configured_guilds_invalidated")
+        self._logger.debug("configured_guilds_invalidated")
     
     async def ensure_cache_persistence(self) -> None:
         """
@@ -578,15 +543,15 @@ class GlobalCacheSystem:
                 break
                 
         if critical_empty and self._initial_load_complete:
-            self._log_json("warning", "cache_empty_triggering_reload")
+            self._logger.warning("cache_empty_triggering_reload")
             if hasattr(self, 'bot') and hasattr(self.bot, 'cache_loader'):
                 try:
                     self._initial_load_complete = False
                     await self.bot.cache_loader.load_all_shared_data()
                     self._initial_load_complete = True
-                    self._log_json("info", "cache_reloaded_successfully")
+                    self._logger.info("cache_reloaded_successfully")
                 except Exception as e:
-                    self._log_json("error", "cache_reload_failed", 
+                    self._logger.error("cache_reload_failed", 
                                   error_type=type(e).__name__, error_msg=str(e))
                     self._initial_load_complete = True
     
@@ -639,7 +604,7 @@ class GlobalCacheSystem:
 
         if result is None and _auto_reload and self._initial_load_complete and self.bot and hasattr(self.bot, 'cache_loader'):
             if not await self._is_guild_configured(guild_id):
-                self._log_json("debug", "skipping_auto_reload_user", reason="unconfigured_guild")
+                self._logger.debug("skipping_auto_reload_user", reason="unconfigured_guild")
                 return None
                 
             async with self._locks[key]:
@@ -659,12 +624,12 @@ class GlobalCacheSystem:
                 
                 category = category_map.get(data_type)
                 if category:
-                    self._log_json("debug", "auto_reloading_user", category=category, reason="missing_data")
+                    self._logger.debug("auto_reloading_user", category=category, reason="missing_data")
                     try:
                         await self.bot.cache_loader.reload_category(category)
                         result = await self.get_user_data(guild_id, user_id, data_type, _auto_reload=False)
                     except Exception as e:
-                        self._log_json("error", "auto_reload_user_failed", category=category, 
+                        self._logger.error("auto_reload_user_failed", category=category, 
                                       error_type=type(e).__name__, error_msg=str(e))
             finally:
                 event.set()
@@ -755,9 +720,9 @@ class GlobalCacheSystem:
         """
         await self.set('static_data', value, data_type, game_id)
 
-# #################################################################################### #
-#                            Cache Maintenance and Monitoring
-# #################################################################################### #
+    # #################################################################################### #
+    #                            Cache Maintenance and Monitoring
+    # #################################################################################### #
     async def cleanup_expired(self) -> int:
         """
         Remove all expired entries from cache.
@@ -780,7 +745,7 @@ class GlobalCacheSystem:
         
         if expired_keys:
             self._metrics['cleanups'] += 1
-            self._log_json("debug", "cache_cleanup", expired_count=len(expired_keys))
+            self._logger.debug("cache_cleanup", expired_count=len(expired_keys))
         
         return len(expired_keys)
     
@@ -899,7 +864,7 @@ class GlobalCacheSystem:
         fast_min_threshold = int(os.environ.get('ALERT_FAST_PERCENT_MIN', '60'))
         if fast_percent < fast_min_threshold:
             if self._can_send_alert('fast_percent_drop', current_time):
-                self._log_json("warning", "performance_alert", 
+                self._logger.warning("performance_alert", 
                               alert_type="fast_percent_drop", 
                               current_fast_percent=fast_percent,
                               threshold=fast_min_threshold)
@@ -909,7 +874,7 @@ class GlobalCacheSystem:
         slow_max_threshold = int(os.environ.get('ALERT_SLOW_PERCENT_MAX', '10'))
         if slow_percent > slow_max_threshold:
             if self._can_send_alert('slow_percent_spike', current_time):
-                self._log_json("warning", "performance_alert", 
+                self._logger.warning("performance_alert", 
                               alert_type="slow_percent_spike", 
                               current_slow_percent=slow_percent,
                               threshold=slow_max_threshold)
@@ -920,10 +885,9 @@ class GlobalCacheSystem:
         last_alert = self._last_alert_times.get(alert_type, 0)
         return current_time - last_alert > self._alert_cooldown_seconds
     
-    # ==================================================================================== #
-    #                          PERFORMANCE OPTIMIZATION METHODS
-    # ==================================================================================== #
-    
+    # #################################################################################### #
+    #                            Performance Optimization Methods
+    # #################################################################################### #
     async def get_bulk_guild_members(self, guild_id: int, force_refresh: bool = False) -> Dict[int, Dict]:
         """
         Get all guild members with optimized cache and database query.
@@ -959,7 +923,7 @@ class GlobalCacheSystem:
         try:
             rows = await self.bot.run_db_query(query, (guild_id,), fetch_all=True)
         except Exception as e:
-            self._log_json("error", "db_query_error", operation="get_bulk_guild_members", 
+            self._logger.error("db_query_error", operation="get_bulk_guild_members", 
                           error_type=type(e).__name__, error_msg=str(e))
             return {}
         query_time = time.monotonic() - start_time
@@ -985,7 +949,7 @@ class GlobalCacheSystem:
         await self.set('roster_data', members_data, cache_key, ttl=600)
         
         if query_time > 0.1:
-            self._log_json("warning", "slow_db_query", operation="get_bulk_guild_members",
+            self._logger.warning("slow_db_query", operation="get_bulk_guild_members",
                           duration_ms=int(query_time * 1000), member_count=len(members_data))
         
         return members_data
@@ -1005,7 +969,7 @@ class GlobalCacheSystem:
             bulk_members = await self.get_bulk_guild_members(guild_id)
             return bulk_members.get(user_id)
         except Exception as e:
-            self._log_json("error", "guild_member_data_error", 
+            self._logger.error("guild_member_data_error", 
                           error_type=type(e).__name__, error_msg=str(e))
             return None
     
@@ -1030,7 +994,7 @@ class GlobalCacheSystem:
                 }
             return None
         except Exception as e:
-            self._log_json("error", "user_setup_data_error", 
+            self._logger.error("user_setup_data_error", 
                           error_type=type(e).__name__, error_msg=str(e))
             return None
 
@@ -1112,7 +1076,7 @@ class GlobalCacheSystem:
                 await self._optimize_active_guilds()
                 
         except Exception as e:
-            self._log_json("error", "smart_maintenance_error", 
+            self._logger.error("smart_maintenance_error", 
                           error_type=type(e).__name__, error_msg=str(e))
     
     async def _schedule_preload(self, key: str, entry: CacheEntry):
@@ -1140,7 +1104,7 @@ class GlobalCacheSystem:
                 except asyncio.CancelledError:
                     pass
                 except Exception as e:
-                    self._log_json("error", "preload_error", 
+                    self._logger.error("preload_error", 
                                 error_type=type(e).__name__, error_msg=str(e))
                 finally:
                     self._preload_slots_used = max(0, self._preload_slots_used - 1)
@@ -1176,7 +1140,7 @@ class GlobalCacheSystem:
             return False
             
         except Exception as e:
-            self._log_json("debug", "preload_failed", 
+            self._logger.debug("preload_failed", 
                           error_type=type(e).__name__, error_msg=str(e))
             return False
     
@@ -1274,7 +1238,7 @@ class GlobalCacheSystem:
             key: Cache key involved
             error: Exception that occurred
         """
-        self._log_json("error", "cache_operation_error", operation=operation, 
+        self._logger.error("cache_operation_error", operation=operation, 
                       error_type=type(error).__name__, error_msg=str(error))
 
         if operation == "get" and "guild_data" in key:
@@ -1282,9 +1246,9 @@ class GlobalCacheSystem:
                 parts = key.split(":")
                 if len(parts) >= 3:
                     await self.delete(parts[0], *parts[1:])
-                    self._log_json("debug", "corrupted_entry_cleared")
+                    self._logger.debug("corrupted_entry_cleared")
             except Exception as recovery_error:
-                self._log_json("error", "cache_recovery_failed", 
+                self._logger.error("cache_recovery_failed", 
                               error_type=type(recovery_error).__name__, error_msg=str(recovery_error))
     
     async def health_check(self) -> Dict[str, Any]:
@@ -1401,7 +1365,7 @@ async def start_cache_maintenance_task(bot=None):
     Args:
         bot: Discord bot instance (optional)
     """
-    cache = get_global_cache(bot)  # Ensure bot is properly injected
+    cache = get_global_cache(bot)
     
     async def maintenance_loop():
         try:
@@ -1411,10 +1375,10 @@ async def start_cache_maintenance_task(bot=None):
                     await cache.cleanup_expired()
                     await cache._smart_maintenance()
                 except Exception as e:
-                    cache._log_json("error", "maintenance_task_error", 
+                    cache._logger.error("maintenance_task_error", 
                                   error_type=type(e).__name__, error_msg=str(e))
         except asyncio.CancelledError:
-            cache._log_json("debug", "maintenance_task_cancelled")
+            cache._logger.debug("maintenance_task_cancelled")
             raise
     
     task = asyncio.create_task(maintenance_loop())
@@ -1424,7 +1388,7 @@ async def start_cache_maintenance_task(bot=None):
     if bot and hasattr(bot, '_background_tasks'):
         bot._background_tasks.append(task)
     
-    if hasattr(cache, '_log_json'):
-        cache._log_json("info", "maintenance_task_started")
+    if hasattr(cache, '_logger'):
+        cache._logger.info("maintenance_task_started")
     else:
-        logging.info("[Cache] Cache maintenance task started")
+        cache._logger.info("maintenance_task_started_fallback")

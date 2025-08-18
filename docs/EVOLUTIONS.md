@@ -1,6 +1,6 @@
 # 📋 Évolutions futures du bot
 
-**Dernière révision : 18 août 2025 - Post Enterprise Observability**
+**Dernière révision : 18 août 2025 - Post ComponentLogger Migration**
 
 ## 🎯 PRIORITÉ : Capitaliser sur l'observabilité enterprise implémentée
 
@@ -12,6 +12,15 @@
 - **SLO monitoring** : Availability & Performance tracking temps réel
 - **Health checks** : Cache, reconnections, watchdog, memory monitoring
 - **Production hardening** : Bounded shutdown, cross-platform signals, tracemalloc
+
+### ✅ ACCOMPLI : Migration ComponentLogger (Août 2025)  
+**Migration enterprise-grade terminée à 100% :**
+- **Système centralisé** : ComponentLogger unique dans `core/logger.py`
+- **Événements structurés** : 326+ appels `logging.*` → événements nommés
+- **JSON uniforme** : Output cohérent dans tous les modules
+- **Performance optimisée** : Élimination f-strings + imports nettoyés
+- **12 modules migrés** : Racine (6) + Core (6) = couverture complète
+- **Loggers spécialisés** : bot.py (3 loggers), scheduler.py (2 loggers)
 
 ## 📊 Métriques et monitoring - ÉVOLUTION POST-OBSERVABILITY
 
