@@ -106,7 +106,10 @@ class TaskScheduler:
         }
         self._last_not_ready_log = 0.0
         self._scheduler_running = False
-
+        self._watchdog_alert_triggered = False
+        self._watchdog_threshold_seconds = 300
+        self._task_start_times: Dict[str, float] = {}
+        self._stuck_tasks: set = set()
         self._logger.info("scheduler_initialized", tasks_count=len(self._task_locks)
         )
 
@@ -151,11 +154,30 @@ class TaskScheduler:
             }
 
         start_time = time.perf_counter()
+
+        self._task_start_times[task_name] = time.monotonic()
+        
         try:
             self._logger.info("task_started", task=task_name)
-            await coroutine(*args, **kwargs)
+
+            try:
+                await asyncio.wait_for(
+                    coroutine(*args, **kwargs),
+                    timeout=self._watchdog_threshold_seconds
+                )
+            except asyncio.TimeoutError:
+                self._stuck_tasks.add(task_name)
+                self._watchdog_alert_triggered = True
+                self._logger.critical("watchdog_alert",
+                    task=task_name,
+                    timeout_seconds=self._watchdog_threshold_seconds,
+                    action="task_killed"
+                )
+                raise
 
             execution_time = int((time.perf_counter() - start_time) * 1000)
+
+            self._stuck_tasks.discard(task_name)
             self._task_metrics[task_name]["success"] += 1
             self._task_metrics[task_name]["total_time"] += execution_time
             self._task_metrics[task_name]["last_duration_ms"] = execution_time
@@ -175,12 +197,19 @@ class TaskScheduler:
                 "timestamp": datetime.now(TIMEZONE).isoformat(),
             }
 
+            if isinstance(e, asyncio.TimeoutError):
+                self._stuck_tasks.add(task_name)
+            
             self._logger.error("task_failed",
                 task=task_name,
                 duration_ms=execution_time,
                 error_type=type(e).__name__,
                 error_msg=str(e),
+                is_timeout=isinstance(e, asyncio.TimeoutError),
+                watchdog_triggered=self._watchdog_alert_triggered
             )
+        finally:
+            self._task_start_times.pop(task_name, None)
 
     async def _safe_get_cog(self, cog_name: str) -> Optional[Any]:
         """

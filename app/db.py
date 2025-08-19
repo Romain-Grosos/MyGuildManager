@@ -105,7 +105,14 @@ def safe_log_query(query: str, params: tuple):
         query: SQL query string
         params: Query parameters tuple
     """
-    safe_query = query[:100] + "..." if len(query) > 100 else query
+    import re
+    safe_query = query
+    safe_query = re.sub(r"VALUES\s*\([^)]+\)", "VALUES(...)", safe_query)
+    safe_query = re.sub(r"(SET\s+\w+\s*=\s*)[^,\s]+", r"\1?", safe_query)
+    safe_query = re.sub(r"'[^']*'", "'?'", safe_query)
+    safe_query = re.sub(r'"[^"]*"', '"?"', safe_query)
+    safe_query = safe_query[:100] + "..." if len(safe_query) > 100 else safe_query
+    
     param_count = len(params) if params else 0
     _logger.debug("query_executing",
         param_count=param_count,
@@ -120,7 +127,14 @@ def safe_log_error(error: Exception, query: str):
         error: Exception that occurred
         query: SQL query that failed
     """
-    safe_query = query[:50] + "..." if len(query) > 50 else query
+    import re
+    safe_query = query
+    safe_query = re.sub(r"VALUES\s*\([^)]+\)", "VALUES(...)", safe_query)
+    safe_query = re.sub(r"(SET\s+\w+\s*=\s*)[^,\s]+", r"\1?", safe_query)
+    safe_query = re.sub(r"'[^']*'", "'?'", safe_query)
+    safe_query = re.sub(r'"[^"]*"', '"?"', safe_query)
+    safe_query = safe_query[:50] + "..." if len(safe_query) > 50 else safe_query
+    
     _logger.error("query_failed",
         error_type=type(error).__name__,
         query_preview=safe_query
@@ -201,7 +215,7 @@ class DatabaseManager:
         self.active_connections = 0
         self.waiting_queue = 0
         self.query_metrics = {}
-        self.slow_query_threshold = 2.0
+        self.slow_query_threshold = 0.1
 
     @contextlib.asynccontextmanager
     async def get_connection_with_timeout(self):

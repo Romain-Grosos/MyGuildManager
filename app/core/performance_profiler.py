@@ -44,6 +44,8 @@ class PerformanceProfiler:
             max_entries: Maximum number of entries to track
         """
         self.max_entries = max_entries
+        self._startup_time = time.monotonic()
+        self._cold_start_duration = 300
         self._function_stats: DefaultDict[str, FunctionStats] = defaultdict(
             lambda: {
                 "calls": 0,
@@ -117,13 +119,13 @@ class PerformanceProfiler:
         call_id = self._call_counter
         self._call_counter += 1
 
-        start_time = time.time()
+        start_time = time.monotonic()
         self._active_calls[call_id] = (func_name, start_time)
 
         try:
             result = await func(*args, **kwargs)
 
-            end_time = time.time()
+            end_time = time.monotonic()
             execution_time = (end_time - start_time) * 1000
 
             self._record_call(func_name, execution_time, threshold_ms, success=True)
@@ -131,7 +133,7 @@ class PerformanceProfiler:
             return result
 
         except Exception as e:
-            end_time = time.time()
+            end_time = time.monotonic()
             execution_time = (end_time - start_time) * 1000
 
             self._record_call(
@@ -162,13 +164,13 @@ class PerformanceProfiler:
         call_id = self._call_counter
         self._call_counter += 1
 
-        start_time = time.time()
+        start_time = time.monotonic()
         self._active_calls[call_id] = (func_name, start_time)
 
         try:
             result = func(*args, **kwargs)
 
-            end_time = time.time()
+            end_time = time.monotonic()
             execution_time = (end_time - start_time) * 1000
 
             self._record_call(func_name, execution_time, threshold_ms, success=True)
@@ -176,7 +178,7 @@ class PerformanceProfiler:
             return result
 
         except Exception as e:
-            end_time = time.time()
+            end_time = time.monotonic()
             execution_time = (end_time - start_time) * 1000
 
             self._record_call(
@@ -206,6 +208,15 @@ class PerformanceProfiler:
             success: Whether the call succeeded
             error: Error message if call failed
         """
+        current_time = time.monotonic()
+        if current_time - self._startup_time < self._cold_start_duration:
+            _logger.debug("call_excluded_cold_start", 
+                func_name=func_name,
+                execution_time_ms=execution_time,
+                startup_elapsed_s=int(current_time - self._startup_time)
+            )
+            return
+            
         stats = self._function_stats[func_name]
         stats["calls"] += 1
         stats["total_time"] += execution_time
@@ -256,6 +267,25 @@ class PerformanceProfiler:
                 else 0
             )
 
+            percentiles = {"p50": 0, "p95": 0, "p99": 0}
+            if stats["recent_times"]:
+                sorted_times = sorted(stats["recent_times"])
+                n = len(sorted_times)
+                if n > 0:
+                    def get_percentile(data, p):
+                        k = (n - 1) * p
+                        f = int(k)
+                        c = f + 1 if f < n - 1 else f
+                        d0 = data[f]
+                        d1 = data[c]
+                        return d0 + (k - f) * (d1 - d0)
+                    
+                    percentiles = {
+                        "p50": get_percentile(sorted_times, 0.50),
+                        "p95": get_percentile(sorted_times, 0.95),
+                        "p99": get_percentile(sorted_times, 0.99)
+                    }
+
             stats_list.append(
                 {
                     "function": func_name,
@@ -274,6 +304,9 @@ class PerformanceProfiler:
                         else 0
                     ),
                     "last_called": stats["last_called"],
+                    "p50_ms": percentiles["p50"],
+                    "p95_ms": percentiles["p95"],
+                    "p99_ms": percentiles["p99"],
                 }
             )
 
@@ -299,7 +332,7 @@ class PerformanceProfiler:
         Returns:
             List of active call information dictionaries
         """
-        current_time = time.time()
+        current_time = time.monotonic()
         active = []
 
         for call_id, (func_name, start_time) in self._active_calls.items():

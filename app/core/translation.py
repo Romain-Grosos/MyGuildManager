@@ -68,27 +68,22 @@ FALLBACK_BUNDLE = {
 # #################################################################################### #
 class TranslationError(Exception):
     """Base exception for translation system errors."""
-
     pass
 
 class TranslationsLoadError(TranslationError):
     """Critical error during translation loading."""
-
     pass
 
 class TranslationsSchemaError(TranslationError):
     """Translation file schema validation error."""
-
     pass
 
 class TranslationsIOError(TranslationError):
     """I/O error during translation operations."""
-
     pass
 
 class TranslationsSecurityError(TranslationError):
     """Security violation in translation system."""
-
     pass
 
 # #################################################################################### #
@@ -452,14 +447,15 @@ class TranslationManager:
             metrics.set_size(file_size)
             metrics.set_fallback(False)
 
-            _logger.info("load",
-                status="success",
-                duration_ms=int(duration * 1000),
-                entries=len(data),
-                size_bytes=file_size,
-                hash=file_hash[:8],
-                slow=duration > SLOW_LOAD_THRESHOLD_MS / 1000,
-            )
+            if not PRODUCTION or duration > SLOW_LOAD_THRESHOLD_MS / 1000:
+                _logger.info("load",
+                    status="success",
+                    duration_ms=int(duration * 1000),
+                    entries=len(data),
+                    size_bytes=file_size,
+                    hash=file_hash[:8],
+                    slow=duration > SLOW_LOAD_THRESHOLD_MS / 1000,
+                )
 
             return self._translations
 
@@ -501,6 +497,9 @@ class TranslationManager:
         Returns:
             True if reloaded, False if unchanged
         """
+        if PRODUCTION:
+            return False
+        
         try:
             file_path = self._validator.validate_file_path(TRANSLATION_FILE)
 
@@ -524,11 +523,12 @@ class TranslationManager:
             self.load_translations(allow_fallback=False)
             metrics.record_reload()
 
-            _logger.info("reload",
-                status="success",
-                old_hash=self._file_hash[:8] if self._file_hash else None,
-                new_hash=current_hash[:8],
-            )
+            if not PRODUCTION:
+                _logger.info("reload",
+                    status="success",
+                    old_hash=self._file_hash[:8] if self._file_hash else None,
+                    new_hash=current_hash[:8],
+                )
 
             return True
 
@@ -583,13 +583,13 @@ class TranslationManager:
 
         if value is None:
             metrics.record_missing_key(locale, key)
-
-            if PRODUCTION:
-                return default or f"[{namespace}.{key_name}]"
-            else:
-                raise KeyError(
-                    f"Translation not found: {locale}/{namespace}/{key_name}"
-                )
+            _logger.warning("missing_translation",
+                locale=locale,
+                namespace=namespace,
+                key=key_name,
+                fallback="default_value"
+            )
+            return default or f"[{namespace}.{key_name}]"
 
         if safe_format:
             try:

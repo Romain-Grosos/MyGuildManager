@@ -1,6 +1,6 @@
-"""Type stubs for py-cord (discord.py v2) to fix Pylance issues"""
+"""Type stubs for py-cord (discord.py v2.6.1) to fix Pylance issues"""
 
-from typing import Any, Optional, List, Dict, Callable, Union, Type, Coroutine
+from typing import Any, Optional, List, Dict, Callable, Union, Type, Coroutine, Literal
 from discord.ext import commands
 import discord.abc as abc
 import discord.enums as enums
@@ -54,6 +54,117 @@ class SlashCommand(ApplicationCommand):
 class SlashCommandGroup(ApplicationCommand):
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
-def slash_command(*args: Any, **kwargs: Any) -> Callable: ...
-def user_command(*args: Any, **kwargs: Any) -> Callable: ...
-def message_command(*args: Any, **kwargs: Any) -> Callable: ...
+class ApplicationContext:
+    """Application context for slash commands."""
+    
+    def __init__(self, bot: Bot, interaction: Interaction, command: ApplicationCommand) -> None: ...
+    
+    @property
+    def bot(self) -> Bot: ...
+    
+    @property
+    def guild(self) -> Optional[Guild]: ...
+    
+    @property
+    def channel(self) -> Optional[abc.GuildChannel]: ...
+    
+    @property
+    def author(self) -> Optional[Union[Member, User]]: ...
+    
+    @property
+    def user(self) -> Optional[Union[Member, User]]: ...
+    
+    @property
+    def voice_client(self) -> Optional[VoiceClient]: ...
+    
+    @property
+    def interaction(self) -> Interaction: ...
+    
+    @property
+    def command(self) -> ApplicationCommand: ...
+    
+    @property
+    def locale(self) -> Optional[str]: ...
+    
+    async def respond(
+        self,
+        content: Optional[str] = None,
+        *,
+        embed: Optional[Embed] = None,
+        embeds: Optional[List[Embed]] = None,
+        view: Optional[View] = None,
+        tts: bool = False,
+        ephemeral: bool = False,
+        allowed_mentions: Optional[AllowedMentions] = None,
+        delete_after: Optional[float] = None,
+        file: Optional[File] = None,
+        files: Optional[List[File]] = None
+    ) -> Optional[Interaction]: ...
+    
+    async def send_followup(
+        self,
+        content: Optional[str] = None,
+        *,
+        embed: Optional[Embed] = None,
+        embeds: Optional[List[Embed]] = None,
+        view: Optional[View] = None,
+        tts: bool = False,
+        ephemeral: bool = False,
+        allowed_mentions: Optional[AllowedMentions] = None,
+        file: Optional[File] = None,
+        files: Optional[List[File]] = None
+    ) -> Webhook: ...
+    
+    async def edit(
+        self,
+        content: Optional[str] = None,
+        *,
+        embed: Optional[Embed] = None,
+        embeds: Optional[List[Embed]] = None,
+        view: Optional[View] = None,
+        allowed_mentions: Optional[AllowedMentions] = None,
+        delete_after: Optional[float] = None,
+        file: Optional[File] = None,
+        files: Optional[List[File]] = None
+    ) -> Optional[Interaction]: ...
+    
+    async def delete(self, *, delay: Optional[float] = None) -> None: ...
+
+def slash_command(
+    *,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    name_localizations: Optional[Dict[str, str]] = None,
+    description_localizations: Optional[Dict[str, str]] = None,
+    options: Optional[List[Option]] = None,
+    default_member_permissions: Optional[Permissions] = None,
+    dm_permission: bool = True,
+    nsfw: bool = False,
+    guild_ids: Optional[List[int]] = None,
+    guild_only: bool = False,
+    auto_sync: bool = True
+) -> Callable: ...
+
+def user_command(
+    *,
+    name: Optional[str] = None,
+    name_localizations: Optional[Dict[str, str]] = None,
+    default_member_permissions: Optional[Permissions] = None,
+    dm_permission: bool = True,
+    nsfw: bool = False,
+    guild_ids: Optional[List[int]] = None,
+    guild_only: bool = False,
+    auto_sync: bool = True
+) -> Callable: ...
+
+def message_command(
+    *,
+    name: Optional[str] = None,
+    name_localizations: Optional[Dict[str, str]] = None,
+    default_member_permissions: Optional[Permissions] = None,
+    dm_permission: bool = True,
+    nsfw: bool = False,
+    guild_ids: Optional[List[int]] = None,
+    guild_only: bool = False,
+    auto_sync: bool = True
+) -> Callable: ...

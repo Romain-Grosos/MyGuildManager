@@ -177,28 +177,22 @@ class GlobalCacheSystem:
         self._hot_keys: Set[str] = set()
         self._preload_tasks: Dict[str, asyncio.Task] = {}
         self._maintenance_task: Optional[asyncio.Task] = None
-        
         self._inflight_reloads: Dict[str, asyncio.Event] = {}
         self._configured_guilds_cache: Optional[Set[int]] = None
         self._configured_guilds_cache_time: float = 0
-        
         self._sliding_window_size = 900
         self._latency_samples = deque(maxlen=1000)
         self._request_timestamps = deque(maxlen=10000)
-        
         self._fast_threshold_ms = 100
         self._slow_threshold_ms = 1000
-        
         self._preload_semaphore = asyncio.Semaphore(4)
         self._preload_slots_total = 4
         self._preload_slots_used = 0
-        
         self._started_at = time.monotonic()
         self._cold_start_seconds = int(os.environ.get('COLD_START_SECONDS', '300'))
         self._alert_cooldown_seconds = int(os.environ.get('ALERT_COOLDOWN_SECONDS', '300'))
         self._last_alert_times = {}
         self._logger = ComponentLogger("cache")
-        
         self._logger.info("cache_initialized", component="cache", smart_features=True)
 
     def _generate_key(self, category: str, *args) -> str:
@@ -280,6 +274,15 @@ class GlobalCacheSystem:
             *args: Arguments for cache key generation
             ttl: Custom TTL in seconds (optional)
         """
+        import discord
+        if isinstance(value, (discord.NotFound, discord.Forbidden)):
+            self._logger.debug("error_not_cached", 
+                category=category,
+                error_type=type(value).__name__,
+                reason="Discord errors should not be cached"
+            )
+            return
+            
         key = self._generate_key(category, *args)
         cache_ttl = ttl or self._get_ttl_for_category(category)
         
@@ -763,11 +766,20 @@ class GlobalCacheSystem:
         if self._latency_samples:
             sorted_latencies = sorted(self._latency_samples)
             n = len(sorted_latencies)
-            percentiles = {
-                'p50': sorted_latencies[int(n * 0.50)] if n > 0 else 0,
-                'p95': sorted_latencies[int(n * 0.95)] if n > 0 else 0,
-                'p99': sorted_latencies[int(n * 0.99)] if n > 0 else 0
-            }
+            if n > 0:
+                def get_percentile(data, p):
+                    k = (n - 1) * p
+                    f = int(k)
+                    c = f + 1 if f < n - 1 else f
+                    d0 = data[f]
+                    d1 = data[c]
+                    return d0 + (k - f) * (d1 - d0)
+                
+                percentiles = {
+                    'p50': get_percentile(sorted_latencies, 0.50),
+                    'p95': get_percentile(sorted_latencies, 0.95),
+                    'p99': get_percentile(sorted_latencies, 0.99)
+                }
         
         fast_count = sum(1 for lat in self._latency_samples if lat < self._fast_threshold_ms)
         slow_count = sum(1 for lat in self._latency_samples if lat > self._slow_threshold_ms)

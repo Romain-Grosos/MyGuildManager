@@ -75,7 +75,6 @@ from .cache_loader import get_cache_loader
 from .core.translation import translations
 from .core.rate_limiter import start_cleanup_task
 from .core.performance_profiler import get_profiler
-from .core.reliability import setup_reliability_system
 from .core.logger import ComponentLogger
 
 _bot_logger = ComponentLogger("bot")
@@ -90,12 +89,11 @@ except ImportError:
     PSUTIL_AVAILABLE = False
     _bot_logger.warning("psutil_not_available", message="Resource monitoring disabled")
 
+from .core.reliability import setup_reliability_system
+
 # #################################################################################### #
 #                               Logging Configuration
 # #################################################################################### #
-# Système de logging désormais entièrement géré par ComponentLogger centralisé
-# #################################################################################### #
-
 def _global_exception_hook(exc_type, exc_value, exc_tb):
     """
     Global exception handler for uncaught exceptions.
@@ -112,7 +110,6 @@ def _global_exception_hook(exc_type, exc_value, exc_tb):
 
 sys.excepthook = _global_exception_hook
 
-# Silence noisy external loggers (minimal logging usage)
 import logging
 logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 logging.captureWarnings(True)
@@ -1797,5 +1794,4 @@ if __name__ == "__main__":
         loop.run_until_complete(run_bot())
     finally:
         loop.run_until_complete(loop.shutdown_asyncgens())
-        # logging.shutdown() - Plus nécessaire avec ComponentLogger
         loop.close()

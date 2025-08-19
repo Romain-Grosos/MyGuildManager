@@ -57,8 +57,22 @@ def log_json(component: str, level: str, event: str, **fields) -> None:
             "user_id",
             "guild_ids",
             "user_ids",
+            "member_id",
+            "channel_id",
         ):
             log_entry[key] = "REDACTED"
+        elif key == "exc_info" and is_production:
+            if isinstance(value, tuple) and len(value) >= 2:
+                log_entry["exception_type"] = value[0].__name__ if value[0] else "Unknown"
+                log_entry["exception_message"] = str(value[1]) if value[1] else "No message"
+            elif value is True:
+                import sys
+                exc_info = sys.exc_info()
+                if exc_info[0]:
+                    log_entry["exception_type"] = exc_info[0].__name__
+                    log_entry["exception_message"] = str(exc_info[1])
+        elif key == "exc_info" and not is_production:
+            log_entry[key] = value
         else:
             log_entry[key] = value
 

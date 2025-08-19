@@ -39,10 +39,13 @@ from .logger import ComponentLogger
 # #################################################################################### #
 _logger = ComponentLogger("translation_functions")
 
-def sanitize_kwargs(**kwargs):
+_KEY_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+_TRANSLATION_KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_.]+$")
+
+async def sanitize_kwargs(**kwargs):
     """
     Sanitize kwargs for safe string formatting in translations.
-
+    
     Args:
         **kwargs: Keyword arguments to sanitize
 
@@ -50,8 +53,9 @@ def sanitize_kwargs(**kwargs):
         Dictionary of sanitized key-value pairs safe for string formatting
     """
     safe_kwargs = {}
+    
     for k, v in kwargs.items():
-        if isinstance(k, str) and re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", k):
+        if isinstance(k, str) and _KEY_PATTERN.match(k):
             if isinstance(v, (str, int, float, bool)):
                 safe_kwargs[k] = str(v)[:200]
             else:
@@ -182,7 +186,7 @@ async def get_user_message(ctx, translations, key, **kwargs):
         _logger.warning("key_too_long", key_preview=key[:50])
         key = key[:100]
 
-    if not re.match(r"^[a-zA-Z0-9_.]+$", key):
+    if not _TRANSLATION_KEY_PATTERN.match(key):
         _logger.error("invalid_key_format", key=repr(key))
         return ""
 
@@ -225,7 +229,7 @@ async def get_user_message(ctx, translations, key, **kwargs):
         return ""
 
     try:
-        safe_kwargs = sanitize_kwargs(**kwargs)
+        safe_kwargs = await sanitize_kwargs(**kwargs)
         formatted_message = message.format(**safe_kwargs)
     except KeyError as e:
         _logger.error("missing_placeholder", placeholder=str(e), key=key)
@@ -288,7 +292,7 @@ async def get_guild_message(bot, guild_id: int, translations, key, **kwargs) -> 
             return ""
 
         try:
-            safe_kwargs = sanitize_kwargs(**kwargs)
+            safe_kwargs = await sanitize_kwargs(**kwargs)
             return message.format(**safe_kwargs)
         except Exception as e:
             _logger.error("guild_message_format_error",

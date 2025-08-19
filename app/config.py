@@ -56,7 +56,7 @@ VALIDATION_RANGES = {
     "MAX_RECONNECT_ATTEMPTS": (1, 10),
     "RATE_LIMIT_PER_MINUTE": (10, 1000),
     "DB_POOL_SIZE": (1, 50),
-    "DB_TIMEOUT": (5, 120),
+    "DB_TIMEOUT": (5, 30),
     "DB_CIRCUIT_BREAKER_THRESHOLD": (3, 20),
     "MAX_TRANSLATION_FILE_SIZE": (1024, 50 * 1024 * 1024),
     "DB_PORT": (1, 65535),
@@ -154,16 +154,18 @@ def validate_file_exists(file_path: str, var_name: str) -> Union[int, bool]:
         file_size = os.path.getsize(file_path)
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read(1)
+        safe_path = file_path if not any(secret in file_path.lower() for secret in ["password", "token", "key", "secret"]) else "[REDACTED_PATH]"
         _logger.debug("file_validated",
             variable=var_name,
-            file_path=file_path,
+            file_path=safe_path,
             size_bytes=file_size,
         )
         return file_size
     except (IOError, OSError) as e:
+        safe_path = file_path if not any(secret in file_path.lower() for secret in ["password", "token", "key", "secret"]) else "[REDACTED_PATH]"
         _logger.error("file_read_error",
             variable=var_name,
-            file_path=file_path,
+            file_path=safe_path,
             error_type=type(e).__name__,
             error_msg=str(e),
         )
@@ -220,7 +222,8 @@ def load_config() -> Mapping[str, Any]:
                     pass
                 config["LOG_FILE"] = fallback_log
                 log_fallback = True
-                _logger.info("log_file_fallback_success", fallback_path=fallback_log
+                safe_fallback = fallback_log if not any(secret in fallback_log.lower() for secret in ["password", "token", "key", "secret"]) else "[REDACTED_PATH]"
+                _logger.info("log_file_fallback_success", fallback_path=safe_fallback
                 )
             except (OSError, IOError) as fallback_error:
                 raise ConfigError(
@@ -328,7 +331,7 @@ def load_config() -> Mapping[str, Any]:
         validate_ranges("DB_POOL_SIZE", config["DB_POOL_SIZE"])
 
         config["DB_TIMEOUT"] = validate_int_env_var(
-            "DB_TIMEOUT", os.getenv("DB_TIMEOUT"), default=30, auto_clamp=auto_clamp
+            "DB_TIMEOUT", os.getenv("DB_TIMEOUT"), default=15, auto_clamp=auto_clamp
         )
         validate_ranges("DB_TIMEOUT", config["DB_TIMEOUT"])
 
@@ -366,8 +369,9 @@ def load_config() -> Mapping[str, Any]:
         )
 
         if not translation_file.endswith(".json"):
+            safe_path = translation_file if not any(secret in translation_file.lower() for secret in ["password", "token", "key", "secret"]) else "[REDACTED_PATH]"
             _logger.warning("translation_file_extension",
-                file_path=translation_file,
+                file_path=safe_path,
                 expected=".json",
             )
 

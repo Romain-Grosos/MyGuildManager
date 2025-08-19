@@ -84,15 +84,15 @@ Consultez `docs/STRUCTURE.md` pour comprendre l'organisation du projet :
 ### Imports
 ```python
 # Ordre des imports
-import logging  # 1. Standard library
-import asyncio
+import asyncio  # 1. Standard library
 from typing import Dict, Optional
 
 import discord  # 2. Third-party
 from discord.ext import commands
 
-from ..core.functions import get_user_message  # 3. Imports locaux
-from ..core.translation import translations
+from ..core.logger import ComponentLogger  # 3. Imports locaux
+from ..core.functions import get_user_message
+from ..core.translation import translations as global_translations
 ```
 
 ### Exemple de fonction bien documentée
@@ -129,6 +129,34 @@ await self.bot.cache_loader.ensure_guild_settings_loaded()
 settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
 ```
 
+### Logging enterprise-grade
+```python
+# ✅ ComponentLogger centralisé - OBLIGATOIRE
+from ..core.logger import ComponentLogger
+_logger = ComponentLogger("module_name")
+
+# ✅ Événements structurés avec paramètres
+_logger.info("user_authenticated", user_id=123, guild_id=456)
+_logger.warning("cache_miss", key="guild_settings", guild_id=789)
+_logger.error("database_error", query_type="SELECT", error=str(e))
+
+# ❌ INTERDITS - Anciens patterns
+import logging  # Plus utilisé
+logging.info(f"User {user_id} logged in")  # Supprimé partout
+```
+
+### Translation system centralisé
+```python
+# ✅ Fonctions centralisées - OBLIGATOIRES
+message = await get_user_message(ctx, bot.translations, "error.not_found", username="John")
+message = await get_guild_message(self.bot, guild_id, bot.translations, "announcements.new_member")
+locale = await get_effective_locale(self.bot, guild_id, user_id)
+
+# ❌ INTERDITS - Accès direct
+locale = ctx.locale or "en-US"  # Plus autorisé
+guild_lang = await self.bot.cache.get_guild_data(guild_id, 'guild_lang')  # Direct interdit
+```
+
 ---
 
 ## 🧪 Tests
@@ -136,13 +164,22 @@ settings = await self.bot.cache.get_guild_data(guild_id, 'settings')
 ### Exécuter les tests
 ```bash
 # Tests simples
+make test
+# ou
 python -m pytest tests/
 
 # Tests avec couverture
+make test-coverage
+# ou  
 python tests/run_tests_with_coverage.py
 
 # Test d'un module spécifique
 python -m pytest tests/test_cache.py
+
+# Linting et validation
+make lint          # Vérifications flake8
+make typecheck     # Validation types mypy
+make format        # Formatage code black
 ```
 
 ### Écrire des tests
@@ -187,9 +224,11 @@ git commit -m "DOCS(readme): mise à jour instructions d'installation"
 ## 🔄 Pull Request
 
 ### Avant de créer une PR
-1. **Testez votre code** : `python -m pytest tests/`
-2. **Nettoyez** : `make clean`
-3. **Documentez** vos changements
+1. **Testez votre code** : `make test` ou `make test-coverage`
+2. **Validez le code** : `make lint && make typecheck`
+3. **Formatez** : `make format`
+4. **Nettoyez** : `make clean`
+5. **Documentez** vos changements
 
 ### Template de PR
 ```markdown
@@ -210,29 +249,42 @@ Brève description des changements
 
 ## Checklist
 - [ ] Mon code suit les conventions du projet
+- [ ] J'utilise ComponentLogger (pas `import logging`)
+- [ ] J'utilise les fonctions de traduction centralisées
+- [ ] Je respecte l'interdiction de cache local dans les cogs
 - [ ] J'ai mis à jour la documentation si nécessaire
 - [ ] J'ai testé mes changements localement
 - [ ] Les imports sont correctement organisés
+- [ ] `make lint && make typecheck` passe sans erreur
 ```
 
 ---
 
 ## 🚨 Règles importantes
 
+### Architecture enterprise-grade
+- **ComponentLogger obligatoire** : Plus jamais `import logging`
+- **Traductions centralisées** : Utiliser `get_user_message()`, `get_guild_message()`
+- **Cache centralisé uniquement** : Interdiction totale de cache local dans cogs
+- **Imports relatifs** : Structure `from ..core import` respectée
+- **Async/await** : Toujours `await` pour `sanitize_kwargs()` et fonctions translation
+
 ### Sécurité
 - **JAMAIS** de secrets ou tokens dans le code
 - **JAMAIS** de requêtes SQL non paramétrées
 - **TOUJOURS** valider les entrées utilisateur
+- **PII masking** : Respecter `PRODUCTION=True` mode
 
 ### Performance
 - **Cache first** : Vérifier le cache avant la base de données
 - **Libérer les ressources** : Fermer drivers, connexions
-- **Timeouts appropriés** : Ne pas bloquer indéfiniment
+- **Timeouts appropriés** : Ne pas bloquer indéfiniment (DB timeout 15s max)
+- **Observabilité** : Événements structurés pour monitoring
 
 ### Discord API
 - Utiliser `@discord_resilient` pour les appels API
 - Gérer les rate limits Discord
-- Logging approprié des erreurs
+- Logging approprié des erreurs avec ComponentLogger
 
 ---
 
