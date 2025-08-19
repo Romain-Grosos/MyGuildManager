@@ -16,7 +16,7 @@ import os
 from typing import Optional
 from contextvars import ContextVar
 
-from core.logger import ComponentLogger
+from .core.logger import ComponentLogger
 
 QUERY_TIME_THRESHOLD_SIMPLE = float(
     os.environ.get("CACHE_QUERY_TIME_THRESHOLD_SIMPLE", "0.2")

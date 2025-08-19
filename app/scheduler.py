@@ -38,7 +38,7 @@ from zoneinfo import ZoneInfo
 
 from discord.ext import tasks
 
-from core.logger import ComponentLogger
+from .core.logger import ComponentLogger
 
 # #################################################################################### #
 #                            Scheduler Configuration

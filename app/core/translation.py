@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from ..config import TRANSLATION_FILE, MAX_TRANSLATION_FILE_SIZE
+from ..config import TRANSLATION_FILE, MAX_TRANSLATION_FILE_SIZE, PRODUCTION
 from .logger import ComponentLogger
 
 # #################################################################################### #
@@ -210,45 +210,6 @@ class MetricsCollector:
             }
 
 metrics = MetricsCollector()
-
-# #################################################################################### #
-#                              Structured Logging
-# #################################################################################### #
-class JSONLogger:
-    """Structured JSON logging with correlation IDs."""
-
-    @staticmethod
-    def log(level: str, event: str, **kwargs):
-        """Log a structured event."""
-        corr_id = correlation_id_context.get()
-
-        log_entry = {
-            "ver": "1.0",
-            "ts": datetime.now(timezone.utc).isoformat(),
-            "level": level,
-            "component": "translations",
-            "event": event,
-        }
-
-        if corr_id:
-            log_entry["corr_id"] = corr_id[:8]
-
-        log_entry.update(kwargs)
-
-        log_msg = json.dumps(log_entry, separators=(",", ":"))
-
-        event_name = log_entry.pop("event", "unknown")
-        log_entry.pop("level", None)
-        log_entry.pop("component", None)
-        
-        if level == "ERROR":
-            _logger.error(event_name, **log_entry)
-        elif level == "WARNING":
-            _logger.warning(event_name, **log_entry)
-        else:
-            _logger.info(event_name, **log_entry)
-
-logger = JSONLogger()
 
 # #################################################################################### #
 #                              Immutable Mapping Wrapper
@@ -491,9 +452,7 @@ class TranslationManager:
             metrics.set_size(file_size)
             metrics.set_fallback(False)
 
-            logger.log(
-                "INFO",
-                "load",
+            _logger.info("load",
                 status="success",
                 duration_ms=int(duration * 1000),
                 entries=len(data),
@@ -508,9 +467,7 @@ class TranslationManager:
             duration = time.monotonic() - start_time
             metrics.record_load(duration, "fail")
 
-            logger.log(
-                "ERROR",
-                "load",
+            _logger.error("load",
                 status="fail",
                 duration_ms=int(duration * 1000),
                 error_type=type(e).__name__,
@@ -526,9 +483,7 @@ class TranslationManager:
                 metrics.set_fallback(True)
                 metrics.record_load(0, "fallback")
 
-                logger.log(
-                    "ERROR",
-                    "translation_fallback_activated",
+                _logger.error("translation_fallback_activated",
                     status="fallback",
                     msg="Translation system degraded - using fallback bundle",
                     original_error=str(e),
@@ -569,9 +524,7 @@ class TranslationManager:
             self.load_translations(allow_fallback=False)
             metrics.record_reload()
 
-            logger.log(
-                "INFO",
-                "reload",
+            _logger.info("reload",
                 status="success",
                 old_hash=self._file_hash[:8] if self._file_hash else None,
                 new_hash=current_hash[:8],
@@ -582,9 +535,7 @@ class TranslationManager:
         except Exception as e:
             self._watchdog_alert_triggered = True
 
-            logger.log(
-                "ERROR",
-                "reload",
+            _logger.error("reload",
                 status="fail",
                 error_type=type(e).__name__,
                 msg=str(e),
@@ -633,7 +584,7 @@ class TranslationManager:
         if value is None:
             metrics.record_missing_key(locale, key)
 
-            if os.environ.get("ENV") == "production":
+            if PRODUCTION:
                 return default or f"[{namespace}.{key_name}]"
             else:
                 raise KeyError(
@@ -644,7 +595,7 @@ class TranslationManager:
             try:
                 formatted = value
                 for key, val in safe_format.items():
-                    if os.environ.get("ENV") == "production":
+                    if PRODUCTION:
                         if key in ("guild_id", "user_id", "channel_id"):
                             val = "REDACTED"
 
@@ -652,9 +603,7 @@ class TranslationManager:
 
                 return formatted
             except Exception as e:
-                logger.log(
-                    "ERROR",
-                    "format",
+                _logger.error("format",
                     locale=locale,
                     key=f"{namespace}.{key_name}",
                     error_type=type(e).__name__,
@@ -731,7 +680,5 @@ def stats() -> Dict[str, Any]:
 try:
     translations = load_translations(allow_fallback=True)
 except Exception as e:
-    logger.log(
-        "CRITICAL", "init", status="fail", error_type=type(e).__name__, msg=str(e)
-    )
+    _logger.critical("init", status="fail", error_type=type(e).__name__, msg=str(e))
     translations = None

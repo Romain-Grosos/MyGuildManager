@@ -49,8 +49,6 @@ attendance tracking, and provides comprehensive administrative tools.
 """
 
 import asyncio
-import json
-import logging
 import math
 import os
 import random
@@ -60,12 +58,9 @@ import sys
 import time
 import tracemalloc
 import uuid
-from datetime import datetime, timezone
 from collections import defaultdict, deque
 from contextvars import ContextVar
 from functools import wraps
-from logging.handlers import TimedRotatingFileHandler, RotatingFileHandler
-from pathlib import Path
 from typing import Final, Dict, Any, Optional
 
 import aiohttp
@@ -98,131 +93,8 @@ except ImportError:
 # #################################################################################### #
 #                               Logging Configuration
 # #################################################################################### #
-class ContextFilter(logging.Filter):
-    """Auto-inject guild, user, command from current_command_context into logs."""
-
-    def filter(self, record):
-        ctx = current_command_context.get(None)
-        correlation_id = correlation_id_context.get(None)
-
-        record.guild_id = None
-        record.user_id = None
-        record.command_name = None
-        record.correlation_id = correlation_id
-
-        if ctx and hasattr(ctx, "guild"):
-            if ctx.guild:
-                record.guild_id = ctx.guild.id
-            else:
-                record.guild_id = (
-                    f"dm_user_{ctx.author.id}"
-                    if hasattr(ctx, "author")
-                    else "dm_unknown"
-                )
-
-            if hasattr(ctx, "command") and ctx.command:
-                if hasattr(ctx.command, "parent") and ctx.command.parent:
-                    record.command_name = (
-                        f"{ctx.command.parent.name}/{ctx.command.name}"
-                    )
-                else:
-                    record.command_name = ctx.command.name
-
-            if hasattr(ctx, "author"):
-                record.user_id = ctx.author.id
-
-        return True
-
-class JSONFormatter(logging.Formatter):
-    """JSON formatter for structured logging with ISO-8601 UTC timestamps."""
-
-    def format(self, record):
-        timestamp_utc = datetime.fromtimestamp(record.created, tz=timezone.utc)
-
-        log_obj = {
-            "timestamp": timestamp_utc.isoformat(),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-            "module": record.module,
-            "function": record.funcName,
-            "line": record.lineno,
-            "log_schema_version": "1.0",
-        }
-
-        if hasattr(record, "guild_id") and record.guild_id:
-            if config.DEBUG or not config.PRODUCTION:
-                log_obj["guild_id"] = record.guild_id
-            else:
-                log_obj["guild_id"] = "REDACTED"
-        if hasattr(record, "user_id") and record.user_id:
-            if config.DEBUG or not config.PRODUCTION:
-                log_obj["user_id"] = record.user_id
-            else:
-                log_obj["user_id"] = "REDACTED"
-        if hasattr(record, "command_name") and record.command_name:
-            log_obj["command_name"] = record.command_name
-        if hasattr(record, "correlation_id") and record.correlation_id:
-            log_obj["correlation_id"] = record.correlation_id
-
-        if record.exc_info and (
-            config.DEBUG and not config.PRODUCTION
-        ):
-            log_obj["exception"] = self.formatException(record.exc_info)
-        elif record.exc_info:
-            log_obj["exception_type"] = record.exc_info[0].__name__
-            log_obj["exception_message"] = str(record.exc_info[1])
-
-        return json.dumps(log_obj, ensure_ascii=False)
-
-log_level: int = logging.DEBUG if config.DEBUG else logging.INFO
-logging.root.handlers.clear()
-logging.getLogger().setLevel(log_level)
-
-context_filter = ContextFilter()
-
-try:
-    log_path = Path(config.LOG_FILE)
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-
-    file_handler = TimedRotatingFileHandler(
-        config.LOG_FILE, when="midnight", interval=1, backupCount=7, encoding="utf-8"
-    )
-
-    if getattr(config, "LOG_FORMAT_JSON", False):
-        formatter = JSONFormatter()
-    else:
-        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-
-    file_handler.setFormatter(formatter)
-    file_handler.addFilter(context_filter)
-    logging.getLogger().addHandler(file_handler)
-except (PermissionError, OSError) as e:
-    _bot_logger.warning("log_file_fallback", error=str(e), fallback="rotating_handler")
-    try:
-        file_handler = RotatingFileHandler(
-            config.LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
-        )
-        if getattr(config, "LOG_FORMAT_JSON", False):
-            formatter = JSONFormatter()
-        else:
-            formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-        file_handler.setFormatter(formatter)
-        file_handler.addFilter(context_filter)
-        logging.getLogger().addHandler(file_handler)
-    except (PermissionError, OSError):
-        _bot_logger.warning("file_handler_failed", message="Cannot create any file handler, using console only")
-
-if getattr(config, "LOG_FORMAT_JSON", False) and getattr(
-    config, "LOG_JSON_CONSOLE", False
-):
-    console_formatter = JSONFormatter()
-else:
-    console_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(console_formatter)
-console_handler.addFilter(context_filter)
-logging.getLogger().addHandler(console_handler)
+# Système de logging désormais entièrement géré par ComponentLogger centralisé
+# #################################################################################### #
 
 def _global_exception_hook(exc_type, exc_value, exc_tb):
     """
@@ -240,6 +112,8 @@ def _global_exception_hook(exc_type, exc_value, exc_tb):
 
 sys.excepthook = _global_exception_hook
 
+# Silence noisy external loggers (minimal logging usage)
+import logging
 logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 logging.captureWarnings(True)
 
@@ -1116,7 +990,7 @@ def create_command_groups(bot: discord.Bot) -> None:
     _bot_logger.info("command_groups_registered", total_groups=len(groups))
 
 def setup_global_group_error_handlers(bot: discord.Bot) -> None:
-    from core.functions import get_user_message
+    from .core.functions import get_user_message
 
     groups = [
         ("admin_bot", bot.admin_group),
@@ -1532,18 +1406,8 @@ async def on_ready() -> None:
         cleanup_task = asyncio.create_task(cache_cleanup_task(), name="cache_cleanup")
         bot.register_background_task(cleanup_task, "cache_cleanup")
 
-        cache_task = await start_cache_maintenance_task(bot)
-        cleanup_task = await start_cleanup_task(bot)
-
-        if cache_task:
-            bot.register_background_task(cache_task, "cache_maintenance")
-        else:
-            _bot_logger.warning("cache_maintenance_task_failed", message="Task not started - returned None")
-
-        if cleanup_task:
-            bot.register_background_task(cleanup_task, "rate_limit_cleanup")
-        else:
-            _bot_logger.warning("cleanup_task_failed", message="Task not started - returned None")
+        await start_cache_maintenance_task(bot)
+        await start_cleanup_task(bot)
 
         async def periodic_rate_limit_cleanup():
             try:
@@ -1933,5 +1797,5 @@ if __name__ == "__main__":
         loop.run_until_complete(run_bot())
     finally:
         loop.run_until_complete(loop.shutdown_asyncgens())
-        logging.shutdown()
+        # logging.shutdown() - Plus nécessaire avec ComponentLogger
         loop.close()

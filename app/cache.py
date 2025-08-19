@@ -1392,3 +1392,5 @@ async def start_cache_maintenance_task(bot=None):
         cache._logger.info("maintenance_task_started")
     else:
         cache._logger.info("maintenance_task_started_fallback")
+    
+    return task

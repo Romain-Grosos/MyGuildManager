@@ -479,3 +479,5 @@ async def start_cleanup_task(bot=None):
         )
 
     _logger.info("cleanup_task_started", task_id=task_id)
+    
+    return task

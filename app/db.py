@@ -33,8 +33,8 @@ from asyncmy.errors import (
     PoolError,
 )
 
-import config
-from core.logger import ComponentLogger
+from . import config
+from .core.logger import ComponentLogger
 
 # #################################################################################### #
 #                            Database Pool Initialization
