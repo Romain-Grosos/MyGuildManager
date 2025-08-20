@@ -47,6 +47,7 @@ SECURITY:
 The bot handles guild member management, event scheduling, loot distribution,
 attendance tracking, and provides comprehensive administrative tools.
 """
+from __future__ import annotations
 
 import asyncio
 import math

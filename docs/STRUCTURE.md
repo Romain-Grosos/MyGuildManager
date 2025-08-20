@@ -12,6 +12,31 @@
 - **Memory debugging** : tracemalloc + SIGUSR1/SIGBREAK cross-platform
 - **Bounded shutdown** : Cleanup garanti avec timeouts + aiohttp connector closure
 
+### ⚡ VALIDATION GUILD_EVENTS.PY (20 août 2025) - PATTERNS ENTERPRISE
+
+**Standards enterprise-grade définis** - Refactoring complet du cog le plus critique (171KB) avec validation exhaustive des patterns à appliquer aux autres cogs :
+
+#### ✅ **8 Standards Enterprise Validés**
+1. **Transaction Consistency** : DB → UI avec rollback approprié
+2. **Method Naming Accuracy** : Cohérence noms vs appels
+3. **Database Operations** : `INSERT IGNORE` + `lastrowid` check robuste
+4. **Type Hints Precision** : Refléter usage réel (`int | float | str`)
+5. **Performance Optimization** : Élimination duplications/boucles
+6. **Exception Logging** : `exc_info=True` pour debug complet
+7. **Input Processing** : Parsers multi-formats sans preprocessing redondant
+8. **Fallback Consistency** : États valides, jamais input invalide
+
+#### 📋 **Checklist Migration Autres Cogs**
+**Patterns obligatoires à appliquer systématiquement :**
+- ✅ Ordre transactionnel : cache → DB → embed/UI
+- ✅ Logging avec `exc_info=True` pour exceptions inattendues
+- ✅ Type hints précis reflétant usage réel des fonctions
+- ✅ Optimisations performance : une seule passe pour constructions répétées
+- ✅ Fallbacks vers états valides, jamais input original invalide
+- ✅ Nettoyage preprocessing redondant (laisser parsers faire le travail)
+- ✅ Cohérence noms méthodes avec leurs appels
+- ✅ Opérations DB robustes avec gestion duplicatas appropriée
+
 ### 🎯 Évolutions Majeures Enterprise
 1. **Observabilité complète** - Correlation logs ↔ métriques avec context auto-injection
 2. **Performance optimisée** - Percentiles O(1), rate limiter deque, watchdog robuste

@@ -86,7 +86,7 @@ CREATE TABLE `epic_items_scraping_history` (
   PRIMARY KEY (`id`),
   KEY `idx_scraping_date` (`scraping_date`),
   KEY `idx_status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -166,7 +166,7 @@ CREATE TABLE `events_calendar` (
   KEY `idx_events_calendar_time` (`time`),
   KEY `idx_events_calendar_game` (`game_id`),
   CONSTRAINT `fk_events_calendar_game` FOREIGN KEY (`game_id`) REFERENCES `games_list` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Recurring event templates and schedules';
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Recurring event templates and schedules';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -187,16 +187,20 @@ CREATE TABLE `events_data` (
   `dkp_value` smallint(6) NOT NULL COMMENT 'DKP reward for attendance',
   `dkp_ins` smallint(6) NOT NULL COMMENT 'DKP reward for registration',
   `status` varchar(50) NOT NULL COMMENT 'Event status (planned, confirmed, closed, cancelled)',
-  `initial_members` longtext DEFAULT NULL CHECK (json_valid(`initial_members`)),
-  `registrations` longtext DEFAULT '{"presence": [], "tentative": [], "absence": []}',
-  `actual_presence` longtext DEFAULT NULL CHECK (json_valid(`actual_presence`)),
+  `initial_members` JSON DEFAULT NULL COMMENT 'Initial member list when event was created',
+  `registrations` JSON DEFAULT ('{"presence": [], "tentative": [], "absence": []}') COMMENT 'Event registrations by type (presence/tentative/absence)',
+  `actual_presence` JSON DEFAULT NULL COMMENT 'Final attendance data recorded after event',
   PRIMARY KEY (`guild_id`,`event_id`),
   KEY `idx_events_data_date` (`event_date`),
   KEY `idx_events_data_status` (`status`),
   KEY `idx_events_data_game` (`game_id`),
   KEY `idx_events_data_guild_date` (`guild_id`,`event_date`),
+  KEY `idx_events_data_guild_date_status` (`guild_id`,`event_date`,`status`),
+  KEY `idx_events_data_guild_game` (`guild_id`,`game_id`),
+  KEY `idx_events_data_date_status` (`event_date`,`status`),
   CONSTRAINT `fk_events_data_game` FOREIGN KEY (`game_id`) REFERENCES `games_list` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  CONSTRAINT `fk_events_data_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_events_data_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `chk_event_status` CHECK (`status` in ('planned','confirmed','closed','canceled'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Individual event instances with registration data';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -242,7 +246,7 @@ CREATE TABLE `guild_channels` (
   `statics_message` bigint(20) DEFAULT NULL COMMENT 'Message ID for static groups list',
   `abs_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for absence requests and tracking',
   `loot_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for loot distribution and DKP',
-  `loot_message` bigint(20) unsigned DEFAULT NULL,
+  `loot_message` bigint(20) DEFAULT NULL COMMENT 'Loot message ID',
   `tuto_channel` bigint(20) DEFAULT NULL COMMENT 'Channel for tutorials and guides',
   `forum_allies_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for ally guild communications',
   `forum_friends_channel` bigint(20) DEFAULT NULL COMMENT 'Forum channel for friendly guild communications',
@@ -442,7 +446,7 @@ CREATE TABLE `guild_static_groups` (
   KEY `idx_leader_id` (`leader_id`),
   KEY `idx_active` (`is_active`),
   CONSTRAINT `fk_static_groups_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -464,7 +468,7 @@ CREATE TABLE `guild_static_members` (
   KEY `idx_group_id` (`group_id`),
   KEY `idx_static_members_member_group` (`member_id`,`group_id`),
   CONSTRAINT `guild_static_members_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `guild_static_groups` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group membership with positions';
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group membership with positions';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -491,7 +495,7 @@ CREATE TABLE `loot_wishlist` (
   KEY `idx_created_at` (`created_at`),
   CONSTRAINT `fk_loot_wishlist_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE,
   CONSTRAINT `chk_priority` CHECK (`priority` in (1,2,3))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Epic T2 items wishlist for guild members - max 3 items per user';
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Epic T2 items wishlist for guild members - max 3 items per user';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -589,7 +593,7 @@ CREATE TABLE `loot_wishlist_history` (
   KEY `idx_item_timestamp` (`item_name`,`timestamp`),
   KEY `idx_action` (`action`),
   CONSTRAINT `fk_loot_wishlist_history_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='History of wishlist changes for analytics and audit trail';
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='History of wishlist changes for analytics and audit trail';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -656,7 +660,7 @@ CREATE TABLE `pending_diplomat_validations` (
   KEY `idx_pending_validations_guild` (`guild_id`),
   KEY `idx_pending_validations_created` (`created_at`),
   CONSTRAINT `fk_diplomat_validations_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Diplomat validation requests and status';
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Diplomat validation requests and status';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1029,4 +1033,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-03 21:56:23
+-- Dump completed on 2025-08-20  9:43:33

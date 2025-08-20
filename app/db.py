@@ -23,8 +23,8 @@ import contextlib
 import time
 from typing import Optional, Any, List, Tuple
 
-from asyncmy import pool
-from asyncmy.errors import (
+from asyncmy import pool  # type: ignore
+from asyncmy.errors import (  # type: ignore
     Error as AsyncMyError,
     DataError,
     IntegrityError,

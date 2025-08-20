@@ -1730,6 +1730,20 @@
                 "es-ES": "❌ Error actualizando embed del evento: {e}",
                 "de": "❌ Fehler beim Aktualisieren des Event-Embeds: {e}",
                 "it": "❌ Errore aggiornamento embed evento: {e}"
+            },
+            "discord_api_error": {
+                "en-US": "❌ Discord API error retrieving the message.",
+                "fr": "❌ Erreur Discord lors de la récupération du message.",
+                "es-ES": "❌ Error de API de Discord al recuperar el mensaje.",
+                "de": "❌ Discord API-Fehler beim Abrufen der Nachricht.",
+                "it": "❌ Errore API Discord recuperando il messaggio."
+            },
+            "unexpected_error": {
+                "en-US": "❌ Unexpected error retrieving the message.",
+                "fr": "❌ Erreur inattendue lors de la récupération du message.",
+                "es-ES": "❌ Error inesperado al recuperar el mensaje.",
+                "de": "❌ Unerwarteter Fehler beim Abrufen der Nachricht.",
+                "it": "❌ Errore imprevisto recuperando il messaggio."
             }
         },
         "event_reminder": {
