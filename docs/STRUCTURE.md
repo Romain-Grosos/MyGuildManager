@@ -461,3 +461,32 @@ _logger.error("error_occurred", error_type=type(e).__name__, error=str(e))
 - Le cache est géré automatiquement avec TTL
 - Les scripts SQL de migration doivent être numérotés chronologiquement
 - Logs ComponentLogger avec événements nommés pour monitoring avancé
+
+## 📅 Gestion des Dates de Retour - Système d'Absence
+
+### Comportement "Midi UTC" pour Timestamps Discord
+
+Le système d'absence applique une logique spéciale pour les dates sans heure spécifiée :
+
+#### Formats de dates supportés
+- **ISO avec heure** : `2024-12-25 14:30` → Heure exacte UTC
+- **ISO sans heure** : `2024-12-25` → **12:00 UTC par défaut**
+- **Relatif** : `+3d`, `+1w`, `+2m` → Calculé depuis maintenant
+- **Mots-clés** : `tomorrow`, `demain`, `week`, `semaine` (localisés)
+
+#### Logique "Midi UTC"
+Les dates sans heure spécifiée (format `YYYY-MM-DD`) sont automatiquement fixées à **12:00 UTC**.
+
+**Rationale :**
+- Évite les timestamps Discord "il y a X heures" confus
+- Affiche "dans X jours" plus naturel pour l'utilisateur
+- Cohérent entre fuseaux horaires
+- Évite les notifications à minuit
+
+**Exemples Discord :**
+```
+2024-12-25       → <t:1735128000:R> "dans 5 jours"    ✅ Naturel
+2024-12-25 00:00 → <t:1735084800:R> "dans 4 jours"    😕 Confus (minuit)
+```
+
+Cette approche garantit une expérience utilisateur optimale avec des timestamps Discord lisibles et intuitifs.

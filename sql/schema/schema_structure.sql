@@ -24,12 +24,15 @@ DROP TABLE IF EXISTS `absence_messages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `absence_messages` (
-  `guild_id` bigint(20) unsigned NOT NULL COMMENT 'Discord guild ID (FK to guild_settings)',
-  `message_id` bigint(20) unsigned NOT NULL COMMENT 'Discord message ID containing absence request',
-  `member_id` bigint(20) unsigned NOT NULL COMMENT 'Discord member ID who requested absence',
-  `created_at` timestamp NULL DEFAULT current_timestamp() COMMENT 'Timestamp when absence request was created',
+  `guild_id` bigint(20) unsigned NOT NULL,
+  `message_id` bigint(20) unsigned NOT NULL,
+  `member_id` bigint(20) unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT current_timestamp(6),
+  `return_date` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`guild_id`,`message_id`),
-  KEY `idx_member` (`member_id`)
+  KEY `idx_guild_member` (`guild_id`,`member_id`),
+  KEY `idx_return_date` (`guild_id`,`return_date`),
+  KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Absence request messages tracking';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -187,9 +190,9 @@ CREATE TABLE `events_data` (
   `dkp_value` smallint(6) NOT NULL COMMENT 'DKP reward for attendance',
   `dkp_ins` smallint(6) NOT NULL COMMENT 'DKP reward for registration',
   `status` varchar(50) NOT NULL COMMENT 'Event status (planned, confirmed, closed, cancelled)',
-  `initial_members` JSON DEFAULT NULL COMMENT 'Initial member list when event was created',
-  `registrations` JSON DEFAULT ('{"presence": [], "tentative": [], "absence": []}') COMMENT 'Event registrations by type (presence/tentative/absence)',
-  `actual_presence` JSON DEFAULT NULL COMMENT 'Final attendance data recorded after event',
+  `initial_members` longtext DEFAULT NULL CHECK (json_valid(`initial_members`)),
+  `registrations` longtext DEFAULT '{"presence": [], "tentative": [], "absence": []}',
+  `actual_presence` longtext DEFAULT NULL CHECK (json_valid(`actual_presence`)),
   PRIMARY KEY (`guild_id`,`event_id`),
   KEY `idx_events_data_date` (`event_date`),
   KEY `idx_events_data_status` (`status`),
@@ -200,7 +203,7 @@ CREATE TABLE `events_data` (
   KEY `idx_events_data_date_status` (`event_date`,`status`),
   CONSTRAINT `fk_events_data_game` FOREIGN KEY (`game_id`) REFERENCES `games_list` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
   CONSTRAINT `fk_events_data_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `chk_event_status` CHECK (`status` in ('planned','confirmed','closed','canceled'))
+  CONSTRAINT `chk_event_status` CHECK (`status` in ('planned','confirmed','closed','canceled','cancelled'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Individual event instances with registration data';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1033,4 +1036,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-20  9:43:33
+-- Dump completed on 2025-08-20 20:44:55

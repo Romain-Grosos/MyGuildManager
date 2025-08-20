@@ -501,11 +501,11 @@
                 "it": "**{member}** è stato segnato come assente."
             },
             "back_time": {
-                "en-US": "Expected return: {return_date}",
-                "fr": "Retour prévu : {return_date}",
-                "es-ES": "Regreso esperado: {return_date}",
-                "de": "Erwartete Rückkehr: {return_date}",
-                "it": "Ritorno previsto: {return_date}"
+                "en-US": "Expected return: {when}",
+                "fr": "Retour prévu : {when}",
+                "es-ES": "Regreso esperado: {when}",
+                "de": "Erwartete Rückkehr: {when}",
+                "it": "Ritorno previsto: {when}"
             },
             "absence_ok": {
                 "en-US": "✅ {member_mention} has been marked as absent.",
@@ -548,6 +548,13 @@
                 "es-ES": "✅ Regresó",
                 "de": "✅ Zurück",
                 "it": "✅ Ritornato"
+            },
+            "return_date_fallback": {
+                "en-US": "Soon",
+                "fr": "Bientôt",
+                "es-ES": "Pronto",
+                "de": "Bald",
+                "it": "Presto"
             }
         },
         "error": {
@@ -594,6 +601,129 @@
                 "es-ES": "✅ Has sido marcado como regresado. ¡Bienvenido de vuelta!",
                 "de": "✅ Sie wurden als zurückgekehrt markiert. Willkommen zurück!",
                 "it": "✅ Sei stato segnato comme tornato. Bentornato!"
+            }
+        },
+        "errors": {
+            "permission_insufficient": {
+                "en-US": "❌ Insufficient permissions to perform this action",
+                "fr": "❌ Permissions insuffisantes pour effectuer cette action",
+                "es-ES": "❌ Permisos insuficientes para realizar esta acción",
+                "de": "❌ Unzureichende Berechtigungen für diese Aktion",
+                "it": "❌ Permessi insufficienti per eseguire questa azione"
+            },
+            "permission_staff_feedback": {
+                "en-US": "Permission error in {operation}: {error}",
+                "fr": "Erreur de permission dans {operation} : {error}",
+                "es-ES": "Error de permisos en {operation}: {error}",
+                "de": "Berechtigungsfehler in {operation}: {error}",
+                "it": "Errore di permessi in {operation}: {error}"
+            },
+            "permission_user_feedback": {
+                "en-US": "❌ {error}",
+                "fr": "❌ {error}",
+                "es-ES": "❌ {error}",
+                "de": "❌ {error}",
+                "it": "❌ {error}"
+            }
+        },
+        "date_keywords": {
+            "tomorrow": {
+                "en-US": "tomorrow",
+                "fr": "demain",
+                "es-ES": "mañana",
+                "de": "morgen",
+                "it": "domani"
+            },
+            "week": {
+                "en-US": "week",
+                "fr": "semaine",
+                "es-ES": "semana",
+                "de": "woche",
+                "it": "settimana"
+            }
+        },
+        "forum": {
+            "updates_thread_name": {
+                "en-US": "Updates",
+                "fr": "Mises à jour",
+                "es-ES": "Actualizaciones",
+                "de": "Aktualisierungen",
+                "it": "Aggiornamenti"
+            },
+            "updates_thread_content": {
+                "en-US": "🔔 **Absence Notifications** | Notifications d'absence",
+                "fr": "🔔 **Notifications d'absence** | Absence Notifications",
+                "es-ES": "🔔 **Notificaciones de ausencia** | Absence Notifications",
+                "de": "🔔 **Abwesenheitsbenachrichtigungen** | Absence Notifications",
+                "it": "🔔 **Notifiche di assenza** | Absence Notifications"
+            }
+        },
+        "commands": {
+            "absence_add": {
+                "name": {
+                    "en-US": "absence_add",
+                    "fr": "absence_ajout",
+                    "es-ES": "agregar_ausencia",
+                    "de": "abwesenheit_hinzufügen",
+                    "it": "aggiungi_assenza"
+                },
+                "description": {
+                    "en-US": "Mark a member as absent",
+                    "fr": "Marquer un membre comme absent",
+                    "es-ES": "Marcar a un miembro como ausente",
+                    "de": "Ein Mitglied als abwesend markieren",
+                    "it": "Segnare un membro come assente"
+                },
+                "options": {
+                    "member": {
+                        "name": {
+                            "en-US": "member",
+                            "fr": "membre",
+                            "es-ES": "miembro",
+                            "de": "mitglied",
+                            "it": "membro"
+                        },
+                        "description": {
+                            "en-US": "Member to mark as absent",
+                            "fr": "Membre à marquer comme absent",
+                            "es-ES": "Miembro a marcar como ausente",
+                            "de": "Mitglied als abwesend markieren",
+                            "it": "Membro da segnare come assente"
+                        }
+                    },
+                    "return_date": {
+                        "name": {
+                            "en-US": "return_date",
+                            "fr": "date_retour",
+                            "es-ES": "fecha_regreso",
+                            "de": "rueckkehr_datum",
+                            "it": "data_ritorno"
+                        },
+                        "description": {
+                            "en-US": "Expected return date (formats: YYYY-MM-DD, +3d, +1w, keywords)",
+                            "fr": "Date de retour prévue (formats : YYYY-MM-DD, +3d, +1w, mots-clés)",
+                            "es-ES": "Fecha de regreso esperada (formatos: YYYY-MM-DD, +3d, +1w, palabras clave)",
+                            "de": "Erwartetes Rückkehrdatum (Formate: YYYY-MM-DD, +3d, +1w, Schlüsselwörter)",
+                            "it": "Data di ritorno prevista (formati: YYYY-MM-DD, +3d, +1w, parole chiave)"
+                        }
+                    }
+                }
+            }
+        },
+        "forum": {
+            "updates_thread_name": {
+                "en-US": "Updates",
+                "fr": "Mises à jour",
+                "es-ES": "Actualizaciones",
+                "de": "Aktualisierungen",
+                "it": "Aggiornamenti"
+            },
+            "updates_thread_content": {
+                "en-US": "🔔 **Absence Notifications**\nThis thread is used for automatic absence status updates.",
+                "fr": "🔔 **Notifications d'absence**\nCe fil est utilisé pour les mises à jour automatiques du statut d'absence.",
+                "es-ES": "🔔 **Notificaciones de Ausencia**\nEste hilo se usa para actualizaciones automáticas del estado de ausencia.",
+                "de": "🔔 **Abwesenheitsbenachrichtigungen**\nDieser Thread wird für automatische Abwesenheitsstatus-Updates verwendet.",
+                "it": "🔔 **Notifiche di Assenza**\nQuesto thread è usato per aggiornamenti automatici dello stato di assenza."
             }
         }
     },
