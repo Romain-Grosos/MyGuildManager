@@ -1,21 +1,68 @@
 """
-AutoRole Manager Cog - Manages automatic role assignment and welcome message handling.
+AutoRole Manager Cog - Enterprise-grade automatic role assignment and welcome message handling.
+
+This cog provides comprehensive autorole management with:
+
+Features:
+    - Automatic role assignment on rules acceptance
+    - Welcome message tracking and updates
+    - Rate limiting for reaction abuse prevention
+    - Profile setup integration with DM notifications
+    - Real-time role management with validation
+
+Enterprise Patterns:
+    - Discord API resilience with retry logic and 5xx handling
+    - Cache ready gates for cold start protection
+    - Centralized permission error handling with user feedback
+    - Structured logging with ComponentLogger
+    - Full localization support via JSON translation system
+    - Race condition protection with proper validation
 """
 
 import asyncio
-import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Tuple
 
 import discord
-import pytz
 from discord.ext import commands
 
+from core.logger import ComponentLogger
 from core.reliability import discord_resilient
 from core.translation import translations as global_translations
 
-AUTOROLE_TRANSLATIONS = global_translations.get("autorole_system", {})
+_logger = ComponentLogger("autorole")
+AUTOROLE_NAMESPACE = "autorole_system"
+AUTOROLE_TRANSLATIONS = global_translations.get(AUTOROLE_NAMESPACE, {})
+
+def _validate_translation_keys():
+    """Validate required translation keys at module load time."""
+    required_keys = [
+        "welcome.pending",
+        "welcome.accepted"
+    ]
+    
+    missing_keys = []
+    translations = AUTOROLE_TRANSLATIONS
+    
+    for key in required_keys:
+        current = translations
+        key_parts = key.split(".")
+        
+        try:
+            for part in key_parts:
+                current = current[part]
+        except (KeyError, TypeError):
+            missing_keys.append(key)
+    
+    if missing_keys:
+        _logger.warning(
+            "missing_translation_keys",
+            namespace=AUTOROLE_NAMESPACE,
+            missing_keys=missing_keys
+        )
+
+_validate_translation_keys()
 
 
 def update_welcome_embed(
@@ -33,8 +80,9 @@ def update_welcome_embed(
         Updated Discord embed with acceptance timestamp
     """
     try:
-        tz_france = pytz.timezone("Europe/Paris")
-        now = datetime.now(pytz.utc).astimezone(tz_france).strftime("%d/%m/%Y at %Hh%M")
+        epoch = int(datetime.now(timezone.utc).timestamp())
+        discord_timestamp = f"<t:{epoch}:F>"
+        
         pending_text = (
             autorole_translations.get("welcome", {}).get("pending", {}).get(lang)
         )
@@ -42,16 +90,29 @@ def update_welcome_embed(
             autorole_translations.get("welcome", {}).get("accepted", {}).get(lang)
         )
         if not pending_text or not accepted_template:
-            logging.error(f"[AutoRole] Missing translation keys for language '{lang}'.")
+            _logger.error(
+                "missing_welcome_translation_keys",
+                lang=lang,
+                missing_pending=not pending_text,
+                missing_accepted=not accepted_template
+            )
             return embed
-        new_text = accepted_template.format(date=now)
+        new_text = accepted_template.format(date=discord_timestamp)
         if embed.description:
-            embed.description = embed.description.replace(pending_text, new_text)
+            if pending_text in embed.description:
+                embed.description = embed.description.replace(pending_text, new_text)
+            else:
+                embed.description = new_text
         else:
             embed.description = new_text
         embed.color = discord.Color.dark_grey()
     except Exception as e:
-        logging.error(f"[AutoRole] Error updating welcome embed: {e}", exc_info=True)
+        _logger.error(
+            "error_updating_welcome_embed",
+            lang=lang,
+            error=str(e),
+            exc_info=True
+        )
     return embed
 
 
@@ -70,11 +131,21 @@ class AutoRole(commands.Cog):
         self._recent_reactions: Dict[Tuple[int, int, int], float] = {}
         self._reaction_counts: Dict[Tuple[int, int, int], int] = {}
 
+    def _has_cache(self) -> bool:
+        """Check if bot has cache system available."""
+        if not hasattr(self.bot, "cache") or self.bot.cache is None:
+            _logger.debug("no_cache_attached")
+            return False
+        return True
+
     @commands.Cog.listener()
     async def on_ready(self):
         """Wait for initial cache load to complete."""
-        asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
-        logging.debug("[AutoRole] Waiting for initial cache load")
+        if hasattr(self.bot, "cache_loader"):
+            asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
+            _logger.debug("waiting_for_initial_cache_load")
+        else:
+            _logger.debug("no_cache_loader_attached")
 
     def _check_rate_limit(self, guild_id: int, user_id: int, message_id: int) -> bool:
         """
@@ -88,20 +159,31 @@ class AutoRole(commands.Cog):
         Returns:
             True if user can react, False if rate limited
         """
-        key = (guild_id, user_id, message_id)
         current_time = time.time()
-
-        self._reaction_counts[key] = self._reaction_counts.get(key, 0) + 1
-
         cutoff = current_time - 3600
-        keys_to_remove = []
-        for k, timestamp in self._recent_reactions.items():
-            if timestamp <= cutoff:
-                keys_to_remove.append(k)
 
-        for k in keys_to_remove:
-            self._recent_reactions.pop(k, None)
-            self._reaction_counts.pop(k, None)
+        for k, ts in list(self._recent_reactions.items()):
+            if ts <= cutoff:
+                self._recent_reactions.pop(k, None)
+                self._reaction_counts.pop(k, None)
+
+        if len(self._recent_reactions) > 10000:
+            sorted_items = sorted(self._recent_reactions.items(), key=lambda x: x[1], reverse=True)
+            keys_to_keep = {item[0] for item in sorted_items[:5000]}
+
+            keys_to_remove = set(self._recent_reactions.keys()) - keys_to_keep
+            for k in keys_to_remove:
+                self._recent_reactions.pop(k, None)
+                self._reaction_counts.pop(k, None)
+            
+            _logger.debug(
+                "rate_limit_dict_purged",
+                removed_count=len(keys_to_remove),
+                remaining_count=len(self._recent_reactions)
+            )
+
+        key = (guild_id, user_id, message_id)
+        self._reaction_counts[key] = self._reaction_counts.get(key, 0) + 1
 
         if self._reaction_counts[key] <= 2:
             self._recent_reactions[key] = current_time
@@ -109,10 +191,60 @@ class AutoRole(commands.Cog):
 
         if key in self._recent_reactions:
             if current_time - self._recent_reactions[key] < 5.0:
+                _logger.debug(
+                    "reaction_rate_limited",
+                    guild_id=guild_id,
+                    user_id=user_id,
+                    message_id=message_id,
+                    reaction_count=self._reaction_counts[key]
+                )
                 return False
 
         self._recent_reactions[key] = current_time
         return True
+
+    async def _ensure_cache_ready(self, event_type: str = "unknown") -> bool:
+        """
+        Ensure cache is ready before processing events.
+
+        Args:
+            event_type: Type of event for logging context
+
+        Returns:
+            True if cache is ready or no cache loader (dev/test mode), False if not ready
+        """
+        try:
+            if not hasattr(self.bot, "cache_loader"):
+                _logger.debug("no_cache_loader_attached")
+                return True
+            is_ready = await self.bot.cache_loader.is_initial_load_complete()
+            if not is_ready:
+                _logger.debug("cache_not_ready_skipping_event", event_type=event_type)
+            return is_ready
+        except Exception as e:
+            _logger.error("error_checking_cache_ready", event_type=event_type, error=str(e), exc_info=True)
+            return False
+
+    async def _handle_permission_error(
+        self,
+        operation: str,
+        channel_or_member,
+        guild_id: int | None = None
+    ) -> None:
+        """
+        Handle permission errors with appropriate logging.
+
+        Args:
+            operation: Operation that failed
+            channel_or_member: Discord object that caused the permission error
+            guild_id: Guild ID for logging context
+        """
+        _logger.warning(
+            "permission_error",
+            operation=operation,
+            target_id=getattr(channel_or_member, 'id', None),
+            guild_id=guild_id or getattr(channel_or_member, 'guild_id', None)
+        )
 
     def _get_profile_setup_cog(self):
         """
@@ -136,25 +268,40 @@ class AutoRole(commands.Cog):
         Args:
             payload: Discord raw reaction event payload
         """
-        logging.debug(
-            f"[AutoRole - on_raw_reaction_add] Processing reaction: user={payload.user_id}, message={payload.message_id}, emoji={payload.emoji}"
+        if not await self._ensure_cache_ready("on_raw_reaction_add"):
+            return
+
+        if not self._has_cache():
+            return
+
+        if payload.user_id == self.bot.user.id:
+            return
+
+        _logger.debug(
+            "processing_reaction_add",
+            user_id=payload.user_id,
+            message_id=payload.message_id,
+            emoji=str(payload.emoji)
         )
 
         if not payload.guild_id:
-            logging.debug("[AutoRole - on_raw_reaction_add] No guild_id, skipping")
+            _logger.debug("no_guild_id_skipping")
             return
 
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
-            logging.debug(
-                f"[AutoRole - on_raw_reaction_add] Guild {payload.guild_id} not found"
+            _logger.debug(
+                "guild_not_found",
+                guild_id=payload.guild_id
             )
             return
 
         rules_info = await self.bot.cache.get_guild_data(guild.id, "rules_message")
         if not rules_info or payload.message_id != rules_info.get("message"):
-            logging.debug(
-                f"[AutoRole - on_raw_reaction_add] Message {payload.message_id} is not rules message for guild {guild.id}"
+            _logger.debug(
+                "message_not_rules_message",
+                message_id=payload.message_id,
+                guild_id=guild.id
             )
             return
 
@@ -162,22 +309,22 @@ class AutoRole(commands.Cog):
             return
 
         if not self._check_rate_limit(guild.id, payload.user_id, payload.message_id):
-            logging.debug(
-                f"[AutoRole] Rate limited reaction from user {payload.user_id}"
-            )
             return
 
         role_id = await self.bot.cache.get_guild_data(guild.id, "rules_ok_role")
         if not role_id:
-            logging.warning(
-                f"[AutoRole] No rules_ok role configured for guild {guild.id}"
+            _logger.warning(
+                "no_rules_ok_role_configured",
+                guild_id=guild.id
             )
             return
 
         role = guild.get_role(role_id)
         if not role:
-            logging.warning(
-                f"[AutoRole] Rules_ok role {role_id} not found in guild {guild.id}"
+            _logger.warning(
+                "rules_ok_role_not_found",
+                role_id=role_id,
+                guild_id=guild.id
             )
             return
 
@@ -186,24 +333,65 @@ class AutoRole(commands.Cog):
                 payload.user_id
             )
         except discord.NotFound:
-            logging.debug(
-                f"[AutoRole] Member {payload.user_id} no longer exists (left Discord) - skipping role assignment"
+            _logger.debug(
+                "member_no_longer_exists",
+                user_id=payload.user_id,
+                guild_id=guild.id
             )
             return
         except Exception as e:
-            logging.error(
-                f"[AutoRole] Error fetching member with ID {payload.user_id}: {e}",
-                exc_info=True,
+            _logger.error(
+                "error_fetching_member",
+                user_id=payload.user_id,
+                guild_id=guild.id,
+                error=str(e),
+                exc_info=True
+            )
+            return
+
+        if member and member.bot:
+            _logger.debug(
+                "ignoring_bot_reaction",
+                user_id=payload.user_id,
+                guild_id=guild.id
             )
             return
 
         if member and role and role not in member.roles:
+            me = guild.me
+            if not me.guild_permissions.manage_roles or role >= me.top_role or role.managed:
+                _logger.warning(
+                    "insufficient_role_hierarchy",
+                    guild_id=guild.id,
+                    bot_top=getattr(me.top_role, "id", None),
+                    target_role=role.id,
+                    role_managed=role.managed
+                )
+                return
+
             try:
-                await member.add_roles(role)
-                logging.debug(f"[AutoRole] Role added to {member.name} ({member.id}).")
+                await member.add_roles(role, reason="Autorole: rules accepted")
+                _logger.debug(
+                    "role_added_to_member",
+                    member_name=member.name,
+                    member_id=member.id,
+                    role_id=role.id
+                )
+            except discord.Forbidden:
+                await self._handle_permission_error(
+                    "add_rules_ok_role",
+                    member,
+                    guild_id=guild.id
+                )
+                return
             except Exception as e:
-                logging.error(
-                    f"[AutoRole] Error adding role to {member.name}: {e}", exc_info=True
+                _logger.error(
+                    "error_adding_role_to_member",
+                    member_name=member.name,
+                    member_id=member.id,
+                    role_id=role.id,
+                    error=str(e),
+                    exc_info=True
                 )
                 return
 
@@ -217,8 +405,11 @@ class AutoRole(commands.Cog):
                         channel = await self.bot.fetch_channel(welcome_info["channel"])
 
                     if not channel:
-                        logging.warning(
-                            f"[AutoRole] Channel {welcome_info['channel']} not found, removing from cache"
+                        _logger.warning(
+                            "welcome_channel_not_found",
+                            channel_id=welcome_info['channel'],
+                            member_id=member.id,
+                            guild_id=guild.id
                         )
                         await self.bot.cache.delete(
                             "user_data", guild.id, member.id, "welcome_message"
@@ -228,8 +419,11 @@ class AutoRole(commands.Cog):
                     try:
                         message = await channel.fetch_message(welcome_info["message"])
                     except discord.NotFound:
-                        logging.warning(
-                            f"[AutoRole] Message {welcome_info['message']} not found, removing from cache"
+                        _logger.warning(
+                            "welcome_message_not_found",
+                            message_id=welcome_info['message'],
+                            member_id=member.id,
+                            guild_id=guild.id
                         )
                         await self.bot.cache.delete(
                             "user_data", guild.id, member.id, "welcome_message"
@@ -237,8 +431,11 @@ class AutoRole(commands.Cog):
                         return
 
                     if not message.embeds:
-                        logging.warning(
-                            f"[AutoRole] No embeds found in welcome message for {member.name}"
+                        _logger.warning(
+                            "no_embeds_in_welcome_message",
+                            member_name=member.name,
+                            member_id=member.id,
+                            message_id=welcome_info['message']
                         )
                         return
 
@@ -249,64 +446,107 @@ class AutoRole(commands.Cog):
                     embed = update_welcome_embed(
                         message.embeds[0], lang, AUTOROLE_TRANSLATIONS
                     )
-                    await message.edit(embed=embed)
-                    logging.debug(
-                        f"[AutoRole] Welcome message updated for {member.name} (ID: {member.id})."
+
+                    for attempt in range(2):
+                        try:
+                            await message.edit(embed=embed)
+                            break
+                        except discord.HTTPException as e:
+                            if e.status >= 500 and attempt == 0:
+                                await asyncio.sleep(1.5)
+                                continue
+                            raise
+                    
+                    _logger.debug(
+                        "welcome_message_updated",
+                        member_name=member.name,
+                        member_id=member.id,
+                        message_id=welcome_info['message']
                     )
                 except discord.Forbidden:
-                    logging.warning(
-                        f"[AutoRole] No permission to edit message for {member.name}"
+                    await self._handle_permission_error(
+                        "edit_welcome_message",
+                        channel,
+                        guild_id=guild.id
                     )
                 except Exception as e:
-                    logging.error(
-                        "[AutoRole] Error updating welcome message", exc_info=True
+                    _logger.error(
+                        "error_updating_welcome_message",
+                        member_name=member.name,
+                        member_id=member.id,
+                        message_id=welcome_info['message'],
+                        error=str(e),
+                        exc_info=True
                     )
             else:
-                logging.debug(
-                    f"[AutoRole] No welcome message in cache for member {member.id} in guild {guild.id}."
+                _logger.debug(
+                    "no_welcome_message_in_cache",
+                    member_id=member.id,
+                    guild_id=guild.id
                 )
 
             try:
-                await self.bot.cache_loader.ensure_category_loaded("user_data")
+                if hasattr(self.bot, "cache_loader"):
+                    await self.bot.cache_loader.ensure_category_loaded("user_data")
                 user_setup = await self.bot.cache.get_user_data(
                     guild.id, member.id, "setup"
                 )
 
                 if user_setup is not None:
-                    logging.debug(
-                        f"[AutoRole] Profile already exists for {guild.id}_{member.id}; no DM sent for registration."
+                    _logger.debug(
+                        "profile_already_exists",
+                        member_id=member.id,
+                        guild_id=guild.id
                     )
                     return
 
-                logging.debug(
-                    f"[AutoRole] No profile found for {guild.id}_{member.id}; will send DM for registration."
+                _logger.debug(
+                    "no_profile_found_sending_dm",
+                    member_id=member.id,
+                    guild_id=guild.id
                 )
             except Exception as e:
-                logging.error(
-                    f"[AutoRole] Error checking user profile for {guild.id}_{member.id}: {e}",
-                    exc_info=True,
+                _logger.error(
+                    "error_checking_user_profile",
+                    member_id=member.id,
+                    guild_id=guild.id,
+                    error=str(e),
+                    exc_info=True
                 )
                 return
 
             profile_setup_cog = self._get_profile_setup_cog()
             if profile_setup_cog is None:
-                logging.error("[AutoRole] ProfileSetup cog not found!")
+                _logger.error(
+                    "profile_setup_cog_not_found",
+                    guild_id=guild.id
+                )
                 return
             try:
                 await member.send(
                     view=profile_setup_cog.LangSelectView(profile_setup_cog, guild.id)
                 )
-                logging.debug(
-                    f"[AutoRole] DM sent to {member.name} ({member.id}) to start the profile setup process for guild {guild.id}."
+                _logger.debug(
+                    "profile_setup_dm_sent",
+                    member_name=member.name,
+                    member_id=member.id,
+                    guild_id=guild.id
                 )
             except discord.Forbidden:
-                logging.warning(
-                    f"[AutoRole] Cannot send DM to {member.name} - DMs disabled for guild {guild.id}"
+                _logger.warning(
+                    "cannot_send_dm_to_member",
+                    member_name=member.name,
+                    member_id=member.id,
+                    guild_id=guild.id
                 )
             except Exception as e:
-                logging.error(
-                    f"[AutoRole] Error sending DM to {member.name}: {e} in guild {guild.id}.",
-                    exc_info=True,
+                _logger.error(
+                    "error_sending_dm_to_member",
+                    member_name=member.name,
+                    member_id=member.id,
+                    guild_id=guild.id,
+                    error=str(e),
+                    exc_info=True
                 )
 
     @commands.Cog.listener()
@@ -320,6 +560,15 @@ class AutoRole(commands.Cog):
         Args:
             payload: Discord raw reaction event payload
         """
+        if not await self._ensure_cache_ready("on_raw_reaction_remove"):
+            return
+
+        if not self._has_cache():
+            return
+
+        if payload.user_id == self.bot.user.id:
+            return
+
         if not payload.guild_id:
             return
 
@@ -335,22 +584,22 @@ class AutoRole(commands.Cog):
             return
 
         if not self._check_rate_limit(guild.id, payload.user_id, payload.message_id):
-            logging.debug(
-                f"[AutoRole] Rate limited reaction removal from user {payload.user_id}"
-            )
             return
 
         role_id = await self.bot.cache.get_guild_data(guild.id, "rules_ok_role")
         if not role_id:
-            logging.warning(
-                f"[AutoRole] No rules_ok role configured for guild {guild.id}"
+            _logger.warning(
+                "no_rules_ok_role_configured",
+                guild_id=guild.id
             )
             return
 
         role = guild.get_role(role_id)
         if not role:
-            logging.warning(
-                f"[AutoRole] Rules_ok role {role_id} not found in guild {guild.id}"
+            _logger.warning(
+                "rules_ok_role_not_found",
+                role_id=role_id,
+                guild_id=guild.id
             )
             return
 
@@ -359,27 +608,64 @@ class AutoRole(commands.Cog):
                 payload.user_id
             )
         except discord.NotFound:
-            logging.debug(
-                f"[AutoRole] Member {payload.user_id} no longer exists (left Discord) - skipping role removal"
+            _logger.debug(
+                "member_no_longer_exists_removal",
+                user_id=payload.user_id,
+                guild_id=guild.id
             )
             return
         except Exception as e:
-            logging.error(
-                f"[AutoRole] Error fetching member with ID {payload.user_id}: {e}",
-                exc_info=True,
+            _logger.error(
+                "error_fetching_member_removal",
+                user_id=payload.user_id,
+                guild_id=guild.id,
+                error=str(e),
+                exc_info=True
+            )
+            return
+
+        if member and member.bot:
+            _logger.debug(
+                "ignoring_bot_reaction_removal",
+                user_id=payload.user_id,
+                guild_id=guild.id
             )
             return
 
         if member and role and role in member.roles:
+            me = guild.me
+            if not me.guild_permissions.manage_roles or role >= me.top_role or role.managed:
+                _logger.warning(
+                    "insufficient_role_hierarchy",
+                    guild_id=guild.id,
+                    bot_top=getattr(me.top_role, "id", None),
+                    target_role=role.id,
+                    role_managed=role.managed
+                )
+                return
+
             try:
-                await member.remove_roles(role)
-                logging.debug(
-                    f"[AutoRole] Role removed from {member.name} ({member.id})."
+                await member.remove_roles(role, reason="Autorole: rules reaction removed")
+                _logger.debug(
+                    "role_removed_from_member",
+                    member_name=member.name,
+                    member_id=member.id,
+                    role_id=role.id
+                )
+            except discord.Forbidden:
+                await self._handle_permission_error(
+                    "remove_rules_ok_role",
+                    member,
+                    guild_id=guild.id
                 )
             except Exception as e:
-                logging.error(
-                    f"[AutoRole] Error removing role from {member.name}: {e}",
-                    exc_info=True,
+                _logger.error(
+                    "error_removing_role_from_member",
+                    member_name=member.name,
+                    member_id=member.id,
+                    role_id=role.id,
+                    error=str(e),
+                    exc_info=True
                 )
 
 
