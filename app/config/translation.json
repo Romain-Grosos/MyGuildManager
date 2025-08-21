@@ -2710,6 +2710,13 @@
                         "it": "Scegli un dungeon..."
                     }
                 },
+                "validate_label": {
+                    "en-US": "Validate",
+                    "fr": "Valider",
+                    "es-ES": "Validar",
+                    "de": "Bestätigen",
+                    "it": "Convalida"
+                },
                 "errors": {
                     "not_author": {
                         "en-US": "You did not initiate this command.",
@@ -2717,6 +2724,13 @@
                         "es-ES": "No iniciaste este comando.",
                         "de": "Sie haben diesen Befehl nicht initiiert.",
                         "it": "Non hai avviato questo comando."
+                    },
+                    "already_processing": {
+                        "en-US": "This action is already being processed.",
+                        "fr": "Cette action est déjà en cours de traitement.",
+                        "es-ES": "Esta acción ya se está procesando.",
+                        "de": "Diese Aktion wird bereits verarbeitet.",
+                        "it": "Questa azione è già in elaborazione."
                     },
                     "invalid_selection_all": {
                         "en-US": "If you select 'All', you cannot choose other options!",
@@ -2746,12 +2760,26 @@
                         "de": "Vertrag konnte nicht veröffentlicht werden.",
                         "it": "Errore nella pubblicazione del contratto."
                     },
+                    "all_options_required": {
+                        "en-US": "All selections must be made before validation.",
+                        "fr": "Toutes les sélections doivent être faites avant la validation.",
+                        "es-ES": "Todas las selecciones deben hacerse antes de la validación.",
+                        "de": "Alle Auswahlen müssen vor der Validierung getroffen werden.",
+                        "it": "Tutte le selezioni devono essere fatte prima della convalida."
+                    },
                     "required_missing": {
                         "en-US": "You must select at least one option for each category.",
                         "fr": "Vous devez sélectionner au moins une option pour chaque catégorie.",
                         "es-ES": "Debes seleccionar al menos una opción para cada categoría.",
                         "de": "Sie müssen mindestens eine Option für jede Kategorie auswählen.",
                         "it": "Devi selezionare almeno un'opzione per ogni categoria."
+                    },
+                    "unknown_option": {
+                        "en-US": "Unknown option ({option})",
+                        "fr": "Option inconnue ({option})",
+                        "es-ES": "Opción desconocida ({option})",
+                        "de": "Unbekannte Option ({option})",
+                        "it": "Opzione sconosciuta ({option})"
                     }
                 }
             },

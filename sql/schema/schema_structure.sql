@@ -46,7 +46,9 @@ DROP TABLE IF EXISTS `contracts`;
 CREATE TABLE `contracts` (
   `guild_id` bigint(20) NOT NULL,
   `message_id` bigint(20) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'Timestamp of contract creation',
   PRIMARY KEY (`guild_id`),
+  KEY `idx_created_at` (`created_at`),
   CONSTRAINT `fk_contracts_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Guild contract messages';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1036,4 +1038,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-20 20:44:55
+-- Dump completed on 2025-08-21  8:07:32
