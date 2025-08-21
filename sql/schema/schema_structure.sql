@@ -493,13 +493,15 @@ CREATE TABLE `loot_wishlist` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unique_user_item` (`guild_id`,`user_id`,`item_name`),
-  KEY `idx_guild_user` (`guild_id`,`user_id`),
-  KEY `idx_guild_item` (`guild_id`,`item_name`),
+  UNIQUE KEY `uniq_wishlist` (`guild_id`,`user_id`,`item_id`),
   KEY `idx_item_id` (`item_id`),
   KEY `idx_created_at` (`created_at`),
+  KEY `idx_wishlist_guild_item` (`guild_id`,`item_id`),
+  KEY `idx_wishlist_user` (`guild_id`,`user_id`),
   CONSTRAINT `fk_loot_wishlist_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE,
-  CONSTRAINT `chk_priority` CHECK (`priority` in (1,2,3))
+  CONSTRAINT `chk_priority` CHECK (`priority` in (1,2,3)),
+  CONSTRAINT `chk_item_id_not_empty` CHECK (`item_id` is null or octet_length(trim(`item_id`)) > 0),
+  CONSTRAINT `chk_item_name_not_empty` CHECK (octet_length(trim(`item_name`)) > 0)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Epic T2 items wishlist for guild members - max 3 items per user';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
@@ -1035,4 +1037,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-21 14:10:11
+-- Dump completed on 2025-08-21 16:52:30
