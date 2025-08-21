@@ -1,26 +1,51 @@
 """
-Epic Items Scraper Cog - Scrapes and manages Throne and Liberty Epic T2 items from questlog.gg
-Uses Selenium for JavaScript-heavy site scraping with multilingual support
+Epic Items Scraper Cog - Enterprise-grade scraping and management of Throne and Liberty Epic/Legendary items.
+
+This cog provides comprehensive Epic/Legendary items management with:
+
+SCRAPING FEATURES:
+- Multi-language scraping from questlog.gg (EN/FR/ES/DE)
+- Selenium-based JavaScript handling for dynamic content
+- Memory-optimized processing with batch operations
+- Intelligent pagination detection and processing
+
+ENTERPRISE PATTERNS:
+- ComponentLogger structured logging with correlation tracking
+- Discord API resilience with retry logic
+- Database transactions with rollback protection
+- Comprehensive error handling and recovery
+- Performance monitoring and timeout management
+- Resource cleanup and memory management
+
+RELIABILITY:
+- Timeout protection for long-running operations
+- Graceful degradation on scraping failures
+- Database integrity with ON DUPLICATE KEY UPDATE
+- Cache synchronization and invalidation
+- Multilingual data consistency validation
+- Anti-concurrent execution protection with asyncio.Lock
+
+Architecture: Enterprise-grade with comprehensive monitoring, automatic cleanup,
+and production-ready reliability patterns.
 """
 
 import asyncio
-import json
-import logging
-import os
 import re
-import tempfile
 import time
-from datetime import datetime, time as datetime_time
+from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
+
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException
+
+from core.logger import ComponentLogger
 from core.reliability import discord_resilient
 from db import run_db_query, run_db_transaction
 from core.functions import get_user_message
@@ -28,9 +53,11 @@ from core.translation import translations as global_translations
 
 EPIC_ITEMS_DATA = global_translations.get("epic_items", {})
 
+_logger = ComponentLogger("epic_items_scraper")
+
 
 class EpicItemsScraper(commands.Cog):
-    """Cog for scraping and managing Epic T2 items from questlog.gg"""
+    """Cog for scraping and managing Epic/Legendary items from questlog.gg"""
 
     def __init__(self, bot: discord.Bot) -> None:
         """
@@ -40,26 +67,28 @@ class EpicItemsScraper(commands.Cog):
             bot: Discord bot instance
         """
         self.bot = bot
-        self.base_urls = {
-            "en": "https://questlog.gg/throne-and-liberty/en/db/items?grade=5",
-            "fr": "https://questlog.gg/throne-and-liberty/fr/db/items?grade=5",
-            "es": "https://questlog.gg/throne-and-liberty/es/db/items?grade=5",
-            "de": "https://questlog.gg/throne-and-liberty/de/db/items?grade=5",
-        }
+        self.item_grades = [5, 6]
         self.languages = ["en", "fr", "es", "de"]
+        self.base_url_template = "https://questlog.gg/throne-and-liberty/{lang}/db/items?grade={grade}"
+        self._scrape_lock = asyncio.Lock()
 
         self._register_loot_commands()
 
         asyncio.create_task(self._init_cache())
 
     async def _init_cache(self):
-        """Initialize cache from database on startup using cache_loader."""
+        """Initialize cache from database on startup using cache_loader with enterprise logging."""
         try:
             await asyncio.sleep(2)
-            await self.bot.cache_loader.ensure_epic_items_t2_loaded()
-            logging.info(f"[EpicItemsScraper] Cache initialized via cache_loader")
+            if hasattr(self.bot, "cache_loader"):
+                await self.bot.cache_loader.ensure_epic_items_loaded()
+                _logger.info("cache_initialized_successfully",
+                             source="cache_loader", initialization_delay_s=2)
+            else:
+                _logger.debug("no_cache_loader_attached")
         except Exception as e:
-            logging.error(f"[EpicItemsScraper] Failed to initialize cache: {e}")
+            _logger.error("cache_initialization_failed",
+                          error_type=type(e).__name__, error_msg=str(e))
 
     def _register_loot_commands(self):
         """Register epic items commands with the centralized loot group."""
@@ -67,15 +96,16 @@ class EpicItemsScraper(commands.Cog):
             self.bot.loot_group.command(
                 name=EPIC_ITEMS_DATA.get("name", {}).get("en-US", "search_item"),
                 description=EPIC_ITEMS_DATA.get("description", {}).get(
-                    "en-US", "Search for Epic T2 items from Throne and Liberty"
+                    "en-US", "Search for Epic/Legendary items from Throne and Liberty"
                 ),
                 name_localizations=EPIC_ITEMS_DATA.get("name", {}),
                 description_localizations=EPIC_ITEMS_DATA.get("description", {}),
             )(self.epic_items)
 
+    @discord_resilient(service_name="epic_items_scraper", max_retries=2)
     async def scrape_epic_items(self) -> None:
         """
-        Main method to scrape Epic T2 items from questlog.gg using Selenium.
+        Main method to scrape Epic/Legendary items from questlog.gg using Selenium.
 
         Scrapes items from all supported languages, processes them, and stores
         them in the database with proper deduplication and caching.
@@ -83,95 +113,112 @@ class EpicItemsScraper(commands.Cog):
         Raises:
             Exception: If scraping fails or no items are found
         """
-        start_time = datetime.now()
-        items_scraped = 0
-        items_added = 0
-        items_updated = 0
-        items_failed = 0
+        if self._scrape_lock.locked():
+            _logger.warning("scrape_skipped_already_running")
+            return
 
-        try:
-            logging.info("Starting Epic T2 items scraping with Selenium")
+        async with self._scrape_lock:
+            start_time = datetime.now()
+            items_scraped = 0
+            items_added = 0
+            items_updated = 0
+            items_failed = 0
 
-            multilang_items = await self.scrape_multilingual_items()
-
-            if not multilang_items:
-                raise Exception("No items scraped from any language")
-
-            existing_items_query = "SELECT item_id FROM epic_items_t2"
-            existing_result = await run_db_query(existing_items_query, fetch_all=True)
-            existing_item_ids = (
-                {row[0] for row in existing_result} if existing_result else set()
-            )
-
-            queries_and_params = []
-
-            for item in multilang_items:
-                item_id = item.get("item_id")
-
-                insert_query = """
-                INSERT INTO epic_items_t2 (
-                    item_id, item_type, item_category,
-                    item_name_en, item_name_fr, item_name_es, item_name_de,
-                    item_url, item_icon_url
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    item_type = VALUES(item_type),
-                    item_category = VALUES(item_category),
-                    item_name_en = VALUES(item_name_en),
-                    item_name_fr = VALUES(item_name_fr),
-                    item_name_es = VALUES(item_name_es),
-                    item_name_de = VALUES(item_name_de),
-                    item_url = VALUES(item_url),
-                    item_icon_url = VALUES(item_icon_url),
-                    updated_at = CURRENT_TIMESTAMP
-                """
-
-                data = (
-                    item_id,
-                    item.get("item_type"),
-                    item.get("item_category"),
-                    item.get("item_name_en", ""),
-                    item.get("item_name_fr", ""),
-                    item.get("item_name_es", ""),
-                    item.get("item_name_de", ""),
-                    item.get("item_url", ""),
-                    item.get("item_icon_url", ""),
+            try:
+                _logger.info("epic_items_scraping_started",
+                    source="main_scraper",
+                    languages=len(self.languages)
                 )
 
-                queries_and_params.append((insert_query, data))
-                items_scraped += 1
+                multilang_items = await self.scrape_multilingual_items()
 
-                if item_id in existing_item_ids:
-                    items_updated += 1
+                if not multilang_items:
+                    _logger.error("no_items_scraped_any_language",
+                        languages_attempted=len(self.languages)
+                    )
+                    raise Exception("No items scraped from any language")
+
+                existing_items_query = "SELECT item_id FROM epic_items"
+                existing_result = await run_db_query(existing_items_query, fetch_all=True)
+                existing_item_ids = (
+                    {row[0] for row in existing_result} if existing_result else set()
+                )
+
+                queries_and_params = []
+
+                for item in multilang_items:
+                    item_id = item.get("item_id")
+
+                    insert_query = """
+                    INSERT INTO epic_items (
+                        item_id, item_type, item_category,
+                        item_name_en, item_name_fr, item_name_es, item_name_de,
+                        item_url, item_icon_url
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    ON DUPLICATE KEY UPDATE
+                        item_type=VALUES(item_type),
+                        item_category=VALUES(item_category),
+                        item_name_en=VALUES(item_name_en),
+                        item_name_fr=VALUES(item_name_fr),
+                        item_name_es=VALUES(item_name_es),
+                        item_name_de=VALUES(item_name_de),
+                        item_url=VALUES(item_url),
+                        item_icon_url=VALUES(item_icon_url),
+                        updated_at=CURRENT_TIMESTAMP
+                    """
+
+                    it = item.get("item_type") or "Unknown"
+                    ic = item.get("item_category") or "Unknown"
+                    data = (
+                        item_id, it, ic,
+                        item.get("item_name_en",""), item.get("item_name_fr",""),
+                        item.get("item_name_es",""), item.get("item_name_de",""),
+                        item.get("item_url",""), item.get("item_icon_url","")
+                    )
+
+                    queries_and_params.append((insert_query, data))
+                    items_scraped += 1
+
+                    if item_id in existing_item_ids:
+                        items_updated += 1
+                    else:
+                        items_added += 1
+
+                success = await run_db_transaction(queries_and_params)
+
+                if success:
+                    _logger.info("epic_items_scraping_completed",
+                        items_scraped=items_scraped,
+                        items_added=items_added,
+                        items_updated=items_updated,
+                        items_failed=items_failed
+                    )
+
+                    await self.update_cache(multilang_items)
+
+                    execution_time = int((datetime.now() - start_time).total_seconds())
+                    await self.log_scraping_success(
+                        items_scraped,
+                        items_added,
+                        items_updated,
+                        items_failed,
+                        execution_time,
+                    )
                 else:
-                    items_added += 1
+                    raise Exception("Database transaction failed")
 
-            success = await run_db_transaction(queries_and_params)
-
-            if success:
-                logging.info(
-                    f"Epic T2: {items_scraped} items ({items_added} new, {items_updated} upd)"
-                )
-
-                await self.update_cache(multilang_items)
-
+            except Exception as e:
                 execution_time = int((datetime.now() - start_time).total_seconds())
-                await self.log_scraping_success(
-                    items_scraped,
-                    items_added,
-                    items_updated,
-                    items_failed,
-                    execution_time,
+                _logger.error("epic_items_scraping_failed",
+                    error_type=type(e).__name__,
+                    error_msg=str(e)[:200],
+                    execution_time_s=execution_time,
+                    items_processed_before_error=items_scraped
                 )
-            else:
-                raise Exception("Database transaction failed")
+                await self.log_scraping_error(str(e), execution_time)
+                raise
 
-        except Exception as e:
-            execution_time = int((datetime.now() - start_time).total_seconds())
-            logging.error(f"Scraping error: {str(e)[:100]}")
-            await self.log_scraping_error(str(e), execution_time)
-            raise
-
+    @discord_resilient(service_name="multilingual_scraper", max_retries=2)
     async def scrape_multilingual_items(self) -> List[Dict[str, Any]]:
         """
         Scrape items from all language versions and merge them into multilingual records.
@@ -191,16 +238,25 @@ class EpicItemsScraper(commands.Cog):
                 List of multilingual item dictionaries or empty list on failure
             """
             try:
-                logging.info("Starting memory-optimized Epic T2 scraping")
+                _logger.info("memory_optimized_scraping_started",
+                    languages=len(self.languages)
+                )
 
-                logging.info("Scraping English items for base list...")
+                _logger.info("scraping_base_language",
+                    language="en"
+                )
                 base_items = self.scrape_language_items_optimized("en")
 
                 if not base_items:
-                    logging.error("No base items found in English")
+                    _logger.error("no_base_items_found",
+                        base_language="en"
+                    )
                     return []
 
-                logging.info(f"Base items: {len(base_items)}")
+                _logger.info("base_items_scraped",
+                    base_language="en",
+                    items_count=len(base_items)
+                )
 
                 multilang_items = {}
                 for item in base_items:
@@ -215,7 +271,9 @@ class EpicItemsScraper(commands.Cog):
                     }
 
                 for lang in ["fr", "es", "de"]:
-                    logging.info(f"{lang.upper()} scraping...")
+                    _logger.info("scraping_additional_language",
+                        language=lang
+                    )
                     try:
                         lang_items = self.scrape_language_items_optimized(lang)
 
@@ -226,30 +284,48 @@ class EpicItemsScraper(commands.Cog):
                                     "item_name"
                                 ]
 
-                        logging.info(f"{lang.upper()}: {len(lang_items)}")
+                        _logger.info("language_scraping_completed",
+                            language=lang,
+                            items_count=len(lang_items)
+                        )
 
                     except Exception as e:
-                        logging.warning(f"{lang} fail: {str(e)[:50]}")
+                        _logger.warning("language_scraping_failed",
+                            language=lang,
+                            error_type=type(e).__name__,
+                            error_msg=str(e)[:100],
+                            fallback_action="using_english_names"
+                        )
                         for item_id in multilang_items:
                             if f"item_name_{lang}" not in multilang_items[item_id]:
                                 multilang_items[item_id][f"item_name_{lang}"] = (
                                     multilang_items[item_id]["item_name_en"]
                                 )
 
-                logging.info(f"Total scraped: {len(multilang_items)}")
+                _logger.info("multilingual_scraping_completed",
+                    total_items=len(multilang_items),
+                    languages_processed=len(["en", "fr", "es", "de"])
+                )
                 return list(multilang_items.values())
 
             except Exception as e:
-                logging.error(f"Selenium error: {str(e)[:100]}")
+                _logger.error("selenium_scraping_error",
+                    error_type=type(e).__name__,
+                    error_msg=str(e)[:200]
+                )
                 return []
 
         try:
             return await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(None, run_selenium_scraper),
-                timeout=3600,
+                timeout=600,
             )
         except asyncio.TimeoutError:
-            logging.error("[EpicItemsScraper] Scraping timeout after 1 hour")
+            _logger.error("scraping_timeout_exceeded",
+                timeout_duration_s=600,
+                component="multilingual_scraper",
+                languages=len(self.languages)
+            )
             return []
 
     def scrape_language_items_optimized(self, language: str) -> List[Dict[str, Any]]:
@@ -268,49 +344,69 @@ class EpicItemsScraper(commands.Cog):
         driver = None
         try:
             options = Options()
-            options.add_argument("--headless")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--disable-extensions")
-            options.add_argument("--disable-plugins")
-            options.add_argument("--disable-images")
-            options.add_argument("--disable-javascript")
-            options.add_argument("--window-size=1920,1080")
-            options.add_argument("--memory-pressure-off")
-            options.add_argument(
-                "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            )
+            options.headless = True
+            options.page_load_strategy = "eager"
 
+            options.set_preference("general.useragent.override",
+                "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0")
             options.set_preference("browser.cache.disk.enable", False)
             options.set_preference("browser.cache.memory.enable", False)
             options.set_preference("browser.cache.offline.enable", False)
             options.set_preference("network.http.use-cache", False)
-            options.set_preference("browser.sessionhistory.max_total_viewers", 0)
-            options.set_preference("browser.sessionstore.max_tabs_undo", 0)
-            options.set_preference("media.memory_cache_max_size", 0)
 
-            logging.info(f"Creating Firefox driver: {language}")
+            _logger.info("firefox_driver_creating",
+                language=language,
+                page_load_timeout_s=20
+            )
             driver = webdriver.Firefox(options=options)
-            driver.set_page_load_timeout(30)
+            driver.set_page_load_timeout(20)
 
-            items = self.scrape_language_items(driver, language)
-            logging.info(f"{language}: {len(items)} items")
+            all_items = []
+            for grade in self.item_grades:
+                _logger.info("scraping_grade",
+                    language=language,
+                    grade=grade,
+                    grade_name="Epic" if grade == 5 else "Legendary"
+                )
+                grade_items = self.scrape_language_items(driver, language, grade)
+                all_items.extend(grade_items)
+                _logger.info("grade_scraping_completed",
+                    language=language,
+                    grade=grade,
+                    items_count=len(grade_items)
+                )
+            
+            items = all_items
+            _logger.info("language_items_scraped",
+                language=language,
+                items_count=len(items),
+                grades_scraped=len(self.item_grades)
+            )
 
             return items
 
         except Exception as e:
-            logging.error(f"{language} error: {str(e)[:100]}")
+            _logger.error("language_scraping_error",
+                language=language,
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200]
+            )
             return []
         finally:
             if driver:
                 try:
                     driver.quit()
-                    logging.debug(f"Driver closed: {language}")
+                    _logger.debug("firefox_driver_closed",
+                        language=language
+                    )
                 except Exception as e:
-                    logging.warning(f"Close error {language}: {str(e)[:50]}")
+                    _logger.warning("firefox_driver_close_error",
+                        language=language,
+                        error_type=type(e).__name__,
+                        error_msg=str(e)[:100]
+                    )
 
-    def scrape_language_items(self, driver, language: str) -> List[Dict[str, Any]]:
+    def scrape_language_items(self, driver, language: str, grade: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Scrape items from a specific language version with automatic pagination detection.
 
@@ -320,26 +416,38 @@ class EpicItemsScraper(commands.Cog):
         Args:
             driver: WebDriver instance to use for scraping
             language: Language code ('en', 'fr', 'es', 'de')
+            grade: Item grade to scrape (5=Epic, 6=Legendary)
 
         Returns:
             List of item dictionaries scraped from all pages
         """
         items = []
-        base_url = self.base_urls[language]
+        global_seen = set()
+        if grade is None:
+            grade = self.item_grades[0] if self.item_grades else 5
+        base_url = self.base_url_template.format(lang=language, grade=grade)
 
         try:
             max_pages = self.detect_total_pages(driver, base_url, language)
-            logging.info(f"{language}: {max_pages} pages")
+            _logger.info("pagination_detected",
+                language=language,
+                total_pages=max_pages
+            )
 
+            consecutive_empty = 0
             for page in range(1, max_pages + 1):
                 page_url = f"{base_url}&page={page}"
-                logging.debug(f"{language} p{page}/{max_pages}")
+                _logger.debug("scraping_page",
+                    language=language,
+                    current_page=page,
+                    total_pages=max_pages
+                )
 
                 try:
                     driver.get(page_url)
 
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.TAG_NAME, "body"))
+                    WebDriverWait(driver, 15).until(
+                        EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'a[href*="/db/item/"]'))
                     )
 
                     time.sleep(2)
@@ -347,30 +455,77 @@ class EpicItemsScraper(commands.Cog):
                     html_content = driver.page_source
                     soup = BeautifulSoup(html_content, "html.parser")
 
-                    item_links = soup.find_all("a", href=re.compile(r"/items?/"))
+                    item_links = soup.select('a[href*="/db/item/"]')
+                    seen = set()
                     page_items = []
 
                     for link in item_links:
                         try:
                             item = self.extract_item_from_link(link, language)
-                            if item and self.should_include_item(item["item_id"]):
-                                page_items.append(item)
+                            if not item:
+                                continue
+                            iid = item["item_id"]
+                            if iid in seen or iid in global_seen or not self.should_include_item(iid):
+                                continue
+                            seen.add(iid)
+                            global_seen.add(iid)
+                            page_items.append(item)
                         except Exception as e:
-                            logging.debug(f"Extract fail: {str(e)[:50]}")
+                            _logger.debug("item_link_extraction_failed",
+                                language=language,
+                                page_number=page,
+                                error_type=type(e).__name__,
+                                error_msg=str(e)[:100]
+                            )
                             continue
 
+                    if not page_items:
+                        consecutive_empty += 1
+                        if consecutive_empty >= 2:
+                            _logger.info("pagination_early_stop",
+                                language=language,
+                                page_number=page,
+                                consecutive_empty_pages=consecutive_empty
+                            )
+                            break
+                    else:
+                        consecutive_empty = 0
+                    
                     items.extend(page_items)
-                    logging.debug(f"p{page}: {len(page_items)} items")
+                    _logger.debug("page_items_extracted",
+                        page_number=page,
+                        items_count=len(page_items),
+                        language=language,
+                        consecutive_empty=consecutive_empty
+                    )
 
                 except Exception as page_error:
-                    logging.warning(f"{language} p{page} error: {str(page_error)[:50]}")
+                    if isinstance(page_error, TimeoutException):
+                        consecutive_empty += 1
+                        _logger.info("page_timeout_treated_as_empty",
+                                     language=language, page_number=page,
+                                     consecutive_empty_pages=consecutive_empty)
+                        if consecutive_empty >= 2:
+                            break
+                    else:
+                        _logger.warning("page_scraping_error",
+                                        language=language, page_number=page,
+                                        error_type=type(page_error).__name__,
+                                        error_msg=str(page_error)[:100])
                     continue
 
-            logging.info(f"{language} total: {len(items)}")
+            _logger.info("language_scraping_completed_final",
+                language=language,
+                total_items=len(items)
+            )
             return items
 
         except Exception as e:
-            logging.error(f"{language} scrape error: {str(e)[:100]}")
+            _logger.error("language_scraping_final_error",
+                language=language,
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200]
+            )
             return []
 
     def detect_total_pages(self, driver, base_url: str, language: str) -> int:
@@ -389,8 +544,8 @@ class EpicItemsScraper(commands.Cog):
             first_page_url = f"{base_url}&page=1"
             driver.get(first_page_url)
 
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'a[href*="/db/item/"]'))
             )
 
             import time
@@ -437,25 +592,37 @@ class EpicItemsScraper(commands.Cog):
                                 continue
 
                     if max_page > 1:
-                        logging.debug(f"Max page: {max_page}")
+                        _logger.debug("pagination_max_page_detected",
+                            language=language,
+                            max_page=max_page
+                        )
                         break
 
             if max_page == 1:
                 max_page = self.binary_search_last_page(driver, base_url, language)
 
             if max_page == 1:
-                logging.warning(f"{language}: pagination fallback (20)")
+                _logger.warning("pagination_fallback_used",
+                    language=language,
+                    fallback_pages=20,
+                    reason="no_pagination_detected"
+                )
                 max_page = 20
 
             return max_page
 
         except Exception as e:
-            logging.error(f"{language} page detect error: {str(e)[:50]}")
+            _logger.error("pagination_detection_error",
+                language=language,
+                error_type=type(e).__name__,
+                error_msg=str(e)[:100],
+                fallback_pages=20
+            )
             return 20
 
     def binary_search_last_page(self, driver, base_url: str, language: str) -> int:
         """
-        Use binary search to find the last page with Epic T2 items specifically.
+        Use binary search to find the last page with Epic/Legendary items specifically.
 
         Args:
             driver: WebDriver instance to use
@@ -463,7 +630,7 @@ class EpicItemsScraper(commands.Cog):
             language: Language code for logging
 
         Returns:
-            Estimated number of pages with Epic T2 items
+            Estimated number of pages with Epic/Legendary items
         """
         try:
             low, high = 1, 30
@@ -481,14 +648,14 @@ class EpicItemsScraper(commands.Cog):
 
                 html_content = driver.page_source
                 soup = BeautifulSoup(html_content, "html.parser")
-                item_links = soup.find_all("a", href=re.compile(r"/items?/"))
+                item_links = soup.select('a[href*="/db/item/"]')
 
                 epic_items_found = 0
                 for link in item_links:
                     try:
                         href = link.get("href", "")
                         item_id_match = re.search(
-                            r"/items?/(?:[^/?]+/)*([^/?]+)", str(href)
+                            r"/db/item/([^/?]+)", str(href)
                         )
                         if item_id_match:
                             item_id = item_id_match.group(1)
@@ -497,7 +664,11 @@ class EpicItemsScraper(commands.Cog):
                     except:
                         continue
 
-                logging.debug(f"p{mid}: {epic_items_found} items")
+                _logger.debug("binary_search_page_check",
+                    language=language,
+                    page_number=mid,
+                    epic_items_found=epic_items_found
+                )
 
                 if epic_items_found > 0:
                     last_epic_page = mid
@@ -508,13 +679,20 @@ class EpicItemsScraper(commands.Cog):
                     high = mid - 1
 
             final_pages = min(last_epic_page + 2, 25)
-            logging.info(
-                f"{language}: pages {final_pages} (last T2: p{last_epic_page})"
+            _logger.info("binary_search_pagination_completed",
+                language=language,
+                final_pages=final_pages,
+                last_epic_page=last_epic_page
             )
             return final_pages
 
         except Exception as e:
-            logging.error(f"{language} binary search: {str(e)[:50]}")
+            _logger.error("binary_search_pagination_error",
+                language=language,
+                error_type=type(e).__name__,
+                error_msg=str(e)[:100],
+                fallback_pages=20
+            )
             return 20
 
     def extract_item_from_link(
@@ -535,7 +713,7 @@ class EpicItemsScraper(commands.Cog):
             if not href:
                 return None
 
-            item_id_match = re.search(r"/items?/(?:[^/?]+/)*([^/?]+)", href)
+            item_id_match = re.search(r"/db/item/([^/?]+)", href)
             if not item_id_match:
                 return None
 
@@ -569,7 +747,11 @@ class EpicItemsScraper(commands.Cog):
             }
 
         except Exception as e:
-            logging.debug(f"Extract error: {str(e)[:30]}")
+            _logger.debug("item_extraction_error",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:100],
+                language=language
+            )
             return None
 
     def should_include_item(self, item_id: str) -> bool:
@@ -740,6 +922,7 @@ class EpicItemsScraper(commands.Cog):
 
         return translated_type or item_type, translated_category or item_category
 
+    @discord_resilient(service_name="cache_update", max_retries=3)
     async def update_cache(self, items: List[Dict[str, Any]]) -> None:
         """
         Update the cache with scraped items.
@@ -747,8 +930,10 @@ class EpicItemsScraper(commands.Cog):
         Args:
             items: List of item dictionaries to cache
         """
-        await self.bot.cache.set_static_data("epic_items_t2", items)
-        logging.info(f"Cache updated: {len(items)} items")
+        await self.bot.cache.set_static_data("epic_items", items)
+        _logger.info("cache_updated",
+            items_count=len(items)
+        )
 
     async def log_scraping_success(
         self,
@@ -779,7 +964,7 @@ class EpicItemsScraper(commands.Cog):
             INSERT INTO epic_items_scraping_history (
                 items_scraped, items_added, items_updated, items_deleted,
                 status, execution_time_seconds
-            ) VALUES (?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s)
             """
 
             await run_db_query(
@@ -788,12 +973,17 @@ class EpicItemsScraper(commands.Cog):
                 commit=True,
             )
 
-            logging.info(
-                f"Logged scraping success: {items_scraped} scraped, {items_failed} failed"
+            _logger.info("scraping_success_logged",
+                items_scraped=items_scraped,
+                items_failed=items_failed,
+                status=status
             )
 
         except Exception as e:
-            logging.error(f"Failed to log scraping success: {e}")
+            _logger.error("scraping_success_log_failed",
+                error_type=type(e).__name__,
+                error_msg=str(e)
+            )
 
     async def log_scraping_error(self, error_message: str, execution_time: int) -> None:
         """
@@ -808,17 +998,22 @@ class EpicItemsScraper(commands.Cog):
             INSERT INTO epic_items_scraping_history (
                 items_scraped, items_added, items_updated, items_deleted,
                 status, execution_time_seconds, error_message
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
 
             await run_db_query(
                 query, (0, 0, 0, 0, "error", execution_time, error_message), commit=True
             )
 
-            logging.info(f"Logged scraping error: {error_message}")
+            _logger.info("scraping_error_logged",
+                error_message_length=len(error_message)
+            )
 
         except Exception as e:
-            logging.error(f"Failed to log scraping error: {e}")
+            _logger.error("scraping_error_log_failed",
+                error_type=type(e).__name__,
+                error_msg=str(e)
+            )
 
     @discord_resilient(service_name="discord_api", max_retries=3)
     async def epic_items(
@@ -836,7 +1031,7 @@ class EpicItemsScraper(commands.Cog):
         ),
     ):
         """
-        Command to search items from the Epic T2 database.
+        Command to search items from the Epic/Legendary database.
 
         Args:
             ctx: Discord application context
@@ -845,23 +1040,23 @@ class EpicItemsScraper(commands.Cog):
         await ctx.defer()
 
         try:
-            items = await self.bot.cache.get_static_data("epic_items_t2")
+            items = await self.bot.cache.get_static_data("epic_items")
 
             if not items:
                 query = """
                 SELECT item_id, item_name_en, item_type, item_category, 
                        item_icon_url, item_url,
                        item_name_fr, item_name_es, item_name_de
-                FROM epic_items_t2
+                FROM epic_items
                 """
                 params = []
                 conditions = []
 
                 search_conditions = [
-                    "item_name_en LIKE ?",
-                    "item_name_fr LIKE ?",
-                    "item_name_es LIKE ?",
-                    "item_name_de LIKE ?",
+                    "item_name_en LIKE %s",
+                    "item_name_fr LIKE %s",
+                    "item_name_es LIKE %s",
+                    "item_name_de LIKE %s",
                 ]
                 conditions.append(f"({' OR '.join(search_conditions)})")
                 search_param = f"%{search}%"
@@ -978,13 +1173,18 @@ class EpicItemsScraper(commands.Cog):
 
                 embeds.append(embed)
 
-            await ctx.respond(embed=embeds[0])
+            msg = await ctx.respond(embed=embeds[0])
+            for e in embeds[1:]:
+                await ctx.followup.send(embed=e)
 
         except Exception as e:
-            logging.error(f"Error in epic_items command: {e}")
+            _logger.error("epic_items_command_error",
+                error_type=type(e).__name__,
+                error_msg=str(e),
+                search_term=search
+            )
             error_msg = await get_user_message(ctx, EPIC_ITEMS_DATA, "messages.error")
             await ctx.respond(error_msg, ephemeral=True)
-
 
 def setup(bot):
     """

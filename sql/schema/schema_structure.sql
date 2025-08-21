@@ -72,36 +72,13 @@ CREATE TABLE `dynamic_voice_channels` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `epic_items_scraping_history`
+-- Table structure for table `epic_items`
 --
 
-DROP TABLE IF EXISTS `epic_items_scraping_history`;
+DROP TABLE IF EXISTS `epic_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `epic_items_scraping_history` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `scraping_date` timestamp NULL DEFAULT current_timestamp(),
-  `items_scraped` int(11) NOT NULL,
-  `items_added` int(11) DEFAULT 0,
-  `items_updated` int(11) DEFAULT 0,
-  `items_deleted` int(11) DEFAULT 0,
-  `status` enum('success','partial','error') NOT NULL,
-  `error_message` text DEFAULT NULL,
-  `execution_time_seconds` int(11) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_scraping_date` (`scraping_date`),
-  KEY `idx_status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `epic_items_t2`
---
-
-DROP TABLE IF EXISTS `epic_items_t2`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `epic_items_t2` (
+CREATE TABLE `epic_items` (
   `item_id` varchar(100) NOT NULL,
   `item_type` varchar(50) NOT NULL,
   `item_category` varchar(50) NOT NULL,
@@ -126,14 +103,37 @@ CREATE TABLE `epic_items_t2` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Temporary table structure for view `epic_items_t2_view`
+-- Table structure for table `epic_items_scraping_history`
 --
 
-DROP TABLE IF EXISTS `epic_items_t2_view`;
-/*!50001 DROP VIEW IF EXISTS `epic_items_t2_view`*/;
+DROP TABLE IF EXISTS `epic_items_scraping_history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `epic_items_scraping_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `scraping_date` timestamp NULL DEFAULT current_timestamp(),
+  `items_scraped` int(11) NOT NULL,
+  `items_added` int(11) DEFAULT 0,
+  `items_updated` int(11) DEFAULT 0,
+  `items_deleted` int(11) DEFAULT 0,
+  `status` enum('success','partial','error') NOT NULL,
+  `error_message` text DEFAULT NULL,
+  `execution_time_seconds` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_scraping_date` (`scraping_date`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Temporary table structure for view `epic_items_view`
+--
+
+DROP TABLE IF EXISTS `epic_items_view`;
+/*!50001 DROP VIEW IF EXISTS `epic_items_view`*/;
 SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = utf8mb4;
-/*!50001 CREATE VIEW `epic_items_t2_view` AS SELECT
+/*!50001 CREATE VIEW `epic_items_view` AS SELECT
  1 AS `item_id`,
   1 AS `item_type`,
   1 AS `item_category`,
@@ -451,7 +451,7 @@ CREATE TABLE `guild_static_groups` (
   KEY `idx_leader_id` (`leader_id`),
   KEY `idx_active` (`is_active`),
   CONSTRAINT `fk_static_groups_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group definitions and metadata';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -473,7 +473,7 @@ CREATE TABLE `guild_static_members` (
   KEY `idx_group_id` (`group_id`),
   KEY `idx_static_members_member_group` (`member_id`,`group_id`),
   CONSTRAINT `guild_static_members_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `guild_static_groups` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group membership with positions';
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Static group membership with positions';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -784,7 +784,7 @@ CREATE TABLE `welcome_messages` (
 --
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-/*!50003 DROP FUNCTION IF EXISTS `GetItemName` */;
+/*!50003 DROP FUNCTION IF EXISTS `get_epic_item_name` */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
 /*!50003 SET @saved_col_connection = @@collation_connection */ ;
@@ -792,24 +792,23 @@ CREATE TABLE `welcome_messages` (
 /*!50003 SET character_set_results = utf8mb4 */ ;
 /*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
 DELIMITER ;;
-CREATE DEFINER=`USER_discordbot`@`localhost` FUNCTION `GetItemName`(p_item_id VARCHAR(100),
-    p_language VARCHAR(5)
-) RETURNS varchar(255) CHARSET utf8mb4 COLLATE utf8mb4_general_ci
+CREATE DEFINER=`USER_discordbot`@`localhost` FUNCTION `get_epic_item_name`(p_item_id VARCHAR(100),
+    p_language VARCHAR(2)
+) RETURNS varchar(255) CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci
     READS SQL DATA
     DETERMINISTIC
 BEGIN
     DECLARE item_name VARCHAR(255);
     
-    -- Utilisation de CASE pour éviter le SQL dynamique dans une fonction
     SELECT 
         CASE p_language
             WHEN 'en' THEN item_name_en
             WHEN 'fr' THEN item_name_fr
             WHEN 'es' THEN item_name_es
             WHEN 'de' THEN item_name_de
-            ELSE item_name_en -- Par défaut, retourne l'anglais
+            ELSE item_name_en
         END INTO item_name
-    FROM epic_items_t2 
+    FROM epic_items
     WHERE item_id = p_item_id;
     
     RETURN item_name;
@@ -867,7 +866,7 @@ BEGIN
     SET @sql = CONCAT(
         'SELECT item_id, item_type, item_category, item_name_', p_language, 
         ' AS item_name, item_icon_url, item_url ',
-        'FROM epic_items_t2 '
+        'FROM epic_items '
     );
     
     IF p_item_type IS NOT NULL AND p_item_type != '' THEN
@@ -887,7 +886,7 @@ DELIMITER ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `SearchItemsByName` */;
+/*!50003 DROP PROCEDURE IF EXISTS `search_epic_items` */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
 /*!50003 SET @saved_col_connection = @@collation_connection */ ;
@@ -895,11 +894,11 @@ DELIMITER ;
 /*!50003 SET character_set_results = utf8mb4 */ ;
 /*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
 DELIMITER ;;
-CREATE DEFINER=`USER_discordbot`@`localhost` PROCEDURE `SearchItemsByName`(
+CREATE DEFINER=`USER_discordbot`@`localhost` PROCEDURE `search_epic_items`(
     IN p_search_term VARCHAR(255)
 )
 BEGIN
-    SELECT DISTINCT
+    SELECT 
         item_id,
         item_type,
         item_category,
@@ -915,7 +914,7 @@ BEGIN
             WHEN item_name_es LIKE CONCAT('%', p_search_term, '%') THEN 'es'
             WHEN item_name_de LIKE CONCAT('%', p_search_term, '%') THEN 'de'
         END AS matched_language
-    FROM epic_items_t2
+    FROM epic_items
     WHERE 
         item_name_en LIKE CONCAT('%', p_search_term, '%') OR
         item_name_fr LIKE CONCAT('%', p_search_term, '%') OR
@@ -929,8 +928,6 @@ BEGIN
             WHEN item_name_de LIKE CONCAT(p_search_term, '%') THEN 1
             ELSE 2
         END,
-        item_type,
-        item_category,
         item_name_en;
 END ;;
 DELIMITER ;
@@ -940,10 +937,10 @@ DELIMITER ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
--- Final view structure for view `epic_items_t2_view`
+-- Final view structure for view `epic_items_view`
 --
 
-/*!50001 DROP VIEW IF EXISTS `epic_items_t2_view`*/;
+/*!50001 DROP VIEW IF EXISTS `epic_items_view`*/;
 /*!50001 SET @saved_cs_client          = @@character_set_client */;
 /*!50001 SET @saved_cs_results         = @@character_set_results */;
 /*!50001 SET @saved_col_connection     = @@collation_connection */;
@@ -952,7 +949,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8mb4_unicode_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`USER_discordbot`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `epic_items_t2_view` AS select `epic_items_t2`.`item_id` AS `item_id`,`epic_items_t2`.`item_type` AS `item_type`,`epic_items_t2`.`item_category` AS `item_category`,`epic_items_t2`.`item_name_en` AS `item_name_en`,`epic_items_t2`.`item_name_fr` AS `item_name_fr`,`epic_items_t2`.`item_name_es` AS `item_name_es`,`epic_items_t2`.`item_name_de` AS `item_name_de`,`epic_items_t2`.`item_url` AS `item_url`,`epic_items_t2`.`item_icon_url` AS `item_icon_url`,`epic_items_t2`.`created_at` AS `created_at`,`epic_items_t2`.`updated_at` AS `updated_at`,concat(`epic_items_t2`.`item_type`,' - ',`epic_items_t2`.`item_category`) AS `full_category`,case when `epic_items_t2`.`item_icon_url` is not null and `epic_items_t2`.`item_icon_url` <> '' then 1 else 0 end AS `has_icon` from `epic_items_t2` */;
+/*!50001 VIEW `epic_items_view` AS select `epic_items`.`item_id` AS `item_id`,`epic_items`.`item_type` AS `item_type`,`epic_items`.`item_category` AS `item_category`,`epic_items`.`item_name_en` AS `item_name_en`,`epic_items`.`item_name_fr` AS `item_name_fr`,`epic_items`.`item_name_es` AS `item_name_es`,`epic_items`.`item_name_de` AS `item_name_de`,`epic_items`.`item_url` AS `item_url`,`epic_items`.`item_icon_url` AS `item_icon_url`,`epic_items`.`created_at` AS `created_at`,`epic_items`.`updated_at` AS `updated_at`,concat(`epic_items`.`item_type`,' - ',`epic_items`.`item_category`) AS `full_category`,case when `epic_items`.`item_icon_url` is not null and `epic_items`.`item_icon_url` <> '' then 1 else 0 end AS `has_icon` from `epic_items` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -1038,4 +1035,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-21  8:07:32
+-- Dump completed on 2025-08-21 14:10:11
