@@ -143,17 +143,14 @@ def split_message(text: str, max_length: int = 2000) -> List[str]:
             cur_len = 0
 
     for line in text.splitlines():
-        # toggle on ``` fences
         if line.strip().startswith("```"):
             in_fence = not in_fence
 
-        add_len = (1 if buf else 0) + len(line)  # + newline if needed
+        add_len = (1 if buf else 0) + len(line)
         if cur_len + add_len > max_length and not in_fence:
             flush()
 
-        # hard-split mega lines outside fences if needed
         if not in_fence and len(line) > max_length:
-            # finalize current chunk first
             flush()
             for i in range(0, len(line), max_length):
                 chunks.append(line[i:i+max_length])
@@ -551,14 +548,12 @@ Remember: You are the specialized knowledge base of 'My Guild Manager'. Always e
                     raise
             except Exception as e:
                 msg = str(e).lower()
-                # Swap model if it looks like a missing/retired model
                 if "does not exist" in msg or "unknown model" in msg:
                     if model_to_use != MODEL_FALLBACK:
                         _logger.warning("model_fallback", from_model=model_to_use, to_model=MODEL_FALLBACK)
                         model_to_use = MODEL_FALLBACK
                         await asyncio.sleep(0.5)
                         continue
-                # Simple exponential backoff with jitter
                 await asyncio.sleep(1.0 * (attempt + 1))
                 if attempt == max_retries - 1:
                     _logger.error("ai_query_failed", attempt=attempt + 1, error_type=type(e).__name__, error_msg=str(e)[:200], exc_info=True)
@@ -681,8 +676,7 @@ Remember: You are the specialized knowledge base of 'My Guild Manager'. Always e
 
             try:
                 response_text = await self.safe_ai_query(prompt, locale)
-                
-                # Check for empty response
+
                 if not response_text or not response_text.strip():
                     _logger.warning(
                         "empty_ai_response",
@@ -690,7 +684,6 @@ Remember: You are the specialized knowledge base of 'My Guild Manager'. Always e
                         guild_id=message.guild.id,
                         prompt_length=len(prompt)
                     )
-                    # Provide friendly fallback message
                     fallback_messages = {
                         "en-US": "I didn't quite get that—could you try rephrasing?",
                         "fr": "Je n'ai pas bien compris—pourriez-vous reformuler ?",
