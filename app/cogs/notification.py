@@ -3,18 +3,19 @@ Notification Manager Cog - Manages member join/leave notifications and welcome m
 """
 
 import asyncio
-import logging
-import re
 import time
-from typing import Any
 
 import discord
 from discord.ext import commands
+from discord.utils import escape_markdown, escape_mentions
 
+from core.logger import ComponentLogger
 from core.reliability import discord_resilient
 from core.translation import translations as global_translations
 
 NOTIFICATION_DATA = global_translations.get("notification", {})
+
+_logger = ComponentLogger("notification")
 
 
 def create_embed(
@@ -33,13 +34,14 @@ def create_embed(
         Configured Discord embed with member avatar
     """
     embed = discord.Embed(title=title, description=description, color=color)
-    if member.avatar:
-        embed.set_thumbnail(url=member.avatar.url)
+    embed.set_thumbnail(url=member.display_avatar.url)
     return embed
 
 
 class Notification(commands.Cog):
     """Cog for managing member join/leave notifications and welcome message handling."""
+
+    SEND_TIMEOUT = 10.0
 
     def __init__(self, bot: commands.Bot) -> None:
         """
@@ -50,30 +52,32 @@ class Notification(commands.Cog):
         """
         self.bot = bot
         self.max_events_per_minute = 60
-
-    def get_safe_user_info(self, member):
-        """
-        Get safe user information for logging purposes.
-
-        Args:
-            member: Discord member object
-
-        Returns:
-            Safe user identifier string for logs
-        """
-        return f"User{member.id}"
+        self._guild_locks: dict[int, asyncio.Lock] = {}
 
     def sanitize_user_data(self, name: str) -> str:
         """
-        Sanitize user data by removing potentially harmful characters.
+        Sanitize user data by escaping markdown and mentions.
 
         Args:
             name: Raw username to sanitize
 
         Returns:
-            Sanitized username with harmful characters removed
+            Sanitized username with markdown and mentions escaped
         """
-        return re.sub(r"[@#`]", "", name[:100])
+        name = name[:100]
+        return escape_mentions(escape_markdown(name))
+
+    def _get_guild_lock(self, guild_id: int) -> asyncio.Lock:
+        """
+        Get or create a guild-specific lock for notification rate limiting.
+
+        Args:
+            guild_id: Discord guild ID
+
+        Returns:
+            asyncio.Lock for the guild
+        """
+        return self._guild_locks.setdefault(guild_id, asyncio.Lock())
 
     async def check_event_rate_limit(self, guild_id: int) -> bool:
         """
@@ -85,21 +89,53 @@ class Notification(commands.Cog):
         Returns:
             True if guild can process events, False if rate limited
         """
-        now = time.time()
-        member_events = (
-            await self.bot.cache.get("temporary", f"member_events_{guild_id}") or []
-        )
-
-        member_events = [t for t in member_events if now - t < 60]
-
-        if len(member_events) >= self.max_events_per_minute:
+        now = time.monotonic()
+        key = f"member_events_{guild_id}"
+        events: list[float] = await self.bot.cache.get("temporary", key) or []
+        events = [t for t in events if now - t < 60]
+        if len(events) >= self.max_events_per_minute:
             return False
-
-        member_events.append(now)
-        await self.bot.cache.set(
-            "temporary", member_events, f"member_events_{guild_id}"
-        )
+        events.append(now)
+        await self.bot.cache.set("temporary", events, key)
         return True
+
+    @discord_resilient(service_name="ptb_kick", max_retries=1)
+    async def _kick_ptb_member(
+        self, 
+        ptb_member: discord.Member, 
+        reason: str,
+        main_guild_id: int,
+        ptb_guild_id: int
+    ) -> bool:
+        """
+        Safely kick a member from PTB guild with resilient error handling.
+
+        Args:
+            ptb_member: Member to kick from PTB guild
+            reason: Reason for the kick
+            main_guild_id: ID of the main guild
+            ptb_guild_id: ID of the PTB guild
+
+        Returns:
+            True if kick was successful, False otherwise
+        """
+        try:
+            await ptb_member.kick(reason=reason)
+            return True
+        except discord.Forbidden:
+            _logger.warning("ptb_kick_forbidden",
+                user_id=ptb_member.id,
+                ptb_guild_id=ptb_guild_id
+            )
+            return False
+        except Exception as e:
+            _logger.error("ptb_kick_failed",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200],
+                user_id=ptb_member.id,
+                ptb_guild_id=ptb_guild_id
+            )
+            return False
 
     async def is_ptb_guild(self, guild_id: int) -> bool:
         """
@@ -119,14 +155,17 @@ class Notification(commands.Cog):
             ptb_settings = await guild_ptb_cog.get_ptb_settings()
             for main_guild_id, settings in ptb_settings.items():
                 if settings.get("ptb_guild_id") == guild_id:
-                    logging.debug(
-                        f"[NotificationManager] Guild {guild_id} identified as PTB for main guild {main_guild_id}"
+                    _logger.debug("guild_identified_as_ptb",
+                        guild_id=guild_id,
+                        main_guild_id=main_guild_id
                     )
                     return True
             return False
         except Exception as e:
-            logging.error(
-                f"[NotificationManager] Error checking if guild {guild_id} is PTB: {e}"
+            _logger.error("ptb_check_failed",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200],
+                guild_id=guild_id
             )
             return False
 
@@ -146,14 +185,16 @@ class Notification(commands.Cog):
                 channel = await self.bot.fetch_channel(channel_id)
             return channel
         except discord.NotFound:
-            logging.error(f"[NotificationManager] Channel {channel_id} not found")
+            _logger.error("channel_not_found", channel_id=channel_id)
             return None
         except discord.Forbidden:
-            logging.error(f"[NotificationManager] No access to channel {channel_id}")
+            _logger.error("channel_access_denied", channel_id=channel_id)
             return None
         except Exception as e:
-            logging.error(
-                f"[NotificationManager] Error fetching channel {channel_id}: {e}"
+            _logger.error("channel_fetch_failed",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200],
+                channel_id=channel_id
             )
             return None
 
@@ -170,16 +211,26 @@ class Notification(commands.Cog):
             Discord message object or None if sending failed
         """
         try:
-            return await asyncio.wait_for(channel.send(embed=embed), timeout=10.0)
+            return await asyncio.wait_for(
+                channel.send(
+                    embed=embed, 
+                    allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
+                ), 
+                timeout=self.SEND_TIMEOUT
+            )
         except asyncio.TimeoutError:
-            logging.error("[NotificationManager] Notification send timeout")
+            _logger.error("notification_send_timeout")
             return None
         except discord.HTTPException as e:
-            logging.error(f"[NotificationManager] HTTP error sending notification: {e}")
+            _logger.error("notification_http_error",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200]
+            )
             return None
         except Exception as e:
-            logging.error(
-                f"[NotificationManager] Unexpected error sending notification: {e}"
+            _logger.error("notification_unexpected_error",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200]
             )
             return None
 
@@ -187,9 +238,7 @@ class Notification(commands.Cog):
     async def on_ready(self):
         """Initialize notification data on bot ready."""
         asyncio.create_task(self.bot.cache_loader.wait_for_initial_load())
-        logging.debug(
-            "[NotificationManager] Notification data loading tasks started in on_ready."
-        )
+        _logger.debug("notification_data_loading_started")
 
     async def get_guild_lang(self, guild: discord.Guild) -> str:
         """
@@ -214,120 +263,118 @@ class Notification(commands.Cog):
             member: Discord member who joined the guild
         """
         guild = member.guild
-        safe_user = self.get_safe_user_info(member)
-        logging.debug(
-            f"[NotificationManager] New member detected: {safe_user} in guild {guild.id}"
+        _logger.debug("member_joined",
+            user_id=member.id,
+            guild_id=guild.id
         )
 
         is_ptb = await self.is_ptb_guild(guild.id)
-        logging.debug(f"[NotificationManager] PTB check for guild {guild.id}: {is_ptb}")
+        _logger.debug("ptb_check_result", guild_id=guild.id, is_ptb=is_ptb)
         if is_ptb:
-            logging.debug(
-                f"[NotificationManager] Skipping PTB guild {guild.id} - handled by GuildPTB"
-            )
+            _logger.debug("skipping_ptb_guild", guild_id=guild.id)
             return
 
-        lock_key = f"notification_lock_{guild.id}"
-        lock = await self.bot.cache.get("temporary", lock_key)
-        if not lock:
-            lock = asyncio.Lock()
-            await self.bot.cache.set("temporary", lock, lock_key)
-
+        lock = self._get_guild_lock(guild.id)
         async with lock:
             if not await self.check_event_rate_limit(guild.id):
-                logging.warning(
-                    f"[NotificationManager] Rate limit exceeded for guild {guild.id}"
+                _logger.warning("rate_limit_exceeded",
+                    guild_id=guild.id
                 )
                 return
 
-            try:
-                channels_data = await self.bot.cache.get_guild_data(
-                    guild.id, "channels"
-                )
-                logging.debug(
-                    f"[NotificationManager] Channels data for guild {guild.id}: {channels_data}"
-                )
-                notif_channel_id = (
-                    channels_data.get("notifications_channel")
-                    if channels_data
-                    else None
+        try:
+            channels_data = await self.bot.cache.get_guild_data(
+                guild.id, "channels"
+            )
+            _logger.debug("channels_data_loaded", guild_id=guild.id, has_data=bool(channels_data))
+            notif_channel_id = (
+                channels_data.get("notifications_channel")
+                if channels_data
+                else None
+            )
+
+            _logger.debug("notification_channel_configured",
+                guild_id=guild.id,
+                channel_id=notif_channel_id
+            )
+            if notif_channel_id:
+                channel = await self.get_safe_channel(notif_channel_id)
+                if not channel:
+                    _logger.warning("notification_channel_inaccessible", guild_id=guild.id)
+                    return
+
+                guild_lang = await self.get_guild_lang(guild)
+                notif_trans = NOTIFICATION_DATA.get("member_join", {})
+                title = notif_trans.get("title", {}).get(
+                    guild_lang,
+                    notif_trans.get("title", {}).get("en-US", "🟢 New Member!"),
                 )
 
-                logging.debug(
-                    f"[NotificationManager] Notification channel ID for guild {guild.id}: {notif_channel_id}"
+                safe_name = self.sanitize_user_data(member.name)
+                description_template = notif_trans.get("description", {}).get(
+                    guild_lang,
+                    notif_trans.get("description", {}).get(
+                        "en-US",
+                        "Welcome {member_mention}!\n**Discord Name:** {member_name}\n**Discord ID:** `{member_id}`\n📜 **Pending rules acceptance**\n🚀 Pending configuration...",
+                    ),
                 )
-                if notif_channel_id:
-                    channel = await self.get_safe_channel(notif_channel_id)
-                    if not channel:
-                        logging.warning(
-                            f"[NotificationManager] Unable to access notification channel for guild {guild.id}"
+                description = description_template.format(
+                    member_mention=member.mention,
+                    member_name=safe_name,
+                    member_id=member.id,
+                )
+
+                embed = create_embed(
+                    title, description, discord.Color.light_grey(), member
+                )
+                msg = await self.safe_send_notification(channel, embed)
+
+                if msg:
+                    try:
+                        insert_query = "INSERT INTO welcome_messages (guild_id, member_id, channel_id, message_id) VALUES (%s, %s, %s, %s)"
+                        await self.bot.run_db_query(
+                            insert_query,
+                            (guild.id, member.id, channel.id, msg.id),
+                            commit=True,
                         )
-                        return
 
-                    guild_lang = await self.get_guild_lang(guild)
-                    notif_trans = NOTIFICATION_DATA.get("member_join", {})
-                    title = notif_trans.get("title", {}).get(
-                        guild_lang,
-                        notif_trans.get("title", {}).get("en-US", "🟢 New Member!"),
-                    )
-
-                    safe_name = self.sanitize_user_data(member.name)
-                    description_template = notif_trans.get("description", {}).get(
-                        guild_lang,
-                        notif_trans.get("description", {}).get(
-                            "en-US",
-                            "Welcome {member_mention}!\n**Discord Name:** {member_name}\n**Discord ID:** `{member_id}`\n📜 **Pending rules acceptance**\n🚀 Pending configuration...",
-                        ),
-                    )
-                    description = description_template.format(
-                        member_mention=member.mention,
-                        member_name=safe_name,
-                        member_id=member.id,
-                    )
-
-                    embed = create_embed(
-                        title, description, discord.Color.light_grey(), member
-                    )
-                    msg = await self.safe_send_notification(channel, embed)
-
-                    if msg:
-                        try:
-                            insert_query = "INSERT INTO welcome_messages (guild_id, member_id, channel_id, message_id) VALUES (%s, %s, %s, %s)"
-                            await self.bot.run_db_query(
-                                insert_query,
-                                (guild.id, member.id, channel.id, msg.id),
-                                commit=True,
-                            )
-
-                            await self.bot.cache.set_user_data(
-                                guild.id,
-                                member.id,
-                                "welcome_message",
-                                {"channel": channel.id, "message": msg.id},
-                            )
-                            logging.debug(
-                                f"[NotificationManager] Welcome message saved for {safe_user} (ID: {msg.id})"
-                            )
-                        except Exception as e:
-                            logging.error(
-                                f"[NotificationManager] Error saving welcome message to DB: {e}",
-                                exc_info=True,
-                            )
-                    else:
-                        logging.error(
-                            f"[NotificationManager] Failed to send welcome message for {safe_user}"
+                        await self.bot.cache.set_user_data(
+                            guild.id,
+                            member.id,
+                            "welcome_message",
+                            {"channel": channel.id, "message": msg.id},
+                        )
+                        _logger.debug("welcome_message_saved",
+                            user_id=member.id,
+                            message_id=msg.id,
+                            guild_id=guild.id
+                        )
+                    except Exception as e:
+                        _logger.error("welcome_message_failed",
+                            error_type=type(e).__name__,
+                            error_msg=str(e)[:200],
+                            user_id=member.id,
+                            guild_id=guild.id
                         )
                 else:
-                    logging.warning(
-                        f"[NotificationManager] Notification channel not configured for guild {guild.id}."
+                    _logger.warning("welcome_message_not_sent",
+                        user_id=member.id,
+                        guild_id=guild.id
                     )
-            except Exception as e:
-                logging.error(
-                    f"[NotificationManager] Error in on_member_join for {safe_user}: {e}",
-                    exc_info=True,
+            else:
+                _logger.warning("notification_channel_not_configured",
+                    guild_id=guild.id
                 )
+        except Exception as e:
+            _logger.error("join_notification_error",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200],
+                user_id=member.id,
+                guild_id=guild.id
+            )
 
     @commands.Cog.listener()
+    @discord_resilient(service_name="discord_api", max_retries=2)
     async def on_member_remove(self, member: discord.Member) -> None:
         """
         Handle member leave events with PTB auto-kick and leave notifications.
@@ -336,24 +383,24 @@ class Notification(commands.Cog):
             member: Discord member who left the guild
         """
         guild = member.guild
-        safe_user = self.get_safe_user_info(member)
-        logging.debug(
-            f"[NotificationManager] Departure detected: {safe_user} from guild {guild.id}"
+        _logger.debug("member_left",
+            user_id=member.id,
+            guild_id=guild.id
         )
 
         is_ptb = await self.is_ptb_guild(guild.id)
-        logging.debug(f"[NotificationManager] PTB check for guild {guild.id}: {is_ptb}")
+        _logger.debug("ptb_check_result", guild_id=guild.id, is_ptb=is_ptb)
         if is_ptb:
-            logging.debug(
-                f"[NotificationManager] Skipping PTB guild {guild.id} - handled by GuildPTB"
-            )
+            _logger.debug("skipping_ptb_guild", guild_id=guild.id)
             return
 
-        if not await self.check_event_rate_limit(guild.id):
-            logging.warning(
-                f"[NotificationManager] Rate limit exceeded for guild {guild.id}"
-            )
-            return
+        lock = self._get_guild_lock(guild.id)
+        async with lock:
+            if not await self.check_event_rate_limit(guild.id):
+                _logger.warning("rate_limit_exceeded",
+                    guild_id=guild.id
+                )
+                return
 
         try:
             guild_ptb_cog = self.bot.get_cog("GuildPTB")
@@ -366,25 +413,23 @@ class Notification(commands.Cog):
                     if ptb_guild:
                         ptb_member = ptb_guild.get_member(member.id)
                         if ptb_member:
-                            try:
-                                await ptb_member.kick(
-                                    reason=f"Member left main Discord server ({guild.name})"
-                                )
-                                logging.info(
-                                    f"[NotificationManager] Auto-kicked {safe_user} from PTB guild after leaving main server"
-                                )
-                            except discord.Forbidden:
-                                logging.warning(
-                                    f"[NotificationManager] Cannot kick {safe_user} from PTB guild - insufficient permissions"
-                                )
-                            except Exception as e:
-                                logging.error(
-                                    f"[NotificationManager] Error kicking {safe_user} from PTB guild: {e}"
+                            success = await self._kick_ptb_member(
+                                ptb_member, 
+                                f"Member left main Discord server ({guild.name})",
+                                guild.id,
+                                ptb_guild.id
+                            )
+                            if success:
+                                _logger.info("ptb_auto_kick_success",
+                                    user_id=member.id,
+                                    ptb_guild_id=ptb_guild.id,
+                                    main_guild_id=guild.id
                                 )
         except Exception as e:
-            logging.error(
-                f"[NotificationManager] Error in PTB auto-kick logic: {e}",
-                exc_info=True,
+            _logger.error("leave_notification_error",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200],
+                guild_id=guild.id
             )
 
         try:
@@ -401,7 +446,7 @@ class Notification(commands.Cog):
                 if channel:
                     try:
                         original_message = await asyncio.wait_for(
-                            channel.fetch_message(message_id), timeout=10.0
+                            channel.fetch_message(message_id), timeout=self.SEND_TIMEOUT
                         )
                         notif_trans = NOTIFICATION_DATA.get("member_leave", {})
                         title = notif_trans.get("title", {}).get(
@@ -425,20 +470,30 @@ class Notification(commands.Cog):
                             title, description, discord.Color.red(), member
                         )
                         await asyncio.wait_for(
-                            original_message.reply(embed=embed, mention_author=False),
-                            timeout=10.0,
+                            original_message.reply(
+                                embed=embed,
+                                mention_author=False,
+                                allowed_mentions=discord.AllowedMentions.none()
+                            ),
+                            timeout=self.SEND_TIMEOUT,
                         )
-                        logging.debug(
-                            f"[NotificationManager] Reply sent to welcome message for {safe_user} (ID: {message_id}) in guild {guild.id}"
+                        _logger.debug("leave_reply_sent",
+                            user_id=member.id,
+                            message_id=message_id,
+                            guild_id=guild.id
                         )
                     except (discord.NotFound, asyncio.TimeoutError) as e:
-                        logging.warning(
-                            f"[NotificationManager] Could not reply to welcome message for {safe_user}: {e}"
+                        _logger.warning("leave_reply_not_found",
+                            error_type=type(e).__name__,
+                            user_id=member.id,
+                            message_id=message_id
                         )
                     except Exception as e:
-                        logging.error(
-                            f"[NotificationManager] Error replying to welcome message for {safe_user}: {e}",
-                            exc_info=True,
+                        _logger.error("notification_send_failed",
+                            error_type=type(e).__name__,
+                            error_msg=str(e)[:200],
+                            user_id=member.id,
+                            message_id=message_id
                         )
 
                 try:
@@ -462,6 +517,11 @@ class Notification(commands.Cog):
                         (guild.id, member.id),
                         commit=True,
                     )
+
+                    # Cleanup wishlist items for the departed member
+                    loot_wishlist_cog = self.bot.get_cog("LootWishlist")
+                    if loot_wishlist_cog:
+                        await loot_wishlist_cog.cleanup_member_wishlist(guild.id, member.id)
 
                     await self.bot.cache.delete(
                         "user_data", guild.id, member.id, "welcome_message"
@@ -487,16 +547,20 @@ class Notification(commands.Cog):
                         )
 
                     await self.bot.cache.invalidate_category("roster_data")
-                    logging.debug(
-                        f"[NotificationManager] Invalidated roster_data cache after removing member {safe_user}"
+                    _logger.debug("roster_cache_invalidated",
+                        user_id=member.id,
+                        guild_id=guild.id
                     )
-                    logging.debug(
-                        f"[NotificationManager] Cleaned up pending diplomat validations for {safe_user}"
+                    _logger.debug("diplomat_validations_cleaned",
+                        user_id=member.id,
+                        guild_id=guild.id
                     )
                 except Exception as e:
-                    logging.error(
-                        f"[NotificationManager] Error cleaning up DB records for {safe_user}: {e}",
-                        exc_info=True,
+                    _logger.error("db_cleanup_failed",
+                        error_type=type(e).__name__,
+                        error_msg=str(e)[:200],
+                        user_id=member.id,
+                        guild_id=guild.id
                     )
             else:
                 channels_data = await self.bot.cache.get_guild_data(
@@ -508,8 +572,9 @@ class Notification(commands.Cog):
                     else None
                 )
 
-                logging.debug(
-                    f"[NotificationManager] Notification channel ID for guild {guild.id}: {notif_channel_id}"
+                _logger.debug("notification_channel_configured",
+                    guild_id=guild.id,
+                    channel_id=notif_channel_id
                 )
                 if notif_channel_id:
                     channel = await self.get_safe_channel(notif_channel_id)
@@ -560,42 +625,64 @@ class Notification(commands.Cog):
                             "temporary", pending_validations, "pending_validations"
                         )
 
-                    logging.debug(
-                        f"[NotificationManager] Cleaned up pending diplomat validations for {safe_user} (no welcome message case)"
+                    _logger.debug("diplomat_validations_cleaned_no_welcome",
+                        user_id=member.id,
+                        guild_id=guild.id
                     )
                 except Exception as e:
-                    logging.error(
-                        f"[NotificationManager] Error cleaning up diplomat validations for {safe_user}: {e}",
-                        exc_info=True,
+                    _logger.error("diplomat_cleanup_failed",
+                        error_type=type(e).__name__,
+                        error_msg=str(e)[:200],
+                        user_id=member.id,
+                        guild_id=guild.id
                     )
 
             # Clean up user data from database to prevent future errors
             try:
-                await self._cleanup_member_database_records(member, safe_user)
-                logging.debug(
-                    f"[NotificationManager] Database cleanup completed for departed member {safe_user}"
+                await self._cleanup_member_database_records(member)
+                _logger.debug("database_cleanup_completed",
+                    user_id=member.id,
+                    guild_id=member.guild.id
                 )
             except Exception as e:
-                logging.error(
-                    f"[NotificationManager] Error during database cleanup for {safe_user}: {e}",
-                    exc_info=True,
+                _logger.error("database_cleanup_error",
+                    error_type=type(e).__name__,
+                    error_msg=str(e)[:200],
+                    user_id=member.id,
+                    guild_id=member.guild.id
                 )
 
         except Exception as e:
-            logging.error(
-                f"[NotificationManager] Error in on_member_remove for {safe_user}: {e}",
-                exc_info=True,
+            _logger.error("leave_notification_error",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200],
+                user_id=member.id,
+                guild_id=member.guild.id
+            )
+
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild: discord.Guild) -> None:
+        """
+        Clean up guild-specific resources when bot leaves a guild.
+
+        Args:
+            guild: Discord guild the bot left
+        """
+        # Clean up guild lock to prevent memory bloat
+        if guild.id in self._guild_locks:
+            del self._guild_locks[guild.id]
+            _logger.debug("guild_lock_cleaned",
+                guild_id=guild.id
             )
 
     async def _cleanup_member_database_records(
-        self, member: discord.Member, safe_user: str
+        self, member: discord.Member
     ) -> None:
         """
         Clean up database records for departed members to prevent future AutoRole errors.
 
         Args:
             member: Discord member who left
-            safe_user: Safe user identifier for logging
         """
         guild_id = member.guild.id
         user_id = member.id
@@ -618,24 +705,23 @@ class Notification(commands.Cog):
                     "DELETE FROM event_attendance WHERE guild_id = %s AND user_id = %s",
                     (guild_id, user_id),
                 ),
-                (
-                    "DELETE FROM loot_wishlist WHERE guild_id = %s AND user_id = %s",
-                    (guild_id, user_id),
-                ),
             ]
 
             for query, params in delete_queries:
                 await self.bot.run_db_query(query, params, commit=True)
 
             await self.bot.cache.invalidate_guild_member_data(guild_id, user_id)
-            logging.debug(
-                f"[NotificationManager] Database and cache cleanup successful for {safe_user}"
+            _logger.debug("setup_cleanup_complete",
+                user_id=user_id,
+                guild_id=guild_id
             )
 
         except Exception as e:
-            logging.error(
-                f"[NotificationManager] Database cleanup failed for {safe_user}: {e}",
-                exc_info=True,
+            _logger.error("member_cleanup_failed",
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200],
+                user_id=user_id,
+                guild_id=guild_id
             )
 
 
