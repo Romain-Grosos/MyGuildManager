@@ -1271,8 +1271,8 @@ class GuildAttendance(commands.Cog):
         if updates_to_batch:
             try:
                 upsert_query = """
-                INSERT INTO guild_members (guild_id, member_id, DKP, attendances, class, GS, weapons, nb_events, registrations)
-                VALUES (%s, %s, %s, %s, 'Unknown', 0, '', 0, 0)
+                INSERT INTO guild_members (guild_id, member_id, DKP, attendances, class_member, GS, weapons, nb_events, registrations)
+                VALUES (%s, %s, %s, %s, NULL, 0, NULL, 0, 0)
                 ON DUPLICATE KEY UPDATE 
                     DKP = VALUES(DKP), 
                     attendances = VALUES(attendances)

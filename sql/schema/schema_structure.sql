@@ -122,7 +122,7 @@ CREATE TABLE `epic_items_scraping_history` (
   PRIMARY KEY (`id`),
   KEY `idx_scraping_date` (`scraping_date`),
   KEY `idx_status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -309,10 +309,15 @@ CREATE TABLE `guild_members` (
   `nb_events` int(11) DEFAULT NULL COMMENT 'Total events participated in',
   `registrations` int(11) DEFAULT 0 COMMENT 'Number of event registrations',
   `attendances` int(11) DEFAULT 0 COMMENT 'Number of event attendances',
-  `class` varchar(32) DEFAULT NULL COMMENT 'Character class/role',
+  `class_member` varchar(32) DEFAULT NULL COMMENT 'Character class/role',
   PRIMARY KEY (`guild_id`,`member_id`),
   KEY `idx_guild_members_dkp` (`DKP` DESC),
-  KEY `idx_guild_members_class` (`class`),
+  KEY `idx_guild_members_guild_class` (`guild_id`,`class_member`),
+  KEY `idx_guild_members_guild_username` (`guild_id`,`username`),
+  KEY `idx_guild_members_guild_gs` (`guild_id`,`GS` DESC),
+  KEY `idx_guild_members_guild_dkp` (`guild_id`,`DKP` DESC),
+  KEY `idx_guild_members_guild_attendance` (`guild_id`,`attendances`,`registrations`),
+  KEY `idx_guild_members_guild_weapons` (`guild_id`,`weapons`),
   CONSTRAINT `fk_guild_members_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Guild member profiles and game statistics';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -498,11 +503,13 @@ CREATE TABLE `loot_wishlist` (
   KEY `idx_created_at` (`created_at`),
   KEY `idx_wishlist_guild_item` (`guild_id`,`item_id`),
   KEY `idx_wishlist_user` (`guild_id`,`user_id`),
+  KEY `idx_user_full` (`guild_id`,`user_id`,`priority` DESC,`created_at`),
+  KEY `idx_item_stats` (`guild_id`,`item_id`,`priority` DESC,`created_at`),
   CONSTRAINT `fk_loot_wishlist_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE,
   CONSTRAINT `chk_priority` CHECK (`priority` in (1,2,3)),
   CONSTRAINT `chk_item_id_not_empty` CHECK (`item_id` is null or octet_length(trim(`item_id`)) > 0),
   CONSTRAINT `chk_item_name_not_empty` CHECK (octet_length(trim(`item_name`)) > 0)
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Epic T2 items wishlist for guild members - max 3 items per user';
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Epic T2 items wishlist for guild members - max 3 items per user';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -600,7 +607,7 @@ CREATE TABLE `loot_wishlist_history` (
   KEY `idx_item_timestamp` (`item_name`,`timestamp`),
   KEY `idx_action` (`action`),
   CONSTRAINT `fk_loot_wishlist_history_guild` FOREIGN KEY (`guild_id`) REFERENCES `guild_settings` (`guild_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='History of wishlist changes for analytics and audit trail';
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='History of wishlist changes for analytics and audit trail';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1005,7 +1012,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8mb4_unicode_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`USER_discordbot`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `member_statistics` AS select `gm`.`guild_id` AS `guild_id`,`gm`.`member_id` AS `member_id`,`gm`.`username` AS `username`,`gm`.`class` AS `class`,`gm`.`GS` AS `GS`,`gm`.`DKP` AS `DKP`,`gm`.`nb_events` AS `nb_events`,`gm`.`registrations` AS `registrations`,`gm`.`attendances` AS `attendances`,case when `gm`.`registrations` > 0 then round(`gm`.`attendances` / `gm`.`registrations` * 100,2) else 0 end AS `attendance_rate`,case when `gm`.`nb_events` > 0 then round(`gm`.`DKP` / `gm`.`nb_events`,2) else 0 end AS `avg_dkp_per_event` from `guild_members` `gm` where `gm`.`username` is not null */;
+/*!50001 VIEW `member_statistics` AS select `gm`.`guild_id` AS `guild_id`,`gm`.`member_id` AS `member_id`,`gm`.`username` AS `username`,`gm`.`class_member` AS `class`,`gm`.`GS` AS `GS`,`gm`.`DKP` AS `DKP`,`gm`.`nb_events` AS `nb_events`,`gm`.`registrations` AS `registrations`,`gm`.`attendances` AS `attendances`,case when `gm`.`registrations` > 0 then round(`gm`.`attendances` / `gm`.`registrations` * 100,2) else 0 end AS `attendance_rate`,case when `gm`.`nb_events` > 0 then round(`gm`.`DKP` / `gm`.`nb_events`,2) else 0 end AS `avg_dkp_per_event` from `guild_members` `gm` where `gm`.`username` is not null */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -1037,4 +1044,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-21 16:52:30
+-- Dump completed on 2025-08-23 16:27:07
