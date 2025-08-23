@@ -37,9 +37,9 @@ from typing import Tuple, List
 import discord
 from discord.ext import commands
 
-from core.logger import ComponentLogger
-from core.translation import translations as global_translations
-from core.reliability import discord_resilient
+from app.core.logger import ComponentLogger
+from app.core.translation import translations as global_translations
+from app.core.reliability import discord_resilient
 
 _logger = ComponentLogger("absence")
 ABSENCE_NAMESPACE = "absence_system"
