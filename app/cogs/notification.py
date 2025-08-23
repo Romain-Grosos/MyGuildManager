@@ -9,9 +9,9 @@ import discord
 from discord.ext import commands
 from discord.utils import escape_markdown, escape_mentions
 
-from core.logger import ComponentLogger
-from core.reliability import discord_resilient
-from core.translation import translations as global_translations
+from app.core.logger import ComponentLogger
+from app.core.reliability import discord_resilient
+from app.core.translation import translations as global_translations
 
 NOTIFICATION_DATA = global_translations.get("notification", {})
 
@@ -408,6 +408,11 @@ class Notification(commands.Cog):
                 ptb_guild_id = await self.bot.cache.get_guild_data(
                     guild.id, "guild_ptb"
                 )
+                _logger.debug("ptb_kick_check",
+                    has_cog=guild_ptb_cog is not None,
+                    ptb_guild_id=ptb_guild_id,
+                    main_guild_id=guild.id
+                )
                 if ptb_guild_id:
                     ptb_guild = self.bot.get_guild(ptb_guild_id)
                     if ptb_guild:
@@ -425,6 +430,17 @@ class Notification(commands.Cog):
                                     ptb_guild_id=ptb_guild.id,
                                     main_guild_id=guild.id
                                 )
+                        else:
+                            _logger.debug("member_not_in_ptb",
+                                user_id=member.id,
+                                ptb_guild_id=ptb_guild.id
+                            )
+                    else:
+                        _logger.warning("ptb_guild_not_found",
+                            ptb_guild_id=ptb_guild_id
+                        )
+            else:
+                _logger.debug("guild_ptb_cog_not_loaded")
         except Exception as e:
             _logger.error("leave_notification_error",
                 error_type=type(e).__name__,
@@ -518,7 +534,6 @@ class Notification(commands.Cog):
                         commit=True,
                     )
 
-                    # Cleanup wishlist items for the departed member
                     loot_wishlist_cog = self.bot.get_cog("LootWishlist")
                     if loot_wishlist_cog:
                         await loot_wishlist_cog.cleanup_member_wishlist(guild.id, member.id)
@@ -637,7 +652,6 @@ class Notification(commands.Cog):
                         guild_id=guild.id
                     )
 
-            # Clean up user data from database to prevent future errors
             try:
                 await self._cleanup_member_database_records(member)
                 _logger.debug("database_cleanup_completed",
@@ -668,7 +682,6 @@ class Notification(commands.Cog):
         Args:
             guild: Discord guild the bot left
         """
-        # Clean up guild lock to prevent memory bloat
         if guild.id in self._guild_locks:
             del self._guild_locks[guild.id]
             _logger.debug("guild_lock_cleaned",
@@ -690,7 +703,7 @@ class Notification(commands.Cog):
         try:
             delete_queries = [
                 (
-                    "DELETE FROM guild_members WHERE guild_id = %s AND user_id = %s",
+                    "DELETE FROM guild_members WHERE guild_id = %s AND member_id = %s",
                     (guild_id, user_id),
                 ),
                 (
@@ -698,19 +711,35 @@ class Notification(commands.Cog):
                     (guild_id, user_id),
                 ),
                 (
-                    "DELETE FROM static_groups_members WHERE guild_id = %s AND user_id = %s",
-                    (guild_id, user_id),
-                ),
-                (
-                    "DELETE FROM event_attendance WHERE guild_id = %s AND user_id = %s",
+                    """DELETE gsm FROM guild_static_members gsm 
+                       JOIN guild_static_groups gsg ON gsm.group_id = gsg.id 
+                       WHERE gsg.guild_id = %s AND gsm.member_id = %s""",
                     (guild_id, user_id),
                 ),
             ]
 
             for query, params in delete_queries:
-                await self.bot.run_db_query(query, params, commit=True)
+                try:
+                    await self.bot.run_db_query(query, params, commit=True)
+                except Exception as e:
+                    _logger.debug("optional_cleanup_failed",
+                        query_preview=query[:50],
+                        error=str(e)[:100]
+                    )
 
-            await self.bot.cache.invalidate_guild_member_data(guild_id, user_id)
+            try:
+                await self._clean_member_from_events(guild_id, user_id)
+            except Exception as e:
+                _logger.debug("events_cleanup_failed",
+                    error=str(e)[:100]
+                )
+
+            try:
+                await self.bot.cache.delete("user_data", guild_id, user_id, "setup")
+                await self.bot.cache.delete("user_data", guild_id, user_id, "welcome_message")
+                await self.bot.cache.invalidate_category("roster_data")
+            except Exception as cache_error:
+                _logger.debug("cache_invalidation_failed", error=str(cache_error)[:100])
             _logger.debug("setup_cleanup_complete",
                 user_id=user_id,
                 guild_id=guild_id
@@ -724,6 +753,54 @@ class Notification(commands.Cog):
                 guild_id=guild_id
             )
 
+    async def _clean_member_from_events(self, guild_id: int, user_id: int):
+        """
+        Clean member from events_data JSON fields (registrations, actual_presence, initial_members).
+        
+        Args:
+            guild_id: Guild ID to clean from
+            user_id: Member ID to remove from events
+        """
+        try:
+            cleanup_query = """
+                UPDATE events_data 
+                SET 
+                    registrations = JSON_REMOVE(
+                        JSON_REMOVE(
+                            JSON_REMOVE(registrations, 
+                                JSON_UNQUOTE(JSON_SEARCH(registrations, 'one', %s, NULL, '$.presence'))),
+                            JSON_UNQUOTE(JSON_SEARCH(registrations, 'one', %s, NULL, '$.tentative'))),
+                        JSON_UNQUOTE(JSON_SEARCH(registrations, 'one', %s, NULL, '$.absence'))
+                    ),
+                    actual_presence = JSON_REMOVE(actual_presence, 
+                        JSON_UNQUOTE(JSON_SEARCH(actual_presence, 'one', %s))
+                    ),
+                    initial_members = JSON_REMOVE(initial_members, 
+                        JSON_UNQUOTE(JSON_SEARCH(initial_members, 'one', %s))
+                    )
+                WHERE guild_id = %s 
+                AND (
+                    JSON_SEARCH(registrations, 'one', %s) IS NOT NULL
+                    OR JSON_SEARCH(actual_presence, 'one', %s) IS NOT NULL  
+                    OR JSON_SEARCH(initial_members, 'one', %s) IS NOT NULL
+                )
+            """
+            
+            user_id_str = str(user_id)
+            await self.bot.run_db_query(cleanup_query, (
+                user_id_str, user_id_str, user_id_str,
+                user_id_str,
+                user_id_str,
+                guild_id,
+                user_id_str, user_id_str, user_id_str
+            ), commit=True)
+            
+        except Exception as e:
+            _logger.debug("events_json_cleanup_failed",
+                guild_id=guild_id,
+                user_id=user_id,
+                error=str(e)[:100]
+            )
 
 def setup(bot: discord.Bot):
     """

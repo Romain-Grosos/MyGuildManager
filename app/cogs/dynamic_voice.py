@@ -180,8 +180,7 @@ class DynamicVoice(commands.Cog):
                             continue
                         
                         has_perms, missing_perms = self._check_channel_permissions(guild, channel.category)
-                        
-                        # Distinguish between blocking and non-blocking permissions
+
                         missing_blocking = [p for p in missing_perms if "manage_channels" in p]
                         missing_non_blocking = [p for p in missing_perms if "manage_channels" not in p]
                         
@@ -197,8 +196,7 @@ class DynamicVoice(commands.Cog):
                         }
                         
                         guild_status["monitored_channels_details"].append(channel_detail)
-                        
-                        # Count channels by severity
+
                         if missing_blocking:
                             guild_status["channels_blocked"] += 1
                             guild_status["has_permissions_issues"] = True
@@ -447,8 +445,7 @@ class DynamicVoice(commands.Cog):
             create_room_channel = channels_data.get("create_room_channel")
             if not create_room_channel:
                 return set()
-            
-            # Cast robustly to int (cache may store as string)
+
             try:
                 create_room_channel = int(create_room_channel)
             except (TypeError, ValueError):
@@ -528,7 +525,6 @@ class DynamicVoice(commands.Cog):
 
             self.update_user_cooldown(member.id)
 
-            # Get guild locale and use appropriate localization for channel name
             guild_locale = await self.bot.cache.get_guild_data(guild.id, "guild_lang") or "en-US"
             channel_name_template = DYNAMIC_VOICE.get("channel_name", {}).get(guild_locale, "Channel of {username}")
             channel_name = self.sanitize_channel_name(channel_name_template.format(username=member.display_name))
@@ -760,7 +756,6 @@ class DynamicVoice(commands.Cog):
         Args:
             channel: Channel that was deleted
         """
-        # Only process voice channels that we were tracking
         if not isinstance(channel, discord.VoiceChannel):
             return
             
@@ -773,11 +768,9 @@ class DynamicVoice(commands.Cog):
                 channel_name=channel.name,
                 guild_id=channel.guild.id if channel.guild else None
             )
-            
-            # Clean up our tracking
+
             self.active_channels.discard(channel.id)
-            
-            # Remove from database
+
             await self._remove_channel_from_database(channel.id)
             
             _logger.debug("manual_deletion_cleanup_completed", channel_id=channel.id)
@@ -787,8 +780,6 @@ class DynamicVoice(commands.Cog):
                 channel_id=channel.id,
                 error=str(e)
             )
-
-
 
 def setup(bot: discord.Bot) -> None:
     """
