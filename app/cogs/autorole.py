@@ -27,9 +27,9 @@ from typing import Dict, Tuple
 import discord
 from discord.ext import commands
 
-from core.logger import ComponentLogger
-from core.reliability import discord_resilient
-from core.translation import translations as global_translations
+from app.core.logger import ComponentLogger
+from app.core.reliability import discord_resilient
+from app.core.translation import translations as global_translations
 
 _logger = ComponentLogger("autorole")
 AUTOROLE_NAMESPACE = "autorole_system"
@@ -130,6 +130,7 @@ class AutoRole(commands.Cog):
         self._profile_setup_cog = None
         self._recent_reactions: Dict[Tuple[int, int, int], float] = {}
         self._reaction_counts: Dict[Tuple[int, int, int], int] = {}
+        _logger.info("AUTOROLE_COG_INITIALIZED")
 
     def _has_cache(self) -> bool:
         """Check if bot has cache system available."""
@@ -258,7 +259,6 @@ class AutoRole(commands.Cog):
         return self._profile_setup_cog
 
     @commands.Cog.listener()
-    @discord_resilient(service_name="discord_api", max_retries=2)
     async def on_raw_reaction_add(
         self, payload: discord.RawReactionActionEvent
     ) -> None:
@@ -268,16 +268,26 @@ class AutoRole(commands.Cog):
         Args:
             payload: Discord raw reaction event payload
         """
+        _logger.info(
+            "DIAGNOSTIC_reaction_event_triggered",
+            user_id=payload.user_id,
+            message_id=payload.message_id,
+            emoji=str(payload.emoji),
+            guild_id=payload.guild_id
+        )
+        
         if not await self._ensure_cache_ready("on_raw_reaction_add"):
+            _logger.warning("DIAGNOSTIC_cache_not_ready", event_type="on_raw_reaction_add")
             return
 
         if not self._has_cache():
+            _logger.warning("DIAGNOSTIC_no_cache", event_type="on_raw_reaction_add")
             return
 
         if payload.user_id == self.bot.user.id:
             return
 
-        _logger.debug(
+        _logger.info(
             "processing_reaction_add",
             user_id=payload.user_id,
             message_id=payload.message_id,
@@ -371,8 +381,8 @@ class AutoRole(commands.Cog):
 
             try:
                 await member.add_roles(role, reason="Autorole: rules accepted")
-                _logger.debug(
-                    "role_added_to_member",
+                _logger.info(
+                    "role_added_to_member_successfully",
                     member_name=member.name,
                     member_id=member.id,
                     role_id=role.id
@@ -395,9 +405,23 @@ class AutoRole(commands.Cog):
                 )
                 return
 
+            _logger.info(
+                "DIAGNOSTIC_continuing_after_role_add",
+                member_id=member.id,
+                guild_id=guild.id
+            )
+
             welcome_info = await self.bot.cache.get_user_data(
                 guild.id, member.id, "welcome_message"
             )
+            
+            _logger.info(
+                "DIAGNOSTIC_welcome_info_check",
+                member_id=member.id,
+                guild_id=guild.id,
+                has_welcome_info=welcome_info is not None
+            )
+            
             if welcome_info:
                 try:
                     channel = self.bot.get_channel(welcome_info["channel"])
@@ -439,30 +463,40 @@ class AutoRole(commands.Cog):
                         )
                         return
 
-                    lang = (
-                        await self.bot.cache.get_guild_data(guild.id, "guild_lang")
-                        or "en-US"
-                    )
-                    embed = update_welcome_embed(
-                        message.embeds[0], lang, AUTOROLE_TRANSLATIONS
-                    )
+                    embed_description = message.embeds[0].description or ""
+                    if "<t:" in embed_description:
+                        _logger.debug(
+                            "welcome_embed_already_updated",
+                            member_id=member.id,
+                            guild_id=guild.id,
+                            reason="timestamp_already_present"
+                        )
+                    else:
+                        lang = (
+                            await self.bot.cache.get_guild_data(guild.id, "guild_lang")
+                            or "en-US"
+                        )
+                        embed = update_welcome_embed(
+                            message.embeds[0], lang, AUTOROLE_TRANSLATIONS
+                        )
 
-                    for attempt in range(2):
-                        try:
-                            await message.edit(embed=embed)
-                            break
-                        except discord.HTTPException as e:
-                            if e.status >= 500 and attempt == 0:
-                                await asyncio.sleep(1.5)
-                                continue
-                            raise
-                    
-                    _logger.debug(
-                        "welcome_message_updated",
-                        member_name=member.name,
-                        member_id=member.id,
-                        message_id=welcome_info['message']
-                    )
+                        for attempt in range(2):
+                            try:
+                                await message.edit(embed=embed)
+                                break
+                            except discord.HTTPException as e:
+                                if e.status >= 500 and attempt == 0:
+                                    await asyncio.sleep(1.5)
+                                    continue
+                                raise
+                        
+                        _logger.debug(
+                            "welcome_message_updated",
+                            member_name=member.name,
+                            member_id=member.id,
+                            message_id=welcome_info['message']
+                        )
+                        
                 except discord.Forbidden:
                     await self._handle_permission_error(
                         "edit_welcome_message",
@@ -474,34 +508,66 @@ class AutoRole(commands.Cog):
                         "error_updating_welcome_message",
                         member_name=member.name,
                         member_id=member.id,
-                        message_id=welcome_info['message'],
+                        message_id=welcome_info.get('message', 'unknown'),
                         error=str(e),
                         exc_info=True
                     )
             else:
-                _logger.debug(
-                    "no_welcome_message_in_cache",
+                _logger.info(
+                    "DIAGNOSTIC_no_welcome_message_found",
                     member_id=member.id,
                     guild_id=guild.id
                 )
 
             try:
+                _logger.info(
+                    "DIAGNOSTIC_checking_user_profile",
+                    member_id=member.id,
+                    guild_id=guild.id
+                )
+                
+                _logger.info(
+                    "DIAGNOSTIC_cache_loader_check",
+                    member_id=member.id,
+                    guild_id=guild.id,
+                    has_cache_loader=hasattr(self.bot, "cache_loader")
+                )
+                
                 if hasattr(self.bot, "cache_loader"):
+                    _logger.info(
+                        "DIAGNOSTIC_ensuring_category_loaded",
+                        member_id=member.id,
+                        guild_id=guild.id
+                    )
                     await self.bot.cache_loader.ensure_category_loaded("user_data")
+                    
+                _logger.info(
+                    "DIAGNOSTIC_getting_user_data",
+                    member_id=member.id,
+                    guild_id=guild.id
+                )
+                
                 user_setup = await self.bot.cache.get_user_data(
                     guild.id, member.id, "setup"
                 )
 
+                _logger.info(
+                    "DIAGNOSTIC_user_setup_result",
+                    member_id=member.id,
+                    guild_id=guild.id,
+                    has_setup=user_setup is not None
+                )
+
                 if user_setup is not None:
-                    _logger.debug(
-                        "profile_already_exists",
+                    _logger.info(
+                        "profile_already_exists_skipping_dm",
                         member_id=member.id,
                         guild_id=guild.id
                     )
                     return
 
-                _logger.debug(
-                    "no_profile_found_sending_dm",
+                _logger.info(
+                    "no_profile_found_will_send_dm",
                     member_id=member.id,
                     guild_id=guild.id
                 )
@@ -522,12 +588,21 @@ class AutoRole(commands.Cog):
                     guild_id=guild.id
                 )
                 return
+
+            _logger.info(
+                "attempting_profile_setup_dm",
+                member_name=member.name,
+                member_id=member.id,
+                guild_id=guild.id,
+                cog_found=profile_setup_cog is not None
+            )
+            
             try:
                 await member.send(
                     view=profile_setup_cog.LangSelectView(profile_setup_cog, guild.id)
                 )
-                _logger.debug(
-                    "profile_setup_dm_sent",
+                _logger.info(
+                    "profile_setup_dm_sent_successfully",
                     member_name=member.name,
                     member_id=member.id,
                     guild_id=guild.id
