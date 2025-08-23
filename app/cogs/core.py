@@ -26,11 +26,12 @@ from typing import Tuple
 import discord
 from discord.ext import commands
 
-from core.functions import get_user_message
-from core.logger import ComponentLogger
-from core.rate_limiter import admin_rate_limit, start_cleanup_task
-from core.reliability import discord_resilient
-from core.translation import translations as global_translations
+from app.core.functions import get_user_message
+from app.core.logger import ComponentLogger
+from app.core.rate_limiter import admin_rate_limit, start_cleanup_task
+from app.core.reliability import discord_resilient
+from app.core.translation import translations as global_translations
+from app.db import run_db_transaction
 
 _logger = ComponentLogger("core")
 ADMIN_COMMANDS = global_translations.get("admin_commands", {})
@@ -274,7 +275,7 @@ class Core(commands.Cog):
             choices=[
                 discord.OptionChoice(
                     name=(cdata.get("name") or {}).get("en-US", cname),
-                    value=int(cdata["value"])
+                    value=str(cdata["value"])
                 )
                 for cname, cdata in GUILD_GAME_CHOICES_CFG.items()
                 if isinstance(cdata, dict) and "value" in cdata
@@ -493,7 +494,7 @@ class Core(commands.Cog):
             choices=[
                 discord.OptionChoice(
                     name=(cdata.get("name") or {}).get("en-US", cname),
-                    value=int(cdata["value"])
+                    value=str(cdata["value"])
                 )
                 for cname, cdata in GUILD_GAME_CHOICES_CFG.items()
                 if isinstance(cdata, dict) and "value" in cdata
@@ -779,115 +780,102 @@ class Core(commands.Cog):
         Returns:
             True if deletion succeeded, False otherwise
         """
+        _logger.debug("deletion_function_entry", guild_id=guild_id, guild_id_type=type(guild_id).__name__)
+        
         try:
-            async with self.bot.db.acquire() as conn:
-                async with conn.cursor() as cursor:
+            guild_id = int(guild_id)
+            _logger.debug("deletion_starting", guild_id=guild_id, guild_id_type=type(guild_id).__name__)
+            
+            ptb_guild_query = "SELECT guild_id FROM guild_settings WHERE guild_ptb = %s"
+            ptb_result = await self.bot.run_db_query(ptb_guild_query, (guild_id,), fetch_all=True)
+            
+            ptb_guilds_to_clear_cache = []
+            ptb_cleanup_queries = []
+            
+            if ptb_result:
+                for row in ptb_result:
+                    main_guild_id = row[0]
+                    _logger.info(
+                        "clearing_ptb_reference",
+                        main_guild_id=main_guild_id,
+                        ptb_guild_id=guild_id
+                    )
+                    ptb_cleanup_queries.append((
+                        "UPDATE guild_settings SET guild_ptb = NULL WHERE guild_id = %s",
+                        (main_guild_id,)
+                    ))
+                    ptb_guilds_to_clear_cache.append(main_guild_id)
+
+            delete_queries = [
+                ("DELETE FROM welcome_messages WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM absence_messages WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM contracts WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM events_data WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM user_setup WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_members WHERE guild_id = %s", (guild_id,)),
+                (
+                    "DELETE FROM guild_static_members WHERE group_id IN (SELECT id FROM guild_static_groups WHERE guild_id = %s)",
+                    (guild_id,),
+                ),
+                ("DELETE FROM guild_static_groups WHERE guild_id = %s", (guild_id,)),
+                (
+                    "DELETE FROM pending_diplomat_validations WHERE guild_id = %s",
+                    (guild_id,),
+                ),
+                ("DELETE FROM loot_wishlist_history WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM loot_wishlist WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM dynamic_voice_channels WHERE guild_id = %s", (guild_id,)),
+                (
+                    "DELETE FROM guild_ptb_settings WHERE guild_id = %s OR ptb_guild_id = %s",
+                    (guild_id, guild_id),
+                ),
+                ("DELETE FROM guild_ideal_staff WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_roles WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_channels WHERE guild_id = %s", (guild_id,)),
+                ("DELETE FROM guild_settings WHERE guild_id = %s", (guild_id,)),
+            ]
+
+            all_queries = ptb_cleanup_queries + delete_queries
+
+            _logger.debug("transaction_prepared", 
+                guild_id=guild_id, 
+                total_queries=len(all_queries),
+                sample_query=all_queries[0] if all_queries else None
+            )
+
+            success = await run_db_transaction(all_queries)
+            
+            if success:
+                _logger.info(
+                    "atomic_deletion_completed",
+                    guild_id=guild_id,
+                    total_queries_executed=len(all_queries)
+                )
+
+                for ptb_guild_id in ptb_guilds_to_clear_cache:
                     try:
-                        await cursor.execute("START TRANSACTION")
-
-                        ptb_guild_query = "SELECT guild_id FROM guild_settings WHERE guild_ptb = %s"
-                        await cursor.execute(ptb_guild_query, (guild_id,))
-                        ptb_result = await cursor.fetchall()
-                        
-                        ptb_guilds_to_clear_cache = []
-                        if ptb_result:
-                            for row in ptb_result:
-                                main_guild_id = row[0]
-                                _logger.info(
-                                    "clearing_ptb_reference",
-                                    main_guild_id=main_guild_id,
-                                    ptb_guild_id=guild_id
-                                )
-                                await cursor.execute(
-                                    "UPDATE guild_settings SET guild_ptb = NULL WHERE guild_id = %s",
-                                    (main_guild_id,)
-                                )
-                                ptb_guilds_to_clear_cache.append(main_guild_id)
-
-                        delete_queries = [
-                            ("DELETE FROM welcome_messages WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM absence_messages WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM contracts WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM events_data WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM user_setup WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM guild_members WHERE guild_id = %s", (guild_id,)),
-                            (
-                                "DELETE FROM guild_static_members WHERE group_id IN (SELECT id FROM guild_static_groups WHERE guild_id = %s)",
-                                (guild_id,),
-                            ),
-                            ("DELETE FROM guild_static_groups WHERE guild_id = %s", (guild_id,)),
-                            (
-                                "DELETE FROM pending_diplomat_validations WHERE guild_id = %s",
-                                (guild_id,),
-                            ),
-                            ("DELETE FROM loot_wishlist_history WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM loot_wishlist WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM dynamic_voice_channels WHERE guild_id = %s", (guild_id,)),
-                            (
-                                "DELETE FROM guild_ptb_settings WHERE guild_id = %s OR ptb_guild_id = %s",
-                                (guild_id, guild_id),
-                            ),
-                            ("DELETE FROM guild_ideal_staff WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM guild_roles WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM guild_channels WHERE guild_id = %s", (guild_id,)),
-                            ("DELETE FROM guild_settings WHERE guild_id = %s", (guild_id,)),
-                        ]
-
-                        deleted_rows = 0
-                        for query, params in delete_queries:
-                            try:
-                                await cursor.execute(query, params)
-                                rows_affected = cursor.rowcount
-                                if rows_affected > 0:
-                                    deleted_rows += rows_affected
-                                    _logger.debug(
-                                        "table_deletion_success",
-                                        guild_id=guild_id,
-                                        rows_affected=rows_affected,
-                                        query=query.split()[2]
-                                    )
-                            except Exception as e:
-                                _logger.warning(
-                                    "table_deletion_failed",
-                                    guild_id=guild_id,
-                                    query=query.split()[2],
-                                    error=str(e)
-                                )
-
-                        await cursor.execute("COMMIT")
-                        _logger.info(
-                            "atomic_deletion_completed",
-                            guild_id=guild_id,
-                            total_rows_deleted=deleted_rows
+                        await self.bot.cache.delete("guild_data", ptb_guild_id, "settings")
+                        _logger.debug(
+                            "ptb_cache_cleared",
+                            ptb_guild_id=ptb_guild_id,
+                            deleted_guild_id=guild_id
                         )
-
-                        for ptb_guild_id in ptb_guilds_to_clear_cache:
-                            try:
-                                await self.bot.cache.delete("guild_data", ptb_guild_id, "settings")
-                                _logger.debug(
-                                    "ptb_cache_cleared",
-                                    ptb_guild_id=ptb_guild_id,
-                                    deleted_guild_id=guild_id
-                                )
-                            except Exception as cache_error:
-                                _logger.warning(
-                                    "ptb_cache_clear_failed",
-                                    ptb_guild_id=ptb_guild_id,
-                                    deleted_guild_id=guild_id,
-                                    error=str(cache_error)
-                                )
-                        
-                        return True
-                        
-                    except Exception as e:
-                        await cursor.execute("ROLLBACK")
-                        _logger.error(
-                            "atomic_deletion_failed_rollback",
-                            guild_id=guild_id,
-                            error=str(e),
-                            exc_info=True
+                    except Exception as cache_error:
+                        _logger.warning(
+                            "ptb_cache_clear_failed",
+                            ptb_guild_id=ptb_guild_id,
+                            deleted_guild_id=guild_id,
+                            error=str(cache_error)
                         )
-                        raise
+                
+                return True
+            else:
+                _logger.error(
+                    "atomic_deletion_failed",
+                    guild_id=guild_id,
+                    total_queries=len(all_queries)
+                )
+                return False
 
         except Exception as e:
             _logger.error(
