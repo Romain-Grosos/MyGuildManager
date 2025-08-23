@@ -29,9 +29,9 @@ from typing import Dict, Optional, Set, Tuple, List
 import discord
 from discord.ext import commands
 
-from core.logger import ComponentLogger
-from core.reliability import discord_resilient
-from core.translation import translations as global_translations
+from app.core.logger import ComponentLogger
+from app.core.reliability import discord_resilient
+from app.core.translation import translations as global_translations
 
 DYNAMIC_VOICE = global_translations.get("dynamic_voice", {})
 COOLDOWN_SECONDS = 1  
@@ -460,7 +460,7 @@ class DynamicVoice(commands.Cog):
                 return set()
                 
             monitored_channels = {create_room_channel}
-            _logger.debug("monitored_channels_retrieved", guild_id=guild_id, channels=monitored_channels)
+            _logger.debug("monitored_channels_retrieved", guild_id=guild_id, channels=list(monitored_channels))
             return monitored_channels
             
         except Exception as e:
@@ -528,7 +528,10 @@ class DynamicVoice(commands.Cog):
 
             self.update_user_cooldown(member.id)
 
-            channel_name = self.sanitize_channel_name(f"{member.display_name}'s Channel")
+            # Get guild locale and use appropriate localization for channel name
+            guild_locale = await self.bot.cache.get_guild_data(guild.id, "guild_lang") or "en-US"
+            channel_name_template = DYNAMIC_VOICE.get("channel_name", {}).get(guild_locale, "Channel of {username}")
+            channel_name = self.sanitize_channel_name(channel_name_template.format(username=member.display_name))
 
             category = parent_channel.category
             if not category:

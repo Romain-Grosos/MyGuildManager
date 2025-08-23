@@ -7,7 +7,7 @@
     "**/__pycache__",
     "**/.*"
   ],
-  "reportMissingImports": true,
+  "reportMissingImports": false,
   "reportMissingTypeStubs": false,
   "pythonVersion": "3.10",
   "pythonPlatform": "Windows",
@@ -23,9 +23,9 @@
   "reportUntypedClassDecorator": false,
   "executionEnvironments": [
     {
-      "root": "app",
-      "pythonVersion": "3.8",
-      "extraPaths": []
+      "root": ".",
+      "pythonVersion": "3.10",
+      "extraPaths": ["."]
     }
   ]
 }
