@@ -14,10 +14,10 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
-from core.logger import ComponentLogger
-from core.translation import translations as global_translations
-from core.functions import get_effective_locale
-from core.reliability import discord_resilient
+from app.core.logger import ComponentLogger
+from app.core.translation import translations as global_translations
+from app.core.functions import get_effective_locale
+from app.core.reliability import discord_resilient
 
 LLM_DATA = global_translations.get("llm", {})
 
