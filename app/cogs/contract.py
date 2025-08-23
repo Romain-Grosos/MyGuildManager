@@ -26,9 +26,9 @@ from typing import Optional, Dict, Any
 import discord
 from discord.ext import commands
 
-from core.logger import ComponentLogger
-from core.reliability import discord_resilient
-from core.translation import translations as global_translations
+from app.core.logger import ComponentLogger
+from app.core.reliability import discord_resilient
+from app.core.translation import translations as global_translations
 
 _logger = ComponentLogger("contract")
 STAFF_TOOLS = global_translations.get("staff_tools", {})
