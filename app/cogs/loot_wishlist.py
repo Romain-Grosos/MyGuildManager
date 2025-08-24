@@ -35,11 +35,11 @@ import discord
 from discord.ext import commands
 from discord.utils import escape_markdown
 
-from core.logger import ComponentLogger
-from core.reliability import discord_resilient
-from db import run_db_query
-from core.functions import get_user_message, get_guild_message
-from core.translation import translations as global_translations
+from app.core.logger import ComponentLogger
+from app.core.reliability import discord_resilient
+from app.db import run_db_query
+from app.core.functions import get_user_message, get_guild_message
+from app.core.translation import translations as global_translations
 
 LOOT_SYSTEM = global_translations.get("loot_system", {})
 LOOT_WISHLIST_DATA = LOOT_SYSTEM
