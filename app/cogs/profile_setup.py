@@ -13,10 +13,10 @@ import pytz
 from discord.ext import commands
 from discord.utils import escape_markdown, escape_mentions
 
-from core.logger import ComponentLogger
-from core.translation import translations as global_translations
-from core.reliability import discord_resilient
-from db import DBQueryError
+from app.core.logger import ComponentLogger
+from app.core.translation import translations as global_translations
+from app.core.reliability import discord_resilient
+from app.db import DBQueryError
 
 MAX_PLAYTIME_LEN = 64
 SUPPORTED_LOCALES = global_translations.get("global", {}).get(
@@ -341,7 +341,7 @@ class ProfileSetup(commands.Cog):
             kwargs["name"] = name
             if "embed" in kwargs: kwargs["embeds"] = [kwargs.pop("embed")]
             return await channel.create_thread(**kwargs)
-        elif isinstance(channel, discord.TextChannel):
+        elif isinstance(channel, (discord.TextChannel, discord.Thread)):
             return await channel.send(**kwargs)
         else:
             _logger.error("unsupported_channel_type_for_post", channel_id=channel.id, typ=type(channel).__name__)
@@ -965,6 +965,12 @@ class ProfileSetup(commands.Cog):
             guild_id: Discord guild ID
             user_id: Discord user ID to finalize profile for
         """
+        _logger.debug(
+            "finalize_profile_started",
+            user_id=user_id,
+            guild_id=guild_id
+        )
+        
         guild_lang_task = self.get_guild_lang(guild_id)
         guild_roles_task = self.get_guild_roles(guild_id)
         guild_channels_task = self.get_guild_channels(guild_id)
@@ -994,6 +1000,14 @@ class ProfileSetup(commands.Cog):
         if not isinstance(session, dict):
             _logger.error("session_not_dict", guild_id=guild_id, user_id=user_id, session_type=type(session).__name__)
             return
+
+        _logger.debug(
+            "session_loaded_in_finalize",
+            user_id=user_id,
+            guild_id=guild_id,
+            session_keys=list(session.keys()),
+            session_motif=session.get("motif")
+        )
 
         def _values_from_session(s: Dict[str, Any]) -> Tuple[Any, ...]:
             """Internal method: Values from session."""
@@ -1199,6 +1213,14 @@ class ProfileSetup(commands.Cog):
                 exc_info=True
             )
 
+        _logger.debug(
+            "channels_data_retrieved",
+            user_id=user_id,
+            guild_id=guild_id,
+            channels_data_keys=list(channels_data.keys()) if channels_data else None,
+            forum_members_channel=channels_data.get("forum_members_channel") if channels_data else None
+        )
+        
         channels = {
             "member": channels_data.get("forum_members_channel"),
             "application": channels_data.get("forum_recruitment_channel"),
@@ -1207,6 +1229,16 @@ class ProfileSetup(commands.Cog):
             "friends": channels_data.get("forum_friends_channel"),
         }
         channel_id = channels.get(str(motif)) if motif else None
+        
+        _logger.debug(
+            "channel_selection",
+            user_id=user_id,
+            guild_id=guild_id,
+            motif=motif,
+            channel_id=channel_id,
+            available_channels=channels
+        )
+        
         if not channel_id:
             _logger.error(
                 "unknown_motif_notification_skipped",
