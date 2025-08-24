@@ -1172,6 +1172,28 @@ class GuildMembers(commands.Cog):
         ideal_staff_all = await self.bot.cache.get("guild_data", "ideal_staff") or {}
         return ideal_staff_all.get(guild_id) or ideal_staff_all.get(str(guild_id)) or {}
 
+    async def is_member_in_static_groups(self, guild_id: int, member_id: int) -> bool:
+        """
+        Check if a member is in any static group.
+        
+        Args:
+            guild_id: The guild ID
+            member_id: The member ID to check
+            
+        Returns:
+            True if member is in any static group, False otherwise
+        """
+        try:
+            static_groups_data = await self.bot.cache.get_guild_data(guild_id, "static_groups") or {}
+            
+            for group_name, group_info in static_groups_data.items():
+                members = group_info.get("members", [])
+                if member_id in members:
+                    return True
+            return False
+        except Exception:
+            return False
+
     async def update_guild_member_cache(
         self, guild_id: int, member_id: int, field: str, value: Any
     ) -> None:
@@ -2758,8 +2780,19 @@ class GuildMembers(commands.Cog):
 
         rows = []
         for m in sorted_members:
-            raw_username = m.get("username", "")[:username_width]
-            username = _pad_cell(_mono_sanitize(raw_username), username_width)
+            raw_username = m.get("username", "")
+            member_id = m.get("member_id")
+
+            is_in_static = await self.is_member_in_static_groups(guild_id, member_id) if member_id else False
+
+            if is_in_static and raw_username:
+                truncated_username = raw_username[:username_width - 4]
+                padded_username = truncated_username.ljust(username_width - 4)
+                display_username = f"{padded_username} (S)"
+            else:
+                display_username = raw_username[:username_width]
+            
+            username = _pad_cell(_mono_sanitize(display_username), username_width)
             language_text = str(m.get("language", "en-US"))[:language_width].center(
                 language_width
             )
@@ -3093,7 +3126,7 @@ class GuildMembers(commands.Cog):
                 sent=successes,
                 failed=failures,
                 not_in_guild=not_in_guild,
-            ) or f"📊 Résultats MP : {successes} envoyés, {failures} échoués, {not_in_guild} pas dans la guilde"
+            ) or f"📊 DM Results: {successes} sent, {failures} failed, {not_in_guild} not in guild"
         else:
             successes = 0
             failures = not_in_guild
@@ -3102,7 +3135,7 @@ class GuildMembers(commands.Cog):
                 GUILD_MEMBERS["notify_profile"],
                 "dm_stats_simple",
                 not_in_guild=not_in_guild,
-            ) or f"📊 Résultats MP : 0 envoyé, {not_in_guild} pas dans la guilde"
+            ) or f"📊 DM Results: 0 sent, {not_in_guild} not in guild"
 
         msg = await get_user_message(
             ctx,
