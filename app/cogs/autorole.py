@@ -268,361 +268,371 @@ class AutoRole(commands.Cog):
         Args:
             payload: Discord raw reaction event payload
         """
-        _logger.info(
-            "DIAGNOSTIC_reaction_event_triggered",
-            user_id=payload.user_id,
-            message_id=payload.message_id,
-            emoji=str(payload.emoji),
-            guild_id=payload.guild_id
-        )
-        
-        if not await self._ensure_cache_ready("on_raw_reaction_add"):
-            _logger.warning("DIAGNOSTIC_cache_not_ready", event_type="on_raw_reaction_add")
-            return
-
-        if not self._has_cache():
-            _logger.warning("DIAGNOSTIC_no_cache", event_type="on_raw_reaction_add")
-            return
-
-        if payload.user_id == self.bot.user.id:
-            return
-
-        _logger.info(
-            "processing_reaction_add",
-            user_id=payload.user_id,
-            message_id=payload.message_id,
-            emoji=str(payload.emoji)
-        )
-
-        if not payload.guild_id:
-            _logger.debug("no_guild_id_skipping")
-            return
-
-        guild = self.bot.get_guild(payload.guild_id)
-        if not guild:
-            _logger.debug(
-                "guild_not_found",
+        try:
+            _logger.info(
+                "DIAGNOSTIC_reaction_event_triggered",
+                user_id=payload.user_id,
+                message_id=payload.message_id,
+                emoji=str(payload.emoji),
                 guild_id=payload.guild_id
             )
-            return
+            
+            if not await self._ensure_cache_ready("on_raw_reaction_add"):
+                _logger.warning("DIAGNOSTIC_cache_not_ready", event_type="on_raw_reaction_add")
+                return
 
-        rules_info = await self.bot.cache.get_guild_data(guild.id, "rules_message")
-        if not rules_info or payload.message_id != rules_info.get("message"):
-            _logger.debug(
-                "message_not_rules_message",
+            if not self._has_cache():
+                _logger.warning("DIAGNOSTIC_no_cache", event_type="on_raw_reaction_add")
+                return
+
+            if payload.user_id == self.bot.user.id:
+                return
+
+            _logger.info(
+                "processing_reaction_add",
+                user_id=payload.user_id,
                 message_id=payload.message_id,
-                guild_id=guild.id
+                emoji=str(payload.emoji)
             )
-            return
 
-        if str(payload.emoji) != "✅":
-            return
+            if not payload.guild_id:
+                _logger.debug("no_guild_id_skipping")
+                return
 
-        if not self._check_rate_limit(guild.id, payload.user_id, payload.message_id):
-            return
+            guild = self.bot.get_guild(payload.guild_id)
+            if not guild:
+                _logger.debug(
+                    "guild_not_found",
+                    guild_id=payload.guild_id
+                )
+                return
 
-        role_id = await self.bot.cache.get_guild_data(guild.id, "rules_ok_role")
-        if not role_id:
-            _logger.warning(
-                "no_rules_ok_role_configured",
-                guild_id=guild.id
-            )
-            return
+            rules_info = await self.bot.cache.get_guild_data(guild.id, "rules_message")
+            if not rules_info or payload.message_id != rules_info.get("message"):
+                _logger.debug(
+                    "message_not_rules_message",
+                    message_id=payload.message_id,
+                    guild_id=guild.id
+                )
+                return
 
-        role = guild.get_role(role_id)
-        if not role:
-            _logger.warning(
-                "rules_ok_role_not_found",
-                role_id=role_id,
-                guild_id=guild.id
-            )
-            return
+            if str(payload.emoji) != "✅":
+                return
 
-        try:
-            member = guild.get_member(payload.user_id) or await guild.fetch_member(
-                payload.user_id
-            )
-        except discord.NotFound:
-            _logger.debug(
-                "member_no_longer_exists",
-                user_id=payload.user_id,
-                guild_id=guild.id
-            )
-            return
-        except Exception as e:
-            _logger.error(
-                "error_fetching_member",
-                user_id=payload.user_id,
-                guild_id=guild.id,
-                error=str(e),
-                exc_info=True
-            )
-            return
+            if not self._check_rate_limit(guild.id, payload.user_id, payload.message_id):
+                return
 
-        if member and member.bot:
-            _logger.debug(
-                "ignoring_bot_reaction",
-                user_id=payload.user_id,
-                guild_id=guild.id
-            )
-            return
-
-        if member and role and role not in member.roles:
-            me = guild.me
-            if not me.guild_permissions.manage_roles or role >= me.top_role or role.managed:
+            role_id = await self.bot.cache.get_guild_data(guild.id, "rules_ok_role")
+            if not role_id:
                 _logger.warning(
-                    "insufficient_role_hierarchy",
-                    guild_id=guild.id,
-                    bot_top=getattr(me.top_role, "id", None),
-                    target_role=role.id,
-                    role_managed=role.managed
+                    "no_rules_ok_role_configured",
+                    guild_id=guild.id
+                )
+                return
+
+            role = guild.get_role(role_id)
+            if not role:
+                _logger.warning(
+                    "rules_ok_role_not_found",
+                    role_id=role_id,
+                    guild_id=guild.id
                 )
                 return
 
             try:
-                await member.add_roles(role, reason="Autorole: rules accepted")
-                _logger.info(
-                    "role_added_to_member_successfully",
-                    member_name=member.name,
-                    member_id=member.id,
-                    role_id=role.id
+                member = guild.get_member(payload.user_id) or await guild.fetch_member(
+                    payload.user_id
                 )
-            except discord.Forbidden:
-                await self._handle_permission_error(
-                    "add_rules_ok_role",
-                    member,
+            except discord.NotFound:
+                _logger.debug(
+                    "member_no_longer_exists",
+                    user_id=payload.user_id,
                     guild_id=guild.id
                 )
                 return
             except Exception as e:
                 _logger.error(
-                    "error_adding_role_to_member",
-                    member_name=member.name,
-                    member_id=member.id,
-                    role_id=role.id,
+                    "error_fetching_member",
+                    user_id=payload.user_id,
+                    guild_id=guild.id,
                     error=str(e),
                     exc_info=True
                 )
                 return
 
-            _logger.info(
-                "DIAGNOSTIC_continuing_after_role_add",
-                member_id=member.id,
-                guild_id=guild.id
-            )
+            if member and member.bot:
+                _logger.debug(
+                    "ignoring_bot_reaction",
+                    user_id=payload.user_id,
+                    guild_id=guild.id
+                )
+                return
 
-            welcome_info = await self.bot.cache.get_user_data(
-                guild.id, member.id, "welcome_message"
-            )
-            
-            _logger.info(
-                "DIAGNOSTIC_welcome_info_check",
-                member_id=member.id,
-                guild_id=guild.id,
-                has_welcome_info=welcome_info is not None
-            )
-            
-            if welcome_info:
+            if member and role and role not in member.roles:
+                me = guild.me
+                if not me.guild_permissions.manage_roles or role >= me.top_role or role.managed:
+                    _logger.warning(
+                        "insufficient_role_hierarchy",
+                        guild_id=guild.id,
+                        bot_top=getattr(me.top_role, "id", None),
+                        target_role=role.id,
+                        role_managed=role.managed
+                    )
+                    return
+
                 try:
-                    channel = self.bot.get_channel(welcome_info["channel"])
-                    if not channel:
-                        channel = await self.bot.fetch_channel(welcome_info["channel"])
-
-                    if not channel:
-                        _logger.warning(
-                            "welcome_channel_not_found",
-                            channel_id=welcome_info['channel'],
-                            member_id=member.id,
-                            guild_id=guild.id
-                        )
-                        await self.bot.cache.delete(
-                            "user_data", guild.id, member.id, "welcome_message"
-                        )
-                        return
-
-                    try:
-                        message = await channel.fetch_message(welcome_info["message"])
-                    except discord.NotFound:
-                        _logger.warning(
-                            "welcome_message_not_found",
-                            message_id=welcome_info['message'],
-                            member_id=member.id,
-                            guild_id=guild.id
-                        )
-                        await self.bot.cache.delete(
-                            "user_data", guild.id, member.id, "welcome_message"
-                        )
-                        return
-
-                    if not message.embeds:
-                        _logger.warning(
-                            "no_embeds_in_welcome_message",
-                            member_name=member.name,
-                            member_id=member.id,
-                            message_id=welcome_info['message']
-                        )
-                        return
-
-                    embed_description = message.embeds[0].description or ""
-                    if "<t:" in embed_description:
-                        _logger.debug(
-                            "welcome_embed_already_updated",
-                            member_id=member.id,
-                            guild_id=guild.id,
-                            reason="timestamp_already_present"
-                        )
-                    else:
-                        lang = (
-                            await self.bot.cache.get_guild_data(guild.id, "guild_lang")
-                            or "en-US"
-                        )
-                        embed = update_welcome_embed(
-                            message.embeds[0], lang, AUTOROLE_TRANSLATIONS
-                        )
-
-                        for attempt in range(2):
-                            try:
-                                await message.edit(embed=embed)
-                                break
-                            except discord.HTTPException as e:
-                                if e.status >= 500 and attempt == 0:
-                                    await asyncio.sleep(1.5)
-                                    continue
-                                raise
-                        
-                        _logger.debug(
-                            "welcome_message_updated",
-                            member_name=member.name,
-                            member_id=member.id,
-                            message_id=welcome_info['message']
-                        )
-                        
+                    await member.add_roles(role, reason="Autorole: rules accepted")
+                    _logger.info(
+                        "role_added_to_member_successfully",
+                        member_name=member.name,
+                        member_id=member.id,
+                        role_id=role.id
+                    )
                 except discord.Forbidden:
                     await self._handle_permission_error(
-                        "edit_welcome_message",
-                        channel,
+                        "add_rules_ok_role",
+                        member,
+                        guild_id=guild.id
+                    )
+                    return
+                except Exception as e:
+                    _logger.error(
+                        "error_adding_role_to_member",
+                        member_name=member.name,
+                        member_id=member.id,
+                        role_id=role.id,
+                        error=str(e),
+                        exc_info=True
+                    )
+                    return
+
+                _logger.info(
+                    "DIAGNOSTIC_continuing_after_role_add",
+                    member_id=member.id,
+                    guild_id=guild.id
+                )
+
+                welcome_info = await self.bot.cache.get_user_data(
+                    guild.id, member.id, "welcome_message"
+                )
+                
+                _logger.info(
+                    "DIAGNOSTIC_welcome_info_check",
+                    member_id=member.id,
+                    guild_id=guild.id,
+                    has_welcome_info=welcome_info is not None
+                )
+                
+                if welcome_info:
+                    try:
+                        channel = self.bot.get_channel(welcome_info["channel"])
+                        if not channel:
+                            channel = await self.bot.fetch_channel(welcome_info["channel"])
+
+                        if not channel:
+                            _logger.warning(
+                                "welcome_channel_not_found",
+                                channel_id=welcome_info['channel'],
+                                member_id=member.id,
+                                guild_id=guild.id
+                            )
+                            await self.bot.cache.delete(
+                                "user_data", guild.id, member.id, "welcome_message"
+                            )
+                            return
+
+                        try:
+                            message = await channel.fetch_message(welcome_info["message"])
+                        except discord.NotFound:
+                            _logger.warning(
+                                "welcome_message_not_found",
+                                message_id=welcome_info['message'],
+                                member_id=member.id,
+                                guild_id=guild.id
+                            )
+                            await self.bot.cache.delete(
+                                "user_data", guild.id, member.id, "welcome_message"
+                            )
+                            return
+
+                        if not message.embeds:
+                            _logger.warning(
+                                "no_embeds_in_welcome_message",
+                                member_name=member.name,
+                                member_id=member.id,
+                                message_id=welcome_info['message']
+                            )
+                            return
+
+                        embed_description = message.embeds[0].description or ""
+                        if "<t:" in embed_description:
+                            _logger.debug(
+                                "welcome_embed_already_updated",
+                                member_id=member.id,
+                                guild_id=guild.id,
+                                reason="timestamp_already_present"
+                            )
+                        else:
+                            lang = (
+                                await self.bot.cache.get_guild_data(guild.id, "guild_lang")
+                                or "en-US"
+                            )
+                            embed = update_welcome_embed(
+                                message.embeds[0], lang, AUTOROLE_TRANSLATIONS
+                            )
+
+                            for attempt in range(2):
+                                try:
+                                    await message.edit(embed=embed)
+                                    break
+                                except discord.HTTPException as e:
+                                    if e.status >= 500 and attempt == 0:
+                                        await asyncio.sleep(1.5)
+                                        continue
+                                    raise
+                            
+                            _logger.debug(
+                                "welcome_message_updated",
+                                member_name=member.name,
+                                member_id=member.id,
+                                message_id=welcome_info['message']
+                            )
+                            
+                    except discord.Forbidden:
+                        await self._handle_permission_error(
+                            "edit_welcome_message",
+                            channel,
+                            guild_id=guild.id
+                        )
+                    except Exception as e:
+                        _logger.error(
+                            "error_updating_welcome_message",
+                            member_name=member.name,
+                            member_id=member.id,
+                            message_id=welcome_info.get('message', 'unknown'),
+                            error=str(e),
+                            exc_info=True
+                        )
+                else:
+                    _logger.info(
+                        "DIAGNOSTIC_no_welcome_message_found",
+                        member_id=member.id,
+                        guild_id=guild.id
+                    )
+
+                try:
+                    _logger.info(
+                        "DIAGNOSTIC_checking_user_profile",
+                        member_id=member.id,
+                        guild_id=guild.id
+                    )
+                    
+                    _logger.info(
+                        "DIAGNOSTIC_cache_loader_check",
+                        member_id=member.id,
+                        guild_id=guild.id,
+                        has_cache_loader=hasattr(self.bot, "cache_loader")
+                    )
+                    
+                    if hasattr(self.bot, "cache_loader"):
+                        _logger.info(
+                            "DIAGNOSTIC_ensuring_category_loaded",
+                            member_id=member.id,
+                            guild_id=guild.id
+                        )
+                        await self.bot.cache_loader.ensure_category_loaded("user_data")
+                        
+                    _logger.info(
+                        "DIAGNOSTIC_getting_user_data",
+                        member_id=member.id,
+                        guild_id=guild.id
+                    )
+                    
+                    user_setup = await self.bot.cache.get_user_data(
+                        guild.id, member.id, "setup"
+                    )
+
+                    _logger.info(
+                        "DIAGNOSTIC_user_setup_result",
+                        member_id=member.id,
+                        guild_id=guild.id,
+                        has_setup=user_setup is not None
+                    )
+
+                    if user_setup is not None:
+                        _logger.info(
+                            "profile_already_exists_skipping_dm",
+                            member_id=member.id,
+                            guild_id=guild.id
+                        )
+                        return
+
+                    _logger.info(
+                        "no_profile_found_will_send_dm",
+                        member_id=member.id,
                         guild_id=guild.id
                     )
                 except Exception as e:
                     _logger.error(
-                        "error_updating_welcome_message",
-                        member_name=member.name,
+                        "error_checking_user_profile",
                         member_id=member.id,
-                        message_id=welcome_info.get('message', 'unknown'),
+                        guild_id=guild.id,
                         error=str(e),
                         exc_info=True
                     )
-            else:
-                _logger.info(
-                    "DIAGNOSTIC_no_welcome_message_found",
-                    member_id=member.id,
-                    guild_id=guild.id
-                )
+                    return
 
-            try:
-                _logger.info(
-                    "DIAGNOSTIC_checking_user_profile",
-                    member_id=member.id,
-                    guild_id=guild.id
-                )
-                
-                _logger.info(
-                    "DIAGNOSTIC_cache_loader_check",
-                    member_id=member.id,
-                    guild_id=guild.id,
-                    has_cache_loader=hasattr(self.bot, "cache_loader")
-                )
-                
-                if hasattr(self.bot, "cache_loader"):
-                    _logger.info(
-                        "DIAGNOSTIC_ensuring_category_loaded",
-                        member_id=member.id,
-                        guild_id=guild.id
-                    )
-                    await self.bot.cache_loader.ensure_category_loaded("user_data")
-                    
-                _logger.info(
-                    "DIAGNOSTIC_getting_user_data",
-                    member_id=member.id,
-                    guild_id=guild.id
-                )
-                
-                user_setup = await self.bot.cache.get_user_data(
-                    guild.id, member.id, "setup"
-                )
-
-                _logger.info(
-                    "DIAGNOSTIC_user_setup_result",
-                    member_id=member.id,
-                    guild_id=guild.id,
-                    has_setup=user_setup is not None
-                )
-
-                if user_setup is not None:
-                    _logger.info(
-                        "profile_already_exists_skipping_dm",
-                        member_id=member.id,
+                profile_setup_cog = self._get_profile_setup_cog()
+                if profile_setup_cog is None:
+                    _logger.error(
+                        "profile_setup_cog_not_found",
                         guild_id=guild.id
                     )
                     return
 
                 _logger.info(
-                    "no_profile_found_will_send_dm",
-                    member_id=member.id,
-                    guild_id=guild.id
-                )
-            except Exception as e:
-                _logger.error(
-                    "error_checking_user_profile",
+                    "attempting_profile_setup_dm",
+                    member_name=member.name,
                     member_id=member.id,
                     guild_id=guild.id,
-                    error=str(e),
-                    exc_info=True
+                    cog_found=profile_setup_cog is not None
                 )
-                return
-
-            profile_setup_cog = self._get_profile_setup_cog()
-            if profile_setup_cog is None:
-                _logger.error(
-                    "profile_setup_cog_not_found",
-                    guild_id=guild.id
-                )
-                return
-
-            _logger.info(
-                "attempting_profile_setup_dm",
-                member_name=member.name,
-                member_id=member.id,
-                guild_id=guild.id,
-                cog_found=profile_setup_cog is not None
+                
+                try:
+                    await member.send(
+                        view=profile_setup_cog.LangSelectView(profile_setup_cog, guild.id)
+                    )
+                    _logger.info(
+                        "profile_setup_dm_sent_successfully",
+                        member_name=member.name,
+                        member_id=member.id,
+                        guild_id=guild.id
+                    )
+                except discord.Forbidden:
+                    _logger.warning(
+                        "cannot_send_dm_to_member",
+                        member_name=member.name,
+                        member_id=member.id,
+                        guild_id=guild.id
+                    )
+                except Exception as e:
+                    _logger.error(
+                        "error_sending_dm_to_member",
+                        member_name=member.name,
+                        member_id=member.id,
+                        guild_id=guild.id,
+                        error=str(e),
+                        exc_info=True
+                    )
+        except Exception as e:
+            _logger.error(
+                "AUTOROLE_LISTENER_ERROR",
+                error=str(e),
+                exc_info=True,
+                user_id=payload.user_id,
+                message_id=payload.message_id,
+                guild_id=payload.guild_id
             )
-            
-            try:
-                await member.send(
-                    view=profile_setup_cog.LangSelectView(profile_setup_cog, guild.id)
-                )
-                _logger.info(
-                    "profile_setup_dm_sent_successfully",
-                    member_name=member.name,
-                    member_id=member.id,
-                    guild_id=guild.id
-                )
-            except discord.Forbidden:
-                _logger.warning(
-                    "cannot_send_dm_to_member",
-                    member_name=member.name,
-                    member_id=member.id,
-                    guild_id=guild.id
-                )
-            except Exception as e:
-                _logger.error(
-                    "error_sending_dm_to_member",
-                    member_name=member.name,
-                    member_id=member.id,
-                    guild_id=guild.id,
-                    error=str(e),
-                    exc_info=True
-                )
 
     @commands.Cog.listener()
     @discord_resilient(service_name="discord_api", max_retries=2)
