@@ -461,9 +461,6 @@ class Notification(commands.Cog):
 
                 if channel:
                     try:
-                        original_message = await asyncio.wait_for(
-                            channel.fetch_message(message_id), timeout=self.SEND_TIMEOUT
-                        )
                         notif_trans = NOTIFICATION_DATA.get("member_leave", {})
                         title = notif_trans.get("title", {}).get(
                             guild_lang,
@@ -480,6 +477,20 @@ class Notification(commands.Cog):
                         )
                         description = description_template.format(
                             member_name=safe_name, member_id=member.id
+                        )
+                    except Exception as prep_error:
+                        _logger.error("departure_message_preparation_failed",
+                            error_type=type(prep_error).__name__,
+                            error_msg=str(prep_error)[:200],
+                            user_id=member.id,
+                            guild_id=guild.id
+                        )
+                        title = "🔴 Member Left"
+                        description = f"**{member.name}** left the server\n**Discord ID:** `{member.id}`"
+                    
+                    try:
+                        original_message = await asyncio.wait_for(
+                            channel.fetch_message(message_id), timeout=self.SEND_TIMEOUT
                         )
 
                         embed = create_embed(
@@ -504,6 +515,30 @@ class Notification(commands.Cog):
                             user_id=member.id,
                             message_id=message_id
                         )
+                        try:
+                            embed = create_embed(
+                                title, description, discord.Color.red(), member
+                            )
+                            await asyncio.wait_for(
+                                channel.send(
+                                    embed=embed,
+                                    allowed_mentions=discord.AllowedMentions.none()
+                                ),
+                                timeout=self.SEND_TIMEOUT,
+                            )
+                            _logger.debug("standalone_leave_message_sent",
+                                user_id=member.id,
+                                channel_id=channel_id,
+                                guild_id=guild.id
+                            )
+                        except Exception as send_error:
+                            _logger.error("standalone_leave_message_failed",
+                                error_type=type(send_error).__name__,
+                                error_msg=str(send_error)[:200],
+                                user_id=member.id,
+                                channel_id=channel_id,
+                                guild_id=guild.id
+                            )
                     except Exception as e:
                         _logger.error("notification_send_failed",
                             error_type=type(e).__name__,
