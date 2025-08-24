@@ -311,18 +311,17 @@ class GuildStatics(commands.Cog):
 
         # Get guild members data from cache
         try:
-            guild_members_cache = await self.bot.cache.get("roster_data", "guild_members") or {}
+            guild_members_cache = await self.bot.cache.get_bulk_guild_members(guild_obj.id) or {}
         except Exception:
             guild_members_cache = {}
 
         for member_id in member_ids:
             member = guild_obj.get_member(member_id) if guild_obj else None
 
-            # Cache key is (guild_id, member_id) tuple
-            cache_key = (guild_obj.id, member_id)
-            member_data = guild_members_cache.get(cache_key, {})
+            # Cache key is member_id directly
+            member_data = guild_members_cache.get(member_id, {})
 
-            class_value = member_data.get("class_member", "Unknown")
+            class_value = member_data.get("class", "Unknown")
             if not class_value or class_value == "NULL":
                 class_value = "Unknown"
 
