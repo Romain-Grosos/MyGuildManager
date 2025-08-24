@@ -45,6 +45,10 @@ class CacheLoader:
         self._db_query_count = 0
         self._load_times = {}
 
+    async def is_initial_load_complete(self) -> bool:
+        """Check if the initial cache load is complete."""
+        return self._initial_load_complete
+
     async def _run_db_query_with_metrics(
         self, query: str, params=None, fetch_all=False
     ):
@@ -441,7 +445,7 @@ class CacheLoader:
             return
 
         self._logger.debug("loading_guild_members")
-        query = "SELECT guild_id, member_id, username, language, class, GS, build, weapons, DKP, nb_events, registrations, attendances FROM guild_members"
+        query = "SELECT guild_id, member_id, username, language, class_member, GS, build, weapons, DKP, nb_events, registrations, attendances FROM guild_members"
 
         try:
             rows = await self._run_db_query_with_metrics(query, fetch_all=True)
@@ -466,7 +470,7 @@ class CacheLoader:
                     member_data = {
                         "username": username,
                         "language": language,
-                        "class": member_class,
+                        "class_member": member_class,
                         "GS": gs,
                         "build": build,
                         "weapons": weapons,
@@ -582,12 +586,12 @@ class CacheLoader:
         self._logger.debug("loading_static_groups_database")
 
         query = """
-            SELECT g.guild_id, g.group_name, g.leader_id, 
+            SELECT g.guild_id, g.group_name, 
                    GROUP_CONCAT(m.member_id ORDER BY m.position_order) as member_ids
             FROM guild_static_groups g
             LEFT JOIN guild_static_members m ON g.id = m.group_id
             WHERE g.is_active = TRUE
-            GROUP BY g.guild_id, g.group_name, g.leader_id
+            GROUP BY g.guild_id, g.group_name
         """
 
         try:
@@ -595,7 +599,7 @@ class CacheLoader:
 
             guild_static_groups = {}
             for row in rows:
-                guild_id, group_name, leader_id, member_ids_str = row
+                guild_id, group_name, member_ids_str = row
 
                 member_ids = []
                 if member_ids_str:
@@ -607,8 +611,7 @@ class CacheLoader:
                     guild_static_groups[guild_id] = {}
 
                 guild_static_groups[guild_id][group_name] = {
-                    "leader_id": leader_id,
-                    "member_ids": member_ids,
+                    "members": member_ids,
                 }
 
             for guild_id, groups_data in guild_static_groups.items():
@@ -720,6 +723,7 @@ class CacheLoader:
                     combinations_by_game[game_id].append(
                         {
                             "role": role,
+                            "class_name": role,
                             "weapon1": weapon1.upper(),
                             "weapon2": weapon2.upper(),
                         }
@@ -815,21 +819,21 @@ class CacheLoader:
         except Exception as e:
             self._logger.error("games_list_load_error", error=str(e), exc_info=True)
 
-    async def ensure_epic_items_t2_loaded(self) -> None:
+    async def ensure_epic_items_loaded(self) -> None:
         """
         Load Epic T2 items data.
 
         Loads epic item definitions with multilingual names, types, categories
         and URLs for loot wishlist and distribution systems.
         """
-        if "epic_items_t2" in self._loaded_categories:
+        if "epic_items" in self._loaded_categories:
             return
 
         self._logger.debug("loading_epic_t2_items")
         query = """
         SELECT item_id, item_name_en, item_type, item_category, 
                item_icon_url, item_url, item_name_fr, item_name_es, item_name_de 
-        FROM epic_items_t2
+        FROM epic_items
         """
 
         try:
@@ -864,14 +868,14 @@ class CacheLoader:
                         }
                     )
 
-                await self.bot.cache.set_static_data("epic_items_t2", items_data)
+                await self.bot.cache.set_static_data("epic_items", items_data)
 
                 self._logger.info("epic_t2_items_loaded", item_count=len(rows))
-                self._loaded_categories.add("epic_items_t2")
+                self._loaded_categories.add("epic_items")
             else:
                 self._logger.warning("no_epic_t2_items_found")
-                await self.bot.cache.set_static_data("epic_items_t2", [])
-                self._loaded_categories.add("epic_items_t2")
+                await self.bot.cache.set_static_data("epic_items", [])
+                self._loaded_categories.add("epic_items")
         except Exception as e:
             self._logger.error("epic_t2_items_load_error", error=str(e), exc_info=True)
 
@@ -975,7 +979,7 @@ class CacheLoader:
                 self.ensure_weapons_combinations_loaded(),
                 self.ensure_guild_ideal_staff_loaded(),
                 self.ensure_games_list_loaded(),
-                self.ensure_epic_items_t2_loaded(),
+                self.ensure_epic_items_loaded(),
                 self.ensure_events_calendar_loaded(),
                 self.ensure_guild_ptb_settings_loaded(),
             ]
@@ -1059,8 +1063,8 @@ class CacheLoader:
             await self.ensure_guild_ideal_staff_loaded()
         elif category == "games_list":
             await self.ensure_games_list_loaded()
-        elif category == "epic_items_t2":
-            await self.ensure_epic_items_t2_loaded()
+        elif category == "epic_items":
+            await self.ensure_epic_items_loaded()
         elif category == "events_calendar":
             await self.ensure_events_calendar_loaded()
         elif category == "guild_ptb_settings":

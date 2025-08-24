@@ -470,9 +470,9 @@ class TaskScheduler:
                     await guild_members_cog.run_maj_roster(guild_id)
                     self._logger.debug("roster_updated", guild_id=guild_id)
 
-                    guild_events_cog = self.bot.get_cog("GuildEvents")
-                    if guild_events_cog:
-                        await guild_events_cog.update_static_groups_message_for_cron(
+                    guild_statics_cog = self.bot.get_cog("GuildStatics")
+                    if guild_statics_cog:
+                        await guild_statics_cog.update_static_groups_message_for_cron(
                             guild_id
                         )
                         self._logger.debug("static_groups_updated", guild_id=guild_id

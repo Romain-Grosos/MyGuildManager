@@ -193,7 +193,7 @@ class GlobalCacheSystem:
         self._alert_cooldown_seconds = int(os.environ.get('ALERT_COOLDOWN_SECONDS', '300'))
         self._last_alert_times = {}
         self._logger = ComponentLogger("cache")
-        self._logger.info("cache_initialized", component="cache", smart_features=True)
+        self._logger.info("cache_initialized", smart_features=True)
 
     def _generate_key(self, category: str, *args) -> str:
         """
@@ -630,7 +630,7 @@ class GlobalCacheSystem:
                     self._logger.debug("auto_reloading_user", category=category, reason="missing_data")
                     try:
                         await self.bot.cache_loader.reload_category(category)
-                        result = await self.get_user_data(guild_id, user_id, data_type, _auto_reload=False)
+                        result = await self.get('user_data', guild_id, user_id, data_type)
                     except Exception as e:
                         self._logger.error("auto_reload_user_failed", category=category, 
                                       error_type=type(e).__name__, error_msg=str(e))
@@ -923,12 +923,12 @@ class GlobalCacheSystem:
         
         query = """
         SELECT gm.member_id, gm.username, gm.language, gm.GS, gm.build, gm.weapons, 
-               gm.DKP, gm.nb_events, gm.registrations, gm.attendances, gm.class,
+               gm.DKP, gm.nb_events, gm.registrations, gm.attendances, gm.class_member,
                us.locale
         FROM guild_members gm
         LEFT JOIN user_setup us ON gm.guild_id = us.guild_id AND gm.member_id = us.user_id
         WHERE gm.guild_id = %s
-        ORDER BY gm.class, gm.GS DESC
+        ORDER BY gm.class_member, gm.GS DESC
         """
         
         start_time = time.monotonic()
@@ -1009,6 +1009,47 @@ class GlobalCacheSystem:
             self._logger.error("user_setup_data_error", 
                           error_type=type(e).__name__, error_msg=str(e))
             return None
+
+    async def get_generic_data(self, key: str) -> Optional[Any]:
+        """
+        Get generic data from cache (used for cron locks, etc.).
+        
+        Args:
+            key: Cache key to retrieve
+            
+        Returns:
+            Cached data or None if not found
+        """
+        try:
+            cache_key = f"generic_{key}"
+            if cache_key in self._cache:
+                entry = self._cache[cache_key]
+                if not entry.is_expired():
+                    return entry.data
+                else:
+                    del self._cache[cache_key]
+            return None
+        except Exception as e:
+            self._logger.error("generic_data_get_error", 
+                          error_type=type(e).__name__, error_msg=str(e))
+            return None
+
+    async def set_generic_data(self, key: str, data: Any, ttl: int = 300) -> None:
+        """
+        Set generic data in cache (used for cron locks, etc.).
+        
+        Args:
+            key: Cache key to set
+            data: Data to cache
+            ttl: Time to live in seconds
+        """
+        try:
+            cache_key = f"generic_{key}"
+            self._cache[cache_key] = CacheEntry(data, ttl, "temporary")
+            self._metrics['sets'] += 1
+        except Exception as e:
+            self._logger.error("generic_data_set_error", 
+                          error_type=type(e).__name__, error_msg=str(e))
 
     async def get_cached_guild_roles(self, guild_id: int, force_refresh: bool = False) -> Dict[int, Any]:
         """
