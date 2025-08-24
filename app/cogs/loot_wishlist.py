@@ -377,14 +377,13 @@ class LootWishlist(commands.Cog):
         )
         SELECT e.item_name_en AS item_name,
                r.item_id,
-               COUNT(DISTINCT r2.user_id) AS demand_count,
-               GROUP_CONCAT(r.user_id ORDER BY r.rn ASC SEPARATOR ',') AS user_ids,
+               COUNT(DISTINCT w.user_id) AS demand_count,
+               GROUP_CONCAT(DISTINCT r.user_id ORDER BY r.rn ASC SEPARATOR ',') AS user_ids,
                AVG(w.priority) AS avg_priority,
                e.item_icon_url
         FROM ranked r
-        JOIN loot_wishlist w ON w.item_id = r.item_id AND w.user_id = r.user_id
+        JOIN loot_wishlist w ON w.item_id = r.item_id AND w.guild_id = %s
         JOIN epic_items e ON r.item_id = e.item_id
-        JOIN ranked r2 ON r2.item_id = r.item_id
         WHERE r.rn <= 10
         GROUP BY r.item_id, e.item_name_en, e.item_icon_url
         ORDER BY demand_count DESC, avg_priority DESC
@@ -392,7 +391,7 @@ class LootWishlist(commands.Cog):
         """
 
         try:
-            results = await run_db_query(query, (guild_id,), fetch_all=True)
+            results = await run_db_query(query, (guild_id, guild_id), fetch_all=True)
             if results:
                 return [
                     {
