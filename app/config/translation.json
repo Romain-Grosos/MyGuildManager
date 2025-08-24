@@ -642,22 +642,6 @@
                 "it": "settimana"
             }
         },
-        "forum": {
-            "updates_thread_name": {
-                "en-US": "Updates",
-                "fr": "Mises à jour",
-                "es-ES": "Actualizaciones",
-                "de": "Aktualisierungen",
-                "it": "Aggiornamenti"
-            },
-            "updates_thread_content": {
-                "en-US": "🔔 **Absence Notifications** | Notifications d'absence",
-                "fr": "🔔 **Notifications d'absence** | Absence Notifications",
-                "es-ES": "🔔 **Notificaciones de ausencia** | Absence Notifications",
-                "de": "🔔 **Abwesenheitsbenachrichtigungen** | Absence Notifications",
-                "it": "🔔 **Notifiche di assenza** | Absence Notifications"
-            }
-        },
         "commands": {
             "absence_add": {
                 "name": {
@@ -912,6 +896,43 @@
                 "es-ES": "Miembro para mostrar el build",
                 "de": "Mitglied, für das der Build angezeigt werden soll",
                 "it": "Membro di cui mostrare il build"
+            },
+            "messages": {
+                "not_found": {
+                    "en-US": "❌ Member **{username}** not found",
+                    "fr": "❌ Membre **{username}** introuvable",
+                    "es-ES": "❌ Miembro **{username}** no encontrado",
+                    "de": "❌ Mitglied **{username}** nicht gefunden",
+                    "it": "❌ Membro **{username}** non trovato"
+                },
+                "no_build": {
+                    "en-US": "❌ **{username}** has no build URL configured",
+                    "fr": "❌ **{username}** n'a pas d'URL de build configurée",
+                    "es-ES": "❌ **{username}** no tiene URL de build configurada",
+                    "de": "❌ **{username}** hat keine Build-URL konfiguriert",
+                    "it": "❌ **{username}** non ha un URL di build configurato"
+                },
+                "build_sent": {
+                    "en-US": "🔗 **{member}'s build:** {build_url}",
+                    "fr": "🔗 **Build de {member} :** {build_url}",
+                    "es-ES": "🔗 **Build de {member}:** {build_url}",
+                    "de": "🔗 **{member}s Build:** {build_url}",
+                    "it": "🔗 **Build di {member}:** {build_url}"
+                },
+                "sent": {
+                    "en-US": "✅ Build sent to your DMs",
+                    "fr": "✅ Build envoyé en message privé",
+                    "es-ES": "✅ Build enviado a tus mensajes privados",
+                    "de": "✅ Build an Ihre Direktnachrichten gesendet",
+                    "it": "✅ Build inviato nei tuoi messaggi privati"
+                },
+                "cannot_send": {
+                    "en-US": "❌ Cannot send you a direct message. Please check your privacy settings.",
+                    "fr": "❌ Impossible de vous envoyer un message privé. Vérifiez vos paramètres de confidentialité.",
+                    "es-ES": "❌ No se puede enviarte un mensaje directo. Verifica tu configuración de privacidad.",
+                    "de": "❌ Kann Ihnen keine Direktnachricht senden. Überprüfen Sie Ihre Datenschutzeinstellungen.",
+                    "it": "❌ Non posso inviarti un messaggio diretto. Controlla le impostazioni della privacy."
+                }
             }
         },
         "change_language": {
@@ -1031,6 +1052,20 @@
                 "es-ES": "✅ Notificaciones enviadas: **{successes}** exitosas, **{failures}** fallidas",
                 "de": "✅ Benachrichtigungen gesendet: **{successes}** erfolgreich, **{failures}** fehlgeschlagen",
                 "it": "✅ Notifiche inviate: **{successes}** riuscite, **{failures}** fallite"
+            },
+            "dm_stats": {
+                "en-US": "📊 DM Results: {sent} sent, {failed} failed, {not_in_guild} not in guild",
+                "fr": "📊 Résultats MP : {sent} envoyés, {failed} échoués, {not_in_guild} pas dans la guilde",
+                "es-ES": "📊 Resultados MD: {sent} enviados, {failed} fallidos, {not_in_guild} no en gremio",
+                "de": "📊 PN-Ergebnisse: {sent} gesendet, {failed} fehlgeschlagen, {not_in_guild} nicht in Gilde",
+                "it": "📊 Risultati MP: {sent} inviati, {failed} falliti, {not_in_guild} non nella gilda"
+            },
+            "dm_stats_simple": {
+                "en-US": "📊 DM Results: 0 sent, {not_in_guild} not in guild",
+                "fr": "📊 Résultats MP : 0 envoyé, {not_in_guild} pas dans la guilde",
+                "es-ES": "📊 Resultados MD: 0 enviados, {not_in_guild} no en gremio",
+                "de": "📊 PN-Ergebnisse: 0 gesendet, {not_in_guild} nicht in Gilde",
+                "it": "📊 Risultati MP: 0 inviati, {not_in_guild} non nella gilda"
             }
         },
         "config_roster": {
@@ -1128,18 +1163,18 @@
                 "it": "📢 Reclutamento"
             },
             "roster_size": {
-                "en-US": "👥 Current staff: **{total_members}/{roster_size_max}**\n",
-                "fr": "👥 Effectif actuel : **{total_members}/{roster_size_max}**\n",
-                "es-ES": "👥 Personal actual: **{total_members}/{roster_size_max}**\n",
-                "de": "👥 Aktueller Bestand: **{total_members}/{roster_size_max}**\n",
-                "it": "👥 Effettivo attuale: **{total_members}/{roster_size_max}**\n"
+                "en-US": "👥 Current staff: **{total_members}/{roster_size_max}**",
+                "fr": "👥 Effectif actuel : **{total_members}/{roster_size_max}**",
+                "es-ES": "👥 Personal actual: **{total_members}/{roster_size_max}**",
+                "de": "👥 Aktueller Bestand: **{total_members}/{roster_size_max}**",
+                "it": "👥 Effettivo attuale: **{total_members}/{roster_size_max}**"
             },
             "places": {
-                "en-US": "📌 Available spots: **{remaining_slots}**\n\n",
-                "fr": "📌 Places disponibles : **{remaining_slots}**\n\n",
-                "es-ES": "📌 Plazas disponibles: **{remaining_slots}**\n\n",
-                "de": "📌 Verfügbare Plätze: **{remaining_slots}**\n\n",
-                "it": "📌 Posti disponibili: **{remaining_slots}**\n\n"
+                "en-US": "📌 Available spots: **{remaining_slots}**\n",
+                "fr": "📌 Places disponibles : **{remaining_slots}**\n",
+                "es-ES": "📌 Plazas disponibles: **{remaining_slots}**\n",
+                "de": "📌 Verfügbare Plätze: **{remaining_slots}**\n",
+                "it": "📌 Posti disponibili: **{remaining_slots}**\n"
             },
             "post_availability": {
                 "en-US": "**Positions available:**\n",
@@ -1611,12 +1646,12 @@
                 "de": "Event-Zeit (HH:MM)",
                 "it": "Ora evento (HH:MM)"
             },
-            "event_time": {
-                "en-US": "Duration in hours",
-                "fr": "Durée en heures",
-                "es-ES": "Duración en horas",
-                "de": "Dauer in Stunden",
-                "it": "Durata in ore"
+            "duration": {
+                "en-US": "Duration in minutes",
+                "fr": "Durée en minutes",
+                "es-ES": "Duración en minutos",
+                "de": "Dauer in Minuten",
+                "it": "Durata in minuti"
             },
             "status": {
                 "en-US": "Event status",
@@ -2001,6 +2036,13 @@
                     "es-ES": "❌ Error agregando miembro al grupo: {error}",
                     "de": "❌ Fehler beim Hinzufügen des Mitglieds zur Gruppe: {error}",
                     "it": "❌ Errore aggiunta membro al gruppo: {error}"
+                },
+                "group_db_not_found": {
+                    "en-US": "❌ Group not found in database",
+                    "fr": "❌ Groupe non trouvé",
+                    "es-ES": "❌ Grupo no encontrado",
+                    "de": "❌ Gruppe nicht gefunden",
+                    "it": "❌ Gruppo non trovato"
                 }
             }
         },
@@ -2053,6 +2095,20 @@
                     "es-ES": "❌ Error quitando miembro del grupo: {error}",
                     "de": "❌ Fehler beim Entfernen des Mitglieds aus der Gruppe: {error}",
                     "it": "❌ Errore rimozione membro dal gruppo: {error}"
+                },
+                "member_not_found": {
+                    "en-US": "❌ Member not found",
+                    "fr": "❌ Membre introuvable",
+                    "es-ES": "❌ Miembro no encontrado", 
+                    "de": "❌ Mitglied nicht gefunden",
+                    "it": "❌ Membro non trovato"
+                },
+                "group_db_not_found": {
+                    "en-US": "❌ Group not found in database",
+                    "fr": "❌ Groupe non trouvé",
+                    "es-ES": "❌ Grupo no encontrado",
+                    "de": "❌ Gruppe nicht gefunden",
+                    "it": "❌ Gruppo non trovato"
                 }
             }
         },
@@ -2089,6 +2145,13 @@
                     "es-ES": "❌ Error eliminando grupo estático: {error}",
                     "de": "❌ Fehler beim Löschen der statischen Gruppe: {error}",
                     "it": "❌ Errore eliminazione gruppo statico: {error}"
+                },
+                "group_db_not_found": {
+                    "en-US": "❌ Group not found in database",
+                    "fr": "❌ Groupe non trouvé",
+                    "es-ES": "❌ Grupo no encontrado",
+                    "de": "❌ Gruppe nicht gefunden",
+                    "it": "❌ Gruppo non trovato"
                 }
             }
         },
