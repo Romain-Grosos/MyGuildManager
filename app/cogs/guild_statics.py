@@ -82,6 +82,112 @@ CLASS_EMOJIS = {
     "Flanker": "<:flank:1374762529036959854>",
 }
 
+class StaticGroupsPaginationView(discord.ui.View):
+    """
+    Discord UI View for static groups pagination with navigation buttons.
+    """
+    
+    def __init__(self, bot, guild_id: int, embeds: list[discord.Embed]):
+        super().__init__(timeout=300)
+        self.bot = bot
+        self.guild_id = guild_id
+        self.all_embeds = embeds
+        self.current_page = 0
+        self.items_per_page = 9  # 1 header + 8 groups per page max
+        self.groups_per_page = 8  # Max groups per page
+
+        if len(embeds) <= 1:
+            self.total_pages = 1
+        else:
+            # First embed is header, rest are groups
+            group_embeds_count = len(embeds) - 1
+            # Each page can show 8 groups max
+            if group_embeds_count <= self.groups_per_page:
+                self.total_pages = 1
+            else:
+                remaining_groups = group_embeds_count - self.groups_per_page
+                self.total_pages = 1 + ((remaining_groups + self.groups_per_page - 1) // self.groups_per_page)  # ceil division
+        
+        self._update_buttons()
+    
+    def _update_buttons(self):
+        """Update button states based on current page."""
+        self.previous_page.disabled = self.current_page == 0
+        self.next_page.disabled = self.current_page >= self.total_pages - 1
+
+        if self.total_pages <= 1:
+            self.previous_page.style = discord.ButtonStyle.gray
+            self.next_page.style = discord.ButtonStyle.gray
+            self.previous_page.disabled = True
+            self.next_page.disabled = True
+    
+    def _get_current_embeds(self) -> list[discord.Embed]:
+        """Get embeds for current page."""
+        if len(self.all_embeds) <= self.items_per_page:
+            return self.all_embeds
+        
+        header_embed = self.all_embeds[0]
+        
+        # Calculate group range for current page
+        groups_start = 1 + (self.current_page * self.groups_per_page)
+        groups_end = min(groups_start + self.groups_per_page, len(self.all_embeds))
+        
+        # Get groups for this page
+        page_embeds = [header_embed] + self.all_embeds[groups_start:groups_end]
+        
+        # Update header with page info if multiple pages
+        if self.total_pages > 1:
+            updated_header = discord.Embed(
+                title=header_embed.title,
+                description=f"{header_embed.description}\n\n📄 Page {self.current_page + 1}/{self.total_pages}",
+                color=header_embed.color
+            )
+            page_embeds[0] = updated_header
+        
+        return page_embeds
+    
+    @discord.ui.button(emoji="⬅️", style=discord.ButtonStyle.primary, disabled=True)
+    async def previous_page(self, button: discord.ui.Button, interaction: discord.Interaction):
+        """Navigate to previous page."""
+        if self.current_page > 0:
+            self.current_page -= 1
+            self._update_buttons()
+            
+            embeds = self._get_current_embeds()
+            await interaction.response.edit_message(embeds=embeds, view=self)
+    
+    @discord.ui.button(emoji="➡️", style=discord.ButtonStyle.primary)
+    async def next_page(self, button: discord.ui.Button, interaction: discord.Interaction):
+        """Navigate to next page."""
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self._update_buttons()
+            
+            embeds = self._get_current_embeds()
+            await interaction.response.edit_message(embeds=embeds, view=self)
+    
+    async def on_timeout(self):
+        """Handle view timeout by disabling all buttons."""
+        for item in self.children:
+            item.disabled = True
+        
+        try:
+            guild = self.bot.get_guild(self.guild_id)
+            if guild:
+                result = await self.bot.run_db_query(
+                    "SELECT statics_channel, statics_message FROM guild_channels WHERE guild_id = %s",
+                    (self.guild_id,),
+                    fetch_one=True
+                )
+                
+                if result and result[0] and result[1]:
+                    channel = guild.get_channel(int(result[0]))
+                    if channel:
+                        message = await channel.fetch_message(int(result[1]))
+                        await message.edit(view=self)
+        except Exception:
+            pass
+
 class GuildStatics(commands.Cog):
     """
     Discord cog for managing static groups within guilds.
@@ -309,7 +415,6 @@ class GuildStatics(commands.Cog):
 
         member_info_list = []
 
-        # Get guild members data from cache
         try:
             guild_members_cache = await self.bot.cache.get_bulk_guild_members(guild_obj.id) or {}
         except Exception:
@@ -318,7 +423,6 @@ class GuildStatics(commands.Cog):
         for member_id in member_ids:
             member = guild_obj.get_member(member_id) if guild_obj else None
 
-            # Cache key is member_id directly
             member_data = guild_members_cache.get(member_id, {})
 
             class_value = member_data.get("class", "Unknown")
@@ -346,7 +450,6 @@ class GuildStatics(commands.Cog):
             }
             member_info_list.append(member_info)
 
-        # Sort by class priority and presence
         class_priority = {
             "Tank": 1,
             "Healer": 2,
@@ -360,7 +463,6 @@ class GuildStatics(commands.Cog):
             key=lambda x: (class_priority.get(x["class"], 99), not x["is_present"])
         )
 
-        # Format each member
         formatted_members = []
         for info in member_info_list:
             class_emoji = CLASS_EMOJIS.get(info["class"], "❓")
@@ -609,7 +711,6 @@ class GuildStatics(commands.Cog):
 
             await self.update_static_groups_message(guild_id)
 
-            # Get updated member count after adding the new member
             updated_count = len(current_members) + 1
             
             success_msg = (
@@ -768,7 +869,6 @@ class GuildStatics(commands.Cog):
 
             await self.update_static_groups_message(guild_id)
 
-            # Get updated member count after removing the member
             updated_count = len(current_members) - 1
             
             success_msg = (
@@ -969,7 +1069,6 @@ class GuildStatics(commands.Cog):
                 )
                 embeds.append(embed)
             else:
-                # Header embed with timestamp
                 header_embed = discord.Embed(
                     title=title,
                     description=f"*Updated: <t:{int(time.time())}:R>*",
@@ -977,7 +1076,6 @@ class GuildStatics(commands.Cog):
                 )
                 embeds.append(header_embed)
 
-                # Get translation texts
                 members_count_template = STATIC_GROUPS["static_update"]["messages"][
                     "members_count"
                 ].get(
@@ -999,14 +1097,12 @@ class GuildStatics(commands.Cog):
                     STATIC_GROUPS["static_update"]["messages"]["absent"].get("en-US"),
                 )
 
-                # Create one embed per group
                 sorted_groups = self._sort_groups_for_display(static_groups)
                 
                 for group_name, group_data in sorted_groups:
                     members = group_data.get("members", [])
                     member_count = len(members)
-                    
-                    # Build description
+
                     members_count = members_count_template.format(count=member_count)
                     description = f"{members_count}\n\n"
                     
@@ -1017,34 +1113,27 @@ class GuildStatics(commands.Cog):
                         description += "\n".join(f"• {member}" for member in formatted_members)
                     else:
                         description += no_members_text
-                    
-                    # Create group embed
+
                     group_embed = discord.Embed(
                         title=f"🛡️ {group_name}",
                         description=description,
                         color=discord.Color.gold(),
                     )
                     embeds.append(group_embed)
-                
-                # Limit to max 10 embeds
-                MAX_EMBEDS = 10
-                if len(embeds) > MAX_EMBEDS:
-                    total = len(embeds) - 1
-                    truncated_title = "⚠️ Too many groups"
-                    truncated_description = f"Showing {MAX_EMBEDS-1} of {total} groups"
-                    
-                    embeds = embeds[:MAX_EMBEDS-1] + [discord.Embed(
-                        title=truncated_title,
-                        description=truncated_description,
-                        color=discord.Color.yellow()
-                    )]
+
+            view = None
+            display_embeds = embeds
+            
+            if len(embeds) > 9:
+                view = StaticGroupsPaginationView(self.bot, guild_id, embeds)
+                display_embeds = view._get_current_embeds()
 
             try:
                 if statics_message_id:
                     message = await channel.fetch_message(int(statics_message_id))
-                    await message.edit(embeds=embeds)
+                    await message.edit(embeds=display_embeds, view=view)
                 else:
-                    message = await channel.send(embeds=embeds)
+                    message = await channel.send(embeds=display_embeds, view=view)
                     await self.bot.run_db_query(
                         "UPDATE guild_channels SET statics_message = %s WHERE guild_id = %s",
                         (message.id, guild_id),
