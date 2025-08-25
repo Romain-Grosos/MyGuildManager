@@ -45,16 +45,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
-from core.logger import ComponentLogger
-from core.reliability import discord_resilient
-from db import run_db_query, run_db_transaction
-from core.functions import get_user_message
-from core.translation import translations as global_translations
+from app.core.logger import ComponentLogger
+from app.core.reliability import discord_resilient
+from app.db import run_db_query, run_db_transaction
+from app.core.functions import get_user_message
+from app.core.translation import translations as global_translations
 
 EPIC_ITEMS_DATA = global_translations.get("epic_items", {})
 
 _logger = ComponentLogger("epic_items_scraper")
-
 
 class EpicItemsScraper(commands.Cog):
     """Cog for scraping and managing Epic/Legendary items from questlog.gg"""
@@ -311,7 +310,8 @@ class EpicItemsScraper(commands.Cog):
             except Exception as e:
                 _logger.error("selenium_scraping_error",
                     error_type=type(e).__name__,
-                    error_msg=str(e)[:200]
+                    error_msg=str(e),
+                    exc_info=True
                 )
                 return []
 
@@ -343,9 +343,30 @@ class EpicItemsScraper(commands.Cog):
         """
         driver = None
         try:
+            import shutil
+            if not shutil.which("firefox") and not shutil.which("firefox.exe"):
+                _logger.error("firefox_not_found",
+                    language=language,
+                    error_msg="Firefox browser is not installed or not in PATH"
+                )
+                return []
+            
+            if not shutil.which("geckodriver") and not shutil.which("geckodriver.exe"):
+                _logger.error("geckodriver_not_found",
+                    language=language,
+                    error_msg="Geckodriver is not installed or not in PATH"
+                )
+                return []
+            
             options = Options()
-            options.headless = True
+            options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
             options.page_load_strategy = "eager"
+
+            import os
+            os.environ['MOZ_HEADLESS'] = '1'
 
             options.set_preference("general.useragent.override",
                 "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0")
@@ -353,13 +374,27 @@ class EpicItemsScraper(commands.Cog):
             options.set_preference("browser.cache.memory.enable", False)
             options.set_preference("browser.cache.offline.enable", False)
             options.set_preference("network.http.use-cache", False)
+            options.set_preference("dom.webdriver.enabled", False)
+            options.set_preference("useAutomationExtension", False)
 
             _logger.info("firefox_driver_creating",
                 language=language,
                 page_load_timeout_s=20
             )
-            driver = webdriver.Firefox(options=options)
-            driver.set_page_load_timeout(20)
+            try:
+                driver = webdriver.Firefox(options=options)
+                driver.set_page_load_timeout(20)
+                _logger.info("firefox_driver_created_successfully",
+                    language=language
+                )
+            except Exception as driver_error:
+                _logger.error("firefox_driver_creation_failed",
+                    language=language,
+                    error_type=type(driver_error).__name__,
+                    error_msg=str(driver_error),
+                    exc_info=True
+                )
+                raise
 
             all_items = []
             for grade in self.item_grades:
@@ -892,7 +927,7 @@ class EpicItemsScraper(commands.Cog):
             Tuple of (translated_type, translated_category)
         """
         try:
-            from core.functions import get_effective_locale
+            from app.core.functions import get_effective_locale
 
             locale = await get_effective_locale(ctx.bot, ctx.guild.id, ctx.author.id)
         except Exception:
