@@ -383,7 +383,7 @@ class EpicItemsScraper(commands.Cog):
             )
             try:
                 driver = webdriver.Firefox(options=options)
-                driver.set_page_load_timeout(20)
+                driver.set_page_load_timeout(30)
                 _logger.info("firefox_driver_created_successfully",
                     language=language
                 )
@@ -466,10 +466,12 @@ class EpicItemsScraper(commands.Cog):
             max_pages = self.detect_total_pages(driver, base_url, language)
             _logger.info("pagination_detected",
                 language=language,
+                grade=grade,
+                grade_name="Epic T2" if grade == 5 else "Legendary",
                 total_pages=max_pages
             )
 
-            consecutive_empty = 0
+            # Process ALL detected pages without early stopping
             for page in range(1, max_pages + 1):
                 page_url = f"{base_url}&page={page}"
                 _logger.debug("scraping_page",
@@ -481,11 +483,11 @@ class EpicItemsScraper(commands.Cog):
                 try:
                     driver.get(page_url)
 
-                    WebDriverWait(driver, 15).until(
+                    WebDriverWait(driver, 20).until(
                         EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'a[href*="/db/item/"]'))
                     )
 
-                    time.sleep(2)
+                    time.sleep(3)
 
                     html_content = driver.page_source
                     soup = BeautifulSoup(html_content, "html.parser")
@@ -514,44 +516,53 @@ class EpicItemsScraper(commands.Cog):
                             )
                             continue
 
+                    # Log page results but continue processing all pages
                     if not page_items:
-                        consecutive_empty += 1
-                        if consecutive_empty >= 2:
-                            _logger.info("pagination_early_stop",
-                                language=language,
-                                page_number=page,
-                                consecutive_empty_pages=consecutive_empty
-                            )
-                            break
+                        _logger.debug("page_empty",
+                            language=language,
+                            grade=grade,
+                            page_number=page
+                        )
                     else:
-                        consecutive_empty = 0
+                        _logger.debug("page_has_items",
+                            language=language,
+                            grade=grade,
+                            page_number=page,
+                            items_count=len(page_items)
+                        )
                     
                     items.extend(page_items)
-                    _logger.debug("page_items_extracted",
+                    _logger.info("page_items_extracted",
+                        language=language,
+                        grade=grade,
                         page_number=page,
                         items_count=len(page_items),
-                        language=language,
-                        consecutive_empty=consecutive_empty
+                        total_items_so_far=len(items)
                     )
 
                 except Exception as page_error:
                     if isinstance(page_error, TimeoutException):
-                        consecutive_empty += 1
-                        _logger.info("page_timeout_treated_as_empty",
-                                     language=language, page_number=page,
-                                     consecutive_empty_pages=consecutive_empty)
-                        if consecutive_empty >= 2:
-                            break
+                        _logger.info("page_timeout",
+                            language=language,
+                            grade=grade,
+                            page_number=page
+                        )
                     else:
                         _logger.warning("page_scraping_error",
-                                        language=language, page_number=page,
-                                        error_type=type(page_error).__name__,
-                                        error_msg=str(page_error)[:100])
+                            language=language,
+                            grade=grade,
+                            page_number=page,
+                            error_type=type(page_error).__name__,
+                            error_msg=str(page_error)[:100]
+                        )
                     continue
 
             _logger.info("language_scraping_completed_final",
                 language=language,
-                total_items=len(items)
+                grade=grade,
+                grade_name="Epic T2" if grade == 5 else "Legendary",
+                total_items=len(items),
+                pages_scraped=page if 'page' in locals() else 0
             )
             return items
 
@@ -579,7 +590,7 @@ class EpicItemsScraper(commands.Cog):
             first_page_url = f"{base_url}&page=1"
             driver.get(first_page_url)
 
-            WebDriverWait(driver, 15).until(
+            WebDriverWait(driver, 20).until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'a[href*="/db/item/"]'))
             )
 
@@ -639,10 +650,10 @@ class EpicItemsScraper(commands.Cog):
             if max_page == 1:
                 _logger.warning("pagination_fallback_used",
                     language=language,
-                    fallback_pages=20,
+                    fallback_pages=30,
                     reason="no_pagination_detected"
                 )
-                max_page = 20
+                max_page = 30
 
             return max_page
 
@@ -668,11 +679,10 @@ class EpicItemsScraper(commands.Cog):
             Estimated number of pages with Epic/Legendary items
         """
         try:
-            low, high = 1, 30
+            low, high = 1, 40
             last_epic_page = 1
-            consecutive_empty = 0
 
-            while low <= high and consecutive_empty < 3:
+            while low <= high:
                 mid = (low + high) // 2
                 test_url = f"{base_url}&page={mid}"
                 driver.get(test_url)
@@ -707,13 +717,12 @@ class EpicItemsScraper(commands.Cog):
 
                 if epic_items_found > 0:
                     last_epic_page = mid
-                    consecutive_empty = 0
                     low = mid + 1
                 else:
-                    consecutive_empty += 1
                     high = mid - 1
 
-            final_pages = min(last_epic_page + 2, 25)
+            # Add 2 pages buffer to ensure we don't miss anything
+            final_pages = last_epic_page + 2
             _logger.info("binary_search_pagination_completed",
                 language=language,
                 final_pages=final_pages,
