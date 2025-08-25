@@ -1595,6 +1595,20 @@
                 "de": "Keine",
                 "it": "Nessuno"
             },
+            "more_fmt": {
+                "en-US": "\n… (+{n} more)",
+                "fr": "\n… (+{n} de plus)",
+                "es-ES": "\n… (+{n} más)",
+                "de": "\n… (+{n} weitere)",
+                "it": "\n… (+{n} altri)"
+            },
+            "last_updated": {
+                "en-US": "Last updated",
+                "fr": "Dernière mise à jour",
+                "es-ES": "Última actualización",
+                "de": "Zuletzt aktualisiert",
+                "it": "Ultimo aggiornamento"
+            },
             "description": {
                 "en-US": "React to indicate your presence, attempt, or absence.",
                 "fr": "Réagissez pour indiquer votre présence, tentative ou absence.",
@@ -1773,6 +1787,13 @@
                 "de": "✅ Event erstellt mit ID: {event_id}",
                 "it": "✅ Evento creato con ID: {event_id}"
             },
+            "duplicate_event": {
+                "en-US": "⚠️ An event with this name, date and time already exists. The duplicate announcement has been removed.",
+                "fr": "⚠️ Un événement avec ce nom, cette date et cette heure existe déjà. L'annonce dupliquée a été supprimée.",
+                "es-ES": "⚠️ Ya existe un evento con este nombre, fecha y hora. El anuncio duplicado ha sido eliminado.",
+                "de": "⚠️ Ein Event mit diesem Namen, Datum und Uhrzeit existiert bereits. Die doppelte Ankündigung wurde entfernt.",
+                "it": "⚠️ Esiste già un evento con questo nome, data e ora. L'annuncio duplicato è stato rimosso."
+            },
             "event_ko": {
                 "en-US": "❌ Failed to create event: {e}",
                 "fr": "❌ Échec de la création de l'événement : {e}",
@@ -1860,6 +1881,13 @@
                 "es-ES": "❌ Evento {event_id} no encontrado en la base de datos",
                 "de": "❌ Event {event_id} in der Datenbank nicht gefunden",
                 "it": "❌ Evento {event_id} non trovato nel database"
+            },
+            "no_events_canal": {
+                "en-US": "❌ Events channel not found",
+                "fr": "❌ Canal d'événements introuvable",
+                "es-ES": "❌ Canal de eventos no encontrado",
+                "de": "❌ Event-Kanal nicht gefunden",
+                "it": "❌ Canale eventi non trovato"
             },
             "no_events_message": {
                 "en-US": "❌ Event message not found",
@@ -3508,6 +3536,13 @@
                 "es-ES": "Página {current} de {total}",
                 "de": "Seite {current} von {total}",
                 "it": "Pagina {current} di {total}"
+            },
+            "navigation_restricted": {
+                "en-US": "Only the command author can navigate through pages.",
+                "fr": "Seul l'auteur de la commande peut naviguer entre les pages.",
+                "es-ES": "Solo el autor del comando puede navegar entre páginas.",
+                "de": "Nur der Befehlsautor kann durch die Seiten navigieren.",
+                "it": "Solo l'autore del comando può navigare tra le pagine."
             }
         }
     },

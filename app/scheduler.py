@@ -107,7 +107,7 @@ class TaskScheduler:
         self._last_not_ready_log = 0.0
         self._scheduler_running = False
         self._watchdog_alert_triggered = False
-        self._watchdog_threshold_seconds = 300
+        self._watchdog_threshold_seconds = 600
         self._task_start_times: Dict[str, float] = {}
         self._stuck_tasks: set = set()
         self._logger.info("scheduler_initialized", tasks_count=len(self._task_locks)

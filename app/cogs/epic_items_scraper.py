@@ -55,6 +55,130 @@ EPIC_ITEMS_DATA = global_translations.get("epic_items", {})
 
 _logger = ComponentLogger("epic_items_scraper")
 
+
+class EpicItemsPaginator(discord.ui.View):
+    """Paginator for Epic Items search results"""
+    
+    def __init__(self, ctx, items, search_term, scraper_instance):
+        super().__init__(timeout=300)  # 5 minutes timeout
+        self.ctx = ctx
+        self.items = items
+        self.search_term = search_term
+        self.scraper = scraper_instance
+        self.current_page = 0
+        self.items_per_page = 5
+        self.total_pages = ((len(items) - 1) // self.items_per_page) + 1
+        
+        # Update button states
+        self.update_buttons()
+    
+    def update_buttons(self):
+        """Update button enabled/disabled states"""
+        self.previous_button.disabled = (self.current_page == 0)
+        self.next_button.disabled = (self.current_page == self.total_pages - 1)
+        
+        # Hide buttons if only one page
+        if self.total_pages <= 1:
+            self.previous_button.style = discord.ButtonStyle.gray
+            self.next_button.style = discord.ButtonStyle.gray
+            self.previous_button.disabled = True
+            self.next_button.disabled = True
+    
+    async def create_embed(self) -> discord.Embed:
+        """Create embed for current page"""
+        start_idx = self.current_page * self.items_per_page
+        end_idx = start_idx + self.items_per_page
+        page_items = self.items[start_idx:end_idx]
+        
+        search_title = await get_user_message(
+            self.ctx, EPIC_ITEMS_DATA, "messages.search_title"
+        )
+        search_title += f" : `{self.search_term}`"
+        
+        embed = discord.Embed(title=search_title, color=discord.Color.purple())
+        
+        type_label = await get_user_message(
+            self.ctx, EPIC_ITEMS_DATA, "messages.item_type_label"
+        )
+        category_label = await get_user_message(
+            self.ctx, EPIC_ITEMS_DATA, "messages.item_category_label"
+        )
+        view_label = await get_user_message(
+            self.ctx, EPIC_ITEMS_DATA, "messages.view_on_questlog"
+        )
+        
+        for j, item in enumerate(page_items):
+            item_name = item.get("item_name_en", "Unknown")
+            item_type_val = item.get("item_type", "Unknown")
+            item_category_val = item.get("item_category", "Unknown")
+            item_url = item.get("item_url", "")
+            
+            translated_type, translated_category = (
+                await self.scraper.get_translated_item_info(
+                    self.ctx, item_type_val, item_category_val
+                )
+            )
+            
+            field_value = f"`{item_name}`\n\n"
+            field_value += f"**{type_label}:** {translated_type}\n"
+            field_value += f"**{category_label}:** {translated_category}\n"
+            if item_url:
+                field_value += f"[{view_label}]({item_url})"
+            
+            if j < len(page_items) - 1:
+                field_value += "\n\n" + "─" * 30
+            
+            embed.add_field(name=f"\u200b", value=field_value, inline=False)
+        
+        if page_items and page_items[0].get("item_icon_url"):
+            embed.set_thumbnail(url=page_items[0]["item_icon_url"])
+        
+        if self.total_pages > 1:
+            embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages}")
+        
+        return embed
+    
+    @discord.ui.button(label="◀️", style=discord.ButtonStyle.secondary, disabled=True)
+    async def previous_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        if interaction.user != self.ctx.author:
+            restricted_msg = await get_user_message(
+                self.ctx, EPIC_ITEMS_DATA, "messages.navigation_restricted"
+            )
+            await interaction.response.send_message(restricted_msg, ephemeral=True)
+            return
+            
+        self.current_page = max(0, self.current_page - 1)
+        self.update_buttons()
+        
+        embed = await self.create_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    @discord.ui.button(label="▶️", style=discord.ButtonStyle.secondary)
+    async def next_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        if interaction.user != self.ctx.author:
+            restricted_msg = await get_user_message(
+                self.ctx, EPIC_ITEMS_DATA, "messages.navigation_restricted"
+            )
+            await interaction.response.send_message(restricted_msg, ephemeral=True)
+            return
+            
+        self.current_page = min(self.total_pages - 1, self.current_page + 1)
+        self.update_buttons()
+        
+        embed = await self.create_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    async def on_timeout(self):
+        """Called when the view times out"""
+        for item in self.children:
+            item.disabled = True
+        
+        try:
+            await self.message.edit(view=self)
+        except:
+            pass  # Message might have been deleted
+
+
 class EpicItemsScraper(commands.Cog):
     """Cog for scraping and managing Epic/Legendary items from questlog.gg"""
 
@@ -471,7 +595,6 @@ class EpicItemsScraper(commands.Cog):
                 total_pages=max_pages
             )
 
-            # Process ALL detected pages without early stopping
             for page in range(1, max_pages + 1):
                 page_url = f"{base_url}&page={page}"
                 _logger.debug("scraping_page",
@@ -516,7 +639,6 @@ class EpicItemsScraper(commands.Cog):
                             )
                             continue
 
-                    # Log page results but continue processing all pages
                     if not page_items:
                         _logger.debug("page_empty",
                             language=language,
@@ -601,48 +723,22 @@ class EpicItemsScraper(commands.Cog):
             html_content = driver.page_source
             soup = BeautifulSoup(html_content, "html.parser")
 
-            pagination_selectors = [
-                'nav[aria-label*="pagination"]',
-                ".pagination",
-                '[class*="pagination"]',
-                '[class*="pager"]',
-                'nav[class*="page"]',
-                ".page-navigation",
-                '[data-testid*="pagination"]',
-            ]
-
+            page_links = soup.find_all("a", href=re.compile(r"page=\d+"))
             max_page = 1
-
-            for selector in pagination_selectors:
-                pagination_container = soup.select_one(selector)
-                if pagination_container:
-                    page_links = pagination_container.find_all(
-                        "a", href=re.compile(r"page=\d+")
-                    )
-                    for link in page_links:
-                        href = link.get("href", "")
-                        page_match = re.search(r"page=(\d+)", str(href))
-                        if page_match:
-                            page_num = int(page_match.group(1))
-                            max_page = max(max_page, page_num)
-
-                    page_texts = pagination_container.find_all(text=re.compile(r"\d+"))
-                    for text in page_texts:
-                        numbers = re.findall(r"\d+", str(text).strip())
-                        for num_str in numbers:
-                            try:
-                                num = int(num_str)
-                                if 1 <= num <= 100:
-                                    max_page = max(max_page, num)
-                            except ValueError:
-                                continue
-
-                    if max_page > 1:
-                        _logger.debug("pagination_max_page_detected",
-                            language=language,
-                            max_page=max_page
-                        )
-                        break
+            
+            for link in page_links:
+                href = link.get("href", "")
+                page_match = re.search(r"page=(\d+)", str(href))
+                if page_match:
+                    page_num = int(page_match.group(1))
+                    max_page = max(max_page, page_num)
+            
+            if max_page > 1:
+                _logger.info("pagination_detected_from_links",
+                    language=language,
+                    max_page=max_page
+                )
+                return max_page
 
             if max_page == 1:
                 max_page = self.binary_search_last_page(driver, base_url, language)
@@ -679,16 +775,22 @@ class EpicItemsScraper(commands.Cog):
             Estimated number of pages with Epic/Legendary items
         """
         try:
-            low, high = 1, 40
+            if "grade=5" in base_url:
+                low, high = 1, 30
+            else:
+                low, high = 1, 10
+            
             last_epic_page = 1
+            iterations = 0
+            max_iterations = 8
 
-            while low <= high:
+            while low <= high and iterations < max_iterations:
+                iterations += 1
                 mid = (low + high) // 2
                 test_url = f"{base_url}&page={mid}"
                 driver.get(test_url)
 
                 import time
-
                 time.sleep(1)
 
                 html_content = driver.page_source
@@ -712,7 +814,8 @@ class EpicItemsScraper(commands.Cog):
                 _logger.debug("binary_search_page_check",
                     language=language,
                     page_number=mid,
-                    epic_items_found=epic_items_found
+                    epic_items_found=epic_items_found,
+                    iteration=iterations
                 )
 
                 if epic_items_found > 0:
@@ -721,14 +824,12 @@ class EpicItemsScraper(commands.Cog):
                 else:
                     high = mid - 1
 
-            # Add 2 pages buffer to ensure we don't miss anything
-            final_pages = last_epic_page + 2
             _logger.info("binary_search_pagination_completed",
                 language=language,
-                final_pages=final_pages,
-                last_epic_page=last_epic_page
+                final_pages=last_epic_page,
+                iterations_used=iterations
             )
-            return final_pages
+            return last_epic_page
 
         except Exception as e:
             _logger.error("binary_search_pagination_error",
@@ -1081,7 +1182,7 @@ class EpicItemsScraper(commands.Cog):
             ctx: Discord application context
             search: Search filter for item names (required)
         """
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
 
         try:
             items = await self.bot.cache.get_static_data("epic_items")
@@ -1159,67 +1260,16 @@ class EpicItemsScraper(commands.Cog):
                 no_items_msg = await get_user_message(
                     ctx, EPIC_ITEMS_DATA, "messages.no_items_found"
                 )
-                await ctx.respond(no_items_msg)
+                await ctx.respond(no_items_msg, ephemeral=True)
                 return
 
-            embeds = []
-            items_per_page = 5
-
-            for i in range(0, len(items), items_per_page):
-                search_title = await get_user_message(
-                    ctx, EPIC_ITEMS_DATA, "messages.search_title"
-                )
-                search_title += f" : `{search}`"
-
-                embed = discord.Embed(title=search_title, color=discord.Color.purple())
-
-                type_label = await get_user_message(
-                    ctx, EPIC_ITEMS_DATA, "messages.item_type_label"
-                )
-                category_label = await get_user_message(
-                    ctx, EPIC_ITEMS_DATA, "messages.item_category_label"
-                )
-                view_label = await get_user_message(
-                    ctx, EPIC_ITEMS_DATA, "messages.view_on_questlog"
-                )
-
-                page_items = items[i : i + items_per_page]
-                for j, item in enumerate(page_items):
-                    item_name = item.get("item_name_en", "Unknown")
-                    item_type_val = item.get("item_type", "Unknown")
-                    item_category_val = item.get("item_category", "Unknown")
-                    item_url = item.get("item_url", "")
-
-                    translated_type, translated_category = (
-                        await self.get_translated_item_info(
-                            ctx, item_type_val, item_category_val
-                        )
-                    )
-
-                    field_value = f"`{item_name}`\n\n"
-                    field_value += f"**{type_label}:** {translated_type}\n"
-                    field_value += f"**{category_label}:** {translated_category}\n"
-                    if item_url:
-                        field_value += f"[{view_label}]({item_url})"
-
-                    if j < len(page_items) - 1:
-                        field_value += "\n\n" + "─" * 30
-
-                    embed.add_field(name=f"\u200b", value=field_value, inline=False)
-
-                if page_items and page_items[0].get("item_icon_url"):
-                    embed.set_thumbnail(url=page_items[0]["item_icon_url"])
-
-                if len(items) > items_per_page:
-                    current_page = (i // items_per_page) + 1
-                    total_pages = ((len(items) - 1) // items_per_page) + 1
-                    embed.set_footer(text=f"Page {current_page}/{total_pages}")
-
-                embeds.append(embed)
-
-            msg = await ctx.respond(embed=embeds[0])
-            for e in embeds[1:]:
-                await ctx.followup.send(embed=e)
+            # Create paginator for navigation
+            paginator = EpicItemsPaginator(ctx, items, search, self)
+            embed = await paginator.create_embed()
+            
+            # Send response with navigation buttons
+            response = await ctx.respond(embed=embed, view=paginator, ephemeral=True)
+            paginator.message = response
 
         except Exception as e:
             _logger.error("epic_items_command_error",
